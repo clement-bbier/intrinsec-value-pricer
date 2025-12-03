@@ -16,6 +16,10 @@ venv/
 # Jupyter
 .ipynb_checkpoints/
 
+# Pytest / coverage
+.pytest_cache/
+.coverage
+
 # Streamlit
 .streamlit/
 
