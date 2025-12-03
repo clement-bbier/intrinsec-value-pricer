@@ -1,5 +1,17 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any
+from enum import Enum
+
+class ValuationMode(str, Enum):
+    """
+    Available valuation modes for the DCF engine.
+    Internal technical enum; UI will map this to nicer labels.
+    """
+
+    SIMPLE_FCFF = "simple_fcff"
+    FUNDAMENTAL_FCFF = "fundamental_fcff"
+    MARKET_MULTIPLES = "market_multiples"
+    ADVANCED_SIMULATION = "advanced_simulation"
 
 
 @dataclass

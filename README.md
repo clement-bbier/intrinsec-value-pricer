@@ -1,167 +1,191 @@
-Intrinsic Value Pricer (DCF)
-============================
+# Intrinsic Value Pricer (DCF & More)
 
-This project provides an educational and transparent interface to estimate the intrinsic value of a publicly listed company using a Discounted Cash Flow (DCF) valuation model.
+This project provides an educational and transparent interface to estimate the intrinsic value of a publicly listed company.
 
-It is not intended to predict future stock prices, but to illustrate how valuation frameworks work and how assumptions (growth, discount rates, margins, risk) influence results.
+The goal is not to predict short-term stock prices, but to:
 
-------------------------------------------------------------
+- Show how different valuation frameworks work.
+- Make assumptions explicit (growth, discount rates, margins, risk).
+- Help users understand how sensitive intrinsic value is to these assumptions.
+- Offer several valuation methods within the same app, with a common interface.
 
-What Is Intrinsic Value?
-------------------------
+This project is for learning and experimentation only.  
+It is not investment advice or a recommendation to buy or sell any security.
 
-Intrinsic value represents the estimated economic worth of a business based on its ability to generate cash flows over time. It differs from:
+## What Is Intrinsic Value?
 
-- Market price: reflects supply, demand, sentiment, and short-term trading noise.
-- Book value: accounting-based.
-- Speculative value: driven by hype, narratives, or temporary market distortions.
+Intrinsic value is an estimate of what a business is economically worth, based on its ability to generate cash flows over time.
 
-Intrinsic value is always a model-based estimate, not a certainty.
+It is different from:
 
-------------------------------------------------------------
+- Market price: current stock price, driven by supply/demand, sentiment, news.
+- Book value: accounting equity, not necessarily economic value.
+- Speculative value: driven by narratives, momentum, liquidity.
 
-Common Valuation Methods
-------------------------
+There is no unique “true” intrinsic value.  
+Every model is a set of assumptions; intrinsic value is always an estimate.
 
-Several frameworks are widely used in corporate finance and equity research:
+## Common Valuation Families in Practice
+
+In corporate finance, equity research, and M&A, several major families coexist:
 
 1. Discounted Cash Flow (DCF)
-   Projects future free cash flows and discounts them to present value using WACC.
-
 2. Multiples / Relative Valuation
-   Compares companies based on ratios (P/E, EV/EBITDA, P/S, etc.).
-
-3. Dividend Discount Model (DDM)
-   DCF variant for firms with predictable dividends.
-
-4. Residual Income Models
-   Values economic profit over cost of capital.
-
+3. Dividend Discount Models (DDM)
+4. Residual Income / Economic Profit
 5. Asset-Based Valuation
-   Useful for financial institutions or liquidation cases.
 
-------------------------------------------------------------
+This project aims to expose several of these ideas inside a single, consistent tool.
 
-Why This Project Uses DCF
--------------------------
+## Valuation Methods in This Project
 
-DCF is rigorous because it focuses on cash generation, not accounting rules.
+The app supports multiple valuation engines, each with its own assumptions and use cases.
 
-It:
-- Makes assumptions explicit.
-- Forces users to think about risk, growth, and the cost of capital.
-- Is widely used in investment banking, equity research, and corporate finance.
+### Method 1 – Simple DCF (FCFF ≈ CFO – Capex)
 
-However, DCF models are sensitive: small changes in WACC or long-term growth can materially impact the result.
+Status: Implemented
 
-This project uses a simplified version for educational purposes.
+Approximates Free Cash Flow to the Firm (FCFF) as:
 
-------------------------------------------------------------
+FCFF ≈ CFO + Capex
 
-Features
---------
+Then:
 
-- Retrieve financial statements and market data from Yahoo Finance (yfinance)
-- Compute Free Cash Flow to the Firm (FCFF)
-- Multi-year DCF valuation with terminal value
-- Built-in WACC computation (CAPM + cost of debt)
-- Compare market price vs. intrinsic value
-- Streamlit-based interactive UI
-- Central configuration via config/settings.yaml
+1. Projects FCFF over n years.
+2. Computes the discount rate (WACC).
+3. Discounts projected FCFs.
+4. Computes terminal value.
+5. Computes enterprise value.
+6. Computes equity value.
+7. Computes intrinsic value per share.
 
-------------------------------------------------------------
+Useful for stable, cash-generative businesses.  
+Robust and easy to understand.
 
-Project Structure
------------------
+### Method 2 – Fundamental DCF (Full FCFF Construction)
 
-intrinsic-value-pricer/
+Status: Planned
+
+Builds FCFF rigorously from financial statements:
+
+- EBIT → NOPAT
+- Add back depreciation
+- Subtract change in working capital
+- Subtract Capex
+
+Used in M&A, private equity, equity research.
+
+### Method 3 – Relative Valuation (Market Multiples)
+
+Status: Planned
+
+Compares valuation to peers using multiples:
+
+- P/E
+- EV/EBITDA
+- EV/EBIT
+- EV/Sales
+
+Used for fast market-relative valuation.
+
+### Method 4 – Scenarios & Simulations (Monte Carlo, LBO)
+
+Status: Planned
+
+Explicitly models uncertainty:
+
+- Scenario-based DCF
+- Monte Carlo simulation of growth and discount rates
+- LBO-style leveraged models
+
+Useful when uncertainty is high.
+
+## Why Start with DCF (Method 1)?
+
+It is conceptually rigorous and transparent.  
+All assumptions are explicit: growth, discount rate, reinvestment, terminal value.  
+However, small changes in assumptions can significantly affect results.
+
+This project embraces that by:
+
+- Logging every calculation.
+- Displaying all intermediate steps.
+- Allowing comparisons across methods (future versions).
+
+## Current Features (MVP)
+
+- Fetches market and financial data from Yahoo Finance.
+- Computes FCFF using CFO and Capex.
+- Multi-year DCF valuation with terminal value.
+- Computes WACC using CAPM and cost of debt.
+- Displays market price vs intrinsic value.
+- Provides detailed logging.
+- Central configuration via settings.yaml.
+- Architecture already supports multiple valuation modes.
+
+## Project Structure
+
+```
+intrinsec-value-pricer/
 ├── app/
-│   └── main.py                  # Streamlit UI
+│   └── main.py
 ├── core/
-│   ├── models.py                # Domain models (dataclasses)
-│   ├── exceptions.py            # Custom error types
-│   ├── dcf/                     # Financial logic
-│   │   ├── fcf.py
-│   │   ├── wacc.py
-│   │   └── valuation.py
-│   └── services/
-│       └── pricing_service.py   # Orchestration layer
+│   ├── models.py
+│   ├── exceptions.py
+│   └── dcf/
+│       ├── fcf.py
+│       ├── wacc.py
+│       ├── basic_engine.py
+│       ├── valuation_service.py
+│       └── valuation.py
 ├── infra/
 │   └── data_providers/
 │       ├── base_provider.py
-│       └── yahoo_provider.py    # Fetches and maps Yahoo Finance data
+│       └── yahoo_provider.py
 ├── tests/
-│   └── test_calculator.py       # TDD tests for core financial logic
+│   ├── test_calculator.py
+│   └── test_yahoo_provider_integration.py
 ├── config/
-│   └── settings.yaml            # Valuation parameters
+│   └── settings.yaml
 ├── docs/
-│   └── architecture.md
+│   ├── evolution_plan_for_dcf_calculation.md
+│   └── yfinance_references.md
 ├── README.md
 ├── requirements.txt
-└── .gitignore
+└── pytest.ini
+```
 
-------------------------------------------------------------
+## Installation
 
-How the DCF Model Works (Simplified)
-------------------------------------
-
-1. Retrieve financial data (price, beta, debt, cash, financial statements).
-2. Compute FCFF (CFO - Capex).
-3. Project FCFF over n years.
-4. Compute WACC using CAPM + cost of debt.
-5. Discount projected cash flows.
-6. Compute terminal value using perpetual growth.
-7. Combine results to compute enterprise value.
-8. Convert enterprise value to equity value.
-9. Compute intrinsic value per share.
-
-------------------------------------------------------------
-
-Installation
-------------
-
-git clone <your-repo-url>
-cd intrinsic-value-pricer
-
-python -m venv .venv
-source .venv/bin/activate     # Windows: .venv\Scripts\activate
-
+```
 pip install -r requirements.txt
+```
 
-------------------------------------------------------------
+## Run the Application
 
-Run the Application
--------------------
-
+```
 streamlit run app/main.py
+```
 
-------------------------------------------------------------
+## Configuration
 
-Configuration
--------------
+Default assumptions are in:
 
-Default assumptions (risk-free rate, market risk premium, tax rate, FCF growth, etc.) are stored in:
-
+```
 config/settings.yaml
+```
 
-Adjust them carefully based on your valuation scenario.
+## Roadmap
 
-------------------------------------------------------------
+- Fundamental DCF (Method 2)
+- Market multiples (Method 3)
+- Simulations and scenario analysis (Method 4)
+- Sensitivity analysis
+- Better charts and visualisations
+- Export to PDF/HTML
+- Batch valuation for multiple tickers
 
-Roadmap
--------
+## Disclaimer
 
-- Sensitivity analysis (bull / base / bear)
-- Monte Carlo simulation for DCF
-- Relative valuation (P/E, EV/EBITDA)
-- Live market beta & risk-free rate fetching
-- PDF valuation reports
-- Batch multi-ticker valuation
-
-------------------------------------------------------------
-
-Disclaimer
-----------
-
-This project is for educational purposes only.
-Nothing here constitutes financial advice or investment recommendations.
+This project is for educational purposes only.  
+It does not provide investment advice.
