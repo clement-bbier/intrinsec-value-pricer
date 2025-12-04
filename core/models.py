@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Any
 from enum import Enum
 
+
 class ValuationMode(str, Enum):
     """
-    Available valuation modes for the DCF engine.
-    Internal technical enum; UI will map this to nicer labels.
+    Modes de valorisation disponibles pour le moteur DCF.
+    Énumération technique interne ; l'interface utilisateur mappera ceci à des libellés plus conviviaux.
     """
 
     SIMPLE_FCFF = "simple_fcff"
@@ -17,8 +18,11 @@ class ValuationMode(str, Enum):
 @dataclass
 class CompanyFinancials:
     """
-    Normalized financial data for a single company.
-    Provided by data providers (e.g., Yahoo).
+    Données financières normalisées pour une entreprise.
+    Fournies par les data providers (ex: Yahoo).
+
+    Le champ `warnings` permet de remonter à l'interface des messages
+    de qualité de données (FCF TTM manquant, dette/cash approximés, etc.).
     """
 
     ticker: str
@@ -30,11 +34,14 @@ class CompanyFinancials:
     total_debt: float
     cash_and_equivalents: float
 
-    fcf_last: float  # Last known Free Cash Flow to the Firm (FCFF)
-    beta: float      # Equity beta used in CAPM
+    fcf_last: float  # Dernier Flux de Trésorerie Disponible pour la Firme (FCFF) connu
+    beta: float      # Bêta de l'action utilisé dans le CAPM
+
+    # Messages de qualité de données (affichables côté UI)
+    warnings: List[str] = field(default_factory=list)
 
     def to_log_dict(self) -> Dict[str, Any]:
-        """Return a dict representation useful for structured logging."""
+        """Retourne une représentation en dictionnaire pour le logging structuré."""
         return {
             "ticker": self.ticker,
             "currency": self.currency,
@@ -44,62 +51,57 @@ class CompanyFinancials:
             "cash_and_equivalents": self.cash_and_equivalents,
             "fcf_last": self.fcf_last,
             "beta": self.beta,
+            "warnings": self.warnings,
         }
 
     def __repr__(self) -> str:
         return (
-            f"CompanyFinancials("
-            f"ticker={self.ticker}, currency={self.currency}, "
-            f"price={self.current_price:.2f}, shares={self.shares_outstanding:.0f}, "
-            f"debt={self.total_debt:.2f}, cash={self.cash_and_equivalents:.2f}, "
-            f"fcf_last={self.fcf_last:.2f}, beta={self.beta:.3f})"
+            f"CompanyFinancials(ticker='{self.ticker}', currency='{self.currency}', "
+            f"price={self.current_price:.2f}, FCF={self.fcf_last:.2e})"
         )
 
 
 @dataclass
 class DCFParameters:
     """
-    Assumptions used in the DCF valuation.
-    Derived from settings + provider logic.
+    Paramètres d'entrée pour le modèle DCF.
+    Ils contiennent à la fois des inputs macro (taux sans risque) et des hypothèses (taux de croissance).
     """
 
-    risk_free_rate: float        # Rf
-    market_risk_premium: float   # MRP
-    cost_of_debt: float          # pre-tax cost of debt
-    tax_rate: float              # effective tax rate (0–1)
+    # CAPM inputs
+    risk_free_rate: float  # Taux sans risque (Rf) (décimal)
+    market_risk_premium: float  # Prime de risque du marché (MRP) (décimal)
 
-    fcf_growth_rate: float       # Stage 1 FCF growth (0–1)
-    perpetual_growth_rate: float # Terminal growth (0–1)
+    # WACC inputs
+    cost_of_debt: float  # Coût de la dette (Rd) (décimal)
+    tax_rate: float  # Taux d'imposition effectif (décimal)
 
-    projection_years: int        # Number of forecast years
+    # Growth assumptions
+    fcf_growth_rate: float  # Taux de croissance annuel des FCF pendant la période de projection (g) (décimal)
+    perpetual_growth_rate: float  # Taux de croissance perpétuel (g∞) (décimal)
+
+    projection_years: int  # Nombre d'années de projection (n)
 
     def to_log_dict(self) -> Dict[str, Any]:
+        """Retourne une représentation en dictionnaire pour le logging structuré."""
         return {
-            "risk_free_rate": self.risk_free_rate,
-            "market_risk_premium": self.market_risk_premium,
-            "cost_of_debt": self.cost_of_debt,
-            "tax_rate": self.tax_rate,
-            "fcf_growth_rate": self.fcf_growth_rate,
-            "perpetual_growth_rate": self.perpetual_growth_rate,
-            "projection_years": self.projection_years,
+            "Rf": self.risk_free_rate,
+            "MRP": self.market_risk_premium,
+            "Rd": self.cost_of_debt,
+            "TaxRate": self.tax_rate,
+            "g": self.fcf_growth_rate,
+            "g_inf": self.perpetual_growth_rate,
+            "Years": self.projection_years,
         }
-
-    def __repr__(self) -> str:
-        return (
-            f"DCFParameters(Rf={self.risk_free_rate:.4f}, MRP={self.market_risk_premium:.4f}, "
-            f"Rd={self.cost_of_debt:.4f}, Tax={self.tax_rate:.3f}, "
-            f"g=${self.fcf_growth_rate:.4f}, g∞={self.perpetual_growth_rate:.4f}, "
-            f"years={self.projection_years})"
-        )
 
 
 @dataclass
 class DCFResult:
     """
-    Full DCF result, with intermediate values for transparency.
+    Résultat complet d'une exécution du modèle DCF.
     """
 
-    # Rates
+    # Intermediate WACC components
     wacc: float
     cost_of_equity: float
     after_tax_cost_of_debt: float
@@ -119,6 +121,7 @@ class DCFResult:
     intrinsic_value_per_share: float
 
     def to_log_dict(self) -> Dict[str, Any]:
+        """Retourne une représentation en dictionnaire pour le logging structuré."""
         return {
             "wacc": self.wacc,
             "cost_of_equity": self.cost_of_equity,
@@ -135,11 +138,5 @@ class DCFResult:
 
     def __repr__(self) -> str:
         return (
-            "DCFResult("
-            f"WACC={self.wacc:.4f}, "
-            f"Re={self.cost_of_equity:.4f}, "
-            f"Rd_after_tax={self.after_tax_cost_of_debt:.4f}, "
-            f"EV={self.enterprise_value:.2f}, "
-            f"Equity={self.equity_value:.2f}, "
-            f"IV/share={self.intrinsic_value_per_share:.2f})"
+            f"DCFResult(IV/Share={self.intrinsic_value_per_share:.2f}, WACC={self.wacc:.2%})"
         )

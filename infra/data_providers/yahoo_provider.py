@@ -1,401 +1,444 @@
 import logging
-from typing import Optional, Any, Iterable
+from typing import Optional, Dict, Tuple, Any, List
+from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import yfinance as yf
 
 from core.models import CompanyFinancials, DCFParameters
 from core.exceptions import DataProviderError
 from infra.data_providers.base_provider import DataProvider
+from infra.macro.yahoo_macro_provider import YahooMacroProvider
 
 logger = logging.getLogger(__name__)
 
 
-# =============================
-# Helpers
-# =============================
-
-def _safe_get_first(df: pd.DataFrame, row_name: str) -> Optional[float]:
-    """Robust extraction of a numeric row value from Yahoo DataFrame."""
+def _safe_get_first(df: Optional[pd.DataFrame], row_names: List[str]) -> Optional[float]:
+    """Cherche la première ligne correspondante dans une liste d'alias et retourne sa première valeur."""
     if df is None or df.empty:
-        logger.debug("[Yahoo] DF empty → cannot find row '%s'", row_name)
         return None
 
-    target = str(row_name).strip().lower()
+    # Normalisation de l'index pour la recherche
+    normalized_df = df.copy()
+    normalized_df.index = normalized_df.index.astype(str).str.strip().str.lower()
 
-    # Exact match
-    if row_name in df.index:
-        raw_label = row_name
-        logger.debug("[Yahoo] Exact row match for '%s'", row_name)
-    else:
-        # Fuzzy match
-        normalized = {str(idx).strip().lower(): idx for idx in df.index}
-        raw_label = normalized.get(target)
-        if raw_label:
-            logger.debug("[Yahoo] Fuzzy row match '%s' → '%s'", row_name, raw_label)
-        else:
-            logger.debug("[Yahoo] No match for '%s'", row_name)
-            return None
-
-    row = df.loc[raw_label]
-
-    # Handle Series or DataFrame
-    if isinstance(row, pd.DataFrame):
-        if row.empty:
-            return None
-        value = row.iat[0, 0]
-    else:
-        if row.empty:
-            return None
-        value = row.iloc[0]
-
-    if isinstance(value, (float, int)) and not np.isnan(value):
-        logger.debug("[Yahoo] Value for '%s' = %.2f", row_name, value)
-        return float(value)
-
+    for name in row_names:
+        clean_name = str(name).strip().lower()
+        if clean_name in normalized_df.index:
+            try:
+                # Prend la première colonne (la donnée la plus récente)
+                val = normalized_df.loc[clean_name].iloc[0]
+                return float(val)
+            except Exception:
+                continue
     return None
 
 
-def _safe_get_first_any(df: pd.DataFrame, candidates: Iterable[str]) -> Optional[float]:
-    """Try multiple row names."""
-    for name in candidates:
-        v = _safe_get_first(df, name)
-        if v is not None:
-            logger.debug("[Yahoo] Using alias '%s' = %.2f", name, v)
-            return v
-    return None
+def _get_historical_fundamental(
+    df_annual: Optional[pd.DataFrame],
+    df_quarterly: Optional[pd.DataFrame],
+    date: datetime,
+    row_names: List[str],
+    is_ttm: bool = False,
+) -> Tuple[Optional[float], Optional[datetime]]:
+    """
+    Récupère la donnée fondamentale (le plus souvent) de la dernière publication
+    avant ou égale à la date demandée.
+
+    Utilise en priorité les états annuels, puis les trimestriels en fallback.
+    """
+    # 1. Recherche dans les rapports Annuels (pour Dette, Cash, Shares, etc.)
+    if df_annual is not None and not df_annual.empty:
+        try:
+            # On cherche l'ensemble des rapports publiés avant ou à la date demandée
+            valid_reports = df_annual.columns[df_annual.columns <= date]
+
+            if len(valid_reports) > 0:
+                # On prend le rapport le plus récent
+                latest_report_date = valid_reports[-1]
+
+                # Extraction de la valeur pour cette date
+                report_df = df_annual[[latest_report_date]]
+                value = _safe_get_first(report_df, row_names)
+
+                if value is not None:
+                    return value, latest_report_date
+        except Exception:
+            pass
+
+    # 2. Recherche dans les rapports Trimestriels (fallback si pas trouvé en annuel)
+    if df_quarterly is not None and not df_quarterly.empty:
+        try:
+            valid_reports = df_quarterly.columns[df_quarterly.columns <= date]
+
+            if len(valid_reports) > 0:
+                latest_report_date = valid_reports[-1]
+                report_df = df_quarterly[[latest_report_date]]
+                value = _safe_get_first(report_df, row_names)
+
+                if value is not None:
+                    return value, latest_report_date
+        except Exception:
+            pass
+
+    return None, None
 
 
-def _build_fcf_series(cashflow: pd.DataFrame, info: dict[str, Any]) -> Optional[pd.Series]:
-    """Construct FCF time series."""
-    if cashflow is None or cashflow.empty:
-        return None
+def _get_ttm_fcf_historical(
+        cashflow_quarterly: pd.DataFrame,
+        date: datetime
+) -> Optional[Tuple[float, datetime]]:
+    """
+    Calcule le FCF TTM (Trailing Twelve Months) en sommant les 4 derniers
+    rapports trimestriels publiés avant ou à la date donnée.
+    Gère proprement les histoires de timezone pour éviter les erreurs
+    « Invalid comparison between dtype=datetime64[ns] and datetime ».
+    """
+    if cashflow_quarterly is None or cashflow_quarterly.empty:
+        return None, None
 
-    cfo_row = None
-    for name in [
+    # Alias pour les lignes de FCF (Flux de trésorerie d'exploitation - Dépenses en capital)
+    CFO_ALIASES = [
         "Operating Cash Flow",
         "Cash Flow From Continuing Operating Activities",
-        "Cash Flow from Continuing Operating Activities",
-    ]:
-        if name in cashflow.index:
-            cfo_row = cashflow.loc[name].astype(float)
-            break
-
-    capex_row = None
-    for name in [
+        "Cash Flow From Operating Activities",
+        "Total Cash From Operating Activities",
+    ]
+    CAPEX_ALIASES = [
         "Capital Expenditure",
         "Net PPE Purchase And Sale",
         "Purchase Of PPE",
-    ]:
-        if name in cashflow.index:
-            capex_row = cashflow.loc[name].astype(float)
-            break
-
-    if cfo_row is not None and capex_row is not None:
-        fcf = (cfo_row + capex_row).dropna()
-    else:
-        for name in ["Free Cash Flow"]:
-            if name in cashflow.index:
-                fcf = cashflow.loc[name].astype(float).dropna()
-                break
-        else:
-            return None
-
-    if fcf.empty:
-        return None
+        "Capital Expenditures",
+    ]
 
     try:
-        return fcf.sort_index()
-    except Exception:
-        return fcf
+        # 1) Colonnes converties en Timestamp
+        cols_ts = pd.to_datetime(cashflow_quarterly.columns)
 
+        # 2) Version pour comparaison : toujours tz-naive
+        if getattr(cols_ts, "tz", None) is not None:
+            cols_cmp = cols_ts.tz_convert(None)
+        else:
+            cols_cmp = cols_ts
 
-def _compute_cagr_from_series(series: pd.Series, min_points: int = 3) -> Optional[float]:
-    """Compute a simple CAGR."""
-    if series is None or series.empty:
-        return None
+        date_ts = pd.Timestamp(date)
+        if date_ts.tzinfo is not None:
+            date_cmp = date_ts.tz_convert(None)
+        else:
+            date_cmp = date_ts
 
-    s = series.dropna()
-    if len(s) < min_points:
-        return None
+        # 3) Filtre des colonnes <= date (sur la version “comparaison”)
+        mask = cols_cmp <= date_cmp
+        valid_cols = list(cashflow_quarterly.columns[mask])
 
-    first = float(s.iloc[-min_points])
-    last = float(s.iloc[-1])
+        if len(valid_cols) < 4:
+            logger.warning(
+                f"[Hist] Pas assez de données trimestrielles (< 4) avant {date.date()} pour le FCF TTM."
+            )
+            return None, None
 
-    if first <= 0 or last <= 0:
-        return None
+        # 4) On prend les 4 dernières colonnes (labels originaux)
+        valid_cols_sorted = sorted(valid_cols, reverse=True)
+        ttm_cols = valid_cols_sorted[:4]
 
-    years = min_points - 1
-    if years <= 0:
-        return None
+        ttm_fcf = 0.0
+        cfo_found = True
+        capex_found = True
 
-    return (last / first) ** (1.0 / years) - 1.0
+        for col in ttm_cols:
+            report_df = cashflow_quarterly[[col]]
 
+            cfo = _safe_get_first(report_df, CFO_ALIASES)
+            if cfo is None:
+                cfo_found = False
+                logger.warning(
+                    f"[Hist] FCF TTM: CFO manquant pour le trimestre {col}."
+                )
+                break
 
-# =============================
-# MAIN PROVIDER
-# =============================
+            capex = _safe_get_first(report_df, CAPEX_ALIASES)
+            if capex is None:
+                capex_found = False
+                logger.warning(
+                    f"[Hist] FCF TTM: CAPEX manquant pour le trimestre {col}."
+                )
+                break
+
+            # FCFF simple: CFO + CAPEX (Capex est généralement négatif)
+            ttm_fcf += cfo + capex
+
+        if not cfo_found or not capex_found:
+            logger.warning(
+                f"[Hist] FCF TTM: CFO ou CAPEX manquant dans les 4 derniers rapports avant {date.date()}."
+            )
+            return None, None
+
+        # La date de publication TTM est la plus récente des 4
+        ttm_report_date = pd.to_datetime(ttm_cols[0]).to_pydatetime()
+
+        return float(ttm_fcf), ttm_report_date
+
+    except Exception as e:
+        logger.error(f"[Hist] Erreur lors du calcul du FCF TTM pour {date.date()}: {e}")
+        return None, None
+
 
 class YahooFinanceProvider(DataProvider):
+    def __init__(self, macro_provider: Optional[YahooMacroProvider] = None):
+        # Utilisation de l'injection de dépendance pour le macro provider si non fourni
+        self.macro_provider = macro_provider if macro_provider is not None else YahooMacroProvider()
+        # Cache pour l'objet Ticker et les données financières complètes (pour l'historique)
+        self._ticker_cache: Dict[str, Any] = {}
 
-    # -----------------------------------------
-    # 1) Normalize company financials
-    # -----------------------------------------
+    def _get_ticker_data(self, ticker: str) -> Dict[str, Any]:
+        """Récupère l'objet Ticker et toutes ses données, puis le met en cache."""
+        if ticker not in self._ticker_cache:
+            try:
+                yt = yf.Ticker(ticker)
 
-    def _load_statement(self, stmt):
-        """Avoid ambiguous truth value errors."""
-        try:
-            df = stmt
-            if df is None or df.empty:
-                return pd.DataFrame()
-            return df
-        except Exception:
-            return pd.DataFrame()
+                # Charger toutes les données pour l'historique
+                data = {
+                    "ticker_obj": yt,
+                    "balance_sheet": yt.balance_sheet,
+                    "quarterly_balance_sheet": yt.quarterly_balance_sheet,
+                    "cashflow": yt.cashflow,
+                    "quarterly_cashflow": yt.quarterly_cashflow,
+                    "info": yt.info,
+                }
 
+                if data["balance_sheet"] is None or data["balance_sheet"].empty:
+                    logger.warning("[Provider] Bilan annuel manquant pour %s.", ticker)
+                if data["quarterly_cashflow"] is None or data["quarterly_cashflow"].empty:
+                    logger.warning(
+                        "[Provider] Flux de trésorerie trimestriels manquants pour %s. FCF TTM pourrait échouer.",
+                        ticker,
+                    )
+
+                self._ticker_cache[ticker] = data
+            except Exception as e:
+                logger.error("[Provider] Échec de la récupération des données Yahoo pour %s: %s", ticker, e)
+                raise DataProviderError(f"Échec de la récupération des données de base pour {ticker}.")
+
+        return self._ticker_cache[ticker]
+
+    # --------------------------------------------------------------------------
+    # 1. Données Actuelles (Pour la valorisation UI principale)
+    # --------------------------------------------------------------------------
     def get_company_financials(self, ticker: str) -> CompanyFinancials:
-        logger.info("=== Fetching company financials for %s ===", ticker)
+        """Récupère et normalise les données financières actuelles."""
+        data = self._get_ticker_data(ticker)
+        yt = data["ticker_obj"]
+        bs = data["balance_sheet"]
+        qcf = data["quarterly_cashflow"]
+        info = data["info"] or {}
 
-        try:
-            yt = yf.Ticker(ticker)
-        except Exception as exc:
-            logger.error("[Yahoo] Could not init Ticker('%s'): %s", ticker, exc)
-            raise DataProviderError("Failed to initialize Yahoo Ticker", context={"ticker": ticker})
+        if "regularMarketPrice" not in info:
+            raise DataProviderError(f"Prix de marché actuel manquant pour {ticker}.")
 
-        info = getattr(yt, "info", {}) or {}
-        logger.debug("[Yahoo] info keys: %s", list(info.keys()))
+        warnings: List[str] = []
 
-        # Price & shares
-        price = (info.get("regularMarketPrice")
-                 or info.get("currentPrice")
-                 or info.get("previousClose"))
-        shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
-        beta = info.get("beta") or 1.0
-        currency = info.get("currency") or info.get("financialCurrency") or "USD"
+        # 1. Prix, Devise, Actions
+        price = info.get("regularMarketPrice")
+        currency = info.get("currency", "USD")
+        shares = info.get("sharesOutstanding") or info.get("floatShares")  # Parfois floatShares est plus fiable
 
-        if price is None or shares is None:
-            raise DataProviderError(
-                "Missing price or shares from Yahoo",
-                context={"ticker": ticker, "price": price, "shares": shares},
+        if not shares or shares <= 0:
+            raise DataProviderError(f"Nombre d'actions en circulation manquant pour {ticker}.")
+
+        # 2. Bilan (Dette et Cash) – en distinguant valeur manquante et vrai zéro
+        raw_debt = _safe_get_first(bs, ["Total Debt", "Long Term Debt"])
+        if raw_debt is None:
+            debt = 0.0
+            warnings.append(
+                "Dette totale manquante dans le dernier bilan disponible : utilisation de 0 comme approximation."
             )
-
-        logger.info("[Yahoo] Price=%.2f %s | Shares=%.0f | Beta=%.3f",
-                    price, currency, shares, beta)
-
-        # Load statements safely
-        balance_sheet = self._load_statement(yt.balance_sheet)
-        cashflow = self._load_statement(yt.cashflow)
-
-        # Debt
-        total_debt = _safe_get_first_any(balance_sheet, ["Total Debt", "Net Debt"])
-        if total_debt is None:
-            fallback = info.get("totalDebt")
-            if isinstance(fallback, (int, float)):
-                total_debt = float(fallback)
-                logger.warning("[Yahoo] Debt from info['totalDebt'] = %.2f", total_debt)
-        if total_debt is None:
-            logger.warning("[Yahoo] Missing Total Debt → 0")
-            total_debt = 0.0
-
-        # Cash
-        cash = _safe_get_first_any(
-            balance_sheet,
-            ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"],
-        )
-        if cash is None:
-            fallback = info.get("totalCash")
-            if isinstance(fallback, (int, float)):
-                cash = float(fallback)
-                logger.warning("[Yahoo] Cash from info['totalCash'] = %.2f", cash)
-        if cash is None:
-            logger.warning("[Yahoo] Missing Cash → 0")
-            cash = 0.0
-
-        # FCF = CFO + CAPEX
-        cfo = _safe_get_first_any(
-            cashflow,
-            [
-                "Operating Cash Flow",
-                "Cash Flow From Continuing Operating Activities",
-                "Cash Flow from Continuing Operating Activities",
-            ],
-        )
-        if cfo is None:
-            fallback = info.get("operatingCashflow")
-            if isinstance(fallback, (int, float)):
-                cfo = float(fallback)
-                logger.warning("[Yahoo] CFO from info['operatingCashflow'] = %.2f", cfo)
-
-        capex = _safe_get_first_any(
-            cashflow, ["Capital Expenditure", "Net PPE Purchase And Sale", "Purchase Of PPE"]
-        )
-
-        fcf_last = None
-
-        if cfo is not None and capex is not None:
-            fcf_last = float(cfo) + float(capex)
-            logger.info("[Yahoo] FCFF_last = CFO + Capex = %.2f + %.2f = %.2f", cfo, capex, fcf_last)
         else:
-            direct = _safe_get_first_any(cashflow, ["Free Cash Flow"])
-            if direct is not None:
-                fcf_last = float(direct)
-                logger.warning("[Yahoo] Using Free Cash Flow = %.2f", fcf_last)
-            elif isinstance(info.get("freeCashflow"), (int, float)):
-                fcf_last = float(info["freeCashflow"])
-                logger.warning("[Yahoo] FCF from info['freeCashflow'] = %.2f", fcf_last)
+            debt = float(raw_debt)
 
-        if fcf_last is None:
-            raise DataProviderError(
-                "Missing CFO/Capex/FCF → cannot compute FCFF_last",
-                context={"ticker": ticker},
+        raw_cash = _safe_get_first(bs, ["Cash And Cash Equivalents", "Cash"])
+        if raw_cash is None:
+            cash = 0.0
+            warnings.append(
+                "Trésorerie et équivalents de trésorerie manquants dans le dernier bilan disponible : utilisation de 0."
             )
+        else:
+            cash = float(raw_cash)
+
+        # 3. FCF TTM (calculé ici) - TTM est le standard pour le DCF
+        fcf_ttm, _ = _get_ttm_fcf_historical(qcf, datetime.now())
+        if fcf_ttm is None:
+            logger.warning(
+                "[Provider] FCF TTM calculé pour AUJOURD'HUI est manquant pour %s. Utilisation de 0.", ticker
+            )
+            warnings.append(
+                "FCF TTM (flux de trésorerie libres sur 12 mois) incomplet ou manquant : "
+                "utilisation de 0 comme proxy. Interprétez la valeur intrinsèque avec prudence."
+            )
+            fcf_ttm = 0.0
+
+        # 4. Beta
+        beta = info.get("beta", 1.0)
 
         logger.info(
-            "[Yahoo] FINAL Financials: Price=%.2f %s | Shares=%.0f | Debt=%.2f | Cash=%.2f | FCFF_last=%.2f | Beta=%.3f",
-            price, currency, shares, total_debt, cash, fcf_last, beta
+            "[Provider] Financials ACTUELS pour %s: Price=%.2f, Shares=%.0f, FCF=%.2f",
+            ticker,
+            price,
+            shares,
+            fcf_ttm,
         )
 
         return CompanyFinancials(
-            ticker=ticker.upper(),
+            ticker=ticker,
             currency=currency,
             current_price=float(price),
             shares_outstanding=float(shares),
-            total_debt=float(total_debt),
+            total_debt=float(debt),
             cash_and_equivalents=float(cash),
-            fcf_last=float(fcf_last),
+            fcf_last=float(fcf_ttm),
             beta=float(beta),
+            warnings=warnings,
         )
 
-    # -----------------------------------------
-    # 2) Price history
-    # -----------------------------------------
-
+    # --------------------------------------------------------------------------
+    # 2. Historique de prix (pour graphique + VI historique)
+    # --------------------------------------------------------------------------
     def get_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        logger.info("[Yahoo] Fetching price history for %s (%s)", ticker, period)
-
-        try:
-            hist = yf.download(ticker, period=period, progress=False, auto_adjust=False)
-        except Exception as exc:
-            raise DataProviderError(
-                "Failed to download price history",
-                context={"ticker": ticker, "error": str(exc)},
-            )
-
-        if hist is None or hist.empty:
-            raise DataProviderError("Empty price history", context={"ticker": ticker})
-
-        if "Close" in hist.columns:
-            hist = hist.rename(columns={"Close": "close"})
-
-        if "close" not in hist.columns:
-            raise DataProviderError(
-                "No close column in price history", context={"columns": list(hist.columns)}
-            )
-
-        logger.info("[Yahoo] %d rows of price history loaded", len(hist))
-        return hist[["close"]]
-
-    # -----------------------------------------
-    # 3) Market context
-    # -----------------------------------------
-
-    def get_market_context(self, financials: CompanyFinancials) -> dict[str, float]:
-        ticker = financials.ticker
-        currency = financials.currency
-
-        logger.info("=== Building market context for %s ===", ticker)
-
-        # Safely reload statements
+        """Récupère l'historique de prix (Close) sous forme de DataFrame."""
         try:
             yt = yf.Ticker(ticker)
+            history = yt.history(period=period, interval="1d", auto_adjust=False)
 
-            cf = self._load_statement(yt.cashflow)
-            fs = self._load_statement(yt.financials)
-            info = getattr(yt, "info", {}) or {}
+            if history.empty:
+                raise DataProviderError(f"Historique de prix vide pour {ticker}.")
 
-        except Exception as exc:
-            logger.warning("[Yahoo] Could not reload extra context: %s", exc)
-            cf, fs, info = pd.DataFrame(), pd.DataFrame(), {}
+            # S'assurer que 'Close' est utilisé (ou 'Adj Close')
+            if "Adj Close" in history.columns:
+                history = history[["Adj Close"]].rename(columns={"Adj Close": "Close"})
+            elif "Close" in history.columns:
+                history = history[["Close"]]
+            else:
+                raise DataProviderError(f"Colonnes de prix manquantes pour {ticker}.")
 
-        # Risk-free by currency
-        risk_free_rate = {"USD": 0.04, "EUR": 0.025, "GBP": 0.035}.get(currency, 0.04)
-        market_risk_premium = 0.05
+            return history
 
-        # Tax
-        tax_rate = _safe_get_first_any(fs, ["Tax Rate For Calcs"])
-        if tax_rate is None:
-            tax_rate = 0.25
-            logger.warning("[Tax] fallback = 25%%")
+        except Exception as e:
+            logger.error("[Provider] Erreur de récupération de l'historique de prix pour %s: %s", ticker, e)
+            raise DataProviderError(f"Échec de l'accès à l'historique de prix pour {ticker}.")
 
-        # Cost of debt
-        interest_expense = _safe_get_first_any(fs, ["Interest Expense", "Interest Expense Non Operating"])
-        if interest_expense is not None and financials.total_debt > 0:
-            cost_of_debt = abs(float(interest_expense)) / financials.total_debt
+    # --------------------------------------------------------------------------
+    # 3. Données Historiques (Pour la Valorisation Intrinsèque Historique - VIH)
+    # --------------------------------------------------------------------------
+    def get_historical_fundamentals_for_date(
+        self,
+        ticker: str,
+        date: datetime,
+    ) -> Tuple[Optional[Dict[str, Any]], List[str]]:
+        """
+        Récupère les fondamentaux pour le calcul de la VI à une date historique.
+        """
+        logger.info("[Hist] Récupération des fondamentaux pour %s à la date %s", ticker, date.date())
+        data = self._get_ticker_data(ticker)
+
+        # Données yfinance mises en cache
+        info = data.get("info", {})
+        bs_annual = data.get("balance_sheet")
+        bs_quarterly = data.get("quarterly_balance_sheet")
+        cf_quarterly = data.get("quarterly_cashflow")
+
+        # Dictionnaire de sortie et messages d'erreur/avertissement
+        fundamentals_t: Dict[str, Any] = {}
+        errors: List[str] = []
+
+        # --- FCF TTM (le plus critique) ---
+        fcf_ttm, fcf_date = _get_ttm_fcf_historical(cf_quarterly, date)
+        if fcf_ttm is not None:
+            fundamentals_t["fcf_last"] = fcf_ttm
         else:
-            cost_of_debt = risk_free_rate + 0.02
-            logger.warning("[Debt] fallback Rd = Rf + 2%% = %.4f", cost_of_debt)
+            errors.append(
+                "FCF TTM introuvable (manque < 4 trimestres de cashflow avant la date ou labels incompatibles)."
+            )
 
-        # FCF CAGR
-        fcf_series = _build_fcf_series(cf, info)
-        fcf_growth_rate = _compute_cagr_from_series(fcf_series, min_points=3)
-        if fcf_growth_rate is None:
-            fcf_growth_rate = 0.03
-            logger.warning("[Growth] fallback g = 3%%")
-        fcf_growth_rate = float(np.clip(fcf_growth_rate, -0.20, 0.20))
+        # --- Dette (Total Debt) ---
+        debt, debt_date = _get_historical_fundamental(
+            bs_annual,
+            bs_quarterly,
+            date,
+            ["Total Debt", "Long Term Debt"],
+        )
+        if debt is not None:
+            fundamentals_t["total_debt"] = debt
+        else:
+            errors.append("Dette totale introuvable.")
 
-        # Long-term growth
-        perpetual_growth_rate = {"USD": 0.02, "EUR": 0.015, "GBP": 0.02}.get(currency, 0.02)
+        # --- Cash (Cash and Equivalents) ---
+        cash, cash_date = _get_historical_fundamental(
+            bs_annual,
+            bs_quarterly,
+            date,
+            ["Cash And Cash Equivalents", "Cash"],
+        )
+        if cash is not None:
+            fundamentals_t["cash_and_equivalents"] = cash
+        else:
+            errors.append("Trésorerie introuvable.")
 
-        logger.info(
-            "[MarketContext] Rf=%.4f | MRP=%.4f | Rd=%.4f | Tax=%.4f | g=%.4f | g∞=%.4f",
-            risk_free_rate,
-            market_risk_premium,
-            cost_of_debt,
-            tax_rate,
-            fcf_growth_rate,
-            perpetual_growth_rate
+        # --- Actions en Circulation (Shares Outstanding) ---
+        shares, shares_date = _get_historical_fundamental(
+            bs_annual,
+            bs_quarterly,
+            date,
+            ["Common Stock Shares Outstanding", "Share Issued"],
         )
 
-        return {
-            "risk_free_rate": risk_free_rate,
-            "market_risk_premium": market_risk_premium,
-            "tax_rate": tax_rate,
-            "cost_of_debt": cost_of_debt,
-            "fcf_growth_rate": fcf_growth_rate,
-            "perpetual_growth_rate": perpetual_growth_rate,
-        }
+        if shares is not None and shares > 0:
+            fundamentals_t["shares_outstanding"] = shares
+        elif info.get("sharesOutstanding"):
+            fundamentals_t["shares_outstanding"] = info["sharesOutstanding"]
+            errors.append(
+                f"Actions en circulation: Historique manquant. Utilisation du nombre actuel ({info['sharesOutstanding']})."
+            )
+        else:
+            errors.append("Actions en circulation introuvables (ni historique, ni actuel).")
 
-    # -----------------------------------------
-    # 4) Build DCF parameters for app
-    # -----------------------------------------
+        # --- Beta ---
+        fundamentals_t["beta"] = info.get("beta", 1.0)
 
-    def build_dcf_parameters(self, financials: CompanyFinancials, projection_years: int) -> DCFParameters:
-        ctx = self.get_market_context(financials)
+        if not fundamentals_t:
+            return None, errors
 
+        return fundamentals_t, errors
+
+    # --------------------------------------------------------------------------
+    # 4. Paramètres DCF (Point d'entrée de l'UI)
+    # --------------------------------------------------------------------------
+    def get_company_financials_and_parameters(
+        self,
+        ticker: str,
+        projection_years: int,
+    ) -> Tuple[CompanyFinancials, DCFParameters]:
+        """Récupère les données financières actuelles et les paramètres DCF correspondants."""
+
+        # 1. Données Financières
+        financials = self.get_company_financials(ticker)
+
+        # 2. Paramètres Macro Actuels
+        macro = self.macro_provider.get_macro_context(datetime.now(), financials.currency)
+
+        # Valeurs par défaut si le macro provider échoue
+        rf = macro.risk_free_rate if macro else 0.04
+        mrp = macro.market_risk_premium if macro else 0.05
+        g_inf = macro.perpetual_growth_rate if macro else 0.02
+
+        # 3. Définition des Paramètres DCF
         params = DCFParameters(
-            risk_free_rate=ctx["risk_free_rate"],
-            market_risk_premium=ctx["market_risk_premium"],
-            cost_of_debt=ctx["cost_of_debt"],
-            tax_rate=ctx["tax_rate"],
-            fcf_growth_rate=ctx["fcf_growth_rate"],
-            perpetual_growth_rate=ctx["perpetual_growth_rate"],
+            risk_free_rate=rf,
+            market_risk_premium=mrp,
+            cost_of_debt=rf + 0.02,      # Spread de crédit par défaut de 2%
+            tax_rate=0.25,               # Taux d'imposition par défaut
+            fcf_growth_rate=0.05,        # Taux de croissance de FCF par défaut (5%)
+            perpetual_growth_rate=g_inf,
             projection_years=int(projection_years),
         )
 
-        logger.info("[DCFParams] %s", params.to_log_dict())
-        return params
-
-    # -----------------------------------------
-    # 5) Unified entry point for the app
-    # -----------------------------------------
-
-    def get_company_financials_and_parameters(self, ticker: str, projection_years: int):
-        logger.info("=== Fetching financials + DCF params for %s ===", ticker)
-
-        financials = self.get_company_financials(ticker)
-        logger.info("[Provider] Financials: %s", financials.to_log_dict())
-
-        params = self.build_dcf_parameters(financials, projection_years)
-        logger.info("[Provider] Final params: %s", params.to_log_dict())
-
+        logger.info("[DCFParams] Paramètres initiaux construits.")
         return financials, params
