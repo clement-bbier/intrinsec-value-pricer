@@ -4,7 +4,10 @@ import streamlit as st
 import pandas as pd
 
 from core.models import CompanyFinancials, DCFParameters, ValuationMode
-from app.ui_methodology import display_simple_dcf_formula
+from app.ui_methodology import (
+    display_simple_dcf_formula,
+    display_fundamental_dcf_formula,
+)
 
 
 def format_pct(x: float) -> str:
@@ -18,10 +21,10 @@ def format_currency(x: float, currency: str) -> str:
 
 
 def display_results(
-        financials: CompanyFinancials,
-        params: DCFParameters,
-        result,
-        mode: ValuationMode,
+    financials: CompanyFinancials,
+    params: DCFParameters,
+    result: Any,
+    mode: ValuationMode,
 ) -> None:
     """Affiche les KPIs, les hypothèses du modèle et la méthodologie."""
     st.subheader(f"Valorisation Intrinsèque – {financials.ticker}")
@@ -69,11 +72,15 @@ def display_results(
     # --- Onglets Détails ---
     tab1, tab2 = st.tabs(["📋 Hypothèses Détaillées", "🧮 Méthodologie"])
 
+    # ==========================================================================
+    # TAB 1 – HYPOTHÈSES & BILAN
+    # ==========================================================================
     with tab1:
-        # --- Hypothèses détaillées et aperçu du bilan ---
         c1, c2, c3 = st.columns(3)
 
-        # Inputs de marché et risque
+        # -------------------------------
+        # Colonne 1 – Inputs de marché / risque
+        # -------------------------------
         with c1:
             st.caption("Inputs de marché et risque")
             df_market = pd.DataFrame(
@@ -97,19 +104,31 @@ def display_results(
             df_market.index = [""] * len(df_market)
             st.table(df_market)
 
-        # Hypothèses de croissance DCF
+        # -------------------------------
+        # Colonne 2 – Hypothèses de croissance DCF
+        # -------------------------------
         with c2:
             st.caption("Hypothèses de croissance DCF")
+
+            # Choix du point de départ FCFF_0 en fonction du mode
+            if mode == ValuationMode.FUNDAMENTAL_FCFF and financials.fcf_fundamental_smoothed is not None:
+                fcf_label = "FCFF Fondamental 0 (moyenne 3 ans)"
+                fcf_value = financials.fcf_fundamental_smoothed
+            else:
+                # Par défaut (et pour la Méthode 1), on utilise le FCFF TTM simple
+                fcf_label = "Dernier FCFF (TTM)"
+                fcf_value = financials.fcf_last
+
             df_growth = pd.DataFrame(
                 {
                     "Paramètre": [
-                        "Dernier FCFF (TTM)",
+                        fcf_label,
                         "Croissance FCFF (phase 1)",
                         "Croissance perpétuelle (g∞)",
                         "Années de projection",
                     ],
                     "Valeur": [
-                        format_currency(financials.fcf_last, currency),
+                        format_currency(fcf_value, currency),
                         format_pct(params.fcf_growth_rate),
                         format_pct(params.perpetual_growth_rate),
                         f"{params.projection_years} ans",
@@ -119,7 +138,9 @@ def display_results(
             df_growth.index = [""] * len(df_growth)
             st.table(df_growth)
 
-        # Aperçu du bilan
+        # -------------------------------
+        # Colonne 3 – Aperçu du bilan
+        # -------------------------------
         with c3:
             st.caption("Aperçu du bilan (en millions)")
 
@@ -143,9 +164,24 @@ def display_results(
             df_bs.index = [""] * len(df_bs)
             st.table(df_bs)
 
+        # -------------------------------
+        # Qualité des données (warnings)
+        # -------------------------------
+        if financials.warnings:
+            st.markdown("---")
+            st.caption("⚠️ Qualité des données")
+            for w in financials.warnings:
+                st.warning(w)
+
+    # ==========================================================================
+    # TAB 2 – MÉTHODOLOGIE
+    # ==========================================================================
     with tab2:
-        # --- Section de la formule de valorisation ---
         if mode == ValuationMode.SIMPLE_FCFF:
             display_simple_dcf_formula()
+        elif mode == ValuationMode.FUNDAMENTAL_FCFF:
+            display_fundamental_dcf_formula()
         else:
-            st.warning("La méthodologie détaillée pour cette méthode n'est pas encore disponible.")
+            st.warning(
+                "La méthodologie détaillée pour cette méthode n'est pas encore disponible dans l'interface."
+            )

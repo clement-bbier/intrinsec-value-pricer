@@ -1,47 +1,43 @@
 import logging
+from datetime import datetime
 from typing import Sequence
-from datetime import datetime, timedelta
 
-import streamlit as st
 import pandas as pd
-import altair as alt
+import streamlit as st
 
-from core.models import CompanyFinancials, DCFParameters, ValuationMode
-from core.dcf.valuation_service import run_valuation
-from core.exceptions import CalculationError, DataProviderError
-from infra.data_providers.yahoo_provider import YahooFinanceProvider
-
-# Imports des modules d'UI récemment créés
-from app.ui_kpis import display_results
-from app.ui_charts import display_price_chart
-from app.ui_charts import _get_sample_dates # Utilitaire pour les dates historiques
-
-# Imports pour la VI historique
-from infra.macro.yahoo_macro_provider import YahooMacroProvider
+from core.models import ValuationMode
 from core.dcf.historical_params import YahooMacroHistoricalParamsStrategy
 from core.dcf.historical_valuation_service import (
     build_intrinsic_value_time_series,
 )
+from core.dcf.valuation_service import run_valuation
+from core.exceptions import CalculationError, DataProviderError
+from infra.data_providers.yahoo_provider import YahooFinanceProvider
+from infra.macro.yahoo_macro_provider import YahooMacroProvider
+
+# Imports UI
+from app.ui_kpis import display_results
+from app.ui_charts import display_price_chart, _get_sample_dates
 
 logger = logging.getLogger(__name__)
 
-# Instances déplacées de main.py
+# Instances globales
 PROVIDER = YahooFinanceProvider()
 MACRO_PROVIDER = YahooMacroProvider()
 
 
 def run_workflow_and_display(
-        ticker: str,
-        projection_years: int,
-        mode: ValuationMode,
+    ticker: str,
+    projection_years: int,
+    mode: ValuationMode,
 ) -> None:
     """
     Workflow complet :
-    - Récupère les données financières
-    - Construit les hypothèses DCF
+    - Récupère les données financières et paramètres DCF
     - Lance le moteur de valorisation (selon le mode)
-    - Calcule l'historique de valeur intrinsèque
-    - Affiche les résultats et le graphique
+    - Construit l'historique de valeur intrinsèque
+    - Affiche les résultats (KPIs + tableau d'hypothèses + méthodo)
+    - Affiche le graphique Prix vs Valeur Intrinsèque
     """
     logger.info("=== NOUVELLE DEMANDE DE VALORISATION ===")
     logger.info(
@@ -54,57 +50,64 @@ def run_workflow_and_display(
     status = st.status("Analyse en cours...", expanded=True)
 
     try:
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
         # 1) Chargement des données + paramètres DCF
-        # ---------------------------------------------------------
-        status.write(f"📥 Récupération des données financières et hypothèses pour {ticker}...")
+        # ------------------------------------------------------------------
+        status.write(
+            f"📥 Récupération des données financières et hypothèses pour {ticker}..."
+        )
 
         financials, params = PROVIDER.get_company_financials_and_parameters(
             ticker=ticker,
             projection_years=projection_years,
         )
+        logger.info("[1] Données et paramètres DCF récupérés.")
 
-        logger.info("[1] Données récupérées.")
-
-        # --- Warnings de qualité de données (côté provider) ---
+        # Warnings de qualité de données (côté provider → visibles dans l'UI)
         if getattr(financials, "warnings", None):
             for msg in financials.warnings:
                 st.warning(f"⚠️ {msg}")
 
-        # ---------------------------------------------------------
-        # 2) Exécution du moteur de valorisation (selon le mode)
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
+        # 2) Exécution du moteur de valorisation (Méthode 1 ou 2, etc.)
+        # ------------------------------------------------------------------
         status.write("🧮 Calcul de la valorisation actuelle...")
         dcf_result = run_valuation(financials, params, mode)
-        logger.info("[2] Valorisation terminée.")
+        logger.info("[2] Valorisation actuelle terminée.")
 
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
         # 3) Construction de l'historique de valeur intrinsèque
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
         status.write("📈 Construction de l'historique de valeur intrinsèque...")
 
         price_history = None
         hist_iv_df = None
+        hist_msgs: Sequence[str] = []
 
         try:
-            # a) Historique de prix via le provider
+            # a) Historique de prix via le provider (5 ans)
             price_history = PROVIDER.get_price_history(ticker, period="5y")
+            if price_history is None or price_history.empty:
+                logger.warning(
+                    "[HistIV] Historique de prix vide ou indisponible pour %s", ticker
+                )
+                raise DataProviderError("Historique de prix indisponible.")
 
             # b) Dates d'échantillonnage (tous les 6 mois par défaut)
-            sample_dates = _get_sample_dates(
-                price_history.reset_index(),  # pour avoir une colonne 'Date'
-                freq="6ME",
-            )
+            price_history_reset = price_history.reset_index()
+            sample_dates = _get_sample_dates(price_history_reset, freq="6ME")
 
             if len(sample_dates) == 0:
-                logger.warning("[HistIV] Aucune date d'échantillonnage trouvée.")
+                logger.warning(
+                    "[HistIV] Aucune date d'échantillonnage trouvée pour l'historique."
+                )
             else:
                 macro_strategy = YahooMacroHistoricalParamsStrategy(
                     macro_provider=MACRO_PROVIDER,
                     currency=financials.currency,
                 )
 
-                # Appel à la fonction de construction de la série temporelle de VI
+                # c) Calcul de la série temporelle de VI (en fonction du mode)
                 hist_iv_df, hist_msgs = build_intrinsic_value_time_series(
                     ticker=ticker,
                     financials=financials,
@@ -115,16 +118,10 @@ def run_workflow_and_display(
                     sample_dates=sample_dates,
                 )
 
-                # (optionnel) Afficher les messages d'avertissement / info liés à l'historique
-                if hist_msgs:
-                    for m in hist_msgs:
-                        logger.warning("[HistIV] %s", m)
-
                 logger.info(
                     "[3] Historique de valeur intrinsèque construit (%d points).",
                     0 if hist_iv_df is None else len(hist_iv_df),
                 )
-
 
         except Exception as e:
             logger.warning(
@@ -137,15 +134,15 @@ def run_workflow_and_display(
                 "Le graphique affichera uniquement le prix de marché."
             )
 
-        # ---------------------------------------------------------
+        # ------------------------------------------------------------------
         # 4) Affichage dans l'interface
-        # ---------------------------------------------------------
-        status.update(label="Analyse terminée !", state="complete", expanded=False)
+        # ------------------------------------------------------------------
+        status.update(label="Analyse terminée ✅", state="complete", expanded=False)
 
-        # Affichage des KPIs et des tables d'hypothèses
+        # 4a. KPIs + Hypothèses + Méthodologie
         display_results(financials, params, dcf_result, mode)
 
-        # Affichage du graphique de prix vs valeur intrinsèque
+        # 4b. Graphique Prix vs Valeur Intrinsèque
         display_price_chart(
             ticker=ticker,
             price_history=price_history,
@@ -153,16 +150,27 @@ def run_workflow_and_display(
             current_iv=dcf_result.intrinsic_value_per_share,
         )
 
+        # 4c. Messages historiques éventuels (ΔNWC, FCF TTM, etc.)
+        if hist_msgs:
+            with st.expander("ℹ️ Détails sur l'historique de valeur intrinsèque"):
+                for m in hist_msgs:
+                    st.info(m)
+
     except DataProviderError as e:
         status.update(label="Erreur de données", state="error")
         logger.error("[ERREUR] DataProviderError for %s: %s", ticker, e)
-        st.error(f"Erreur de données : impossible de récupérer les informations financières nécessaires pour {ticker}.")
+        st.error(
+            "Erreur de données : impossible de récupérer les informations financières nécessaires."
+        )
         st.caption(f"Détails : {e}")
 
     except CalculationError as e:
         status.update(label="Erreur de calcul", state="error")
         logger.error("[ERREUR] CalculationError for %s: %s", ticker, e)
-        st.error("Erreur de calcul : le modèle de valorisation n'a pas pu être résolu.")
+        st.error(
+            "Erreur de calcul : le modèle de valorisation n'a pas pu être résolu "
+            "(FCFF, WACC ou TV incohérents)."
+        )
         st.caption(f"Détails : {e}")
 
     except NotImplementedError as e:
@@ -173,10 +181,15 @@ def run_workflow_and_display(
             ticker,
             e,
         )
-        st.error("Cette méthode de valorisation n'est pas encore implémentée dans l'application.")
-        st.caption("Pour l'instant, seule la Méthode 1 – DCF Simple est entièrement fonctionnelle.")
+        st.error(
+            "Cette méthode de valorisation n'est pas encore implémentée dans l'application "
+            "(par exemple Méthode 3 ou 4)."
+        )
+        st.caption("Les Méthodes 1 et 2 (DCF Simple et DCF Fondamental) sont disponibles.")
 
     except Exception as e:
         status.update(label="Erreur inattendue", state="error")
-        logger.exception("[ERREUR] Exception inattendue lors de la valorisation pour %s", ticker)
+        logger.exception(
+            "[ERREUR] Exception inattendue lors de la valorisation pour %s", ticker
+        )
         st.exception(f"Erreur inattendue : {e}")
