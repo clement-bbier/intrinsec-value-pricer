@@ -34,8 +34,15 @@ class CompanyFinancials:
     total_debt: float
     cash_and_equivalents: float
 
-    fcf_last: float  # Dernier Flux de Trésorerie Disponible pour la Firme (FCFF) connu
-    beta: float      # Bêta de l'action utilisé dans le CAPM
+    # Dernier Flux de Trésorerie Disponible pour la Firme (FCFF) connu – version simple (Méthode 1)
+    fcf_last: float
+
+    # Bêta de l'action utilisé dans le CAPM
+    beta: float
+
+    # [NOUVEAU] FCFF fondamental lissé sur 3 ans (Méthode 2 – 3-Statement Light)
+    # Calculé à partir de NOPAT + D&A - Capex - ΔNWC, puis moyenné sur plusieurs années.
+    fcf_fundamental_smoothed: float | None = None
 
     # Messages de qualité de données (affichables côté UI)
     warnings: List[str] = field(default_factory=list)
@@ -51,13 +58,15 @@ class CompanyFinancials:
             "cash_and_equivalents": self.cash_and_equivalents,
             "fcf_last": self.fcf_last,
             "beta": self.beta,
+            "fcf_fundamental_smoothed": self.fcf_fundamental_smoothed,
             "warnings": self.warnings,
         }
 
     def __repr__(self) -> str:
         return (
             f"CompanyFinancials(ticker='{self.ticker}', currency='{self.currency}', "
-            f"price={self.current_price:.2f}, FCF={self.fcf_last:.2e})"
+            f"price={self.current_price:.2f}, FCF={self.fcf_last:.2e}, "
+            f"FCFF_fundamental={self.fcf_fundamental_smoothed})"
         )
 
 
@@ -69,18 +78,19 @@ class DCFParameters:
     """
 
     # CAPM inputs
-    risk_free_rate: float  # Taux sans risque (Rf) (décimal)
-    market_risk_premium: float  # Prime de risque du marché (MRP) (décimal)
+    risk_free_rate: float          # Taux sans risque (Rf) (décimal)
+    market_risk_premium: float     # Prime de risque du marché (MRP) (décimal)
 
     # WACC inputs
-    cost_of_debt: float  # Coût de la dette (Rd) (décimal)
-    tax_rate: float  # Taux d'imposition effectif (décimal)
+    cost_of_debt: float            # Coût de la dette (Rd) (décimal)
+    tax_rate: float                # Taux d'imposition effectif (décimal)
 
     # Growth assumptions
-    fcf_growth_rate: float  # Taux de croissance annuel des FCF pendant la période de projection (g) (décimal)
-    perpetual_growth_rate: float  # Taux de croissance perpétuel (g∞) (décimal)
+    fcf_growth_rate: float         # Taux de croissance annuel des FCF pendant la période de projection (g) (décimal)
+    perpetual_growth_rate: float   # Taux de croissance perpétuel (g∞) (décimal)
 
-    projection_years: int  # Nombre d'années de projection (n)
+    # Horizon de projection
+    projection_years: int          # Nombre d'années de projection (n)
 
     def to_log_dict(self) -> Dict[str, Any]:
         """Retourne une représentation en dictionnaire pour le logging structuré."""
@@ -101,23 +111,23 @@ class DCFResult:
     Résultat complet d'une exécution du modèle DCF.
     """
 
-    # Intermediate WACC components
+    # Composantes intermédiaires du WACC
     wacc: float
     cost_of_equity: float
     after_tax_cost_of_debt: float
 
-    # Cash-flow projections
+    # Projections de cash-flows
     projected_fcfs: List[float]
     discount_factors: List[float]
 
-    # Valuation components
+    # Composantes de valorisation
     sum_discounted_fcf: float
     terminal_value: float
     discounted_terminal_value: float
     enterprise_value: float
     equity_value: float
 
-    # Final result
+    # Résultat final
     intrinsic_value_per_share: float
 
     def to_log_dict(self) -> Dict[str, Any]:
@@ -138,5 +148,6 @@ class DCFResult:
 
     def __repr__(self) -> str:
         return (
-            f"DCFResult(IV/Share={self.intrinsic_value_per_share:.2f}, WACC={self.wacc:.2%})"
+            f"DCFResult(IV/Share={self.intrinsic_value_per_share:.2f}, "
+            f"WACC={self.wacc:.2%})"
         )
