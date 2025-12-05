@@ -15,12 +15,10 @@ from infra.data_providers.yahoo_helpers import (
     _safe_get_first,
     _get_historical_fundamental,
     _get_ttm_fcf_historical,
+    get_fundamental_fcf_historical,
 )
 
 logger = logging.getLogger(__name__)
-
-
-# --- Les définitions des helpers sont supprimées ici, elles sont dans yahoo_helpers.py ---
 
 
 class YahooFinanceProvider(DataProvider):
@@ -36,18 +34,27 @@ class YahooFinanceProvider(DataProvider):
             try:
                 yt = yf.Ticker(ticker)
 
-                # Charger toutes les données pour l'historique
+                # Charger toutes les données nécessaires (annuel + trimestriel)
                 data = {
                     "ticker_obj": yt,
+                    # États financiers annuels
                     "balance_sheet": yt.balance_sheet,
-                    "quarterly_balance_sheet": yt.quarterly_balance_sheet,
                     "cashflow": yt.cashflow,
+                    "income_statement": yt.financials,
+                    # États financiers trimestriels
+                    "quarterly_balance_sheet": yt.quarterly_balance_sheet,
                     "quarterly_cashflow": yt.quarterly_cashflow,
+                    "quarterly_income_statement": yt.quarterly_financials,
+                    # Métadonnées
                     "info": yt.info,
                 }
 
                 if data["balance_sheet"] is None or data["balance_sheet"].empty:
                     logger.warning("[Provider] Bilan annuel manquant pour %s.", ticker)
+                if data["cashflow"] is None or data["cashflow"].empty:
+                    logger.warning("[Provider] Flux de trésorerie annuels manquants pour %s.", ticker)
+                if data["income_statement"] is None or data["income_statement"].empty:
+                    logger.warning("[Provider] Compte de résultat annuel manquant pour %s.", ticker)
                 if data["quarterly_cashflow"] is None or data["quarterly_cashflow"].empty:
                     logger.warning(
                         "[Provider] Flux de trésorerie trimestriels manquants pour %s. FCF TTM pourrait échouer.",
@@ -70,7 +77,11 @@ class YahooFinanceProvider(DataProvider):
         yt = data["ticker_obj"]
         bs = data["balance_sheet"]
         qcf = data["quarterly_cashflow"]
-        info = data["info"] or {}
+        info = data.get("info") or {}
+
+        income_annual = data.get("income_statement")
+        cashflow_annual = data.get("cashflow")
+        balance_annual = data.get("balance_sheet")
 
         if "regularMarketPrice" not in info:
             raise DataProviderError(f"Prix de marché actuel manquant pour {ticker}.")
@@ -104,7 +115,7 @@ class YahooFinanceProvider(DataProvider):
         else:
             cash = float(raw_cash)
 
-        # 3. FCF TTM (calculé ici) - TTM est le standard pour le DCF
+        # 3. FCF TTM (Méthode 1) - standard pour un DCF simple
         fcf_ttm, _ = _get_ttm_fcf_historical(qcf, datetime.now())
         if fcf_ttm is None:
             logger.warning(
@@ -116,15 +127,58 @@ class YahooFinanceProvider(DataProvider):
             )
             fcf_ttm = 0.0
 
-        # 4. Beta
+        # 4. FCFF fondamental lissé (Méthode 2 – 3-Statement Light)
+        fcf_fundamental_smoothed: Optional[float] = None
+        try:
+            if (
+                income_annual is not None
+                and not income_annual.empty
+                and cashflow_annual is not None
+                and not cashflow_annual.empty
+                and balance_annual is not None
+                and not balance_annual.empty
+            ):
+                fundamental_fcf_list = get_fundamental_fcf_historical(
+                    income_annual=income_annual,
+                    cashflow_annual=cashflow_annual,
+                    balance_annual=balance_annual,
+                    tax_rate_default=0.25,  # même ordre de grandeur que le tax_rate par défaut du DCFParameters
+                    nb_years=3,
+                )
+
+                if fundamental_fcf_list:
+                    fcf_fundamental_smoothed = float(
+                        sum(fundamental_fcf_list) / len(fundamental_fcf_list)
+                    )
+                else:
+                    warnings.append(
+                        "FCFF fondamental (NOPAT + D&A - Capex - ΔNWC) non disponible : "
+                        "données historiques insuffisantes ou incomplètes."
+                    )
+            else:
+                warnings.append(
+                    "États financiers annuels incomplets (compte de résultat / cashflow / bilan) : "
+                    "FCFF fondamental non calculable."
+                )
+        except Exception as e:
+            logger.warning(
+                "[Provider] Erreur lors du calcul du FCFF fondamental pour %s : %s", ticker, e
+            )
+            warnings.append(
+                "Erreur lors du calcul du FCFF fondamental : la Méthode 2 peut être indisponible pour ce ticker."
+            )
+            fcf_fundamental_smoothed = None
+
+        # 5. Beta
         beta = info.get("beta", 1.0)
 
         logger.info(
-            "[Provider] Financials ACTUELS pour %s: Price=%.2f, Shares=%.0f, FCF=%.2f",
+            "[Provider] Financials ACTUELS pour %s: Price=%.2f, Shares=%.0f, FCF_TTM=%.2f, FCFF_fondamental=%s",
             ticker,
             price,
             shares,
             fcf_ttm,
+            f"{fcf_fundamental_smoothed:.2f}" if fcf_fundamental_smoothed is not None else "None",
         )
 
         return CompanyFinancials(
@@ -136,6 +190,7 @@ class YahooFinanceProvider(DataProvider):
             cash_and_equivalents=float(cash),
             fcf_last=float(fcf_ttm),
             beta=float(beta),
+            fcf_fundamental_smoothed=fcf_fundamental_smoothed,
             warnings=warnings,
         )
 
@@ -175,6 +230,7 @@ class YahooFinanceProvider(DataProvider):
     ) -> Tuple[Optional[Dict[str, Any]], List[str]]:
         """
         Récupère les fondamentaux pour le calcul de la VI à une date historique.
+        (Actuellement basé sur le FCF TTM simple ; pourra être étendu pour la Méthode 2.)
         """
         logger.info("[Hist] Récupération des fondamentaux pour %s à la date %s", ticker, date.date())
         data = self._get_ticker_data(ticker)

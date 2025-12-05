@@ -19,6 +19,14 @@ def test_yahoo_provider_company_financials_aapl():
     assert cf.current_price > 0
     assert cf.shares_outstanding > 0
 
+    # Vérifie que le champ pour la Méthode 2 existe bien
+    assert hasattr(cf, "fcf_fundamental_smoothed")
+    # Peut être None si les données sont incomplètes, mais le type doit être cohérent
+    assert (
+        cf.fcf_fundamental_smoothed is None
+        or isinstance(cf.fcf_fundamental_smoothed, float)
+    )
+
 
 @pytest.mark.integration
 def test_yahoo_provider_price_history_aapl():
@@ -30,4 +38,5 @@ def test_yahoo_provider_price_history_aapl():
         pytest.skip(f"Skipping: Yahoo price history unavailable for AAPL ({exc})")
 
     assert not hist.empty
-    assert "close" in hist.columns
+    # Le provider renomme en "Close" (majuscule)
+    assert "Close" in hist.columns
