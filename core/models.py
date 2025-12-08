@@ -1,153 +1,164 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from enum import Enum
 
 
 class ValuationMode(str, Enum):
     """
     Modes de valorisation disponibles pour le moteur DCF.
-    Énumération technique interne ; l'interface utilisateur mappera ceci à des libellés plus conviviaux.
     """
-
     SIMPLE_FCFF = "simple_fcff"
     FUNDAMENTAL_FCFF = "fundamental_fcff"
-    MARKET_MULTIPLES = "market_multiples"
-    ADVANCED_SIMULATION = "advanced_simulation"
+    MONTE_CARLO = "monte_carlo"
 
 
 @dataclass
 class CompanyFinancials:
     """
     Données financières normalisées pour une entreprise.
-    Fournies par les data providers (ex: Yahoo).
-
-    Le champ `warnings` permet de remonter à l'interface des messages
-    de qualité de données (FCF TTM manquant, dette/cash approximés, etc.).
+    Contient à la fois les données brutes (Bilan), les données retraitées (FCF lissé)
+    et le rapport d'audit de fiabilité.
     """
 
     ticker: str
     currency: str
 
-    current_price: float
-    shares_outstanding: float
+    # Identité Sectorielle
+    sector: str = "Unknown"
+    industry: str = "Unknown"
 
-    total_debt: float
-    cash_and_equivalents: float
+    # Données Marché
+    current_price: float = 0.0
+    shares_outstanding: float = 0.0
 
-    # Dernier Flux de Trésorerie Disponible pour la Firme (FCFF) connu – version simple (Méthode 1)
-    fcf_last: float
+    # Données Bilan & Dette
+    total_debt: float = 0.0
+    cash_and_equivalents: float = 0.0
 
-    # Bêta de l'action utilisé dans le CAPM
-    beta: float
+    # Charges d'intérêts (Critique pour le WACC Synthétique)
+    interest_expense: float = 0.0
 
-    # [NOUVEAU] FCFF fondamental lissé sur 3 ans (Méthode 2 – 3-Statement Light)
-    # Calculé à partir de NOPAT + D&A - Capex - ΔNWC, puis moyenné sur plusieurs années.
-    fcf_fundamental_smoothed: float | None = None
+    # Données de Flux (Cash Flow)
+    fcf_last: float = 0.0  # Pour Méthode 1 (TTM)
 
-    # Messages de qualité de données (affichables côté UI)
+    # Paramètres de Risque Actuels
+    beta: float = 1.0
+
+    # FCFF fondamental lissé (Moyenne Pondérée Time-Anchored)
+    fcf_fundamental_smoothed: Optional[float] = None
+
+    # Résultat du Reverse DCF (Implied Growth)
+    implied_growth_rate: Optional[float] = None
+
+    # Journal de bord technique
     warnings: List[str] = field(default_factory=list)
 
+    # --- NOUVEAUX CHAMPS AUDIT (Bulletin de Notes) ---
+    audit_score: float = 100.0  # Ex: 75.0
+    audit_rating: str = "Non Audité"  # Ex: "FIABLE (A)"
+
+    # Pour l'UI (Tableau riche) : Liste de dicts {"category", "penalty", "reason", "context"}
+    audit_details: List[Dict] = field(default_factory=list)
+
+    # Pour le Terminal (Log brut formaté)
+    audit_logs: List[str] = field(default_factory=list)
+
     def to_log_dict(self) -> Dict[str, Any]:
-        """Retourne une représentation en dictionnaire pour le logging structuré."""
+        """Retourne une représentation en dictionnaire pour les logs structurés."""
         return {
             "ticker": self.ticker,
-            "currency": self.currency,
-            "current_price": self.current_price,
-            "shares_outstanding": self.shares_outstanding,
-            "total_debt": self.total_debt,
-            "cash_and_equivalents": self.cash_and_equivalents,
-            "fcf_last": self.fcf_last,
-            "beta": self.beta,
-            "fcf_fundamental_smoothed": self.fcf_fundamental_smoothed,
-            "warnings": self.warnings,
+            "price": self.current_price,
+            "debt": self.total_debt,
+            "cash": self.cash_and_equivalents,
+            "interest": self.interest_expense,
+            "fcf_ttm": self.fcf_last,
+            "fcf_fundamental": self.fcf_fundamental_smoothed,
+            "implied_g": self.implied_growth_rate,
+            "audit_score": self.audit_score,
+            "audit_rating": self.audit_rating,
+            "warnings_count": len(self.warnings),
         }
 
     def __repr__(self) -> str:
         return (
-            f"CompanyFinancials(ticker='{self.ticker}', currency='{self.currency}', "
-            f"price={self.current_price:.2f}, FCF={self.fcf_last:.2e}, "
-            f"FCFF_fundamental={self.fcf_fundamental_smoothed})"
+            f"CompanyFinancials(ticker='{self.ticker}', price={self.current_price:.2f}, "
+            f"FCF_TTM={self.fcf_last:.2e}, Audit={self.audit_score}/100)"
         )
 
 
 @dataclass
 class DCFParameters:
     """
-    Paramètres d'entrée pour le modèle DCF.
-    Ils contiennent à la fois des inputs macro (taux sans risque) et des hypothèses (taux de croissance).
+    Paramètres d'entrée pour le moteur mathématique DCF.
     """
+    # --- 1. Taux d'Actualisation (Risk) ---
+    risk_free_rate: float
+    market_risk_premium: float
+    cost_of_debt: float
+    tax_rate: float
 
-    # CAPM inputs
-    risk_free_rate: float          # Taux sans risque (Rf) (décimal)
-    market_risk_premium: float     # Prime de risque du marché (MRP) (décimal)
+    # --- 2. Hypothèses de Croissance ---
+    fcf_growth_rate: float
+    perpetual_growth_rate: float
 
-    # WACC inputs
-    cost_of_debt: float            # Coût de la dette (Rd) (décimal)
-    tax_rate: float                # Taux d'imposition effectif (décimal)
+    # --- 3. Horizon Temporel ---
+    projection_years: int
 
-    # Growth assumptions
-    fcf_growth_rate: float         # Taux de croissance annuel des FCF pendant la période de projection (g) (décimal)
-    perpetual_growth_rate: float   # Taux de croissance perpétuel (g∞) (décimal)
+    # --- 4. Structure de Croissance (Multi-Stage) ---
+    high_growth_years: int = 0
 
-    # Horizon de projection
-    projection_years: int          # Nombre d'années de projection (n)
+    # --- 5. Paramètres de Simulation (Monte Carlo) ---
+    beta_volatility: float = 0.10
+    growth_volatility: float = 0.01
+    terminal_growth_volatility: float = 0.0025
 
     def to_log_dict(self) -> Dict[str, Any]:
-        """Retourne une représentation en dictionnaire pour le logging structuré."""
         return {
             "Rf": self.risk_free_rate,
             "MRP": self.market_risk_premium,
             "Rd": self.cost_of_debt,
-            "TaxRate": self.tax_rate,
-            "g": self.fcf_growth_rate,
-            "g_inf": self.perpetual_growth_rate,
-            "Years": self.projection_years,
+            "Tax": self.tax_rate,
+            "g_start": self.fcf_growth_rate,
+            "g_term": self.perpetual_growth_rate,
+            "high_growth_years": self.high_growth_years,
+            "years": self.projection_years,
         }
 
 
 @dataclass
 class DCFResult:
     """
-    Résultat complet d'une exécution du modèle DCF.
+    Résultat de sortie du moteur de calcul.
     """
-
-    # Composantes intermédiaires du WACC
+    # Résultats du WACC
     wacc: float
     cost_of_equity: float
     after_tax_cost_of_debt: float
 
-    # Projections de cash-flows
+    # Résultats de la Projection
     projected_fcfs: List[float]
     discount_factors: List[float]
 
-    # Composantes de valorisation
+    # Composants de la Valeur
     sum_discounted_fcf: float
     terminal_value: float
     discounted_terminal_value: float
+
+    # Valeurs Agrégées
     enterprise_value: float
     equity_value: float
 
-    # Résultat final
+    # KPI Final
     intrinsic_value_per_share: float
 
+    # Résultats Monte Carlo (Optionnel)
+    simulation_results: Optional[List[float]] = None
+
     def to_log_dict(self) -> Dict[str, Any]:
-        """Retourne une représentation en dictionnaire pour le logging structuré."""
         return {
             "wacc": self.wacc,
-            "cost_of_equity": self.cost_of_equity,
-            "after_tax_cost_of_debt": self.after_tax_cost_of_debt,
-            "projected_fcfs": self.projected_fcfs,
-            "discount_factors": self.discount_factors,
-            "sum_discounted_fcf": self.sum_discounted_fcf,
-            "terminal_value": self.terminal_value,
-            "discounted_terminal_value": self.discounted_terminal_value,
-            "enterprise_value": self.enterprise_value,
-            "equity_value": self.equity_value,
-            "intrinsic_value_per_share": self.intrinsic_value_per_share,
+            "EV": self.enterprise_value,
+            "EqV": self.equity_value,
+            "IV_Share": self.intrinsic_value_per_share,
+            "Simulated": bool(self.simulation_results),
         }
-
-    def __repr__(self) -> str:
-        return (
-            f"DCFResult(IV/Share={self.intrinsic_value_per_share:.2f}, "
-            f"WACC={self.wacc:.2%})"
-        )

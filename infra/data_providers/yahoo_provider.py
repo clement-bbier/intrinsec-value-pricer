@@ -4,337 +4,404 @@ from datetime import datetime
 
 import pandas as pd
 import yfinance as yf
+import numpy as np
 
 from core.models import CompanyFinancials, DCFParameters
 from core.exceptions import DataProviderError
 from infra.data_providers.base_provider import DataProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
+from infra.ref_data.country_matrix import get_country_context
 
-# Import des helpers déplacés
+# --- IMPORTS HELPERS (Calculs et Waterfalls) ---
 from infra.data_providers.yahoo_helpers import (
     _safe_get_first,
-    _get_historical_fundamental,
     _get_ttm_fcf_historical,
-    get_fundamental_fcf_historical,
+    get_fundamental_fcf_historical_weighted,
+    get_simple_annual_fcf,
+    calculate_historical_cagr,
+    calculate_sustainable_growth,
+    _get_historical_fundamental,
+    EBIT_ALIASES,
+    INTEREST_EXPENSE_ALIASES
 )
+
+from core.dcf.wacc import compute_synthetic_cost_of_debt
+from core.dcf.reverse_engine import run_reverse_dcf
+
+# --- IMPORT AUDIT (Le Moteur de Notation) ---
+from infra.data_providers.audit import audit_valuation_model
 
 logger = logging.getLogger(__name__)
 
+# -----------------------------------------------------------------------------
+# CONSTANTES DE SECOURS (FALLBACKS)
+# -----------------------------------------------------------------------------
+SECTOR_DEFAULTS = {
+    "Technology": {"beta": 1.2, "cost_of_debt": 0.05},
+    "Communication Services": {"beta": 1.0, "cost_of_debt": 0.055},
+    "Consumer Cyclical": {"beta": 1.1, "cost_of_debt": 0.06},
+    "Healthcare": {"beta": 0.8, "cost_of_debt": 0.04},
+    "Consumer Defensive": {"beta": 0.7, "cost_of_debt": 0.045},
+    "Utilities": {"beta": 0.5, "cost_of_debt": 0.05},
+    "Energy": {"beta": 1.1, "cost_of_debt": 0.065},
+    "Basic Materials": {"beta": 1.2, "cost_of_debt": 0.06},
+    "Industrials": {"beta": 1.0, "cost_of_debt": 0.055},
+    "Financial Services": {"beta": 1.0, "cost_of_debt": 0.05},
+    "Real Estate": {"beta": 0.9, "cost_of_debt": 0.06},
+}
+DEFAULT_SECTOR_VALS = {"beta": 1.0, "cost_of_debt": 0.06}
+
+SECTOR_RISK_PROFILE = {
+    "Technology": {"beta_vol": 0.15, "g_vol": 0.020},
+    "Healthcare": {"beta_vol": 0.08, "g_vol": 0.010},
+    "Energy": {"beta_vol": 0.20, "g_vol": 0.025},
+    # Les autres secteurs utilisent le profil par défaut
+}
+DEFAULT_RISK_PROFILE = {"beta_vol": 0.10, "g_vol": 0.010}
+
 
 class YahooFinanceProvider(DataProvider):
+    """
+    Fournisseur Intelligent avec TRIPLE WATERFALL et AUDIT INTÉGRÉ.
+    Gère la récupération des données, les stratégies de repli (Waterfalls)
+    et l'audit de fiabilité des résultats.
+    """
+
     def __init__(self, macro_provider: Optional[YahooMacroProvider] = None):
-        # Utilisation de l'injection de dépendance pour le macro provider si non fourni
         self.macro_provider = macro_provider if macro_provider is not None else YahooMacroProvider()
-        # Cache pour l'objet Ticker et les données financières complètes (pour l'historique)
         self._ticker_cache: Dict[str, Any] = {}
 
     def _get_ticker_data(self, ticker: str) -> Dict[str, Any]:
-        """Récupère l'objet Ticker et toutes ses données, puis le met en cache."""
+        """Récupère les données brutes Yahoo et les met en cache."""
         if ticker not in self._ticker_cache:
             try:
                 yt = yf.Ticker(ticker)
-
-                # Charger toutes les données nécessaires (annuel + trimestriel)
+                # On force le chargement de certaines propriétés pour éviter le lazy loading lent
                 data = {
                     "ticker_obj": yt,
-                    # États financiers annuels
                     "balance_sheet": yt.balance_sheet,
                     "cashflow": yt.cashflow,
                     "income_statement": yt.financials,
-                    # États financiers trimestriels
                     "quarterly_balance_sheet": yt.quarterly_balance_sheet,
                     "quarterly_cashflow": yt.quarterly_cashflow,
-                    "quarterly_income_statement": yt.quarterly_financials,
-                    # Métadonnées
                     "info": yt.info,
                 }
-
-                if data["balance_sheet"] is None or data["balance_sheet"].empty:
-                    logger.warning("[Provider] Bilan annuel manquant pour %s.", ticker)
-                if data["cashflow"] is None or data["cashflow"].empty:
-                    logger.warning("[Provider] Flux de trésorerie annuels manquants pour %s.", ticker)
-                if data["income_statement"] is None or data["income_statement"].empty:
-                    logger.warning("[Provider] Compte de résultat annuel manquant pour %s.", ticker)
-                if data["quarterly_cashflow"] is None or data["quarterly_cashflow"].empty:
-                    logger.warning(
-                        "[Provider] Flux de trésorerie trimestriels manquants pour %s. FCF TTM pourrait échouer.",
-                        ticker,
-                    )
-
                 self._ticker_cache[ticker] = data
             except Exception as e:
-                logger.error("[Provider] Échec de la récupération des données Yahoo pour %s: %s", ticker, e)
-                raise DataProviderError(f"Échec de la récupération des données de base pour {ticker}.")
-
+                logger.error("[Provider] Échec connexion Yahoo pour %s: %s", ticker, e)
+                raise DataProviderError(f"Impossible de récupérer les données pour {ticker}.")
         return self._ticker_cache[ticker]
 
-    # --------------------------------------------------------------------------
-    # 1. Données Actuelles (Pour la valorisation UI principale)
-    # --------------------------------------------------------------------------
-    def get_company_financials(self, ticker: str) -> CompanyFinancials:
-        """Récupère et normalise les données financières actuelles."""
-        data = self._get_ticker_data(ticker)
-        yt = data["ticker_obj"]
-        bs = data["balance_sheet"]
+    # -------------------------------------------------------------------------
+    # WATERFALL 1 : FREE CASH FLOW (FCF)
+    # -------------------------------------------------------------------------
+    def _resolve_fcf_strategy(self, ticker: str, data: Dict[str, Any], warnings: List[str]) -> float:
+        """Cascade de calcul du FCF : TTM -> Pondéré -> Annuel Simple."""
+        inc = data["income_statement"]
+        cf = data["cashflow"]
         qcf = data["quarterly_cashflow"]
-        info = data.get("info") or {}
 
-        income_annual = data.get("income_statement")
-        cashflow_annual = data.get("cashflow")
-        balance_annual = data.get("balance_sheet")
+        # 1. TTM (Précision Max - 12 derniers mois)
+        fcf_ttm, ttm_date = _get_ttm_fcf_historical(qcf, datetime.now())
+        if fcf_ttm is not None:
+            date_str = ttm_date.strftime('%Y-%m') if ttm_date else "N/A"
+            warnings.append(f"✅ FCF Source : TTM (12 mois glissants au {date_str}).")
+            return float(fcf_ttm)
+        else:
+            warnings.append("ℹ️ FCF : Données trimestrielles insuffisantes pour TTM.")
+
+        # 2. Pondéré (Normatif - Lissés sur 5 ans)
+        fcf_weighted = get_fundamental_fcf_historical_weighted(inc, cf, tax_rate_default=0.25, nb_years=5)
+        if fcf_weighted is not None:
+            warnings.append(f"✅ FCF Source : Moyenne Pondérée (5 ans).")
+            return float(fcf_weighted)
+
+        # 3. Dernier Annuel (Secours - Donnée brute)
+        fcf_simple = get_simple_annual_fcf(cf)
+        if fcf_simple is not None:
+            warnings.append(f"⚠️ FCF Source : Dernier Bilan Annuel (Donnée brute).")
+            return float(fcf_simple)
+
+        # 4. Échec
+        warnings.append("❌ FCF CRITIQUE : Impossible de calculer un flux valide. (Mis à 0).")
+        return 0.0
+
+    # -------------------------------------------------------------------------
+    # WATERFALL 2 : GROWTH RATE (g)
+    # -------------------------------------------------------------------------
+    def _resolve_growth_strategy(self, data: Dict[str, Any], warnings: List[str]) -> float:
+        """Cascade de croissance : Analystes -> Historique -> Fondamentale -> Macro."""
+        info = data.get("info", {})
+        inc = data.get("income_statement")
+        bs = data.get("balance_sheet")
+
+        # 1. Estimations Analystes (Le "Gold Standard")
+        analyst_g = info.get("earningsGrowth") or info.get("revenueGrowth")
+        if analyst_g is not None:
+            g_val = float(analyst_g)
+            # Bornage réaliste (-50% à +50%)
+            if -0.5 < g_val < 0.5:
+                warnings.append(f"✅ Croissance : Basée sur estimations analystes ({g_val:.1%}).")
+                return g_val
+
+        # 2. Historique CAGR (3 ans)
+        cagr_3y = calculate_historical_cagr(inc, years=3)
+        if cagr_3y is not None:
+            # Facteur de prudence (0.8) car le passé ne prédit pas le futur parfaitement
+            g_val = max(0.0, min(0.20, cagr_3y * 0.8))
+            warnings.append(f"✅ Croissance : Basée sur l'historique 3 ans ajusté ({g_val:.1%}).")
+            return g_val
+
+        # 3. Croissance Fondamentale (ROE * Retention)
+        sust_g = calculate_sustainable_growth(inc, bs)
+        if sust_g is not None:
+            g_val = max(0.01, min(0.15, sust_g))
+            warnings.append(f"✅ Croissance : Basée sur les fondamentaux (ROE * Retention = {g_val:.1%}).")
+            return g_val
+
+        # 4. Fallback Macro (PIB/Inflation)
+        warnings.append("⚠️ Croissance : Aucune donnée spécifique. Fallback sur 2.5%.")
+        return 0.025
+
+    # -------------------------------------------------------------------------
+    # WATERFALL 3 : COST OF DEBT (Kd)
+    # -------------------------------------------------------------------------
+    def _resolve_cost_of_debt_strategy(self, interest_expense: float, total_debt: float,
+                                       risk_free_rate: float, sector: str, warnings: List[str]) -> float:
+        """Cascade dette : Synthétique (Réel) -> Sectoriel (Moyenne)."""
+        sector_defaults = SECTOR_DEFAULTS.get(sector, DEFAULT_SECTOR_VALS)
+
+        # 1. Synthétique (Réel)
+        if total_debt > 0 and interest_expense > 0:
+            synthetic_kd = interest_expense / total_debt
+
+            # Sanity Check : Est-ce raisonnable ? (Entre RiskFree et 20%)
+            if risk_free_rate < synthetic_kd < 0.20:
+                return synthetic_kd
+            else:
+                warnings.append(f"⚠️ Coût dette calculé aberrant ({synthetic_kd:.1%}). Rejeté.")
+
+        # 2. Fallback Sectoriel
+        fallback_kd = sector_defaults["cost_of_debt"]
+        warnings.append(f"ℹ️ Coût dette : Utilisation de la moyenne sectorielle ({fallback_kd:.1%}).")
+        return fallback_kd
+
+    # -------------------------------------------------------------------------
+    # RÉCUPÉRATION FINANCES DE BASE
+    # -------------------------------------------------------------------------
+    def get_company_financials(self, ticker: str) -> CompanyFinancials:
+        """Extrait les données brutes et lance les premiers calculs."""
+        data = self._get_ticker_data(ticker)
+        info = data.get("info") or {}
+        bs = data["balance_sheet"]
+        inc = data["income_statement"]
 
         if "regularMarketPrice" not in info:
-            raise DataProviderError(f"Prix de marché actuel manquant pour {ticker}.")
+            raise DataProviderError(f"Prix introuvable pour {ticker}. Ticker invalide ou délisté ?")
 
         warnings: List[str] = []
 
-        # 1. Prix, Devise, Actions
-        price = info.get("regularMarketPrice")
+        # Données de base
+        price = float(info.get("regularMarketPrice", 0.0))
+        shares = float(info.get("sharesOutstanding") or info.get("floatShares") or 0.0)
         currency = info.get("currency", "USD")
-        shares = info.get("sharesOutstanding") or info.get("floatShares")  # Parfois floatShares est plus fiable
+        if shares <= 0:
+            raise DataProviderError(f"Nombre d'actions invalide (0) pour {ticker}.")
 
-        if not shares or shares <= 0:
-            raise DataProviderError(f"Nombre d'actions en circulation manquant pour {ticker}.")
-
-        # 2. Bilan (Dette et Cash) – en distinguant valeur manquante et vrai zéro
+        # Dette et Cash (Extraction sécurisée)
         raw_debt = _safe_get_first(bs, ["Total Debt", "Long Term Debt"])
-        if raw_debt is None:
-            debt = 0.0
-            warnings.append(
-                "Dette totale manquante dans le dernier bilan disponible : utilisation de 0 comme approximation."
-            )
-        else:
-            debt = float(raw_debt)
+        debt = float(raw_debt) if raw_debt is not None else 0.0
 
         raw_cash = _safe_get_first(bs, ["Cash And Cash Equivalents", "Cash"])
-        if raw_cash is None:
-            cash = 0.0
-            warnings.append(
-                "Trésorerie et équivalents de trésorerie manquants dans le dernier bilan disponible : utilisation de 0."
-            )
-        else:
-            cash = float(raw_cash)
+        cash = float(raw_cash) if raw_cash is not None else 0.0
 
-        # 3. FCF TTM (Méthode 1) - standard pour un DCF simple
-        fcf_ttm, _ = _get_ttm_fcf_historical(qcf, datetime.now())
-        if fcf_ttm is None:
-            logger.warning(
-                "[Provider] FCF TTM calculé pour AUJOURD'HUI est manquant pour %s. Utilisation de 0.", ticker
-            )
-            warnings.append(
-                "FCF TTM (flux de trésorerie libres sur 12 mois) incomplet ou manquant : "
-                "utilisation de 0 comme proxy. Interprétez la valeur intrinsèque avec prudence."
-            )
-            fcf_ttm = 0.0
+        # Intérêts
+        interest_exp = 0.0
+        if inc is not None and not inc.empty:
+            recent_inc = inc.iloc[:, 0:1]
+            val = _safe_get_first(recent_inc, INTEREST_EXPENSE_ALIASES)
+            if val is not None: interest_exp = abs(float(val))
 
-        # 4. FCFF fondamental lissé (Méthode 2 – 3-Statement Light)
-        fcf_fundamental_smoothed: Optional[float] = None
-        try:
-            if (
-                income_annual is not None
-                and not income_annual.empty
-                and cashflow_annual is not None
-                and not cashflow_annual.empty
-                and balance_annual is not None
-                and not balance_annual.empty
-            ):
-                fundamental_fcf_list = get_fundamental_fcf_historical(
-                    income_annual=income_annual,
-                    cashflow_annual=cashflow_annual,
-                    balance_annual=balance_annual,
-                    tax_rate_default=0.25,  # même ordre de grandeur que le tax_rate par défaut du DCFParameters
-                    nb_years=3,
-                )
+        # --- WATERFALL 1 : APPEL DU FCF ---
+        final_fcf = self._resolve_fcf_strategy(ticker, data, warnings)
 
-                if fundamental_fcf_list:
-                    fcf_fundamental_smoothed = float(
-                        sum(fundamental_fcf_list) / len(fundamental_fcf_list)
-                    )
-                else:
-                    warnings.append(
-                        "FCFF fondamental (NOPAT + D&A - Capex - ΔNWC) non disponible : "
-                        "données historiques insuffisantes ou incomplètes."
-                    )
-            else:
-                warnings.append(
-                    "États financiers annuels incomplets (compte de résultat / cashflow / bilan) : "
-                    "FCFF fondamental non calculable."
-                )
-        except Exception as e:
-            logger.warning(
-                "[Provider] Erreur lors du calcul du FCFF fondamental pour %s : %s", ticker, e
-            )
-            warnings.append(
-                "Erreur lors du calcul du FCFF fondamental : la Méthode 2 peut être indisponible pour ce ticker."
-            )
-            fcf_fundamental_smoothed = None
-
-        # 5. Beta
-        beta = info.get("beta", 1.0)
-
-        logger.info(
-            "[Provider] Financials ACTUELS pour %s: Price=%.2f, Shares=%.0f, FCF_TTM=%.2f, FCFF_fondamental=%s",
-            ticker,
-            price,
-            shares,
-            fcf_ttm,
-            f"{fcf_fundamental_smoothed:.2f}" if fcf_fundamental_smoothed is not None else "None",
+        # Calcul optionnel du FCF Smoothed (pour affichage UI uniquement)
+        fcf_fundamental_smoothed = get_fundamental_fcf_historical_weighted(
+            inc, data["cashflow"], tax_rate_default=0.25, nb_years=5
         )
+
+        # Beta (avec fallback)
+        raw_beta = info.get("beta")
+        sector = info.get("sector", "Unknown")
+        beta = float(raw_beta) if raw_beta is not None else 1.0
+        if raw_beta is None:
+            defaults = SECTOR_DEFAULTS.get(sector, DEFAULT_SECTOR_VALS)
+            beta = defaults["beta"]
+            warnings.append(f"ℹ️ Beta : Donnée manquante, utilisation moyenne sectorielle ({beta}).")
+
+        if interest_exp > 0:
+            warnings.append(f"💳 Dette : Charge d'intérêts ({interest_exp / 1e6:,.0f} M{currency}).")
 
         return CompanyFinancials(
             ticker=ticker,
             currency=currency,
-            current_price=float(price),
-            shares_outstanding=float(shares),
-            total_debt=float(debt),
-            cash_and_equivalents=float(cash),
-            fcf_last=float(fcf_ttm),
-            beta=float(beta),
+            sector=sector,
+            industry=info.get("industry", "Unknown"),
+            current_price=price,
+            shares_outstanding=shares,
+            total_debt=debt,
+            cash_and_equivalents=cash,
+            interest_expense=interest_exp,
+            fcf_last=final_fcf,
+            beta=beta,
             fcf_fundamental_smoothed=fcf_fundamental_smoothed,
             warnings=warnings,
         )
 
-    # --------------------------------------------------------------------------
-    # 2. Historique de prix (pour graphique + VI historique)
-    # --------------------------------------------------------------------------
     def get_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """Récupère l'historique de prix (Close) sous forme de DataFrame."""
         try:
             yt = yf.Ticker(ticker)
-            history = yt.history(period=period, interval="1d", auto_adjust=False)
+            hist = yt.history(period=period, interval="1d", auto_adjust=False)
+            if hist.empty: return pd.DataFrame()
 
-            if history.empty:
-                raise DataProviderError(f"Historique de prix vide pour {ticker}.")
+            if "Adj Close" in hist.columns:
+                return hist[["Adj Close"]].rename(columns={"Adj Close": "Close"})
+            return hist[["Close"]] if "Close" in hist.columns else pd.DataFrame()
+        except Exception:
+            return pd.DataFrame()
 
-            # S'assurer que 'Close' est utilisé (ou 'Adj Close')
-            if "Adj Close" in history.columns:
-                history = history[["Adj Close"]].rename(columns={"Adj Close": "Close"})
-            elif "Close" in history.columns:
-                history = history[["Close"]]
-            else:
-                raise DataProviderError(f"Colonnes de prix manquantes pour {ticker}.")
-
-            return history
-
-        except Exception as e:
-            logger.error("[Provider] Erreur de récupération de l'historique de prix pour %s: %s", ticker, e)
-            raise DataProviderError(f"Échec de l'accès à l'historique de prix pour {ticker}.")
-
-    # --------------------------------------------------------------------------
-    # 3. Données Historiques (Pour la Valorisation Intrinsèque Historique - VIH)
-    # --------------------------------------------------------------------------
-    def get_historical_fundamentals_for_date(
-        self,
-        ticker: str,
-        date: datetime,
-    ) -> Tuple[Optional[Dict[str, Any]], List[str]]:
+    # -------------------------------------------------------------------------
+    # ORCHESTRATEUR PRINCIPAL + AUDIT
+    # -------------------------------------------------------------------------
+    def get_company_financials_and_parameters(self, ticker: str, projection_years: int):
         """
-        Récupère les fondamentaux pour le calcul de la VI à une date historique.
-        (Actuellement basé sur le FCF TTM simple ; pourra être étendu pour la Méthode 2.)
+        Cerveau de l'Auto-Pilote :
+        1. Récupère les données (via Waterfalls).
+        2. Calcule les paramètres DCF (WACC, Growth).
+        3. Exécute l'AUDIT DE FIABILITÉ.
+        4. Loggue le rapport détaillé.
         """
-        logger.info("[Hist] Récupération des fondamentaux pour %s à la date %s", ticker, date.date())
+        # 1. & 2. Récupération Finances de base & Macro
+        financials = self.get_company_financials(ticker)
+        data = self._get_ticker_data(ticker)
+        info = data.get("info", {})
+        ctx = get_country_context(info.get("country", "United States"))
+
+        # 3. --- WATERFALL 3 : COST OF DEBT ---
+        final_cost_of_debt = self._resolve_cost_of_debt_strategy(
+            financials.interest_expense, financials.total_debt, ctx["risk_free_rate"],
+            financials.sector, financials.warnings
+        )
+
+        # 4. --- WATERFALL 2 : GROWTH ---
+        base_growth = self._resolve_growth_strategy(data, financials.warnings)
+
+        # Ajustement intelligent du "High Growth Period"
+        auto_high_growth_years = 0
+        if base_growth > 0.15:
+            base_growth = 0.15  # Hard Cap pour éviter l'infini
+            auto_high_growth_years = 3
+        elif base_growth > 0.08:
+            auto_high_growth_years = 2
+
+        # 5. Volatilité (Monte Carlo)
+        risk_profile = SECTOR_RISK_PROFILE.get(financials.sector, DEFAULT_RISK_PROFILE)
+
+        # 6. Construction des Paramètres Finaux
+        params = DCFParameters(
+            risk_free_rate=ctx["risk_free_rate"],
+            market_risk_premium=ctx["market_risk_premium"],
+            cost_of_debt=final_cost_of_debt,
+            tax_rate=ctx["tax_rate"],
+            fcf_growth_rate=base_growth,
+            perpetual_growth_rate=ctx["inflation_rate"],
+            projection_years=int(projection_years),
+            high_growth_years=auto_high_growth_years,
+            beta_volatility=risk_profile["beta_vol"],
+            growth_volatility=risk_profile["g_vol"]
+        )
+
+        # 7. Reverse DCF (Contrôle final)
+        try:
+            implied_g = run_reverse_dcf(financials, params, financials.current_price)
+            financials.implied_growth_rate = implied_g
+            if implied_g is not None:
+                spread = implied_g - base_growth
+                if abs(spread) > 0.05:
+                    trend = "Optimiste" if spread > 0 else "Pessimiste"
+                    financials.warnings.append(f"👀 Marché {trend} : Price {implied_g:.1%} vs Modèle {base_growth:.1%}.")
+        except Exception:
+            pass
+
+        # =================================================================
+        # 8. LANCEMENT AUDIT DÉTAILLÉ (Le Bulletin de Notes)
+        # =================================================================
+        audit_res = audit_valuation_model(financials, params)
+
+        # Injection des résultats dans l'objet pour utilisation UI
+        financials.audit_score = audit_res.score
+        financials.audit_rating = audit_res.rating
+        financials.audit_details = audit_res.ui_details
+        financials.audit_logs = audit_res.terminal_logs
+
+        # =================================================================
+        # 9. LOGGING TERMINAL RICHE (Le Rapport)
+        # =================================================================
+        logger.info(f"")
+        logger.info(f"📊 [AUDIT REPORT] {ticker} | Score: {audit_res.score}/100 ({audit_res.rating})")
+        logger.info(f"----------------------------------------------------------------")
+
+        if audit_res.score == 100.0:
+            logger.info(f"   ✅ Aucune pénalité détectée. Données 'Gold Standard'.")
+        else:
+            for log_line in audit_res.terminal_logs:
+                logger.info(log_line)
+
+        logger.info(f"----------------------------------------------------------------")
+        logger.info(f"")
+
+        return financials, params
+
+    # -------------------------------------------------------------------------
+    # MÉTHODES HISTORIQUES (Backtest)
+    # -------------------------------------------------------------------------
+    def get_historical_fundamentals_for_date(self, ticker: str, date: datetime) -> Tuple[
+        Optional[Dict[str, Any]], List[str]]:
+        """
+        Reconstruit les fondamentaux pour une date passée.
+        """
         data = self._get_ticker_data(ticker)
 
-        # Données yfinance mises en cache
-        info = data.get("info", {})
         bs_annual = data.get("balance_sheet")
         bs_quarterly = data.get("quarterly_balance_sheet")
-        cf_quarterly = data.get("quarterly_cashflow")
 
-        # Dictionnaire de sortie et messages d'erreur/avertissement
-        fundamentals_t: Dict[str, Any] = {}
-        errors: List[str] = []
+        DEBT_KEYS = ["Total Debt", "Long Term Debt"]
+        CASH_KEYS = ["Cash And Cash Equivalents", "Cash"]
+        SHARE_KEYS = ["Share Issued", "Ordinary Shares Number"]
 
-        # --- FCF TTM (le plus critique) ---
-        fcf_ttm, fcf_date = _get_ttm_fcf_historical(cf_quarterly, date)
-        if fcf_ttm is not None:
-            fundamentals_t["fcf_last"] = fcf_ttm
-        else:
-            errors.append(
-                "FCF TTM introuvable (manque < 4 trimestres de cashflow avant la date ou labels incompatibles)."
-            )
+        debt_val, _ = _get_historical_fundamental(bs_annual, bs_quarterly, date, DEBT_KEYS)
+        cash_val, _ = _get_historical_fundamental(bs_annual, bs_quarterly, date, CASH_KEYS)
+        shares_val, _ = _get_historical_fundamental(bs_annual, bs_quarterly, date, SHARE_KEYS)
 
-        # --- Dette (Total Debt) ---
-        debt, debt_date = _get_historical_fundamental(
-            bs_annual,
-            bs_quarterly,
-            date,
-            ["Total Debt", "Long Term Debt"],
-        )
-        if debt is not None:
-            fundamentals_t["total_debt"] = debt
-        else:
-            errors.append("Dette totale introuvable.")
+        if shares_val is None:
+            shares_val = data.get("info", {}).get("sharesOutstanding")
 
-        # --- Cash (Cash and Equivalents) ---
-        cash, cash_date = _get_historical_fundamental(
-            bs_annual,
-            bs_quarterly,
-            date,
-            ["Cash And Cash Equivalents", "Cash"],
-        )
-        if cash is not None:
-            fundamentals_t["cash_and_equivalents"] = cash
-        else:
-            errors.append("Trésorerie introuvable.")
+        if shares_val is None or debt_val is None:
+            return None, ["Données Bilan (Dette/Actions) introuvables."]
 
-        # --- Actions en Circulation (Shares Outstanding) ---
-        shares, shares_date = _get_historical_fundamental(
-            bs_annual,
-            bs_quarterly,
-            date,
-            ["Common Stock Shares Outstanding", "Share Issued"],
-        )
+        qcf = data.get("quarterly_cashflow")
+        fcf_ttm, _ = _get_ttm_fcf_historical(qcf, date)
 
-        if shares is not None and shares > 0:
-            fundamentals_t["shares_outstanding"] = shares
-        elif info.get("sharesOutstanding"):
-            fundamentals_t["shares_outstanding"] = info["sharesOutstanding"]
-            errors.append(
-                f"Actions en circulation: Historique manquant. Utilisation du nombre actuel ({info['sharesOutstanding']})."
-            )
-        else:
-            errors.append("Actions en circulation introuvables (ni historique, ni actuel).")
+        if fcf_ttm is None:
+            return None, ["Flux trimestriels insuffisants pour TTM historique."]
 
-        # --- Beta ---
-        fundamentals_t["beta"] = info.get("beta", 1.0)
+        beta_val = data.get("info", {}).get("beta", 1.0)
 
-        if not fundamentals_t:
-            return None, errors
-
-        return fundamentals_t, errors
-
-    # --------------------------------------------------------------------------
-    # 4. Paramètres DCF (Point d'entrée de l'UI)
-    # --------------------------------------------------------------------------
-    def get_company_financials_and_parameters(
-        self,
-        ticker: str,
-        projection_years: int,
-    ) -> Tuple[CompanyFinancials, DCFParameters]:
-        """Récupère les données financières actuelles et les paramètres DCF correspondants."""
-
-        # 1. Données Financières
-        financials = self.get_company_financials(ticker)
-
-        # 2. Paramètres Macro Actuels
-        macro = self.macro_provider.get_macro_context(datetime.now(), financials.currency)
-
-        # Valeurs par défaut si le macro provider échoue
-        rf = macro.risk_free_rate if macro else 0.04
-        mrp = macro.market_risk_premium if macro else 0.05
-        g_inf = macro.perpetual_growth_rate if macro else 0.02
-
-        # 3. Définition des Paramètres DCF
-        params = DCFParameters(
-            risk_free_rate=rf,
-            market_risk_premium=mrp,
-            cost_of_debt=rf + 0.02,      # Spread de crédit par défaut de 2%
-            tax_rate=0.25,               # Taux d'imposition par défaut
-            fcf_growth_rate=0.05,        # Taux de croissance de FCF par défaut (5%)
-            perpetual_growth_rate=g_inf,
-            projection_years=int(projection_years),
-        )
-
-        logger.info("[DCFParams] Paramètres initiaux construits.")
-        return financials, params
+        result = {
+            "fcf_last": fcf_ttm,
+            "total_debt": debt_val,
+            "cash_and_equivalents": cash_val,
+            "shares_outstanding": shares_val,
+            "beta": beta_val
+        }
+        return result, []

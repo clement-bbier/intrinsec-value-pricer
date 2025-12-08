@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
 # --- Imports de librairies externes ---
 import streamlit as st
 
-
 # --- Imports locaux ---
 from app.workflow import run_workflow_and_display
 from core.models import ValuationMode
@@ -25,10 +24,11 @@ from core.models import ValuationMode
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    force=True  # Force la reconfiguration si Streamlit l'a déjà fait
 )
 logger = logging.getLogger("app.main")
 
-# Silence yfinance logs
+# Silence yfinance logs (trop verbeux)
 logging.getLogger("yfinance").setLevel(logging.ERROR)
 
 # -------------------------------------------------
@@ -37,19 +37,15 @@ logging.getLogger("yfinance").setLevel(logging.ERROR)
 MODE_LABELS = {
     ValuationMode.SIMPLE_FCFF: (
         "Méthode 1 – DCF Simple "
-        "(FCFF TTM = CFO - Capex, croissance constante)"
+        "(FCFF TTM, croissance constante)"
     ),
     ValuationMode.FUNDAMENTAL_FCFF: (
         "Méthode 2 – DCF Fondamental "
-        "(FCFF à partir EBIT, D&A, Capex, ΔNWC lissé sur 3 ans)"
+        "(3-Statement Light, FCFF lissé sur 3 ans)"
     ),
-    ValuationMode.MARKET_MULTIPLES: (
-        "Méthode 3 – Comparables de Marché "
-        "(P/E, EV/EBITDA, etc. – à venir)"
-    ),
-    ValuationMode.ADVANCED_SIMULATION: (
-        "Méthode 4 – Scénarios & Simulations "
-        "(Monte Carlo, LBO, stress tests – à venir)"
+    ValuationMode.MONTE_CARLO: (
+        "Méthode 3 – Simulation Monte Carlo "
+        "(Distribution de probabilités, gestion du risque)"
     ),
 }
 LABEL_TO_MODE = {v: k for k, v in MODE_LABELS.items()}
@@ -66,20 +62,20 @@ def main() -> None:
 
     st.title("🔎 Calculateur de Valeur Intrinsèque (DCF)")
     st.markdown(
-        "Estimation de la valeur intrinsèque d'une entreprise cotée à partir de modèles DCF.\n\n"
-        "**Attention :** ceci est un outil pédagogique, pas un conseil en investissement."
+        "Estimation de la valeur intrinsèque d'une entreprise cotée selon plusieurs méthodologies.\n\n"
+        "**Attention :** ceci est un outil d'aide à la décision, pas un conseil en investissement."
     )
 
     # ------------------------------------------------------------------
     # Barre latérale – paramètres d'entrée
     # ------------------------------------------------------------------
-    st.sidebar.header("Paramètres")
+    st.sidebar.header("Paramètres de l'Analyse")
 
     ticker = (
         st.sidebar.text_input(
             "Symbole Boursier (Ticker)",
             value="AAPL",
-            help="Exemple : AAPL, MSFT, TSLA, OR.PA, MC.PA",
+            help="Exemple : AAPL (Apple), MSFT (Microsoft), O (Realty Income), MC.PA (LVMH)",
         )
         .upper()
         .strip()
@@ -88,10 +84,10 @@ def main() -> None:
     projection_years = st.sidebar.number_input(
         "Années de projection (n)",
         min_value=3,
-        max_value=10,
+        max_value=15,
         value=DEFAULT_PROJECTION_YEARS,
         step=1,
-        help="Horizon de projection du DCF (en années).",
+        help="Horizon de projection des flux de trésorerie (en années).",
     )
 
     mode_label = st.sidebar.selectbox(
@@ -99,31 +95,38 @@ def main() -> None:
         options=list(MODE_LABELS.values()),
         index=0,
         help=(
-            "Choisissez la méthode utilisée pour calculer la valeur intrinsèque.\n\n"
-            "– Méthode 1 : DCF simple basé sur le FCF TTM.\n"
-            "– Méthode 2 : DCF fondamental basé sur un FCFF reconstruit à partir des 3 états financiers.\n"
-            "– Méthodes 3 & 4 : en cours de développement."
+            "**Méthode 1 (Simple)** : Rapide. Utilise les derniers flux connus (TTM). Idéal pour une première estimation.\n\n"
+            "**Méthode 2 (Fondamentale)** : Robuste. Reconstruit les flux à partir du résultat opérationnel (EBIT) et du bilan, lissés sur 3 ans. Plus stable.\n\n"
+            "**Méthode 3 (Monte Carlo)** : Avancée (Hedge Fund). Simule 2000 scénarios en faisant varier la croissance et le risque pour donner une fourchette de probabilité."
         ),
     )
     mode = LABEL_TO_MODE[mode_label]
     logger.info("Mode de valorisation sélectionné dans l'interface : %s", mode.value)
 
     st.sidebar.markdown("---")
-    run_button = st.sidebar.button("Lancer le Calcul", type="primary")
 
+    # Bouton d'action principal
+    run_button = st.sidebar.button("Lancer l'Analyse", type="primary")
+
+    # Zone principale
     if run_button:
         if not ticker:
-            st.error("Veuillez entrer un symbole boursier (Ticker).")
+            st.error("Veuillez entrer un symbole boursier (Ticker) valide.")
         else:
+            # Appel au chef d'orchestre (Workflow)
             run_workflow_and_display(
                 ticker=ticker,
                 projection_years=int(projection_years),
                 mode=mode,
             )
     else:
+        # Message d'accueil par défaut
         st.info(
-            "Entrez un ticker et un horizon de projection à gauche, choisissez la méthode de valorisation, "
-            "puis cliquez sur **Lancer le Calcul**."
+            "👈 **Mode d'emploi :**\n"
+            "1. Entrez un ticker (ex: `NVDA`).\n"
+            "2. Choisissez une méthode (commencez par la **Méthode 1** ou **2**).\n"
+            "3. Cliquez sur **Lancer l'Analyse**.\n\n"
+            "Pour une analyse de risque approfondie, utilisez la **Méthode 3**."
         )
 
 

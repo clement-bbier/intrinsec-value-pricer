@@ -1,152 +1,173 @@
 from typing import List, Dict, Any
 
-# ---------------------------------------------------------------------------
-# Méthode 1 – DCF Simple (FCFF TTM)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# 1. Méthode DCF Simple (Snapshot / TTM)
+# ===========================================================================
 
-SIMPLE_DCF_TITLE: str = "### Formule de Valorisation – Méthode 1 (DCF Simple)"
+SIMPLE_DCF_TITLE: str = "### 📘 Méthode 1 : DCF Simplifié 'Snapshot'"
 
 SIMPLE_DCF_SECTIONS: List[Dict[str, Any]] = [
     {
-        "subtitle": "#### Étape 1 – Projection du Free Cash Flow to the Firm (FCFF)",
-        "latex_blocks": [
-            r"FCFF_0 = \text{Dernier FCFF (TTM)}",
-            r"FCFF_t = FCFF_{t-1} \times (1 + g_{\text{FCFF}})"
-            r"\quad\text{pour } t = 1,\dots,n",
-        ],
+        "subtitle": "#### 💡 Le Concept en bref",
         "markdown_blocks": [
             (
-                "- `Dernier FCFF` provient du flux de trésorerie d'exploitation moins le CAPEX.\n"
-                "- $g_{\\text{FCFF}}$ correspond à la **Croissance FCFF (phase 1)**.\n"
-                "- $n$ correspond aux **Années de projection**."
+                "Cette méthode est une **photographie instantanée** de la valeur de l'entreprise. "
+                "Elle part du principe que les flux de trésorerie générés au cours des 12 derniers mois (TTM - Trailing Twelve Months) "
+                "sont représentatifs de la capacité future de l'entreprise.\n\n"
+                "👉 **C'est la méthode idéale pour une première estimation rapide.**"
             ),
         ],
     },
     {
-        "subtitle": "#### Étape 2 – Actualisation et calcul de la Valeur Terminale (TV)",
+        "subtitle": "#### 🧮 Étape 1 : Le Flux de Trésorerie (FCFF)",
+        "markdown_blocks": [
+            "Nous calculons le **Free Cash Flow to Firm (FCFF)**, c'est-à-dire l'argent liquide réellement généré par l'activité, avant le paiement de la dette."
+        ],
         "latex_blocks": [
-            r"VE_{\text{phase 1}} = \sum_{t=1}^{n} \frac{FCFF_t}{(1 + CMPC)^t}",
-            r"VT = \frac{FCFF_{n+1}}{CMPC - g_{\infty}}",
-            r"VE_{\text{totale}} = VE_{\text{phase 1}} + \frac{VT}{(1 + CMPC)^n}",
+            r"FCFF_{\text{TTM}} = \text{Cash Flow Opérationnel} - |\text{Capex}|",
         ],
         "markdown_blocks": [
             (
-                "- `CMPC` (Coût Moyen Pondéré du Capital) est calculé à partir du **Taux sans risque (Rf)**, "
-                "la **Prime de risque du marché (MRP)**, le **Coût de la dette (Rd)** et le **Taux d'imposition**.\n"
-                "- $g_{\\infty}$ correspond à la **Croissance perpétuelle**."
+                "**Détails :**\n"
+                "* **Cash Flow Opérationnel (CFO) :** Argent généré par l'activité courante (vente de produits/services).\n"
+                "* **Capex (Dépenses d'Investissement) :** Argent dépensé pour maintenir ou moderniser l'outil de production (usines, machines, R&D).\n"
             ),
         ],
     },
     {
-        "subtitle": "#### Étape 3 – De la Valeur d'Entreprise (VE) à la Valeur des Capitaux Propres",
-        "latex_blocks": [
-            r"\text{Valeur Capitaux Propres} = VE - \text{Dette Totale} + \text{Liquidités et équivalents}",
-        ],
+        "subtitle": "#### 📉 Étape 2 : La Croissance 'Fade-Down'",
         "markdown_blocks": [
             (
-                "- On retranche la dette nette et on ajoute la trésorerie et équivalents.\n"
-                "- On obtient ainsi la **valeur des capitaux propres**."
+                "Plutôt que de parier sur une croissance constante (irréaliste), nous utilisons un modèle de **décélération linéaire**.\n"
+                "La croissance part d'un taux initial (ex: 5%) et ralentit doucement chaque année pour atterrir sur l'inflation (2%) à la fin de la projection."
             ),
         ],
     },
     {
-        "subtitle": "#### Étape 4 – Valeur Intrinsèque par Action",
-        "latex_blocks": [
-            r"\text{VI par action} = "
-            r"\frac{\text{Valeur Capitaux Propres}}{\text{Actions en circulation}}",
-        ],
+        "subtitle": "#### ⚖️ Étape 3 : L'Actualisation (WACC)",
         "markdown_blocks": [
-            (
-                "La Valeur Intrinsèque utilisée dans la section KPI est le résultat de ces étapes "
-                "appliquées aux paramètres affichés dans les tables ci-dessus."
-            ),
-        ],
-    },
+            "Les flux futurs valent moins que l'argent d'aujourd'hui. Nous les divisons (actualisons) par le **CMPC (Coût Moyen Pondéré du Capital)**, ou WACC en anglais.",
+            "Le WACC représente le rendement minimum exigé par les investisseurs (Actionnaires + Banques) pour financer l'entreprise."
+        ]
+    }
 ]
 
-# ---------------------------------------------------------------------------
-# Méthode 2 – DCF Fondamental (3-Statement Light)
-# ---------------------------------------------------------------------------
 
-FUNDAMENTAL_DCF_TITLE: str = "### Formule de Valorisation – Méthode 2 (DCF Fondamental, 3-Statement Light)"
+# ===========================================================================
+# 2. Méthode DCF Fondamental (Expert)
+# ===========================================================================
+
+FUNDAMENTAL_DCF_TITLE: str = "### 📙 Méthode 2 : DCF Fondamental & Normatif (Expert)"
 
 FUNDAMENTAL_DCF_SECTIONS: List[Dict[str, Any]] = [
     {
-        "subtitle": "#### Étape 1 – Construction du NOPAT à partir de l'EBIT",
-        "latex_blocks": [
-            r"EBIT = \text{Résultat Opérationnel}",
-            r"Taux_{\text{impôt effectif}} = \dfrac{\text{Tax Expense}}{\text{Pretax Income}}",
-            r"NOPAT = EBIT \times (1 - Taux_{\text{impôt effectif}})",
-        ],
+        "subtitle": "#### 💡 Le Concept : Gommer les accidents",
         "markdown_blocks": [
             (
-                "- Le **NOPAT** (Net Operating Profit After Tax) mesure le résultat opérationnel après impôt, "
-                "en neutralisant la structure de capital.\n"
-                "- Le **Taux d'impôt effectif** est calculé à partir des états financiers historiques "
-                "(Tax Expense / Pretax Income) lorsque c'est possible.\n"
-                "- À défaut, un taux d'impôt par défaut (ex: 25%) est utilisé."
+                "Une entreprise peut avoir une mauvaise année (grève, pénurie) ou une année exceptionnelle. "
+                "La Méthode 1 se tromperait dans ces cas-là.\n\n"
+                "👉 **La Méthode 2 reconstruit un flux 'Normatif' (Normalisé)** en analysant la performance sur 5 ans et en donnant plus de poids aux années récentes."
             ),
         ],
     },
     {
-        "subtitle": "#### Étape 2 – Besoin en Fonds de Roulement (NWC) et ΔNWC",
+        "subtitle": "#### 🏗️ Étape 1 : Reconstruction Comptable Précise",
+        "markdown_blocks": [
+            "Nous ne prenons pas le Cash Flow brut. Nous le reconstruisons composante par composante pour chaque année :"
+        ],
         "latex_blocks": [
-            r"NWC_t = \text{Accounts Receivable}_t + \text{Inventory}_t - \text{Accounts Payable}_t",
-            r"\Delta NWC_t = NWC_t - NWC_{t-1}",
+            r"FCFF = \underbrace{EBIT \times (1 - \text{Tax})}_{\text{NOPAT}} + \underbrace{D\&A}_{\text{Charges non-caissées}} - \underbrace{Capex}_{\text{Investissement}} - \underbrace{\Delta BFR}_{\text{Besoin en Fonds de Roulement}}",
         ],
         "markdown_blocks": [
             (
-                "- Le **Besoin en Fonds de Roulement (NWC)** reflète le capital immobilisé dans les opérations courantes "
-                "(créances clients, stocks, dettes fournisseurs).\n"
-                "- La **variation de NWC** ($\\Delta NWC$) représente la consommation (ou libération) de trésorerie "
-                "liée à l'évolution du cycle d'exploitation."
+                "**Lexique :**\n"
+                "* **EBIT :** Résultat d'Exploitation (Earnings Before Interest & Taxes).\n"
+                "* **NOPAT :** Profit opérationnel net après impôts (Net Operating Profit After Tax).\n"
+                "* **D&A :** Dépréciations & Amortissements (charges comptables sans sortie d'argent, donc on les rajoute).\n"
+                "* **Δ BFR (Variation du BFR) :** Argent immobilisé dans les stocks et les créances clients. Si le BFR augmente, c'est du cash en moins."
+            )
+        ]
+    },
+    {
+        "subtitle": "#### ⚖️ Étape 2 : La Moyenne Pondérée 'Time-Anchored'",
+        "markdown_blocks": [
+            (
+                "Pour obtenir le flux de départ ($FCFF_0$), nous pondérons les années passées selon leur ancienneté. "
+                "L'année la plus récente pèse 5x plus que l'année il y a 5 ans."
+            ),
+        ],
+        "latex_blocks": [
+            r"FCFF_{\text{Moyen}} = \frac{\sum_{k=0}^{n} (FCFF_{t-k} \times Poids_k)}{\sum Poids_k}",
+            r"\text{où } Poids_0 = 5, Poids_1 = 4, ...",
+        ],
+        "markdown_blocks": [
+            "**Sécurité 'Anti-Virus' :** Si une année contient une donnée manquante (ex: pas de BFR), elle est exclue du calcul sans fausser le poids des autres années."
+        ]
+    },
+    {
+        "subtitle": "#### 🛡️ Étape 3 : Le Coût de la Dette Synthétique (Approche Damodaran)",
+        "markdown_blocks": [
+            (
+                "Au lieu de deviner le taux d'intérêt de l'entreprise, nous calculons sa solvabilité réelle via le **Ratio de Couverture des Intérêts (ICR)**."
+            )
+        ],
+        "latex_blocks": [
+            r"ICR = \frac{\text{EBIT}}{\text{Charges d'Intérêts}}",
+        ],
+        "markdown_blocks": [
+            (
+                "Nous utilisons ensuite les tables du Pr. Damodaran (NYU Stern) pour convertir ce ratio en **Spread de Crédit** (Prime de risque).\n"
+                "* Ex: Une entreprise qui gagne 10x ses intérêts (ICR > 10) aura un spread minime (AAA).\n"
+                "* Ex: Une entreprise qui peine à payer (ICR < 1.5) aura un spread punitif (Junk Bond)."
+            )
+        ]
+    }
+]
+
+
+# ===========================================================================
+# 3. Méthode Monte Carlo (Simulation)
+# ===========================================================================
+
+MONTE_CARLO_TITLE: str = "### 📕 Méthode 3 : Simulation Monte Carlo Multivariée"
+
+MONTE_CARLO_SECTIONS: List[Dict[str, Any]] = [
+    {
+        "subtitle": "#### 💡 Le Concept : Explorer les Futurs Possibles",
+        "markdown_blocks": [
+            (
+                "La valorisation n'est jamais une science exacte. Plutôt que de donner UN chiffre, cette méthode simule **2 000 scénarios différents** "
+                "en faisant varier les paramètres clés (Croissance, Risque, Taux)."
             ),
         ],
     },
     {
-        "subtitle": "#### Étape 3 – FCFF Fondamental Annuel",
+        "subtitle": "#### 🎲 Moteur : La Matrice de Covariance",
+        "markdown_blocks": [
+            (
+                "Contrairement aux simulateurs basiques qui tirent les dés au hasard, notre modèle utilise une approche **Multivariée**.\n"
+                "Il comprend que les variables sont liées entre elles :"
+            )
+        ],
         "latex_blocks": [
-            r"FCFF_t = NOPAT_t + D\&A_t - Capex_t - \Delta NWC_t",
+            r"\text{Corrélation } (\rho) \approx -0.4 \text{ entre } \beta \text{ (Risque) et } g \text{ (Croissance)}",
         ],
         "markdown_blocks": [
             (
-                "- $D\\&A$ correspond aux **dotations aux amortissements et dépréciations**.\n"
-                "- `Capex` correspond aux **dépenses d'investissement** (généralement négatives dans les flux de trésorerie).\n"
-                "- $\\Delta NWC$ capte l'impact du besoin en fonds de roulement sur la trésorerie disponible."
-            ),
-        ],
+                "**Traduction financière :** Dans les scénarios où le risque explose (crise, taux hauts, Beta élevé), le modèle force mathématiquement la croissance à baisser.\n"
+                "Cela élimine les scénarios absurdes du type *'Croissance record en pleine crise financière'*."
+            )
+        ]
     },
     {
-        "subtitle": "#### Étape 4 – Lissage du FCFF₀ sur plusieurs années",
-        "latex_blocks": [
-            r"FCFF_0 = \dfrac{FCFF_{t} + FCFF_{t-1} + FCFF_{t-2}}{3}",
-        ],
+        "subtitle": "#### 📊 Interprétation des Résultats",
         "markdown_blocks": [
             (
-                "- Le **FCFF₀ fondamental** utilisé dans le DCF est une moyenne sur plusieurs années (par exemple 3 ans) "
-                "afin de lisser les effets de volatilité ou d'événements exceptionnels.\n"
-                "- Ce $FCFF_0$ lissé est celui qui apparaît dans les hypothèses de la Méthode 2 dans l'interface."
-            ),
-        ],
-    },
-    {
-        "subtitle": "#### Étape 5 – DCF sur la base du FCFF Fondamental",
-        "latex_blocks": [
-            r"FCFF_t = FCFF_{0} \times (1 + g_{\text{FCFF}})^{t} \quad \text{pour } t = 1,\dots,n",
-            r"VE_{\text{phase 1}} = \sum_{t=1}^{n} \frac{FCFF_t}{(1 + CMPC)^t}",
-            r"FCFF_{n+1} = FCFF_n \times (1 + g_{\infty})",
-            r"VT = \frac{FCFF_{n+1}}{CMPC - g_{\infty}}",
-            r"VE_{\text{totale}} = VE_{\text{phase 1}} + \frac{VT}{(1 + CMPC)^n}",
-            r"\text{Valeur Capitaux Propres} = VE_{\text{totale}} - \text{Dette Totale} + \text{Liquidités}",
-            r"\text{VI par action} = \dfrac{\text{Valeur Capitaux Propres}}{\text{Actions en circulation}}",
-        ],
-        "markdown_blocks": [
-            (
-                "- La **structure du DCF** (actualisation des flux, valeur terminale, passage à la valeur des capitaux propres) "
-                "reste identique à la Méthode 1.\n"
-                "- La **différence clé** est la qualité de $FCFF_0$, qui est ici dérivé d'une analyse 3-états (Compte de Résultat, "
-                "Bilan, Cash-Flow) et lissé sur plusieurs années."
-            ),
-        ],
-    },
+                "Le résultat n'est pas une ligne, c'est une **zone de probabilité** :\n"
+                "* **P10 (Scénario Pessimiste) :** Il y a 90% de chances que l'entreprise vaille PLUS que cela.\n"
+                "* **P50 (Médiane) :** Le scénario central le plus probable.\n"
+                "* **P90 (Scénario Optimiste) :** Il y a seulement 10% de chances que l'entreprise vaille encore plus."
+            )
+        ]
+    }
 ]
