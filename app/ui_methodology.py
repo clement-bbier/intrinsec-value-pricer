@@ -6,6 +6,8 @@ from core.docs.methodology_texts import (
     SIMPLE_DCF_SECTIONS,
     FUNDAMENTAL_DCF_TITLE,
     FUNDAMENTAL_DCF_SECTIONS,
+    MONTE_CARLO_TITLE,
+    MONTE_CARLO_SECTIONS,
 )
 
 
@@ -45,3 +47,12 @@ def display_fundamental_dcf_formula() -> None:
     """
     st.markdown(FUNDAMENTAL_DCF_TITLE)
     _render_sections(FUNDAMENTAL_DCF_SECTIONS)
+
+
+def display_monte_carlo_formula() -> None:
+    """
+    Affiche la méthodologie et les formules utilisées pour la Méthode 3 – Simulation Monte Carlo.
+    Le contenu textuel et les formules viennent de core.docs.methodology_texts.
+    """
+    st.markdown(MONTE_CARLO_TITLE)
+    _render_sections(MONTE_CARLO_SECTIONS)
