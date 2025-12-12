@@ -1,13 +1,11 @@
-import math
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Any, Dict
+from typing import Any, Dict, List, Optional
 
 
-# --- ENUMS ---
-
-class ValuationMode(Enum):
+class ValuationMode(str, Enum):
     SIMPLE_FCFF = "SIMPLE_FCFF"
     FUNDAMENTAL_FCFF = "FUNDAMENTAL_FCFF"
     MONTE_CARLO = "MONTE_CARLO"
@@ -18,151 +16,159 @@ class InputSource(str, Enum):
     MANUAL = "MANUAL"
 
 
-class FCFSource(Enum):
-    TTM = "TTM"
-    WEIGHTED = "WEIGHTED"
-    SIMPLE_ANNUAL = "SIMPLE_ANNUAL"
-    NONE = "NONE"
-
-
-class GrowthSource(Enum):
-    ANALYSTS = "ANALYSTS"
-    CAGR = "CAGR"
-    SUSTAINABLE = "SUSTAINABLE"
-    MACRO = "MACRO"
-    MANUAL = "MANUAL"
-
-
-class DebtSource(Enum):
-    SYNTHETIC = "SYNTHETIC"
-    SECTOR = "SECTOR"
-    MANUAL = "MANUAL"
-
-
-# --- DATA STRUCTURES (INPUTS) ---
-
 @dataclass
 class DCFParameters:
-    """Paramètres d'hypothèses DCF (Input Model)."""
+    """
+    Core parameter container.
+
+    Conventions:
+    - rates in decimal (0.08 = 8%)
+    - years are integers
+    """
     risk_free_rate: float
     market_risk_premium: float
     cost_of_debt: float
     tax_rate: float
+
     fcf_growth_rate: float
     perpetual_growth_rate: float
     projection_years: int
+
     high_growth_years: int = 0
+
     beta_volatility: float = 0.0
     growth_volatility: float = 0.0
     terminal_growth_volatility: float = 0.0
-    target_equity_weight: float = 0.0
-    target_debt_weight: float = 0.0
+
     manual_fcf_base: Optional[float] = None
+
+    # Canonical target capital structure fields used in engines/strategies
+    target_equity_weight: float = 1.0
+    target_debt_weight: float = 0.0
+
+    # Optional overrides
     manual_cost_of_equity: Optional[float] = None
+    wacc_override: Optional[float] = None
+
+    # Backward-compatible aliases (do not remove):
+    # Some parts of the code may refer to equity_weight/debt_weight or cost_of_equity_override.
+    equity_weight: Optional[float] = None
+    debt_weight: Optional[float] = None
+    cost_of_equity_override: Optional[float] = None
+
+    def normalize_weights(self) -> None:
+        """
+        Normalizes/aligns weight fields.
+        Priority:
+        - target_* if explicitly set
+        - else equity_weight/debt_weight if provided
+        """
+        if self.equity_weight is not None and self.debt_weight is not None:
+            self.target_equity_weight = float(self.equity_weight)
+            self.target_debt_weight = float(self.debt_weight)
+
+        total = float(self.target_equity_weight) + float(self.target_debt_weight)
+        if total > 0:
+            self.target_equity_weight /= total
+            self.target_debt_weight /= total
+
+        # Align legacy fields for downstream display if needed
+        self.equity_weight = self.target_equity_weight
+        self.debt_weight = self.target_debt_weight
+
+        if self.manual_cost_of_equity is None and self.cost_of_equity_override is not None:
+            self.manual_cost_of_equity = self.cost_of_equity_override
 
 
 @dataclass
 class CompanyFinancials:
-    """Données Financières de l'Entreprise (Input Provider)."""
     ticker: str
     currency: str
     sector: str
     industry: str
-    country: str = "Unknown"  # <-- CHAMP CRITIQUE AJOUTÉ
-    current_price: float = 0.0
-    shares_outstanding: float = 0.0
-    total_debt: float = 0.0
-    cash_and_equivalents: float = 0.0
-    interest_expense: float = 0.0
-    beta: float = 1.0
+    country: str
+
+    current_price: float
+    shares_outstanding: float
+
+    total_debt: float
+    cash_and_equivalents: float
+    interest_expense: float
+
+    beta: float
+
     fcf_last: Optional[float] = None
     fcf_fundamental_smoothed: Optional[float] = None
-    implied_growth_rate: Optional[float] = None
-    source_fcf: str = FCFSource.NONE.value
-    source_growth: str = GrowthSource.MACRO.value
-    source_debt: str = DebtSource.SECTOR.value
-    audit_score: float = 0.0
-    audit_rating: str = "N/A"
-    audit_details: List[Dict[str, Any]] = field(default_factory=list)
+
+    source_growth: str = "unknown"
+    source_debt: str = "unknown"
+    source_fcf: str = "unknown"
+
+    audit_score: Optional[int] = None
+    audit_rating: Optional[str] = None
+    audit_details: Optional[str] = None
+    audit_breakdown: Optional[Dict[str, Any]] = None
     audit_logs: List[str] = field(default_factory=list)
-    audit_breakdown: Dict[str, float] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
 
+    implied_growth_rate: Optional[float] = None
 
-# --- DATA STRUCTURES (OUTPUTS) ---
 
 @dataclass
 class DCFResult:
-    """Résultats du Calcul DCF (Output Engine)."""
-    wacc: float
-    cost_of_equity: float
-    after_tax_cost_of_debt: float
-    projected_fcfs: List[float]
-    discount_factors: List[float]
-    sum_discounted_fcf: float
-    terminal_value: float
-    discounted_terminal_value: float
     enterprise_value: float
     equity_value: float
     intrinsic_value_per_share: float
+
+    discounted_terminal_value: float
+    terminal_value: float
+
     simulation_results: Optional[List[float]] = None
-    implied_growth_rate: Optional[float] = None
 
 
-# --- CONFIG & VALIDATION ---
+@dataclass(frozen=True)
+class ValuationRequest:
+    """
+    Strict DTO: UI -> Workflow -> Engine.
 
-@dataclass
-class MethodConfigBase(ABC):
+    manual_params/manual_beta are only valid when input_source=MANUAL.
+    """
+    ticker: str
+    projection_years: int
     mode: ValuationMode
+    input_source: InputSource
+
+    manual_params: Optional[DCFParameters] = None
+    manual_beta: Optional[float] = None
+
+    options: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ValuationResult:
+    """
+    Strict DTO: Engine/Workflow -> UI.
+    Keeps raw components for existing UI functions, plus computed headline metrics.
+    """
+    request: ValuationRequest
+    financials: CompanyFinancials
     params: DCFParameters
+    dcf: DCFResult
 
-    @abstractmethod
-    def validate(self, context_beta: float) -> None:
-        pass
+    audit_score: Optional[int] = None
+    audit_rating: Optional[str] = None
+    audit_details: Optional[str] = None
+    audit_breakdown: Optional[Dict[str, Any]] = None
+    audit_logs: List[str] = field(default_factory=list)
 
-    def _check_global_constraints(self, beta: float) -> None:
-        p = self.params
-        if p.projection_years < 1:
-            raise ValueError("Horizon de projection invalide (< 1 an).")
+    intrinsic_value_per_share: float = 0.0
+    market_price: float = 0.0
+    upside_pct: Optional[float] = None
 
-        if p.target_equity_weight > 0:
-            if not math.isclose(p.target_equity_weight + p.target_debt_weight, 1.0, rel_tol=1e-3):
-                raise ValueError("La somme des poids (Dette + Equity) doit être égale à 100%.")
+    diagnostics: Dict[str, Any] = field(default_factory=dict)
 
-        cost_equity = p.manual_cost_of_equity if p.manual_cost_of_equity else (
-                    p.risk_free_rate + beta * p.market_risk_premium)
-        wacc_est = (0.8 * cost_equity) + (0.2 * p.cost_of_debt * (1 - p.tax_rate))
-
-        if wacc_est <= p.perpetual_growth_rate:
-            raise ValueError(
-                f"WACC estimé ({wacc_est:.2%}) <= Croissance Terminale ({p.perpetual_growth_rate:.2%}). Modèle impossible.")
-
-
-@dataclass
-class SimpleDCFConfig(MethodConfigBase):
-    def validate(self, context_beta: float) -> None: self._check_global_constraints(context_beta)
-
-
-@dataclass
-class FundamentalDCFConfig(MethodConfigBase):
-    def validate(self, context_beta: float) -> None: self._check_global_constraints(context_beta)
-
-
-@dataclass
-class MonteCarloDCFConfig(MethodConfigBase):
-    def validate(self, context_beta: float) -> None:
-        self._check_global_constraints(context_beta)
-        if self.params.growth_volatility > 0.50:
-            raise ValueError("Volatilité de croissance excessive (>50%).")
-
-
-class ConfigFactory:
-    @staticmethod
-    def get_config(mode: ValuationMode, params: DCFParameters) -> MethodConfigBase:
-        if mode == ValuationMode.SIMPLE_FCFF:
-            return SimpleDCFConfig(mode, params)
-        elif mode == ValuationMode.FUNDAMENTAL_FCFF:
-            return FundamentalDCFConfig(mode, params)
-        elif mode == ValuationMode.MONTE_CARLO:
-            return MonteCarloDCFConfig(mode, params)
-        raise ValueError(f"Mode inconnu : {mode}")
+    def __post_init__(self) -> None:
+        mp = float(self.financials.current_price)
+        iv = float(self.dcf.intrinsic_value_per_share)
+        object.__setattr__(self, "market_price", mp)
+        object.__setattr__(self, "intrinsic_value_per_share", iv)
+        object.__setattr__(self, "upside_pct", (iv / mp - 1.0) if mp > 0 else None)
