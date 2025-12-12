@@ -1,5 +1,7 @@
 import logging
-from typing import Optional, List, Tuple
+import time
+from functools import wraps
+from typing import Optional, List, Tuple, Any, Callable
 from datetime import datetime
 
 import pandas as pd
@@ -7,88 +9,70 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# -----------------------------------------------------------------------------
-# ALIAS COMMUNS
-# -----------------------------------------------------------------------------
 
-CFO_ALIASES = [
-    "Operating Cash Flow",
-    "Cash Flow From Continuing Operating Activities",
-    "Cash Flow From Operating Activities",
-    "Total Cash From Operating Activities",
-]
-CAPEX_ALIASES = [
-    "Capital Expenditure",
-    "Net PPE Purchase And Sale",
-    "Purchase Of PPE",
-    "Capital Expenditures",
-]
-EBIT_ALIASES = [
-    "Operating Income",
-    "EBIT",
-    "Ebit",
-    "Earnings Before Interest And Taxes",
-]
-PRETAX_INCOME_ALIASES = [
-    "Pretax Income",
-    "Income Before Tax",
-    "Earnings Before Tax",
-]
-TAX_EXPENSE_ALIASES = [
-    "Income Tax Expense",
-    "Provision For Income Taxes",
-]
-DA_ALIASES = [
-    "Depreciation & Amortization",
-    "Depreciation And Amortization",
-    "Depreciation",
-]
-CHANGE_IN_WORKING_CAPITAL_ALIASES = [
-    "Change In Working Capital",
-    "Changes In Cash",
-    "Other Non Cash Items",
-]
-INTEREST_EXPENSE_ALIASES = [
-    "Interest Expense",
-    "Interest Expense Non Operating",
-    "Total Interest Expenses",
-    "Financial Expenses",
-    "Interest And Debt Expense",
-    "Interest Expense, Net"
-]
-REVENUE_ALIASES = [
-    "Total Revenue",
-    "Revenue",
-    "Sales"
-]
-NET_INCOME_ALIASES = [
-    "Net Income",
-    "Net Income Common Stockholders",
-    "Net Income Applicable To Common Shares"
-]
-EQUITY_ALIASES = [
-    "Total Stockholder Equity",
-    "Total Equity",
-    "Stockholders Equity"
-]
+# --- RETRY DECORATOR (Rate-Limit Protection) ---
+
+def safe_api_call(max_retries: int = 3, delay: int = 1):
+    """
+    Décorateur pour gérer les rate-limits Yahoo et les erreurs réseau transitoires.
+    """
+
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for i in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    # Backoff exponentiel léger : 1s, 2s, 3s...
+                    wait_time = delay * (i + 1)
+                    logger.warning(f"API attempt {i + 1}/{max_retries} failed: {e}. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+
+            logger.error(f"API failed after {max_retries} retries.")
+            raise last_exception
+
+        return wrapper
+
+    return decorator
+
+
+# --- NORMALISATION ---
+
+def normalize_currency_and_price(price: float, currency: str) -> Tuple[float, str]:
+    """
+    Gère le cas spécifique GBp (Pence) vs GBP (Livres) sur le LSE.
+    Yahoo retourne souvent le prix en pence (GBp) mais les états financiers en Livres (GBP).
+    """
+    if currency == "GBp":
+        # Conversion Pence -> Livres
+        return price / 100.0, "GBP"
+    return price, currency
 
 
 def _safe_get_first(df: Optional[pd.DataFrame], row_names: List[str]) -> Optional[float]:
     """
-    Cherche la première ligne correspondante.
-    BLINDAGE : Retourne None si la valeur trouvée est NaN ou vide.
+    Cherche la première ligne correspondante dans un DataFrame, insensible à la casse.
+    Gère les NaN/None/Inf proprement.
     """
     if df is None or df.empty:
         return None
 
-    normalized_df = df.copy()
-    normalized_df.index = normalized_df.index.astype(str).str.strip().str.lower()
+    # Normalisation de l'index pour recherche insensible à la casse
+    # Création d'un map { "nom_minuscule": "Nom_Reel" }
+    normalized_index = {str(idx).strip().lower(): idx for idx in df.index}
 
     for name in row_names:
         clean_name = str(name).strip().lower()
-        if clean_name in normalized_df.index:
+        if clean_name in normalized_index:
+            real_index = normalized_index[clean_name]
             try:
-                val = normalized_df.loc[clean_name].iloc[0]
+                # On prend la colonne la plus récente (iloc[0]) si non spécifié
+                val = df.loc[real_index].iloc[0]
+
+                # Vérification de validité numérique
                 if pd.isna(val) or val is None:
                     continue
                 return float(val)
@@ -97,81 +81,71 @@ def _safe_get_first(df: Optional[pd.DataFrame], row_names: List[str]) -> Optiona
     return None
 
 
-# -----------------------------------------------------------------------------
-# WATERFALL 1 : FCF CALCULATORS
-# -----------------------------------------------------------------------------
+# --- ALIAS COMPTABLES ---
 
-def _get_ttm_fcf_historical(
-        cashflow_quarterly: pd.DataFrame,
-        date: datetime,
-) -> Optional[Tuple[float, datetime]]:
-    """Calcule le FCF TTM (Trailing Twelve Months)."""
+CFO_ALIASES = ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities",
+               "Total Cash From Operating Activities"]
+CAPEX_ALIASES = ["Capital Expenditure", "Net PPE Purchase And Sale", "Purchase Of PPE", "Capital Expenditures"]
+EBIT_ALIASES = ["Operating Income", "EBIT", "Earnings Before Interest And Taxes"]
+PRETAX_INCOME_ALIASES = ["Pretax Income", "Income Before Tax", "Earnings Before Tax"]
+TAX_EXPENSE_ALIASES = ["Income Tax Expense", "Provision For Income Taxes"]
+DA_ALIASES = ["Depreciation & Amortization", "Depreciation And Amortization", "Depreciation"]
+CHANGE_IN_WORKING_CAPITAL_ALIASES = ["Change In Working Capital", "Changes In Cash", "Other Non Cash Items"]
+INTEREST_EXPENSE_ALIASES = ["Interest Expense", "Interest Expense Non Operating", "Total Interest Expenses",
+                            "Financial Expenses"]
+REVENUE_ALIASES = ["Total Revenue", "Revenue", "Sales"]
+NET_INCOME_ALIASES = ["Net Income", "Net Income Common Stockholders"]
+EQUITY_ALIASES = ["Total Stockholder Equity", "Total Equity", "Stockholders Equity"]
+
+
+# --- CALCULATORS ROBUSTES ---
+
+def _get_ttm_fcf_historical(cashflow_quarterly: pd.DataFrame, date: datetime) -> Optional[Tuple[float, datetime]]:
+    """Calcule le FCF TTM à une date donnée."""
     if cashflow_quarterly is None or cashflow_quarterly.empty:
         return None, None
     try:
+        # Conversion timezone-naive pour comparaison fiable
         cols_ts = pd.to_datetime(cashflow_quarterly.columns)
-        if getattr(cols_ts, "tz", None) is not None:
-            cols_cmp = cols_ts.tz_convert(None)
-        else:
-            cols_cmp = cols_ts
+        if cols_ts.tz is not None:
+            cols_ts = cols_ts.tz_localize(None)
 
-        date_ts = pd.Timestamp(date)
-        date_cmp = date_ts.tz_convert(None) if date_ts.tzinfo else date_ts
+        date_cmp = date.replace(tzinfo=None)
 
-        mask = cols_cmp <= date_cmp
-        valid_cols = list(cashflow_quarterly.columns[mask])
+        # Mapping: nom_colonne -> datetime_objet
+        col_map = {}
+        for original_col in cashflow_quarterly.columns:
+            dt = pd.to_datetime(original_col)
+            if dt.tz is not None: dt = dt.tz_localize(None)
+            col_map[original_col] = dt
+
+        valid_cols = [c for c, dt in col_map.items() if dt <= date_cmp]
+        valid_cols.sort(key=lambda x: col_map[x], reverse=True)
 
         if len(valid_cols) < 4: return None, None
 
-        valid_cols_sorted = sorted(valid_cols, reverse=True)
-        ttm_cols = valid_cols_sorted[:4]
-
         ttm_fcf = 0.0
-        for col in ttm_cols:
+        for col in valid_cols[:4]:
             report_df = cashflow_quarterly[[col]]
             cfo = _safe_get_first(report_df, CFO_ALIASES)
             capex = _safe_get_first(report_df, CAPEX_ALIASES)
-
             if cfo is None or capex is None: return None, None
-            ttm_fcf += cfo + capex
+            ttm_fcf += (cfo + capex)
 
-        ttm_report_date = pd.to_datetime(ttm_cols[0]).to_pydatetime()
-        return float(ttm_fcf), ttm_report_date
+        last_date = col_map[valid_cols[0]].to_pydatetime()
+        return float(ttm_fcf), last_date
     except Exception:
         return None, None
 
 
-def _calculate_fundamental_fcf_annual(
-        income_stmt: pd.DataFrame,
-        cashflow_stmt: pd.DataFrame,
-        tax_rate_default: float,
-) -> Optional[float]:
-    """Calcule FCFF_t = NOPAT + D&A - Capex + ChangeInWC."""
-    ebit = _safe_get_first(income_stmt, EBIT_ALIASES)
-    if ebit is None: return None
-
-    tax_exp = _safe_get_first(income_stmt, TAX_EXPENSE_ALIASES)
-    pretax_inc = _safe_get_first(income_stmt, PRETAX_INCOME_ALIASES)
-
-    tax_rate = tax_rate_default
-    if tax_exp is not None and pretax_inc and pretax_inc != 0:
-        eff_rate = tax_exp / pretax_inc
-        tax_rate = max(0.0, min(0.40, eff_rate))
-
-    nopat = ebit * (1 - tax_rate)
-
-    da = _safe_get_first(cashflow_stmt, DA_ALIASES)
-    if da is None:
-        da = _safe_get_first(income_stmt, DA_ALIASES) or 0.0
-
-    capex = _safe_get_first(cashflow_stmt, CAPEX_ALIASES)
-    if capex is None: return None
-
-    change_wc = _safe_get_first(cashflow_stmt, CHANGE_IN_WORKING_CAPITAL_ALIASES)
-    if change_wc is None: change_wc = 0.0
-
-    fcff = nopat + da + capex + change_wc
-    return float(fcff)
+def get_simple_annual_fcf(cashflow_annual: pd.DataFrame) -> Optional[float]:
+    """Récupère le FCF de la dernière année fiscale."""
+    if cashflow_annual is None or cashflow_annual.empty: return None
+    report_df = cashflow_annual.iloc[:, 0:1]
+    cfo = _safe_get_first(report_df, CFO_ALIASES)
+    capex = _safe_get_first(report_df, CAPEX_ALIASES)
+    if cfo is None or capex is None: return None
+    return float(cfo + capex)
 
 
 def get_fundamental_fcf_historical_weighted(
@@ -180,34 +154,48 @@ def get_fundamental_fcf_historical_weighted(
         tax_rate_default: float,
         nb_years: int = 5,
 ) -> Optional[float]:
-    """Moyenne pondérée normative."""
+    """Calcule une moyenne pondérée du FCFF normatif."""
     if income_annual is None or income_annual.empty: return None
     if cashflow_annual is None or cashflow_annual.empty: return None
 
     cols_inc = len(income_annual.columns)
     cols_cf = len(cashflow_annual.columns)
-    available_years = min(cols_inc, cols_cf)
+    limit = min(cols_inc, cols_cf, nb_years)
 
-    if available_years == 0: return None
+    if limit == 0: return None
 
-    limit = min(available_years, nb_years)
     weighted_sum = 0.0
     total_weight = 0.0
-    max_weight = nb_years
+    max_weight = float(limit)
 
     for k in range(limit):
         try:
             current_weight = max_weight - k
-            if current_weight <= 0: continue
-
             inc_t = income_annual.iloc[:, k: k + 1]
             cf_t = cashflow_annual.iloc[:, k: k + 1]
 
-            val = _calculate_fundamental_fcf_annual(inc_t, cf_t, tax_rate_default)
+            # Calcul atomique FCFF_t
+            ebit = _safe_get_first(inc_t, EBIT_ALIASES)
+            if ebit is None: continue
 
-            if val is not None and not np.isnan(val):
-                weighted_sum += val * current_weight
-                total_weight += current_weight
+            tax_exp = _safe_get_first(inc_t, TAX_EXPENSE_ALIASES)
+            pretax = _safe_get_first(inc_t, PRETAX_INCOME_ALIASES)
+
+            tax_rate = tax_rate_default
+            if tax_exp is not None and pretax and abs(pretax) > 0:
+                calc_rate = tax_exp / pretax
+                tax_rate = max(0.0, min(0.40, calc_rate))  # Bornage 0-40%
+
+            nopat = ebit * (1 - tax_rate)
+            da = _safe_get_first(cf_t, DA_ALIASES) or _safe_get_first(inc_t, DA_ALIASES) or 0.0
+            capex = _safe_get_first(cf_t, CAPEX_ALIASES)
+            wc = _safe_get_first(cf_t, CHANGE_IN_WORKING_CAPITAL_ALIASES) or 0.0
+
+            if capex is None: continue
+
+            fcff_t = nopat + da + capex + wc
+            weighted_sum += fcff_t * current_weight
+            total_weight += current_weight
         except Exception:
             continue
 
@@ -215,122 +203,59 @@ def get_fundamental_fcf_historical_weighted(
     return float(weighted_sum / total_weight)
 
 
-def get_simple_annual_fcf(cashflow_annual: pd.DataFrame) -> Optional[float]:
-    """Fallback : Dernier FCF annuel simple."""
-    if cashflow_annual is None or cashflow_annual.empty:
-        return None
-
-    report_df = cashflow_annual.iloc[:, 0:1]
-    cfo = _safe_get_first(report_df, CFO_ALIASES)
-    capex = _safe_get_first(report_df, CAPEX_ALIASES)
-
-    if cfo is None or capex is None: return None
-    return cfo + capex
-
-
-# -----------------------------------------------------------------------------
-# WATERFALL 2 : GROWTH CALCULATORS (Nouveau)
-# -----------------------------------------------------------------------------
-
-def calculate_historical_cagr(
-        income_annual: pd.DataFrame,
-        years: int = 3
-) -> Optional[float]:
-    """Calcule le CAGR des revenus sur X années."""
+def calculate_historical_cagr(income_annual: pd.DataFrame, years: int = 3) -> Optional[float]:
+    """Calcule le CAGR revenus."""
     if income_annual is None or income_annual.empty: return None
-
     try:
-        if len(income_annual.columns) < years + 1:
-            return None  # Pas assez d'historique
-
-        # Colonne 0 = Plus récente, Colonne N = Plus vieille
-        latest_rev = _safe_get_first(income_annual.iloc[:, 0:1], REVENUE_ALIASES)
-        oldest_rev = _safe_get_first(income_annual.iloc[:, years:years + 1], REVENUE_ALIASES)
-
-        if latest_rev is None or oldest_rev is None or oldest_rev <= 0 or latest_rev <= 0:
-            return None
-
-        # Formule CAGR : (End/Start)^(1/n) - 1
-        cagr = (latest_rev / oldest_rev) ** (1 / years) - 1
-        return float(cagr)
+        if len(income_annual.columns) < years + 1: return None
+        latest = _safe_get_first(income_annual.iloc[:, 0:1], REVENUE_ALIASES)
+        oldest = _safe_get_first(income_annual.iloc[:, years:years + 1], REVENUE_ALIASES)
+        if latest and oldest and oldest > 0 and latest > 0:
+            return (latest / oldest) ** (1 / years) - 1
+        return None
     except Exception:
         return None
 
 
-def calculate_sustainable_growth(
-        income_annual: pd.DataFrame,
-        balance_sheet_annual: pd.DataFrame
-) -> Optional[float]:
-    """Calcule le taux soutenable : ROE * (1 - PayoutRatio)."""
-    if income_annual is None or balance_sheet_annual is None: return None
-
+def calculate_sustainable_growth(income_annual: pd.DataFrame, bs_annual: pd.DataFrame) -> Optional[float]:
+    """Estime g = ROE * Retention."""
     try:
-        # Données de la dernière année
-        net_income = _safe_get_first(income_annual.iloc[:, 0:1], NET_INCOME_ALIASES)
-        equity = _safe_get_first(balance_sheet_annual.iloc[:, 0:1], EQUITY_ALIASES)
-
-        # Payout (dividendes) souvent dans Cashflow, mais on peut estimer Retention via (Income - Div)
-        # Simplification robuste : Utiliser le ROE moyen * Retention Rate standard (souvent 0.5 si inconnu)
-        # Ici on fait simple : ROE * 0.5 (Hypothèse conservatrice si pas de donnée dividendes)
-
-        if net_income and equity and equity > 0:
-            roe = net_income / equity
-            # On borne le ROE pour éviter les aberrations
-            roe = max(-0.5, min(0.5, roe))
-
-            # Hypothèse : Retention Rate par défaut de 60% (Entreprise de croissance) ou calcul plus fin si on avait les dividendes
-            retention_rate = 0.60
-            return roe * retention_rate
-
+        ni = _safe_get_first(income_annual.iloc[:, 0:1], NET_INCOME_ALIASES)
+        eq = _safe_get_first(bs_annual.iloc[:, 0:1], EQUITY_ALIASES)
+        if ni and eq and eq > 0:
+            roe = max(-0.5, min(0.5, ni / eq))
+            return roe * 0.60  # Retention par défaut
+        return None
     except Exception:
-        pass
-    return None
+        return None
 
 
-# -----------------------------------------------------------------------------
-# HELPERS HISTORIQUES
-# -----------------------------------------------------------------------------
 def _get_historical_fundamental(
         df_annual: Optional[pd.DataFrame],
         df_quarterly: Optional[pd.DataFrame],
         date: datetime,
         row_names: List[str],
 ) -> Tuple[Optional[float], Optional[datetime]]:
-    """Récupère une donnée fondamentale à une date précise."""
-    # 1. Essai Trimestriel
-    if df_quarterly is not None and not df_quarterly.empty:
-        try:
-            cols_ts = pd.to_datetime(df_quarterly.columns)
-            if getattr(cols_ts, "tz", None) is not None: cols_ts = cols_ts.tz_convert(None)
-            date_ts = pd.Timestamp(date).tz_convert(None) if pd.Timestamp(date).tzinfo else pd.Timestamp(date)
-            mask = cols_ts <= date_ts
-            valid_cols = df_quarterly.columns[mask]
-            if len(valid_cols) > 0:
-                valid_cols_sorted = sorted(valid_cols, key=lambda x: pd.to_datetime(x), reverse=True)
-                latest_col = valid_cols_sorted[0]
-                report_df = df_quarterly[[latest_col]]
-                val = _safe_get_first(report_df, row_names)
-                if val is not None:
-                    return val, pd.to_datetime(latest_col).to_pydatetime()
-        except Exception:
-            pass
+    """Récupère une donnée fondamentale historique (Annuel ou Trimestriel)."""
+    # Logique de repli : Trimestriel > Annuel
+    for df in [df_quarterly, df_annual]:
+        if df is not None and not df.empty:
+            try:
+                # Création mapping dates
+                col_map = {}
+                for col in df.columns:
+                    dt = pd.to_datetime(col)
+                    if dt.tz is not None: dt = dt.tz_localize(None)
+                    col_map[col] = dt
 
-    # 2. Essai Annuel
-    if df_annual is not None and not df_annual.empty:
-        try:
-            cols_ts = pd.to_datetime(df_annual.columns)
-            if getattr(cols_ts, "tz", None) is not None: cols_ts = cols_ts.tz_convert(None)
-            date_ts = pd.Timestamp(date).tz_convert(None) if pd.Timestamp(date).tzinfo else pd.Timestamp(date)
-            mask = cols_ts <= date_ts
-            valid_cols = df_annual.columns[mask]
-            if len(valid_cols) > 0:
-                valid_cols_sorted = sorted(valid_cols, key=lambda x: pd.to_datetime(x), reverse=True)
-                latest_col = valid_cols_sorted[0]
-                report_df = df_annual[[latest_col]]
-                val = _safe_get_first(report_df, row_names)
-                if val is not None:
-                    return val, pd.to_datetime(latest_col).to_pydatetime()
-        except Exception:
-            pass
+                date_cmp = date.replace(tzinfo=None)
+                valid_cols = [c for c, dt in col_map.items() if dt <= date_cmp]
+                valid_cols.sort(key=lambda x: col_map[x], reverse=True)
 
+                if valid_cols:
+                    val = _safe_get_first(df[[valid_cols[0]]], row_names)
+                    if val is not None:
+                        return val, col_map[valid_cols[0]].to_pydatetime()
+            except Exception:
+                continue
     return None, None
