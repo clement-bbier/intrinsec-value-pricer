@@ -90,6 +90,9 @@ def _step_compute_history(
         params: DCFParameters,
         provider: YahooFinanceProvider
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    """
+    Calcule l'historique de valorisation (Best Effort).
+    """
     try:
         price_history = provider.get_price_history(request.ticker)
         if price_history.empty: return None, None
@@ -111,11 +114,13 @@ def _step_compute_history(
         )
 
         if errors:
-            logger.warning("HISTORY[%s] partial errors: %s", run_id, errors[:3])
+            # [CORRECTION] INFO au lieu de WARNING pour les trous de données attendus
+            logger.info("HISTORY[%s] partial data gaps (expected): %s", run_id, errors[:3])
 
         return price_history, hist_iv_df
 
     except Exception as e:
+        # Warning maintenu pour crash complet inattendu
         logger.warning("HISTORY[%s] failed: %s", run_id, e)
         return None, None
 
@@ -191,7 +196,7 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
             financials=financials,
             params=params,
             dcf=dcf_result,
-            audit_report=audit_report  # NOUVEAU
+            audit_report=audit_report
         )
 
         # Affichage

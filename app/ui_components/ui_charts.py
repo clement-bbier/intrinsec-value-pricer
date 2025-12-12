@@ -71,9 +71,10 @@ def display_price_chart(ticker: str, price_history: pd.DataFrame | None, hist_iv
     if base_iv: final_chart += base_iv
     if current_point_mark: final_chart += current_point_mark
 
+    # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
     st.altair_chart(
         final_chart.properties(height=350, title=f"Historique Valorisation : {ticker}").interactive(),
-        use_container_width=True
+        width="stretch"
     )
 
 
@@ -106,7 +107,8 @@ def display_simulation_chart(simulation_results: list[float], current_price: flo
         x='x', tooltip=[alt.Tooltip('x', title='Médiane (P50)')]
     )
 
+    # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
     st.altair_chart(
         (hist + rule_price + rule_median).properties(height=250, title="Distribution des Scénarios de Valeur"),
-        use_container_width=True
+        width="stretch"
     )

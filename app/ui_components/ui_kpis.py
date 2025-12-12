@@ -106,8 +106,11 @@ def display_results(res: ValuationResult):
             "FCF Projeté": fcfs,
             "Discount Factor": dcf.discount_factors
         })
-        st.dataframe(df_proj.style.format({"FCF Projeté": "{:,.0f}", "Discount Factor": "{:.3f}"}),
-                     use_container_width=True)
+        # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
+        st.dataframe(
+            df_proj.style.format({"FCF Projeté": "{:,.0f}", "Discount Factor": "{:.3f}"}),
+            width="stretch"
+        )
     with t3:
         if mode == ValuationMode.SIMPLE_FCFF:
             display_simple_dcf_formula(financials, res.params)

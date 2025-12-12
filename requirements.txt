@@ -1,7 +1,9 @@
-streamlit
-yfinance
-pandas
-numpy
-pytest
-pyyaml
-altair
+streamlit>=1.32.0
+pandas>=2.2.0
+numpy>=1.26.0
+altair>=5.2.0
+yfinance>=0.2.37
+requests>=2.31.0
+scipy>=1.12.0
+pytest>=8.0.0
+pyyaml>=6.0
