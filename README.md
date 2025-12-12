@@ -1,191 +1,292 @@
-# Intrinsic Value Pricer (DCF & More)
+# 📘 Intrinsic Value Pricer  
+**Application professionnelle de valorisation d’entreprise (DCF simple, DCF fondamental, Monte Carlo).**  
+**Éducation • Analyse financière • Modélisation avancée • Transparence totale**
 
-This project provides an educational and transparent interface to estimate the intrinsic value of a publicly listed company.
+---
 
-The goal is not to predict short-term stock prices, but to:
+# 🎯 Objectifs du Projet
 
-- Show how different valuation frameworks work.
-- Make assumptions explicit (growth, discount rates, margins, risk).
-- Help users understand how sensitive intrinsic value is to these assumptions.
-- Offer several valuation methods within the same app, with a common interface.
+Cette application propose une plateforme **rigoureuse, transparente et pédagogique** pour estimer la **valeur intrinsèque** d'une entreprise cotée.
 
-This project is for learning and experimentation only.  
-It is not investment advice or a recommendation to buy or sell any security.
+Elle permet de :
 
-## What Is Intrinsic Value?
+- comparer plusieurs **méthodes de valorisation** (DCF simple, DCF fondamental, DCF Monte Carlo),  
+- comprendre **comment les hypothèses influencent le résultat**,  
+- analyser la **robustesse** d’une valorisation via un audit,  
+- explorer les paramètres manuellement dans un environnement **expert**,  
+- fournir des explications claires, étape par étape.
 
-Intrinsic value is an estimate of what a business is economically worth, based on its ability to generate cash flows over time.
+> **⚠️ Disclaimer :**  
+> Ce projet est à vocation **éducative et analytique**.  
+> Ce n’est PAS une recommandation d’investissement.
 
-It is different from:
+---
 
-- Market price: current stock price, driven by supply/demand, sentiment, news.
-- Book value: accounting equity, not necessarily economic value.
-- Speculative value: driven by narratives, momentum, liquidity.
+# 🧠 1. Qu’est-ce que la valeur intrinsèque ?
 
-There is no unique “true” intrinsic value.  
-Every model is a set of assumptions; intrinsic value is always an estimate.
+La valeur intrinsèque représente ce que vaut économiquement une entreprise **indépendamment du marché**, basée sur :
 
-## Common Valuation Families in Practice
+- sa capacité réelle à générer du cash,
+- ses fondamentaux financiers,
+- son coût du capital (WACC),
+- son profil de croissance.
 
-In corporate finance, equity research, and M&A, several major families coexist:
+Elle est différente de :
 
-1. Discounted Cash Flow (DCF)
-2. Multiples / Relative Valuation
-3. Dividend Discount Models (DDM)
-4. Residual Income / Economic Profit
-5. Asset-Based Valuation
+- **Prix de marché** : déterminé par la psychologie et la liquidité,  
+- **Valeur comptable** : historique, pas économique,  
+- **Prix spéculatif** : dépend des narratifs et du momentum.
 
-This project aims to expose several of these ideas inside a single, consistent tool.
+> **Il n'existe pas une seule vraie valeur intrinsèque.**  
+> Chaque modèle est un jeu d’hypothèses.
 
-## Valuation Methods in This Project
+---
 
-The app supports multiple valuation engines, each with its own assumptions and use cases.
+# 🧩 2. Méthodes de valorisation disponibles
 
-### Method 1 – Simple DCF (FCFF ≈ CFO – Capex)
+L'application implémente trois moteurs indépendants, chacun avec sa logique, ses paramètres, ses validations et son interface dédiée.
 
-Status: Implemented
+---
 
-Approximates Free Cash Flow to the Firm (FCFF) as:
+## **Méthode 1 – DCF Simple (FCFF direct)**
 
-FCFF ≈ CFO + Capex
+✔ Adaptée aux entreprises stables  
+✔ Très pédagogique  
+✔ Hypothèses limitées
 
-Then:
+Processus :
 
-1. Projects FCFF over n years.
-2. Computes the discount rate (WACC).
-3. Discounts projected FCFs.
-4. Computes terminal value.
-5. Computes enterprise value.
-6. Computes equity value.
-7. Computes intrinsic value per share.
+1. Calcul d’un **FCFF de base** (FCF TTM ou lissé)  
+2. Projection avec une croissance simple  
+3. WACC via CAPM  
+4. Valeur terminale (croissance perpétuelle)  
+5. Actualisation → Valeur d’entreprise → Valeur Equity → Valeur par action
 
-Useful for stable, cash-generative businesses.  
-Robust and easy to understand.
+Utilisation typique : entreprises matures et prévisibles.
 
-### Method 2 – Fundamental DCF (Full FCFF Construction)
+---
 
-Status: Planned
+## **Méthode 2 – DCF Fondamental (FCFF reconstruit)**
 
-Builds FCFF rigorously from financial statements:
+✔ Niveau “professionnel” (M&A, equity research)  
+✔ Modèle complet des flux économiques  
 
-- EBIT → NOPAT
-- Add back depreciation
-- Subtract change in working capital
-- Subtract Capex
+Construction du FCFF :
 
-Used in M&A, private equity, equity research.
+- EBIT → NOPAT  
+- + Dépréciation  
+- – Variation du BFR  
+- – Capex  
+- = FCFF normatif lissé (moyenne pondérée 3–5 ans)
 
-### Method 3 – Relative Valuation (Market Multiples)
+Hypothèses :
 
-Status: Planned
+- Beta (levier ou délevé)  
+- Taux sans risque  
+- Prime de risque marché / pays  
+- Coût de la dette après impôts  
+- Structure du capital cible  
+- Croissance long terme cohérente macro/secteur  
 
-Compares valuation to peers using multiples:
+L’interface affiche clairement la formule utilisée et la valeur injectée dans chaque équation.
 
-- P/E
-- EV/EBITDA
-- EV/EBIT
-- EV/Sales
+---
 
-Used for fast market-relative valuation.
+## **Méthode 3 – DCF Monte Carlo (distribution probabiliste de VI)**
 
-### Method 4 – Scenarios & Simulations (Monte Carlo, LBO)
+✔ Pour environnements incertains  
+✔ Analyse probabiliste  
+✔ Intervalle de valeurs intrinsèques
 
-Status: Planned
+Simulation :
 
-Explicitly models uncertainty:
+- volatilité du FCF,  
+- distribution des taux de croissance,  
+- distribution du WACC,  
+- incertitude multipériode.
 
-- Scenario-based DCF
-- Monte Carlo simulation of growth and discount rates
-- LBO-style leveraged models
+Sorties :
 
-Useful when uncertainty is high.
+- Distribution complète des valeurs  
+- P10 / P50 / P90  
+- Histogrammes + densité  
+- Intervalle de confiance  
 
-## Why Start with DCF (Method 1)?
+---
 
-It is conceptually rigorous and transparent.  
-All assumptions are explicit: growth, discount rate, reinvestment, terminal value.  
-However, small changes in assumptions can significantly affect results.
+# ⚙️ 3. Mode Automatique
 
-This project embraces that by:
+L’utilisateur fournit :
 
-- Logging every calculation.
-- Displaying all intermediate steps.
-- Allowing comparisons across methods (future versions).
+- ticker  
+- méthode  
+- horizon de projection  
 
-## Current Features (MVP)
+L’application :
 
-- Fetches market and financial data from Yahoo Finance.
-- Computes FCFF using CFO and Capex.
-- Multi-year DCF valuation with terminal value.
-- Computes WACC using CAPM and cost of debt.
-- Displays market price vs intrinsic value.
-- Provides detailed logging.
-- Central configuration via settings.yaml.
-- Architecture already supports multiple valuation modes.
+- récupère automatiquement les données nécessaires (Yahoo Finance + macro),  
+- dérive toutes les hypothèses financières,  
+- calcule la valeur intrinsèque,  
+- affiche les tableaux spécifiques à la méthode,  
+- génère un audit qualitatif,  
+- explique toutes les étapes du calcul.
 
-## Project Structure
+Chaque méthode possède :
 
-```
-intrinsec-value-pricer/
-├── app/
-│   └── main.py
+- ses propres hypothèses,  
+- ses propres formules,  
+- ses propres graphiques,  
+- son propre audit.
+
+---
+
+# 🧪 4. Mode Manuel / Expert
+
+Mode conçu pour :
+
+✔ investisseurs avancés  
+✔ analystes  
+✔ formation au DCF
+
+L’utilisateur choisit :
+
+- la méthode (Simple, Fondamental, Monte Carlo),  
+- **tous les paramètres manuellement**, avec visibilité claire des formules utilisées.
+
+---
+
+## 🔀 Toggles X ↔ Y : flexibilité totale et formules explicites
+
+Le mode Expert offre des **toggles intelligents** permettant d’entrer un paramètre sous plusieurs formes équivalentes :
+
+| Toggle | Utilité |
+|--------|---------|
+| Dette ↔ Dette nette | Le moteur reconstruit la variable nécessaire au WACC |
+| Beta levier ↔ Beta délevé | Application automatique des formules de levier/delevier |
+| CAPM ↔ Coût des fonds propres direct | Le moteur utilise CAPM ou rE selon choix |
+| Croissance simple ↔ Croissance paramétrée | Génération automatique du vecteur g(t) |
+
+Chaque toggle :
+
+- **adapte la formule utilisée**,  
+- **met à jour les champs visibles**,  
+- **met en évidence la formule dans “Comprendre le calcul”**,  
+- assure une totale transparence : l’utilisateur voit *quelle valeur alimente quelle formule*.
+
+---
+
+# 🧮 5. Audit & Score de Confiance
+
+L’audit évalue 4 dimensions :
+
+1. Cohérence des hypothèses  
+2. Qualité des données (AUTO uniquement)  
+3. Robustesse du modèle (TV/EV, stabilité)  
+4. Spécificité sectorielle / pays
+
+### Mode AUTO
+- Analyse la fiabilité des données Yahoo et des heuristiques.
+
+### Mode MANUEL
+- Analyse exclusivement la **cohérence logique des paramètres saisis**.
+
+Chaque méthode possède un audit adapté à sa structure.
+
+---
+
+# 🧱 6. Architecture du projet
+
+Architecture modulaire, inspirée des standards professionnels (DDD / clean architecture).
+
+```text
+intrinsic-value-pricer/
+├── app/ # UI Streamlit
+│ ├── ui_components/                # Inputs, toggles, KPIs, charts
+│ ├── main.py # Point d’entrée
+│ └── workflow.py # Orchestration
+│
 ├── core/
-│   ├── models.py
-│   ├── exceptions.py
-│   └── dcf/
-│       ├── fcf.py
-│       ├── wacc.py
-│       ├── basic_engine.py
-│       ├── valuation_service.py
-│       └── valuation.py
+│ ├── models.py                     # DCFParameters, MethodConfig, Financials…
+│ ├── computation/                  # Discounting, growth, stats
+│ ├── valuation/                    # Moteurs DCF & reverse DCF
+│ └── exceptions.py
+│
 ├── infra/
-│   └── data_providers/
-│       ├── base_provider.py
-│       └── yahoo_provider.py
-├── tests/
-│   ├── test_calculator.py
-│   └── test_yahoo_provider_integration.py
-├── config/
-│   └── settings.yaml
-├── docs/
-│   ├── evolution_plan_for_dcf_calculation.md
-│   └── yfinance_references.md
-├── README.md
-├── requirements.txt
-└── pytest.ini
+│ ├── data_providers/               # Yahoo, base provider
+│ ├── macro/                        # Taux sans risque, primes pays
+│ └── auditing/
+│ └── audit_engine.py
+│
+├── config/                         # Paramètres par défaut
+├── tests/                          # Tests unitaires et intégration
+└── requirements.txt
 ```
 
-## Installation
+Cette architecture permet une **extensibilité naturelle** (nouvelles méthodes, nouveaux providers).
 
-```
+---
+
+# 📊 7. Visualisations & Explications
+
+L'application fournit automatiquement :
+
+- Valeur intrinsèque  
+- Valeur d’entreprise (EV)  
+- WACC détaillé  
+- Poids de la valeur terminale  
+- Projections de FCF  
+- Distribution Monte Carlo  
+- Historique de valeur intrinsèque  
+- Explication complète du calcul (méthode par méthode)
+
+---
+
+# 🚀 8. Installation & Lancement
+
+Installation :
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Run the Application
+Lancement :
 
-```
+```bash
 streamlit run app/main.py
 ```
 
-## Configuration
-
-Default assumptions are in:
-
-```
+Configuration :
+```arduino
 config/settings.yaml
 ```
 
-## Roadmap
+---
 
-- Fundamental DCF (Method 2)
-- Market multiples (Method 3)
-- Simulations and scenario analysis (Method 4)
-- Sensitivity analysis
-- Better charts and visualisations
-- Export to PDF/HTML
-- Batch valuation for multiple tickers
+## 🧭 9. Roadmap (Extensions Faisables Pour Tous)
 
-## Disclaimer
+Ces extensions sont réalistes, utilisables par un particulier, et cohérentes avec l’architecture :
 
-This project is for educational purposes only.  
-It does not provide investment advice.
+- **Multiples avancés** (EV/EBITDA, EV/EBIT, P/E forward)  
+- **DDM / Résidual Income** (versions pédagogiques)  
+- **Modèle H simplifié** (croissance dégressive accessible)  
+- **UI mobile avancée**  
+- **Export PDF / PowerPoint**  
+- **Mode batch léger** (5–20 tickers)  
+- **Mini-API local** (Jupyter / Python)  
+- **Option : portage Dash / React** (si besoin futur)
+
+---
+
+### ❌ Éléments volontairement exclus (non pertinents pour particuliers)
+
+- LBO  
+- Batch massif (100+ tickers)  
+- API publique  
+- Modélisations de risque avancées  
+
+---
+
+## ⚠️ Disclaimer
+
+Cette application est fournie **pour la formation, la recherche et l’analyse**.  
+Elle ne constitue **en aucun cas** un conseil en investissement.

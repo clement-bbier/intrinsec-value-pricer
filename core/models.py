@@ -1,164 +1,168 @@
+import math
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
 from enum import Enum
+from typing import List, Optional, Any, Dict
 
 
-class ValuationMode(str, Enum):
-    """
-    Modes de valorisation disponibles pour le moteur DCF.
-    """
-    SIMPLE_FCFF = "simple_fcff"
-    FUNDAMENTAL_FCFF = "fundamental_fcff"
-    MONTE_CARLO = "monte_carlo"
+# --- ENUMS ---
+
+class ValuationMode(Enum):
+    SIMPLE_FCFF = "SIMPLE_FCFF"
+    FUNDAMENTAL_FCFF = "FUNDAMENTAL_FCFF"
+    MONTE_CARLO = "MONTE_CARLO"
 
 
-@dataclass
-class CompanyFinancials:
-    """
-    Données financières normalisées pour une entreprise.
-    Contient à la fois les données brutes (Bilan), les données retraitées (FCF lissé)
-    et le rapport d'audit de fiabilité.
-    """
+class InputSource(str, Enum):
+    AUTO = "AUTO"
+    MANUAL = "MANUAL"
 
-    ticker: str
-    currency: str
 
-    # Identité Sectorielle
-    sector: str = "Unknown"
-    industry: str = "Unknown"
+class FCFSource(Enum):
+    TTM = "TTM"
+    WEIGHTED = "WEIGHTED"
+    SIMPLE_ANNUAL = "SIMPLE_ANNUAL"
+    NONE = "NONE"
 
-    # Données Marché
-    current_price: float = 0.0
-    shares_outstanding: float = 0.0
 
-    # Données Bilan & Dette
-    total_debt: float = 0.0
-    cash_and_equivalents: float = 0.0
+class GrowthSource(Enum):
+    ANALYSTS = "ANALYSTS"
+    CAGR = "CAGR"
+    SUSTAINABLE = "SUSTAINABLE"
+    MACRO = "MACRO"
+    MANUAL = "MANUAL"
 
-    # Charges d'intérêts (Critique pour le WACC Synthétique)
-    interest_expense: float = 0.0
 
-    # Données de Flux (Cash Flow)
-    fcf_last: float = 0.0  # Pour Méthode 1 (TTM)
+class DebtSource(Enum):
+    SYNTHETIC = "SYNTHETIC"
+    SECTOR = "SECTOR"
+    MANUAL = "MANUAL"
 
-    # Paramètres de Risque Actuels
-    beta: float = 1.0
 
-    # FCFF fondamental lissé (Moyenne Pondérée Time-Anchored)
-    fcf_fundamental_smoothed: Optional[float] = None
-
-    # Résultat du Reverse DCF (Implied Growth)
-    implied_growth_rate: Optional[float] = None
-
-    # Journal de bord technique
-    warnings: List[str] = field(default_factory=list)
-
-    # --- NOUVEAUX CHAMPS AUDIT (Bulletin de Notes) ---
-    audit_score: float = 100.0  # Ex: 75.0
-    audit_rating: str = "Non Audité"  # Ex: "FIABLE (A)"
-
-    # Pour l'UI (Tableau riche) : Liste de dicts {"category", "penalty", "reason", "context"}
-    audit_details: List[Dict] = field(default_factory=list)
-
-    # Pour le Terminal (Log brut formaté)
-    audit_logs: List[str] = field(default_factory=list)
-
-    def to_log_dict(self) -> Dict[str, Any]:
-        """Retourne une représentation en dictionnaire pour les logs structurés."""
-        return {
-            "ticker": self.ticker,
-            "price": self.current_price,
-            "debt": self.total_debt,
-            "cash": self.cash_and_equivalents,
-            "interest": self.interest_expense,
-            "fcf_ttm": self.fcf_last,
-            "fcf_fundamental": self.fcf_fundamental_smoothed,
-            "implied_g": self.implied_growth_rate,
-            "audit_score": self.audit_score,
-            "audit_rating": self.audit_rating,
-            "warnings_count": len(self.warnings),
-        }
-
-    def __repr__(self) -> str:
-        return (
-            f"CompanyFinancials(ticker='{self.ticker}', price={self.current_price:.2f}, "
-            f"FCF_TTM={self.fcf_last:.2e}, Audit={self.audit_score}/100)"
-        )
-
+# --- DATA STRUCTURES (INPUTS) ---
 
 @dataclass
 class DCFParameters:
-    """
-    Paramètres d'entrée pour le moteur mathématique DCF.
-    """
-    # --- 1. Taux d'Actualisation (Risk) ---
+    """Paramètres d'hypothèses DCF (Input Model)."""
     risk_free_rate: float
     market_risk_premium: float
     cost_of_debt: float
     tax_rate: float
-
-    # --- 2. Hypothèses de Croissance ---
     fcf_growth_rate: float
     perpetual_growth_rate: float
-
-    # --- 3. Horizon Temporel ---
     projection_years: int
-
-    # --- 4. Structure de Croissance (Multi-Stage) ---
     high_growth_years: int = 0
-
-    # --- 5. Paramètres de Simulation (Monte Carlo) ---
-    beta_volatility: float = 0.10
-    growth_volatility: float = 0.01
-    terminal_growth_volatility: float = 0.0025
-
-    def to_log_dict(self) -> Dict[str, Any]:
-        return {
-            "Rf": self.risk_free_rate,
-            "MRP": self.market_risk_premium,
-            "Rd": self.cost_of_debt,
-            "Tax": self.tax_rate,
-            "g_start": self.fcf_growth_rate,
-            "g_term": self.perpetual_growth_rate,
-            "high_growth_years": self.high_growth_years,
-            "years": self.projection_years,
-        }
+    beta_volatility: float = 0.0
+    growth_volatility: float = 0.0
+    terminal_growth_volatility: float = 0.0
+    target_equity_weight: float = 0.0
+    target_debt_weight: float = 0.0
+    manual_fcf_base: Optional[float] = None
+    manual_cost_of_equity: Optional[float] = None
 
 
 @dataclass
+class CompanyFinancials:
+    """Données Financières de l'Entreprise (Input Provider)."""
+    ticker: str
+    currency: str
+    sector: str
+    industry: str
+    country: str = "Unknown"  # <-- CHAMP CRITIQUE AJOUTÉ
+    current_price: float = 0.0
+    shares_outstanding: float = 0.0
+    total_debt: float = 0.0
+    cash_and_equivalents: float = 0.0
+    interest_expense: float = 0.0
+    beta: float = 1.0
+    fcf_last: Optional[float] = None
+    fcf_fundamental_smoothed: Optional[float] = None
+    implied_growth_rate: Optional[float] = None
+    source_fcf: str = FCFSource.NONE.value
+    source_growth: str = GrowthSource.MACRO.value
+    source_debt: str = DebtSource.SECTOR.value
+    audit_score: float = 0.0
+    audit_rating: str = "N/A"
+    audit_details: List[Dict[str, Any]] = field(default_factory=list)
+    audit_logs: List[str] = field(default_factory=list)
+    audit_breakdown: Dict[str, float] = field(default_factory=dict)
+    warnings: List[str] = field(default_factory=list)
+
+
+# --- DATA STRUCTURES (OUTPUTS) ---
+
+@dataclass
 class DCFResult:
-    """
-    Résultat de sortie du moteur de calcul.
-    """
-    # Résultats du WACC
+    """Résultats du Calcul DCF (Output Engine)."""
     wacc: float
     cost_of_equity: float
     after_tax_cost_of_debt: float
-
-    # Résultats de la Projection
     projected_fcfs: List[float]
     discount_factors: List[float]
-
-    # Composants de la Valeur
     sum_discounted_fcf: float
     terminal_value: float
     discounted_terminal_value: float
-
-    # Valeurs Agrégées
     enterprise_value: float
     equity_value: float
-
-    # KPI Final
     intrinsic_value_per_share: float
-
-    # Résultats Monte Carlo (Optionnel)
     simulation_results: Optional[List[float]] = None
+    implied_growth_rate: Optional[float] = None
 
-    def to_log_dict(self) -> Dict[str, Any]:
-        return {
-            "wacc": self.wacc,
-            "EV": self.enterprise_value,
-            "EqV": self.equity_value,
-            "IV_Share": self.intrinsic_value_per_share,
-            "Simulated": bool(self.simulation_results),
-        }
+
+# --- CONFIG & VALIDATION ---
+
+@dataclass
+class MethodConfigBase(ABC):
+    mode: ValuationMode
+    params: DCFParameters
+
+    @abstractmethod
+    def validate(self, context_beta: float) -> None:
+        pass
+
+    def _check_global_constraints(self, beta: float) -> None:
+        p = self.params
+        if p.projection_years < 1:
+            raise ValueError("Horizon de projection invalide (< 1 an).")
+
+        if p.target_equity_weight > 0:
+            if not math.isclose(p.target_equity_weight + p.target_debt_weight, 1.0, rel_tol=1e-3):
+                raise ValueError("La somme des poids (Dette + Equity) doit être égale à 100%.")
+
+        cost_equity = p.manual_cost_of_equity if p.manual_cost_of_equity else (
+                    p.risk_free_rate + beta * p.market_risk_premium)
+        wacc_est = (0.8 * cost_equity) + (0.2 * p.cost_of_debt * (1 - p.tax_rate))
+
+        if wacc_est <= p.perpetual_growth_rate:
+            raise ValueError(
+                f"WACC estimé ({wacc_est:.2%}) <= Croissance Terminale ({p.perpetual_growth_rate:.2%}). Modèle impossible.")
+
+
+@dataclass
+class SimpleDCFConfig(MethodConfigBase):
+    def validate(self, context_beta: float) -> None: self._check_global_constraints(context_beta)
+
+
+@dataclass
+class FundamentalDCFConfig(MethodConfigBase):
+    def validate(self, context_beta: float) -> None: self._check_global_constraints(context_beta)
+
+
+@dataclass
+class MonteCarloDCFConfig(MethodConfigBase):
+    def validate(self, context_beta: float) -> None:
+        self._check_global_constraints(context_beta)
+        if self.params.growth_volatility > 0.50:
+            raise ValueError("Volatilité de croissance excessive (>50%).")
+
+
+class ConfigFactory:
+    @staticmethod
+    def get_config(mode: ValuationMode, params: DCFParameters) -> MethodConfigBase:
+        if mode == ValuationMode.SIMPLE_FCFF:
+            return SimpleDCFConfig(mode, params)
+        elif mode == ValuationMode.FUNDAMENTAL_FCFF:
+            return FundamentalDCFConfig(mode, params)
+        elif mode == ValuationMode.MONTE_CARLO:
+            return MonteCarloDCFConfig(mode, params)
+        raise ValueError(f"Mode inconnu : {mode}")

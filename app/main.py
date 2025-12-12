@@ -1,133 +1,131 @@
 import logging
 import sys
 from pathlib import Path
+from typing import Optional
 
-# --------------------------------------------------------------------------
-# 🚨 BLOC CRITIQUE : ajouter la racine du projet à sys.path
-# --------------------------------------------------------------------------
-ROOT = Path(__file__).resolve().parents[1]  # remonte de app/ vers le répertoire racine
+# Configuration PYTHONPATH
+ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-# --------------------------------------------------------------------------
 
-
-# --- Imports de librairies externes ---
 import streamlit as st
-
-# --- Imports locaux ---
 from app.workflow import run_workflow_and_display
-from core.models import ValuationMode
+from core.models import ValuationMode, InputSource
+from app.ui_components.ui_inputs_expert import display_expert_inputs, ExpertReturn
 
-# -------------------------------------------------
-# Logging configuration
-# -------------------------------------------------
+# Logging Config
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-    force=True  # Force la reconfiguration si Streamlit l'a déjà fait
+    datefmt="%H:%M:%S",
+    force=True,
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("app.main")
+logging.getLogger("yfinance").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-# Silence yfinance logs (trop verbeux)
-logging.getLogger("yfinance").setLevel(logging.ERROR)
-
-# -------------------------------------------------
-# Valuation modes – labels affichés à l'utilisateur
-# -------------------------------------------------
-MODE_LABELS = {
-    ValuationMode.SIMPLE_FCFF: (
-        "Méthode 1 – DCF Simple "
-        "(FCFF TTM, croissance constante)"
-    ),
-    ValuationMode.FUNDAMENTAL_FCFF: (
-        "Méthode 2 – DCF Fondamental "
-        "(3-Statement Light, FCFF lissé sur 3 ans)"
-    ),
-    ValuationMode.MONTE_CARLO: (
-        "Méthode 3 – Simulation Monte Carlo "
-        "(Distribution de probabilités, gestion du risque)"
-    ),
+# Constantes
+MODE_LABELS_AUTO = {
+    ValuationMode.SIMPLE_FCFF: "Méthode 1 : DCF Simple (Snapshot)",
+    ValuationMode.FUNDAMENTAL_FCFF: "Méthode 2 : DCF Fondamental (Normatif)",
+    ValuationMode.MONTE_CARLO: "Méthode 3 : Monte Carlo (Probabiliste)",
 }
-LABEL_TO_MODE = {v: k for k, v in MODE_LABELS.items()}
-
+LABEL_TO_MODE_AUTO = {v: k for k, v in MODE_LABELS_AUTO.items()}
 DEFAULT_PROJECTION_YEARS = 5
+DEFAULT_TICKER = "PM"
 
 
 def main() -> None:
+    """Point d'entrée principal."""
     st.set_page_config(
-        page_title="Calculateur de Valeur Intrinsèque (DCF)",
+        page_title="IV Pricer",
         layout="wide",
         initial_sidebar_state="expanded",
     )
 
-    st.title("🔎 Calculateur de Valeur Intrinsèque (DCF)")
+    st.title("Intrinsic Value Pricer")
     st.markdown(
-        "Estimation de la valeur intrinsèque d'une entreprise cotée selon plusieurs méthodologies.\n\n"
-        "**Attention :** ceci est un outil d'aide à la décision, pas un conseil en investissement."
+        """
+        Plateforme de valorisation d'entreprise par actualisation des flux de trésorerie (DCF).
+        """
     )
 
-    # ------------------------------------------------------------------
-    # Barre latérale – paramètres d'entrée
-    # ------------------------------------------------------------------
-    st.sidebar.header("Paramètres de l'Analyse")
+    try:
+        # --- SIDEBAR (PILOTAGE) ---
+        st.sidebar.header("Configuration")
 
-    ticker = (
-        st.sidebar.text_input(
-            "Symbole Boursier (Ticker)",
-            value="AAPL",
-            help="Exemple : AAPL (Apple), MSFT (Microsoft), O (Realty Income), MC.PA (LVMH)",
+        mode_source = st.sidebar.radio(
+            "Source des Hypothèses",
+            ["Automatique (Marché)", "Manuelle (Expert)"],
+            index=0,
+            key="main_mode_selector"
         )
-        .upper()
-        .strip()
-    )
 
-    projection_years = st.sidebar.number_input(
-        "Années de projection (n)",
-        min_value=3,
-        max_value=15,
-        value=DEFAULT_PROJECTION_YEARS,
-        step=1,
-        help="Horizon de projection des flux de trésorerie (en années).",
-    )
+        # MODE AUTOMATIQUE
+        if mode_source == "Automatique (Marché)":
+            st.sidebar.divider()
+            st.sidebar.subheader("Paramètres")
 
-    mode_label = st.sidebar.selectbox(
-        "Méthode de valorisation",
-        options=list(MODE_LABELS.values()),
-        index=0,
-        help=(
-            "**Méthode 1 (Simple)** : Rapide. Utilise les derniers flux connus (TTM). Idéal pour une première estimation.\n\n"
-            "**Méthode 2 (Fondamentale)** : Robuste. Reconstruit les flux à partir du résultat opérationnel (EBIT) et du bilan, lissés sur 3 ans. Plus stable.\n\n"
-            "**Méthode 3 (Monte Carlo)** : Avancée (Hedge Fund). Simule 2000 scénarios en faisant varier la croissance et le risque pour donner une fourchette de probabilité."
-        ),
-    )
-    mode = LABEL_TO_MODE[mode_label]
-    logger.info("Mode de valorisation sélectionné dans l'interface : %s", mode.value)
+            ticker = st.sidebar.text_input("Symbole (Ticker)", value=DEFAULT_TICKER).upper().strip()
 
-    st.sidebar.markdown("---")
-
-    # Bouton d'action principal
-    run_button = st.sidebar.button("Lancer l'Analyse", type="primary")
-
-    # Zone principale
-    if run_button:
-        if not ticker:
-            st.error("Veuillez entrer un symbole boursier (Ticker) valide.")
-        else:
-            # Appel au chef d'orchestre (Workflow)
-            run_workflow_and_display(
-                ticker=ticker,
-                projection_years=int(projection_years),
-                mode=mode,
+            projection_years = st.sidebar.number_input(
+                "Horizon (Années)", min_value=3, max_value=15, value=DEFAULT_PROJECTION_YEARS
             )
-    else:
-        # Message d'accueil par défaut
-        st.info(
-            "👈 **Mode d'emploi :**\n"
-            "1. Entrez un ticker (ex: `NVDA`).\n"
-            "2. Choisissez une méthode (commencez par la **Méthode 1** ou **2**).\n"
-            "3. Cliquez sur **Lancer l'Analyse**.\n\n"
-            "Pour une analyse de risque approfondie, utilisez la **Méthode 3**."
-        )
+
+            mode_label = st.sidebar.selectbox(
+                "Méthode",
+                options=list(MODE_LABELS_AUTO.values()),
+                index=1
+            )
+            selected_mode = LABEL_TO_MODE_AUTO[mode_label]
+
+            st.sidebar.divider()
+
+            if st.sidebar.button("Lancer l'analyse", type="primary", use_container_width=True):
+                if not ticker:
+                    st.warning("Ticker invalide.")
+                else:
+                    logger.info(f"Launch AUTO | Ticker: {ticker} | Mode: {selected_mode.value}")
+                    run_workflow_and_display(
+                        ticker=ticker,
+                        projection_years=int(projection_years),
+                        mode=selected_mode,
+                        input_source=InputSource.AUTO,
+                        manual_params=None,
+                        manual_beta=None
+                    )
+            else:
+                st.info("Saisissez un ticker pour démarrer.")
+
+        # MODE MANUEL
+        else:
+            st.sidebar.divider()
+            st.sidebar.info("Le mode manuel active le module fondamental avec contrôle total des inputs.")
+
+            # Appel du formulaire expert (qui contient son propre bouton)
+            expert_input: Optional[ExpertReturn] = display_expert_inputs(
+                DEFAULT_TICKER, DEFAULT_PROJECTION_YEARS
+            )
+
+            if expert_input is not None:
+                ticker, years, params, beta, mode, is_submitted = expert_input
+
+                if is_submitted:
+                    logger.info(f"Launch MANUAL | Ticker: {ticker}")
+                    run_workflow_and_display(
+                        ticker=ticker,
+                        projection_years=years,
+                        mode=mode,
+                        input_source=InputSource.MANUAL,
+                        manual_params=params,
+                        manual_beta=beta
+                    )
+
+    except Exception as main_e:
+        logger.critical(f"CRITICAL FAILURE: {main_e}", exc_info=True)
+        st.error("Une erreur critique est survenue.")
+        st.exception(main_e)
 
 
 if __name__ == "__main__":
