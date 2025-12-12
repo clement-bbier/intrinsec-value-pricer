@@ -7,29 +7,50 @@ import streamlit as st
 from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest
 from core.computation.transformations import relever_beta
 
+# Tuple de retour pour compatibilité legacy (sera déprécié plus tard)
 ExpertReturn = Tuple[str, int, DCFParameters, float, ValuationMode, bool]
 
 
 def _display_simple_expert_inputs(ticker: str, years: int) -> DCFParameters:
-    with st.expander("Hypothèses de Croissance", expanded=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            g = st.number_input("Taux Croissance (g) %", value=5.0, step=0.5) / 100
-        with c2:
-            g_perp = st.number_input("Taux Terminal (g∞) %", value=2.0, step=0.1, max_value=5.0) / 100
+    st.markdown("#### Hypothèses de Croissance")
+    c1, c2 = st.columns(2)
+    with c1:
+        g = st.number_input(
+            "Croissance FCF (g) %",
+            value=5.0, step=0.5, format="%.1f",
+            help="Taux de croissance annuel moyen sur la période de projection."
+        ) / 100.0
+    with c2:
+        g_perp = st.number_input(
+            "Croissance Terminale (g∞) %",
+            value=2.0, step=0.1, min_value=0.0, max_value=5.0, format="%.1f",
+            help="Croissance à l'infini. Ne doit pas dépasser le PIB (généralement < 3%)."
+        ) / 100.0
 
-    with st.expander("Coût du Capital (WACC)", expanded=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            rf = st.number_input("Taux sans risque %", value=4.0, step=0.1) / 100
-        with c2:
-            mrp = st.number_input("Prime de risque %", value=5.5, step=0.1) / 100
+    st.markdown("#### Coût du Capital (WACC)")
+    c1, c2 = st.columns(2)
+    with c1:
+        rf = st.number_input(
+            "Taux sans risque (Rf) %",
+            value=4.0, step=0.1, format="%.1f"
+        ) / 100.0
+    with c2:
+        mrp = st.number_input(
+            "Prime de risque (MRP) %",
+            value=5.5, step=0.1, format="%.1f"
+        ) / 100.0
 
-        c3, c4 = st.columns(2)
-        with c3:
-            kd = st.number_input("Coût Dette Brut %", value=5.0, step=0.25) / 100
-        with c4:
-            tax = st.number_input("Taux Impôt %", value=25.0, step=1.0) / 100
+    c3, c4 = st.columns(2)
+    with c3:
+        kd = st.number_input(
+            "Coût Dette Brut (Kd) %",
+            value=5.0, step=0.25, format="%.2f"
+        ) / 100.0
+    with c4:
+        tax = st.number_input(
+            "Taux Impôt (IS) %",
+            value=25.0, step=1.0, format="%.1f"
+        ) / 100.0
 
     return DCFParameters(
         risk_free_rate=rf,
@@ -43,20 +64,40 @@ def _display_simple_expert_inputs(ticker: str, years: int) -> DCFParameters:
 
 
 def _display_fundamental_expert_inputs(ticker: str, years: int) -> Tuple[DCFParameters, float]:
-    with st.expander("Croissance & Flux", expanded=True):
+    # 1. CROISSANCE (Inputs indépendants)
+    with st.expander("Paramètres de Croissance (Cycle)", expanded=True):
         c1, c2 = st.columns(2)
         with c1:
-            g = st.number_input("Taux Croissance Initial %", value=5.0, step=0.5) / 100
-            high_growth_years = st.slider("Durée Phase Haute (années)", 0, 10, 5)
+            g = st.number_input(
+                "Croissance Initiale %",
+                value=5.0, step=0.5, format="%.1f"
+            ) / 100.0
+            high_growth_years = st.slider("Durée Plateau Croissance (années)", 0, 10, 5)
         with c2:
-            g_perp = st.number_input("Taux Terminal (g∞) %", value=2.0, step=0.1) / 100
+            g_perp = st.number_input(
+                "Croissance Terminale (g∞) %",
+                value=2.0, step=0.1, min_value=0.0, max_value=4.0, format="%.1f"
+            ) / 100.0
 
+    # 2. STRUCTURE & DETTE (Déplacé AVANT l'Equity pour fournir 'tax' au calcul du Beta)
+    with st.expander("Structure Financière & Dette", expanded=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            kd = st.number_input("Coût Dette Brut (Kd) %", value=5.0, step=0.25, key="kd_fund") / 100.0
+            # [Correction] Tax définie ici pour être disponible dans le bloc Equity
+            tax = st.number_input("Taux Impôt (IS) %", value=25.0, step=1.0, key="tax_fund") / 100.0
+        with c2:
+            st.markdown("**Poids Cibles (Target)**")
+            w_e = st.number_input("Poids Equity %", value=80.0, step=5.0, max_value=100.0) / 100.0
+            w_d = st.number_input("Poids Dette %", value=20.0, step=5.0, max_value=100.0) / 100.0
+
+    # 3. EQUITY (Dépend de 'tax')
     with st.expander("Coût des Fonds Propres (Equity)", expanded=True):
-        capm_mode = st.radio(
-            "Méthode de calcul",
+        mode_ke = st.radio(
+            "Méthode Calcul Ke",
             ["CAPM (Modèle)", "Saisie Directe"],
             horizontal=True,
-            label_visibility="collapsed",
+            label_visibility="collapsed"
         )
 
         beta_final = 1.0
@@ -64,37 +105,30 @@ def _display_fundamental_expert_inputs(ticker: str, years: int) -> Tuple[DCFPara
         rf = 0.04
         mrp = 0.055
 
-        if capm_mode == "CAPM (Modèle)":
+        if mode_ke == "CAPM (Modèle)":
             beta_type = st.radio(
                 "Source Beta",
                 ["Beta Levier (Observé)", "Beta Désendetté (Hamada)"],
-                horizontal=True,
+                horizontal=True
             )
             c1, c2 = st.columns(2)
             with c1:
-                rf = st.number_input("Taux sans Risque %", value=4.0, step=0.1) / 100
+                rf = st.number_input("Taux sans Risque (Rf) %", value=4.0, step=0.1) / 100.0
             with c2:
-                mrp = st.number_input("Prime de Risque %", value=5.5, step=0.1) / 100
+                mrp = st.number_input("Prime de Risque (MRP) %", value=5.5, step=0.1) / 100.0
 
             if beta_type == "Beta Levier (Observé)":
                 beta_final = st.number_input("Beta", value=1.0, step=0.05)
             else:
-                beta_u = st.number_input("Beta Désendetté", value=0.8, step=0.05)
-                target_d_e = st.number_input("Dette/Equity Cible %", value=30.0, step=5.0) / 100
-                beta_final = relever_beta(beta_u, 0.25, target_d_e, 1.0)
+                beta_u = st.number_input("Beta Désendetté (Unlevered)", value=0.8, step=0.05)
+                target_d_e = st.number_input("Dette/Equity Cible %", value=30.0, step=5.0) / 100.0
+
+                # [Correction] Utilisation de la variable 'tax' définie au bloc précédent
+                beta_final = relever_beta(beta_u, tax, target_d_e, 1.0)
                 st.caption(f"Beta Réendetté Calculé : {beta_final:.2f}")
         else:
-            manual_ke = st.number_input("Coût Equity Cible %", value=8.5, step=0.1) / 100
-            beta_final = st.number_input("Beta (Pour info)", value=1.0)
-
-    with st.expander("Structure Financière & Dette", expanded=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            kd = st.number_input("Coût Dette Brut %", value=5.0, step=0.25, key="kd_fund") / 100
-            tax = st.number_input("Impôt %", value=25.0, step=1.0, key="tax_fund") / 100
-        with c2:
-            w_e = st.number_input("Poids Equity %", value=80.0, step=5.0) / 100
-            w_d = st.number_input("Poids Dette %", value=20.0, step=5.0) / 100
+            manual_ke = st.number_input("Coût Equity Cible (Ke) %", value=8.5, step=0.1) / 100.0
+            beta_final = st.number_input("Beta (Pour information)", value=1.0)
 
     params = DCFParameters(
         risk_free_rate=rf,
@@ -109,22 +143,26 @@ def _display_fundamental_expert_inputs(ticker: str, years: int) -> Tuple[DCFPara
         target_debt_weight=float(w_d),
         manual_cost_of_equity=manual_ke,
     )
+    # Normalisation immédiate des poids (Invariant UI)
     params.normalize_weights()
+
     return params, float(beta_final)
 
 
 def _display_monte_carlo_expert_inputs(ticker: str, years: int) -> Tuple[DCFParameters, float]:
     base_params, beta = _display_fundamental_expert_inputs(ticker, years)
 
-    with st.expander("Paramètres de Simulation (Volatilité)", expanded=True):
+    with st.expander("Simulation Monte Carlo (Volatilité)", expanded=True):
+        st.caption("Écart-type relatif des paramètres (Sigma).")
         c1, c2 = st.columns(2)
         with c1:
-            vol_beta = st.number_input("Volatilité Beta %", value=10.0, step=1.0) / 100
+            vol_beta = st.number_input("Volatilité Beta %", value=15.0, step=1.0) / 100.0
         with c2:
-            vol_g = st.number_input("Volatilité Croissance %", value=1.5, step=0.1) / 100
+            vol_g = st.number_input("Volatilité Croissance %", value=20.0, step=1.0) / 100.0
 
     base_params.beta_volatility = float(vol_beta)
     base_params.growth_volatility = float(vol_g)
+    # On force une volatilité terminale plus faible par défaut
     base_params.terminal_growth_volatility = float(vol_g) / 2.0
 
     return base_params, beta
@@ -132,16 +170,17 @@ def _display_monte_carlo_expert_inputs(ticker: str, years: int) -> Tuple[DCFPara
 
 def display_expert_request(default_ticker: str, default_years: int) -> Optional[ValuationRequest]:
     """
-    Strict CH02 output: returns ValuationRequest when submitted, else None.
+    Formulaire Expert Complet.
+    Retourne un ValuationRequest prêt pour le moteur.
     """
-    st.subheader("Paramètres Manuels")
+    st.subheader("Paramètres Manuels (Expert)")
 
     method_options = {
         "DCF Simplifié": ValuationMode.SIMPLE_FCFF,
         "DCF Analytique": ValuationMode.FUNDAMENTAL_FCFF,
         "DCF Probabiliste": ValuationMode.MONTE_CARLO,
     }
-    label = st.selectbox("Méthode", list(method_options.keys()))
+    label = st.selectbox("Méthode de Valorisation", list(method_options.keys()))
     mode = method_options[label]
 
     st.markdown("---")
@@ -150,7 +189,7 @@ def display_expert_request(default_ticker: str, default_years: int) -> Optional[
     with c1:
         ticker = st.text_input("Ticker", value=default_ticker).upper().strip()
     with c2:
-        years = st.slider("Horizon (années)", 3, 15, int(default_years))
+        years = st.slider("Horizon de Projection (années)", 3, 15, int(default_years))
 
     if mode == ValuationMode.SIMPLE_FCFF:
         params = _display_simple_expert_inputs(ticker, years)
@@ -160,9 +199,11 @@ def display_expert_request(default_ticker: str, default_years: int) -> Optional[
     else:
         params, beta_final = _display_monte_carlo_expert_inputs(ticker, years)
 
-    with st.expander("Avancé : Surcharge FCF Initial", expanded=False):
-        if st.checkbox("Surcharger FCF Base"):
-            params.manual_fcf_base = st.number_input("FCF Manuel", value=1_000_000.0, format="%.0f")
+    with st.expander("Avancé : Surcharge Flux Initial", expanded=False):
+        use_manual_fcf = st.checkbox("Surcharger FCF de Base")
+        if use_manual_fcf:
+            params.manual_fcf_base = st.number_input("FCF Manuel (Devise Locale)", value=100_000_000.0,
+                                                     step=1_000_000.0, format="%.0f")
 
     st.markdown("---")
 
@@ -171,10 +212,8 @@ def display_expert_request(default_ticker: str, default_years: int) -> Optional[
         return None
 
     if not ticker:
-        st.error("[INPUT ERROR] ticker is empty")
+        st.error("[ERREUR] Le ticker est requis.")
         return None
-
-    params.normalize_weights()
 
     return ValuationRequest(
         ticker=ticker,
@@ -186,15 +225,9 @@ def display_expert_request(default_ticker: str, default_years: int) -> Optional[
     )
 
 
+# Wrapper Legacy
 def display_expert_inputs(default_ticker: str, default_years: int) -> Optional[ExpertReturn]:
-    """
-    Legacy wrapper (kept to avoid breaking external imports).
-    Prefer display_expert_request().
-    """
     req = display_expert_request(default_ticker, default_years)
     if req is None:
         return None
-
-    assert req.manual_params is not None
-    assert req.manual_beta is not None
     return req.ticker, req.projection_years, req.manual_params, req.manual_beta, req.mode, True

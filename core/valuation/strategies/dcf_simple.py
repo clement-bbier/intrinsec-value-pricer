@@ -10,24 +10,10 @@ logger = logging.getLogger(__name__)
 class SimpleFCFFStrategy(ValuationStrategy):
     """
     STRATÉGIE 1 : DCF "SNAPSHOT" (BASE TTM).
-
-    Philosophie :
-    - Approche "photo" : le FCF des 12 derniers mois (TTM) sert de base de projection.
-    - Méthode rapide pour une première estimation.
-
-    Préconditions :
-    - `financials.fcf_last` doit être disponible.
-    - Les paramètres `params` sont supposés valides (ex: cohérence WACC vs g∞, horizon, etc.).
+    Utilise fcf_last.
     """
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFResult:
-        """
-        Execute the Simple FCFF valuation.
-
-        Notes (observabilité) :
-        - Cette stratégie peut être appelée comme moteur interne (ex: Monte Carlo).
-        - Les logs doivent donc rester neutres (pas d’assertion "mode sélectionné").
-        """
         logger.info(
             "[Strategy] Executing SimpleFCFFStrategy | ticker=%s | currency=%s | years=%s",
             financials.ticker,
@@ -35,25 +21,36 @@ class SimpleFCFFStrategy(ValuationStrategy):
             params.projection_years,
         )
 
-        if financials.fcf_last is None:
+        # 1. Validation de l'input spécifique
+        fcf_base = financials.fcf_last
+
+        # Override manuel prioritaire
+        if params.manual_fcf_base is not None:
+            fcf_base = params.manual_fcf_base
+            logger.info("[Simple] Override FCF Manuel : %s", fcf_base)
+
+        if fcf_base is None:
+            msg = (
+                "Donnée manquante : FCF TTM (fcf_last) introuvable. "
+                "Impossible d'exécuter la méthode Simple."
+            )
             logger.error(
-                "Missing required data | ticker=%s | field=fcf_last | method=SimpleFCFFStrategy",
+                "%s | ticker=%s",
+                msg,
                 financials.ticker,
             )
-            raise CalculationError(
-                "Donnée manquante : FCF TTM (fcf_last). "
-                "Impossible d'exécuter la méthode Simple sans un flux de référence récent. "
-                "Vérifiez que le ticker est correct et que les données financières sont disponibles."
-            )
+            raise CalculationError(msg)
 
         logger.info(
-            "[Simple] FCF start=%s %s | source=ttm",
-            f"{financials.fcf_last:,.0f}",
+            "[Simple] FCF start=%s %s | source=%s",
+            f"{fcf_base:,.0f}",
             financials.currency,
+            "manual" if params.manual_fcf_base else "ttm"
         )
 
+        # 2. Exécution du moteur standard
         return self._compute_standard_dcf(
-            fcf_start=financials.fcf_last,
+            fcf_start=fcf_base,
             financials=financials,
             params=params,
         )

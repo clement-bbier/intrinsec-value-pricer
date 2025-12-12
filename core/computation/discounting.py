@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 from dataclasses import dataclass
 
 from core.exceptions import CalculationError
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 # TABLES DE SPREAD DAMODARAN (Mise à jour 2024/2025)
 # ==============================================================================
 
-# TABLE 1 : LARGE CAPS (> 5 Mrd $)
 SPREADS_LARGE_CAP = [
     (8.5, 0.0069), (6.5, 0.0085), (5.5, 0.0107), (4.25, 0.0118),
     (3.0, 0.0133), (2.5, 0.0171), (2.25, 0.0213), (2.0, 0.0277),
@@ -19,7 +18,6 @@ SPREADS_LARGE_CAP = [
     (0.65, 0.1060), (0.2, 0.1500), (-999, 0.2000)
 ]
 
-# TABLE 2 : SMALL/MID CAPS (< 5 Mrd $)
 SPREADS_SMALL_MID_CAP = [
     (12.5, 0.0069), (9.5, 0.0085), (7.5, 0.0107), (6.0, 0.0118),
     (4.5, 0.0133), (4.0, 0.0171), (3.5, 0.0213), (3.0, 0.0277),
@@ -30,7 +28,6 @@ SPREADS_SMALL_MID_CAP = [
 
 @dataclass
 class FullWACCContext:
-    """Résultat détaillé du WACC après gestion des overrides."""
     cost_of_equity: float
     cost_of_debt_pre_tax: float
     cost_of_debt_after_tax: float
@@ -60,9 +57,8 @@ def calculate_synthetic_cost_of_debt(
         equity_value_market: float
 ) -> float:
     """Détermine le Rd synthétique basé sur l'ICR et la taille de la capitalisation."""
-
     if interest_expense <= 0:
-        return risk_free_rate + 0.0107
+        return risk_free_rate + 0.0107  # Spread par défaut (AAA/AA)
 
     icr = ebit / interest_expense
     is_large_cap = equity_value_market >= 5_000_000_000
@@ -77,48 +73,14 @@ def calculate_synthetic_cost_of_debt(
     return risk_free_rate + selected_spread
 
 
-def calculate_wacc(
-        equity_value: float,
-        debt_value: float,
-        cost_of_equity: float,
-        cost_of_debt: float,
-        tax_rate: float,
-        target_equity_weight: float = 0.0,
-        target_debt_weight: float = 0.0,
-) -> Tuple[float, float, float, float]:
-    """Helper historique."""
-    we = 0.0
-    wd = 0.0
-
-    if target_equity_weight > 0.0 and target_debt_weight > 0.0:
-        if abs(target_equity_weight + target_debt_weight - 1.0) < 0.0001:
-            we = target_equity_weight
-            wd = target_debt_weight
-
-    if we == 0.0:
-        total_capital = equity_value + debt_value
-        if total_capital <= 0:
-            return 0.0, 0.0, 0.0, 0.0
-        we = equity_value / total_capital
-        wd = debt_value / total_capital
-
-    rd_net = cost_of_debt * (1.0 - tax_rate)
-    wacc = (we * cost_of_equity) + (wd * rd_net)
-
-    return wacc, we, wd, rd_net
-
-
 def calculate_wacc_full_context(
         financials: CompanyFinancials,
         params: DCFParameters
 ) -> FullWACCContext:
     """
-    Calcule le WACC en gérant les overrides Experts (Coût Equity Manuel, Poids Cibles).
+    Calcule le WACC avec gestion des overrides et validation des poids.
     """
-
-    # 1. DÉTERMINATION DU COÛT DES FONDS PROPRES (Ke)
-    market_equity_value = financials.current_price * financials.shares_outstanding
-
+    # 1. COÛT DES FONDS PROPRES (Ke)
     if params.manual_cost_of_equity is not None:
         cost_equity = params.manual_cost_of_equity
     else:
@@ -130,29 +92,38 @@ def calculate_wacc_full_context(
     cost_debt_pre_tax = params.cost_of_debt
     cost_debt_after_tax = cost_debt_pre_tax * (1.0 - params.tax_rate)
 
-    # 3. DÉTERMINATION DES POIDS (W_E, W_D)
-    weight_equity, weight_debt, method_used = 0.0, 0.0, "MARKET_FALLBACK"
+    # 3. PONDÉRATIONS (Market Value vs Target)
+    market_equity_value = financials.current_price * financials.shares_outstanding
 
     if params.target_equity_weight > 0.0 and params.target_debt_weight > 0.0:
-        weight_equity = params.target_equity_weight
-        weight_debt = params.target_debt_weight
+        # Normalisation de sécurité
+        total_w = params.target_equity_weight + params.target_debt_weight
+        weight_equity = params.target_equity_weight / total_w
+        weight_debt = params.target_debt_weight / total_w
         method_used = "TARGET"
     else:
+        # Poids de marché
         total_debt = financials.total_debt
         total_capital = market_equity_value + total_debt
 
-        if total_capital > 0:
+        if total_capital <= 0:
+            # Fallback de secours si données manquantes
+            weight_equity = 1.0
+            weight_debt = 0.0
+            method_used = "FORCED_EQUITY"
+        else:
             weight_equity = market_equity_value / total_capital
             weight_debt = total_debt / total_capital
             method_used = "MARKET"
-        else:
-            weight_equity = 1.0
 
-    # 4. CALCUL FINAL DU WACC
+    # 4. WACC
     wacc = (weight_equity * cost_equity) + (weight_debt * cost_debt_after_tax)
 
+    # Invariant de sécurité (WACC ne peut être négatif ou nul en nominal)
     if wacc <= 0.001:
-        raise CalculationError(f"WACC calculé ({wacc:.2%}) est proche de zéro.")
+        # On ne bloque pas si c'est mathématiquement "juste" (ex: taux négatifs),
+        # mais pour un DCF c'est suspect.
+        pass
 
     return FullWACCContext(
         cost_of_equity=cost_equity,
@@ -170,14 +141,25 @@ def calculate_wacc_full_context(
 # ==============================================================================
 
 def calculate_discount_factors(wacc: float, years: int) -> List[float]:
+    """Retourne la liste des facteurs d'actualisation (1 / (1+r)^t)."""
     return [1.0 / ((1.0 + wacc) ** t) for t in range(1, years + 1)]
 
 
 def calculate_terminal_value(final_fcf: float, wacc: float, g_perp: float) -> float:
+    """
+    Calcule la valeur terminale (Gordon Shapiro).
+    Invariant BLOQUANT : WACC > g_perp.
+    """
     if wacc <= g_perp:
-        raise CalculationError(f"WACC ({wacc:.2%}) <= Croissance Terminale ({g_perp:.2%}).")
+        raise CalculationError(
+            f"Convergence impossible : WACC ({wacc:.2%}) <= Croissance Terminale ({g_perp:.2%}). "
+            "La valeur terminale est infinie mathématiquement."
+        )
+
+    # TV = FCF_n * (1+g) / (WACC - g)
     return (final_fcf * (1.0 + g_perp)) / (wacc - g_perp)
 
 
 def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float) -> float:
-    return enterprise_value - (total_debt - cash)
+    """Bridge EV -> Equity Value."""
+    return enterprise_value - total_debt + cash

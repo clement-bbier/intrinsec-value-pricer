@@ -13,7 +13,9 @@ def unlever_beta(
     Désendette le Beta (Hamada Equation).
     Beta_u = Beta_l / (1 + (1 - t) * (D / E))
     """
-    if equity == 0:
+    if equity <= 0:
+        # Si Equity nulle ou négative, le concept de D/E explose.
+        # On retourne le Beta brut par sécurité.
         return beta_levered
 
     d_e_ratio = debt / equity
@@ -28,10 +30,13 @@ def relever_beta(
 ) -> float:
     """
     Réendette le Beta selon une structure cible.
-    Beta_l = Beta_u * (1 + (1 - t) * (D / E))
+    Utilise les poids cibles (%D, %E) pour reconstruire le D/E.
+    D/E = Wd / We
     """
-    if target_equity_weight == 0:
-        return beta_unlevered  # Cas extrême, non pertinent pour CAPM
+    if target_equity_weight <= 0.001:
+        # Si 100% dette, Beta Equity tend vers l'infini.
+        # On retourne une valeur neutre ou le beta asset (cas limite).
+        return beta_unlevered
 
     d_e_ratio = target_debt_weight / target_equity_weight
     return beta_unlevered * (1.0 + (1.0 - tax_rate) * d_e_ratio)
@@ -42,7 +47,5 @@ def calculate_total_debt_from_net(net_debt: float, cash: float) -> float:
     Reconstruit la dette brute (Total Debt) nécessaire au WACC.
     Total Debt = Net Debt + Cash
     """
-    # Si Net Debt est négative (Cash > Dette), Total Debt peut être 0 ou positive.
-    # Mathématiquement : Dette = Net + Cash.
-    # On applique un floor à 0 car une dette comptable ne peut être négative.
+    # Invariant : La dette brute comptable ne peut être négative.
     return max(0.0, net_debt + cash)
