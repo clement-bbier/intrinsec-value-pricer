@@ -1,6 +1,7 @@
 from typing import Any, List, Dict
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 from core.models import (
     ValuationResult,
@@ -17,51 +18,37 @@ from app.ui_components.ui_methodology import (
 
 def format_currency(x: float | None, currency: str) -> str:
     if x is None: return "-"
-    return f"{x:,.2f} {currency}".replace(",", " ")
+    # Gestion automatique des grands nombres
+    if abs(x) >= 1_000_000_000:
+        return f"{x / 1e9:,.2f} B {currency}"
+    if abs(x) >= 1_000_000:
+        return f"{x / 1e6:,.2f} M {currency}"
+    return f"{x:,.2f} {currency}"
 
 
 def _render_audit_category_block(title: str, score: float, logs: List[AuditLog]):
-    """
-    Affiche un bloc d'audit pour une catégorie spécifique.
-    """
-    # Couleur de la barre de score
     color = "green" if score >= 80 else "orange" if score >= 50 else "red"
-
     with st.expander(f"{title} (Score: {score:.0f}/100)", expanded=(score < 100)):
-        # Barre de progression visuelle
         st.progress(int(score) / 100, text=None)
-
-        # Liste des items (Checklist)
         for log in logs:
             if log.severity == "success":
-                # Item Validé
                 st.markdown(f":green[**[OK]**] {log.message}")
             else:
-                # Item Problématique
                 tag = "[FAIL]" if log.severity in ["critical", "high"] else "[WARN]"
                 st.markdown(f":red[**{tag}**] {log.message} *(-{abs(log.penalty)} pts)*")
 
 
 def _render_detailed_audit_view(report: AuditReport):
-    """
-    Vue détaillée éclatée par catégorie.
-    """
     categories = ["Données", "Cohérence", "Méthode"]
-
-    # On filtre les logs par catégorie
     for cat in categories:
         cat_logs = [l for l in report.logs if l.category == cat]
         if not cat_logs: continue
-
-        # Récupération du score spécifique
         cat_score = report.breakdown.get(cat, 0.0)
-
         _render_audit_category_block(cat, cat_score, cat_logs)
 
 
 def _render_assumptions(financials, params, result, mode):
     currency = financials.currency
-
     st.markdown("#### Hypothèses Clés")
     c1, c2, c3 = st.columns(3)
 
@@ -83,27 +70,21 @@ def _render_assumptions(financials, params, result, mode):
 
 
 def display_results(res: ValuationResult):
-    """Affiche les résultats complets de la valorisation."""
     financials = res.financials
     dcf = res.dcf
     mode = res.request.mode
     currency = financials.currency
 
-    # Header
     st.subheader(f"Résultats : {financials.ticker}")
 
-    # Top KPIs
     c1, c2, c3 = st.columns(3)
-
     with c1:
         st.metric("Prix Marché", format_currency(res.market_price, currency))
-
     with c2:
         label_val = "Valeur Intrinsèque"
         if mode == ValuationMode.MONTE_CARLO: label_val += " (P50)"
         st.metric(label_val, format_currency(res.intrinsic_value_per_share, currency),
                   delta=f"{res.upside_pct:.1%}" if res.upside_pct else None)
-
     with c3:
         if dcf.quantiles:
             st.metric("Fourchette (P10 - P90)",
@@ -113,12 +94,10 @@ def display_results(res: ValuationResult):
 
     st.markdown("---")
 
-    # Tabs
     t1, t2, t3, t4 = st.tabs(["Synthèse", "Projections", "Méthodologie", "Détail Audit"])
 
     with t1:
         _render_assumptions(financials, res.params, res, mode)
-
     with t2:
         fcfs = dcf.projected_fcfs
         years = [f"An {i + 1}" for i in range(len(fcfs))]
@@ -129,7 +108,6 @@ def display_results(res: ValuationResult):
         })
         st.dataframe(df_proj.style.format({"FCF Projeté": "{:,.0f}", "Discount Factor": "{:.3f}"}),
                      use_container_width=True)
-
     with t3:
         if mode == ValuationMode.SIMPLE_FCFF:
             display_simple_dcf_formula(financials, res.params)
@@ -137,10 +115,8 @@ def display_results(res: ValuationResult):
             display_fundamental_dcf_formula(financials, res.params)
         elif mode == ValuationMode.MONTE_CARLO:
             display_monte_carlo_formula(financials, res.params)
-
     with t4:
         if res.audit_report:
-            # Pas de jauge globale, détail direct par catégorie
             _render_detailed_audit_view(res.audit_report)
         else:
             st.info("Pas de rapport d'audit disponible.")
