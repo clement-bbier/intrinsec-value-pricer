@@ -1,7 +1,8 @@
 import logging
+
+from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, DCFResult
 from core.valuation.strategies.abstract import ValuationStrategy
-from core.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
 
@@ -10,40 +11,43 @@ class FundamentalFCFFStrategy(ValuationStrategy):
     """
     STRATÉGIE 2 : DCF "FONDAMENTAL" (BASE NORMALISÉE).
 
-    PHILOSOPHIE :
-    Au lieu de croire aveuglément les chiffres de l'année passée, cette méthode cherche
-    la "capacité bénéficiaire normative" de l'entreprise. Elle utilise un FCF reconstruit
-    et lissé sur plusieurs années (généralement Moyenne Pondérée sur 3-5 ans).
+    Philosophie :
+    - Utilise un FCF reconstruit/lissé (normatif) pour réduire la sensibilité aux années atypiques.
 
-    QUAND L'UTILISER ?
-    - Entreprises cycliques (Industrie, Matériaux).
-    - Entreprises ayant eu une année récente atypique (Covid, amende exceptionnelle).
-    - Pour une analyse conservatrice.
-
-    CONTRAINTES & VALIDATION :
-    - Cette classe suppose que l'objet `params` a été validé par `FundamentalDCFConfig`.
-    - Elle exige la présence de `financials.fcf_fundamental_smoothed`.
+    Préconditions :
+    - `financials.fcf_fundamental_smoothed` doit être disponible.
+    - Les paramètres `params` sont supposés valides (validation en amont).
     """
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFResult:
-        logger.info("[Strategy] Mode Fondamental FCFF sélectionné.")
+        logger.info(
+            "[Strategy] Executing FundamentalFCFFStrategy | ticker=%s | currency=%s | years=%s",
+            financials.ticker,
+            financials.currency,
+            params.projection_years,
+        )
 
-        # 1. Validation de la donnée brute nécessaire
         if financials.fcf_fundamental_smoothed is None:
             msg = (
-                "Donnée manquante : FCF Fondamental Lissé. "
-                "La méthode 2 nécessite un historique financier complet (EBIT, Capex, BFR sur 5 ans) "
-                "pour calculer une moyenne normative. Essayez la méthode 1 (Simple) si l'historique est trop court."
+                "Missing data: smoothed fundamental FCF is unavailable. "
+                "Fundamental method requires sufficient financial history (e.g., EBIT/Capex/NWC over multiple years). "
+                "Use Simple method if history is too short."
             )
-            logger.warning(msg)
+            logger.warning(
+                "%s | ticker=%s | field=fcf_fundamental_smoothed | method=FundamentalFCFFStrategy",
+                msg,
+                financials.ticker,
+            )
             raise CalculationError(msg)
 
         logger.info(
-            f"[Fundamental] Point de départ Normatif (FCF Lissé) : {financials.fcf_fundamental_smoothed:,.0f} {financials.currency}")
+            "[Fundamental] FCF start=%s %s | source=smoothed",
+            f"{financials.fcf_fundamental_smoothed:,.0f}",
+            financials.currency,
+        )
 
-        # 2. Exécution via le moteur standard
         return self._compute_standard_dcf(
             fcf_start=financials.fcf_fundamental_smoothed,
             financials=financials,
-            params=params
+            params=params,
         )

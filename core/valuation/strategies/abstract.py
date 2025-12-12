@@ -1,110 +1,138 @@
 import logging
-from typing import List
 from abc import ABC, abstractmethod
+from typing import List
+
 import numpy as np
 
-# --- Imports des modules de calcul (Mis à jour pour Chapitre 5) ---
-# Import du nouveau WACC intelligent et des fonctions standard
-from core.computation.discounting import calculate_wacc_full_context, calculate_discount_factors, \
-    calculate_terminal_value, calculate_equity_value_bridge
-# Import du module de projection (votre module existant 'growth.py' est utilisé)
+from core.computation.discounting import (
+    calculate_discount_factors,
+    calculate_equity_value_bridge,
+    calculate_terminal_value,
+    calculate_wacc_full_context,
+)
 from core.computation.growth import project_flows
-
-from core.models import CompanyFinancials, DCFParameters, DCFResult
 from core.exceptions import CalculationError
+from core.models import CompanyFinancials, DCFParameters, DCFResult
 
 logger = logging.getLogger(__name__)
 
 
 class ValuationStrategy(ABC):
     """
-    CLASSE ABSTRAITE : SQUELETTE DU MODÈLE DCF.
+    Abstract base class for DCF strategies.
 
-    Cette classe utilise désormais le WACC Hybride (Gestion des inputs Manuels/Cibles)
-    et le modèle de projection Fade-Down.
+    Contract:
+    - execute(financials, params) must return a fully populated DCFResult.
+    - _compute_standard_dcf provides the deterministic DCF engine shared by strategies.
+
+    Conventions:
+    - Rates are decimals (0.08 = 8%).
+    - params.projection_years is an integer horizon in years.
     """
 
     @abstractmethod
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFResult:
-        """Exécute la valorisation et retourne le résultat complet."""
-        pass
+        """Run the valuation strategy and return a complete DCFResult."""
+        raise NotImplementedError
 
     def _compute_standard_dcf(
-            self,
-            fcf_start: float,
-            financials: CompanyFinancials,
-            params: DCFParameters
+        self,
+        fcf_start: float,
+        financials: CompanyFinancials,
+        params: DCFParameters,
     ) -> DCFResult:
         """
-        Moteur de calcul DCF déterministe standardisé.
+        Deterministic DCF engine.
 
-        Intègre : WACC Hybride, Projection Fade-Down, Actualisation, Valeur Terminale.
+        Steps:
+        1) WACC computation (full context, supports manual Ke and target weights)
+        2) Cash-flow projection (fade-down / high-growth then terminal growth)
+        3) Discounting
+        4) Terminal value
+        5) EV -> Equity bridge
+        6) Per-share intrinsic value
         """
-        N = params.projection_years
-
-        # --- ÉTAPE 1 : LE COÛT DU RISQUE (WACC) - UTILISATION DU CONTEXTE COMPLET ---
+        # ---- Input guards (do not change behavior, fail fast on impossible inputs) ----
         try:
-            # Utilisation du WACC intelligent qui gère le Ke Manuel et les Poids Cibles
-            wacc_context = calculate_wacc_full_context(financials, params)
-            wacc = wacc_context.wacc
+            N = int(params.projection_years)
+        except Exception as exc:
+            raise CalculationError("Invalid projection_years (cannot cast to int).") from exc
 
-            # Vérification de la convergence, déjà faite dans MethodConfig, mais réaffirmée ici
-            if wacc <= params.perpetual_growth_rate:
+        if N <= 0:
+            raise CalculationError("Invalid projection_years (<= 0).")
+
+        if fcf_start is None:
+            raise CalculationError("Invalid fcf_start (None).")
+
+        try:
+            fcf_start_float = float(fcf_start)
+        except Exception as exc:
+            raise CalculationError("Invalid fcf_start (not a number).") from exc
+
+        # ---- Step 1: WACC ----
+        try:
+            wacc_context = calculate_wacc_full_context(financials, params)
+            wacc = float(wacc_context.wacc)
+
+            # Re-assert key invariant (should already be validated upstream)
+            if wacc <= float(params.perpetual_growth_rate):
                 raise CalculationError(
-                    f"Échec de convergence Mathématique : WACC ({wacc:.2%}) <= Croissance Terminale ({params.perpetual_growth_rate:.2%})"
+                    "Math convergence failure: WACC <= terminal growth "
+                    f"(wacc={wacc:.6f}, g_terminal={float(params.perpetual_growth_rate):.6f})."
                 )
 
-        except ValueError as e:
-            logger.error(f"Erreur calcul WACC : {e}")
-            raise CalculationError(f"Erreur critique lors du calcul du WACC: {e}")
+        except CalculationError:
+            raise
+        except Exception as exc:
+            logger.error("WACC computation failed | ticker=%s | err=%s", financials.ticker, exc)
+            raise CalculationError("Critical failure during WACC computation.") from exc
 
-        # --- ÉTAPE 2 : PROJECTION DES FLUX (Fade-Down/Plateau) ---
-
-        projected_fcfs = project_flows(
-            base_flow=fcf_start,
+        # ---- Step 2: Projection ----
+        projected_fcfs: List[float] = project_flows(
+            base_flow=fcf_start_float,
             years=N,
-            g_start=params.fcf_growth_rate,
-            g_term=params.perpetual_growth_rate,
-            high_growth_years=params.high_growth_years
+            g_start=float(params.fcf_growth_rate),
+            g_term=float(params.perpetual_growth_rate),
+            high_growth_years=int(getattr(params, "high_growth_years", 0) or 0),
         )
 
         if not projected_fcfs or len(projected_fcfs) != N:
-            raise CalculationError("Erreur dans la projection des flux. Nombre d'années projetées incohérent.")
+            raise CalculationError("Cash-flow projection failure: inconsistent number of projected years.")
 
-        # --- ÉTAPE 3 : ACTUALISATION ---
-
+        # ---- Step 3: Discounting ----
         factors = calculate_discount_factors(wacc, N)
-        discounted_fcfs = [f * d for f, d in zip(projected_fcfs, factors)]
+        if not factors or len(factors) != N:
+            raise CalculationError("Discount factor computation failure: inconsistent number of factors.")
+
+        discounted_fcfs = [float(f) * float(d) for f, d in zip(projected_fcfs, factors)]
         sum_discounted = float(np.sum(discounted_fcfs))
 
-        # --- ÉTAPE 4 : VALEUR TERMINALE (TV) ---
+        # ---- Step 4: Terminal value ----
+        tv = float(calculate_terminal_value(projected_fcfs[-1], wacc, float(params.perpetual_growth_rate)))
+        discounted_tv = float(tv * factors[-1])
 
-        tv = calculate_terminal_value(projected_fcfs[-1], wacc, params.perpetual_growth_rate)
-        discounted_tv = tv * factors[-1]
+        # ---- Step 5: EV -> Equity ----
+        ev = float(sum_discounted + discounted_tv)
 
-        # --- ÉTAPE 5 : BRIDGE EV -> EQUITY ---
-
-        ev = sum_discounted + discounted_tv
-        eq_val = calculate_equity_value_bridge(
-            enterprise_value=ev,
-            total_debt=financials.total_debt,
-            cash=financials.cash_and_equivalents
+        eq_val = float(
+            calculate_equity_value_bridge(
+                enterprise_value=ev,
+                total_debt=float(financials.total_debt),
+                cash=float(financials.cash_and_equivalents),
+            )
         )
 
-        # --- ÉTAPE 6 : RESULTAT PAR ACTION ---
+        # ---- Step 6: Per-share ----
+        if float(financials.shares_outstanding) <= 0:
+            raise CalculationError("Invalid shares_outstanding (<= 0).")
 
-        if financials.shares_outstanding <= 0:
-            raise CalculationError("Nombre d'actions invalide (<= 0).")
+        iv_share = float(eq_val / float(financials.shares_outstanding))
 
-        iv_share = eq_val / financials.shares_outstanding
-
-        # --- ÉTAPE 7 : CONSTRUCTION DU RÉSULTAT ---
-
+        # ---- Step 7: Result ----
         return DCFResult(
             wacc=wacc,
-            # Utilisation des résultats du contexte WACC complet pour l'audit/affichage
-            cost_of_equity=wacc_context.cost_of_equity,
-            after_tax_cost_of_debt=wacc_context.cost_of_debt_after_tax,
+            cost_of_equity=float(wacc_context.cost_of_equity),
+            after_tax_cost_of_debt=float(wacc_context.cost_of_debt_after_tax),
             projected_fcfs=projected_fcfs,
             discount_factors=factors,
             sum_discounted_fcf=sum_discounted,
@@ -112,5 +140,5 @@ class ValuationStrategy(ABC):
             discounted_terminal_value=discounted_tv,
             enterprise_value=ev,
             equity_value=eq_val,
-            intrinsic_value_per_share=iv_share
+            intrinsic_value_per_share=iv_share,
         )

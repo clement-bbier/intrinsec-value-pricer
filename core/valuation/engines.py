@@ -1,14 +1,12 @@
 import logging
 from typing import Dict, Type, List, Optional, Tuple
 
-import numpy as np
-
-from core.models import CompanyFinancials, DCFParameters, DCFResult, ValuationMode, ValuationRequest, InputSource
-from core.valuation.strategies.abstract import ValuationStrategy
-from core.valuation.strategies.dcf_simple import SimpleFCFFStrategy
-from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
 from core.computation.statistics import generate_multivariate_samples, generate_independent_samples
 from core.exceptions import CalculationError, WorkflowError
+from core.models import CompanyFinancials, DCFParameters, DCFResult, InputSource, ValuationMode, ValuationRequest
+from core.valuation.strategies.abstract import ValuationStrategy
+from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+from core.valuation.strategies.dcf_simple import SimpleFCFFStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +17,18 @@ STRATEGY_MAP: Dict[ValuationMode, Type[ValuationStrategy]] = {
 
 
 def run_deterministic_dcf(financials: CompanyFinancials, params: DCFParameters, mode: ValuationMode) -> DCFResult:
+    """
+    Deterministic dispatcher for officially supported deterministic strategies.
+    """
     strategy_cls = STRATEGY_MAP.get(mode)
     if not strategy_cls:
         raise CalculationError(f"Unsupported deterministic mode: {mode.value}")
+
+    logger.info(
+        "[Engine] Deterministic run | ticker=%s | mode=%s",
+        financials.ticker,
+        mode.value,
+    )
     return strategy_cls().execute(financials, params)
 
 
@@ -32,6 +39,10 @@ def run_reverse_dcf(
     tolerance: float = 0.01,
     max_iterations: int = 50,
 ) -> Optional[float]:
+    """
+    Reverse DCF (binary search on fcf_growth_rate) using FundamentalFCFFStrategy.
+    Returns implied growth rate, or None if input invalid.
+    """
     if market_price <= 0:
         return None
 
@@ -84,19 +95,48 @@ def run_reverse_dcf(
     return (low + high) / 2.0
 
 
-def run_monte_carlo_dcf(financials: CompanyFinancials, params: DCFParameters, num_simulations: int = 2000) -> DCFResult:
+def run_monte_carlo_dcf(
+    financials: CompanyFinancials,
+    params: DCFParameters,
+    num_simulations: int = 2000,
+) -> DCFResult:
+    """
+    Monte Carlo wrapper:
+    - draws beta and growth scenarios,
+    - runs an inner deterministic engine for each scenario,
+    - returns a deterministic DCFResult with simulation distribution attached.
+
+    Note:
+    - The inner engine currently uses SimpleFCFFStrategy by design (performance + stable inputs).
+    - This is why SimpleFCFFStrategy logs must remain neutral.
+    """
+    if num_simulations <= 0:
+        raise CalculationError("num_simulations must be > 0")
+
+    logger.info(
+        "[Engine] Monte Carlo run | ticker=%s | sims=%s | inner_engine=%s",
+        financials.ticker,
+        num_simulations,
+        "SimpleFCFFStrategy",
+    )
+
+    beta_mu = float(financials.beta)
+    sigma_beta = float(params.beta_volatility) * abs(beta_mu)
+
+    # Ensure well-defined sampling even if volatility is zero.
+    # (generate_multivariate_samples might still work, but we keep behavior stable and explicit.)
     betas, growths = generate_multivariate_samples(
-        mu_beta=financials.beta,
-        sigma_beta=params.beta_volatility * abs(financials.beta),
-        mu_growth=params.fcf_growth_rate,
-        sigma_growth=params.growth_volatility,
+        mu_beta=beta_mu,
+        sigma_beta=sigma_beta,
+        mu_growth=float(params.fcf_growth_rate),
+        sigma_growth=float(params.growth_volatility),
         rho=-0.4,
         num_simulations=num_simulations,
     )
 
     g_inf_draws = generate_independent_samples(
-        mean=params.perpetual_growth_rate,
-        sigma=params.terminal_growth_volatility,
+        mean=float(params.perpetual_growth_rate),
+        sigma=float(params.terminal_growth_volatility),
         num_simulations=num_simulations,
         clip_min=0.0,
         clip_max=0.04,
@@ -104,9 +144,10 @@ def run_monte_carlo_dcf(financials: CompanyFinancials, params: DCFParameters, nu
 
     simulated_ivs: List[float] = []
     base_strategy = SimpleFCFFStrategy()
-    original_beta = financials.beta
+    original_beta = float(financials.beta)
 
     valid_runs = 0
+
     for i in range(num_simulations):
         financials.beta = float(betas[i])
 
@@ -131,9 +172,10 @@ def run_monte_carlo_dcf(financials: CompanyFinancials, params: DCFParameters, nu
 
         try:
             result_i = base_strategy.execute(financials, sim_params)
-            simulated_ivs.append(result_i.intrinsic_value_per_share)
+            simulated_ivs.append(float(result_i.intrinsic_value_per_share))
             valid_runs += 1
         except CalculationError:
+            # skip invalid draw (ex: WACC <= g∞ or other constraints enforced downstream)
             pass
         finally:
             financials.beta = original_beta
@@ -142,6 +184,12 @@ def run_monte_carlo_dcf(financials: CompanyFinancials, params: DCFParameters, nu
     if valid_runs > 0:
         final_result.simulation_results = simulated_ivs
 
+    logger.info(
+        "[Engine] Monte Carlo completed | ticker=%s | valid_runs=%s/%s",
+        financials.ticker,
+        valid_runs,
+        num_simulations,
+    )
     return final_result
 
 
@@ -159,10 +207,11 @@ def run_valuation(
             raise WorkflowError("manual_params is required when input_source=MANUAL")
 
         params = request.manual_params
+
         if request.manual_beta is not None:
             financials.beta = float(request.manual_beta)
 
-        # Preserve stochastic controls from AUTO (risk model continuity)
+        # Preserve stochastic controls from AUTO (risk model continuity).
         params.beta_volatility = auto_params.beta_volatility
         params.growth_volatility = auto_params.growth_volatility
         params.terminal_growth_volatility = auto_params.terminal_growth_volatility
@@ -171,6 +220,14 @@ def run_valuation(
 
     params.projection_years = int(request.projection_years)
     params.normalize_weights()
+
+    logger.info(
+        "[Engine] run_valuation | ticker=%s | mode=%s | source=%s | years=%s",
+        request.ticker,
+        request.mode.value,
+        request.input_source.value,
+        request.projection_years,
+    )
 
     if request.mode == ValuationMode.MONTE_CARLO:
         n = int(request.options.get("num_simulations", 2000))

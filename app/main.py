@@ -6,22 +6,29 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import logging
+from typing import Optional, Tuple
+
 import streamlit as st
 
-from app.workflow import run_workflow_and_display
 from app.ui_components.ui_inputs_auto import display_auto_inputs
 from app.ui_components.ui_inputs_expert import display_expert_request
+from app.workflow import run_workflow_and_display
 from core.exceptions import ApplicationStartupError
 from core.models import InputSource, ValuationRequest
-
 
 logger = logging.getLogger("app.main")
 
 DEFAULT_PROJECTION_YEARS = 5
 DEFAULT_TICKER = "PM"
 
+_EXEC_SIG_KEY = "_last_execution_signature"
+
 
 def _configure_logging() -> None:
+    """
+    Configure deterministic console logging for Streamlit.
+    Safe to call at each rerun (force=True).
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
@@ -34,6 +41,10 @@ def _configure_logging() -> None:
 
 
 def _startup_self_check() -> None:
+    """
+    Deterministic startup checks.
+    No network calls.
+    """
     if not hasattr(st, "session_state"):
         raise ApplicationStartupError("Streamlit session_state is not available")
 
@@ -47,6 +58,33 @@ def _select_input_source() -> InputSource:
         key="main_mode_selector",
     )
     return InputSource.AUTO if label == "Automatique (Marché)" else InputSource.MANUAL
+
+
+def _execution_signature(request: ValuationRequest) -> Tuple[str, int, str, str]:
+    """
+    Computes a stable signature for de-duplicating executions during Streamlit reruns.
+    Keep it minimal and deterministic.
+    """
+    return (
+        request.ticker,
+        int(request.projection_years),
+        request.mode.value,
+        request.input_source.value,
+    )
+
+
+def _should_execute(request: ValuationRequest) -> bool:
+    """
+    Prevent double execution when Streamlit reruns after a submit.
+    If the same request signature is already executed in this session, skip.
+    """
+    sig = _execution_signature(request)
+    last_sig = st.session_state.get(_EXEC_SIG_KEY)
+    if last_sig == sig:
+        logger.info("EXECUTION SKIPPED (duplicate rerun) | sig=%s", sig)
+        return False
+    st.session_state[_EXEC_SIG_KEY] = sig
+    return True
 
 
 def main() -> None:
@@ -65,7 +103,7 @@ def main() -> None:
 
     input_source = _select_input_source()
 
-    request: ValuationRequest | None
+    request: Optional[ValuationRequest]
     if input_source == InputSource.AUTO:
         request = display_auto_inputs(DEFAULT_TICKER, DEFAULT_PROJECTION_YEARS)
     else:
@@ -75,6 +113,16 @@ def main() -> None:
         st.info("Configurez les inputs puis lancez l'analyse.")
         return
 
+    if not _should_execute(request):
+        return
+
+    logger.info(
+        "EXECUTION START | ticker=%s | years=%s | mode=%s | source=%s",
+        request.ticker,
+        request.projection_years,
+        request.mode.value,
+        request.input_source.value,
+    )
     run_workflow_and_display(request)
 
 
