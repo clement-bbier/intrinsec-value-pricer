@@ -20,19 +20,26 @@ class BaseValuationError(Exception):
             log_message += f" | context={context}"
         logger.error(log_message)
 
+    @property
+    def ui_user_message(self) -> str:
+        """Message convivial pour l'interface utilisateur."""
+        return str(self)
+
 
 class CalculationError(BaseValuationError):
-    """Erreur mathématique ou incohérence de modèle (ex: WACC <= g)."""
-    pass
+    @property
+    def ui_user_message(self) -> str:
+        # Correction du bug ici : on utilise self (le message) et non super().__init__
+        return f"Erreur de calcul : {self}"
 
 
 class WorkflowError(BaseValuationError):
-    """Erreur d'orchestration ou d'état (ex: paramètres manquants)."""
-    pass
+    @property
+    def ui_user_message(self) -> str:
+        return "Erreur technique interne (Workflow). Veuillez réessayer."
 
 
 class ApplicationStartupError(BaseValuationError):
-    """Erreur critique au démarrage (config, environnement)."""
     pass
 
 
@@ -44,24 +51,18 @@ class DataProviderError(BaseValuationError):
 
 
 class TickerNotFoundError(DataProviderError):
-    """
-    Le symbole est introuvable, radié ou mal orthographié.
-    L'UI doit inviter l'utilisateur à corriger sa saisie.
-    """
-    pass
+    @property
+    def ui_user_message(self) -> str:
+        return "Symbole (Ticker) introuvable ou radié. Vérifiez l'orthographe sur Yahoo Finance."
 
 
 class DataInsufficientError(DataProviderError):
-    """
-    Le ticker existe, mais les données financières sont trop pauvres
-    pour effectuer une valorisation (ex: Coquille vide, Holding obscure).
-    """
-    pass
+    @property
+    def ui_user_message(self) -> str:
+        return "Données financières insuffisantes ou incomplètes pour ce symbole (ex: Holding, SPAC ou données manquantes)."
 
 
 class ExternalServiceError(DataProviderError):
-    """
-    Erreur technique du fournisseur (Timeout, Rate-limit, API Down).
-    L'UI doit suggérer de réessayer plus tard.
-    """
-    pass
+    @property
+    def ui_user_message(self) -> str:
+        return "Erreur de connexion au fournisseur de données (Timeout/Réseau). Veuillez réessayer dans quelques instants."
