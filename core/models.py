@@ -21,6 +21,34 @@ class InputSource(str, Enum):
 
 
 # ============================================================
+# Audit Models (Nouveau)
+# ============================================================
+
+@dataclass
+class AuditLog:
+    """Un élément atomique du rapport d'audit."""
+    category: str  # 'Données', 'Cohérence', 'Méthode'...
+    severity: str  # 'info', 'low', 'medium', 'high', 'critical'
+    message: str  # Description utilisateur
+    penalty: float  # Impact sur le score (négatif)
+
+
+@dataclass
+class AuditReport:
+    """Rapport d'audit complet."""
+    global_score: float  # 0 à 100
+    rating: str  # A, B, C, D, F
+    audit_mode: str  # "Qualité Données (Auto)" ou "Cohérence (Expert)"
+    logs: List[AuditLog]
+    breakdown: Dict[str, float]  # Score par catégorie
+
+    # Flags d'action
+    block_monte_carlo: bool = False
+    block_history: bool = False
+    critical_warning: bool = False
+
+
+# ============================================================
 # Core Parameters
 # ============================================================
 
@@ -43,15 +71,13 @@ class DCFParameters:
 
     manual_fcf_base: Optional[float] = None
 
-    # Target capital structure
     target_equity_weight: float = 1.0
     target_debt_weight: float = 0.0
 
-    # Optional overrides
     manual_cost_of_equity: Optional[float] = None
     wacc_override: Optional[float] = None
 
-    # Monte Carlo Options (Stateless configuration)
+    # Options stateless
     num_simulations: Optional[int] = None
     random_seed: Optional[int] = None
 
@@ -105,17 +131,15 @@ class CompanyFinancials:
     source_debt: str = "unknown"
     source_fcf: str = "unknown"
 
+    # Audit Summary (Legacy compat, mais AuditReport est la source de vérité)
     audit_score: Optional[int] = None
     audit_rating: Optional[str] = None
-    audit_details: Optional[str] = None
-    audit_breakdown: Optional[Dict[str, Any]] = None
-    audit_logs: List[str] = field(default_factory=list)
 
     implied_growth_rate: Optional[float] = None
 
 
 # ============================================================
-# DCF Result (ENGINE OUTPUT)
+# DCF Result
 # ============================================================
 
 @dataclass
@@ -131,6 +155,7 @@ class DCFResult:
     enterprise_value: float
     equity_value: float
     intrinsic_value_per_share: float
+
     simulation_results: Optional[List[float]] = None
     quantiles: Optional[Dict[str, float]] = None
 
@@ -159,11 +184,8 @@ class ValuationResult:
     params: DCFParameters
     dcf: DCFResult
 
-    audit_score: Optional[int] = None
-    audit_rating: Optional[str] = None
-    audit_details: Optional[str] = None
-    audit_breakdown: Optional[Dict[str, Any]] = None
-    audit_logs: List[str] = field(default_factory=list)
+    # Intégration du rapport complet
+    audit_report: Optional[AuditReport] = None
 
     intrinsic_value_per_share: float = 0.0
     market_price: float = 0.0

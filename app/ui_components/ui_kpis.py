@@ -1,15 +1,17 @@
 from typing import Any, List, Dict
 import streamlit as st
 import pandas as pd
-import numpy as np
-import altair as alt
 
-from core.models import CompanyFinancials, DCFParameters, ValuationMode, DCFResult, InputSource
+from core.models import (
+    ValuationResult,
+    ValuationMode,
+    AuditReport,
+    AuditLog
+)
 from app.ui_components.ui_methodology import (
     display_simple_dcf_formula,
     display_fundamental_dcf_formula,
-    display_monte_carlo_formula,
-    display_audit_methodology
+    display_monte_carlo_formula
 )
 
 
@@ -18,116 +20,127 @@ def format_currency(x: float | None, currency: str) -> str:
     return f"{x:,.2f} {currency}".replace(",", " ")
 
 
-def _render_assumptions_tab_content(financials, params, result, mode, currency):
-    st.caption(f"Données : {financials.source_fcf.upper()} | Croissance : {financials.source_growth.upper()}")
+def _render_audit_category_block(title: str, score: float, logs: List[AuditLog]):
+    """
+    Affiche un bloc d'audit pour une catégorie spécifique.
+    """
+    # Couleur de la barre de score
+    color = "green" if score >= 80 else "orange" if score >= 50 else "red"
+
+    with st.expander(f"{title} (Score: {score:.0f}/100)", expanded=(score < 100)):
+        # Barre de progression visuelle
+        st.progress(int(score) / 100, text=None)
+
+        # Liste des items (Checklist)
+        for log in logs:
+            if log.severity == "success":
+                # Item Validé
+                st.markdown(f":green[**[OK]**] {log.message}")
+            else:
+                # Item Problématique
+                tag = "[FAIL]" if log.severity in ["critical", "high"] else "[WARN]"
+                st.markdown(f":red[**{tag}**] {log.message} *(-{abs(log.penalty)} pts)*")
+
+
+def _render_detailed_audit_view(report: AuditReport):
+    """
+    Vue détaillée éclatée par catégorie.
+    """
+    categories = ["Données", "Cohérence", "Méthode"]
+
+    # On filtre les logs par catégorie
+    for cat in categories:
+        cat_logs = [l for l in report.logs if l.category == cat]
+        if not cat_logs: continue
+
+        # Récupération du score spécifique
+        cat_score = report.breakdown.get(cat, 0.0)
+
+        _render_audit_category_block(cat, cat_score, cat_logs)
+
+
+def _render_assumptions(financials, params, result, mode):
+    currency = financials.currency
+
+    st.markdown("#### Hypothèses Clés")
     c1, c2, c3 = st.columns(3)
-    cfg_txt = st.column_config.TextColumn("Indicateur", width="medium")
-    cfg_val = st.column_config.TextColumn("Valeur", width="small")
 
     with c1:
         st.markdown("**Coût du Capital**")
-        df = pd.DataFrame([
-            {"Indicateur": "Coût Equity", "Valeur": f"{result.cost_of_equity:.2%}"},
-            {"Indicateur": "Coût Dette Net", "Valeur": f"{result.after_tax_cost_of_debt:.2%}"},
-            {"Indicateur": "WACC Final", "Valeur": f"{result.wacc:.2%}"}
-        ])
-        st.dataframe(df, use_container_width=True, hide_index=True,
-                     column_config={"Indicateur": cfg_txt, "Valeur": cfg_val})
+        st.metric("WACC", f"{result.dcf.wacc:.1%}")
+        st.caption(f"Ke: {result.dcf.cost_of_equity:.1%} | Kd(net): {result.dcf.after_tax_cost_of_debt:.1%}")
 
     with c2:
         st.markdown("**Croissance**")
-        lbl = "FCF Normatif" if mode == ValuationMode.FUNDAMENTAL_FCFF else "FCF TTM"
-        val = financials.fcf_fundamental_smoothed if mode == ValuationMode.FUNDAMENTAL_FCFF else financials.fcf_last
-        df = pd.DataFrame([
-            {"Indicateur": lbl, "Valeur": format_currency(val, currency)},
-            {"Indicateur": "Croissance Initiale", "Valeur": f"{params.fcf_growth_rate:.2%}"},
-            {"Indicateur": "Croissance Terminale", "Valeur": f"{params.perpetual_growth_rate:.2%}"}
-        ])
-        st.dataframe(df, use_container_width=True, hide_index=True,
-                     column_config={"Indicateur": cfg_txt, "Valeur": cfg_val})
+        st.metric("Croissance (g)", f"{params.fcf_growth_rate:.1%}")
+        st.caption(f"Terminale: {params.perpetual_growth_rate:.1%}")
 
     with c3:
         st.markdown("**Structure**")
-        df = pd.DataFrame([
-            {"Indicateur": "Dette Totale", "Valeur": format_currency(financials.total_debt, currency)},
-            {"Indicateur": "Trésorerie", "Valeur": format_currency(financials.cash_and_equivalents, currency)},
-            {"Indicateur": "Actions", "Valeur": f"{financials.shares_outstanding / 1e6:,.1f} M"}
-        ])
-        st.dataframe(df, use_container_width=True, hide_index=True,
-                     column_config={"Indicateur": cfg_txt, "Valeur": cfg_val})
+        net_debt = financials.total_debt - financials.cash_and_equivalents
+        st.metric("Dette Nette", format_currency(net_debt, currency))
+        st.caption(f"Levier (D/E): {params.target_debt_weight / params.target_equity_weight:.2f}")
 
 
-def _render_fcf_projection_tab_content(result, currency):
-    fcfs = result.projected_fcfs
-    if not fcfs: return
-    years = [f"An {i + 1}" for i in range(len(fcfs))]
-    df = pd.DataFrame({"Période": years, "Flux": fcfs, "Actu": result.discount_factors,
-                       "VA": [f * d for f, d in zip(fcfs, result.discount_factors)]})
-    df.loc[len(df)] = {"Période": "TV", "Flux": result.terminal_value, "Actu": result.discount_factors[-1],
-                       "VA": result.discounted_terminal_value}
-
-    c1, c2 = st.columns([1, 2])
-    with c1: st.dataframe(df, use_container_width=True, hide_index=True)
-    with c2:
-        chart = alt.Chart(df[df["Période"] != "TV"]).mark_bar(color="#4c78a8").encode(x='Période', y='VA')
-        st.altair_chart(chart, use_container_width=True)
-
-
-def _render_audit_category_table(details, category):
-    items = [d for d in details if d.get('ui_category') == category]
-    if not items: return
-    st.markdown(f"**{category}**")
-    data = [{"Statut": i.get('status', ''), "Test": i.get('test', ''), "Détail": i.get('reason', '')} for i in items]
-    st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
-
-
-def _render_audit_tab_content(financials, input_source):
-    is_manual = (input_source == InputSource.MANUAL)
-    if is_manual:
-        st.info("Mode Expert : Contrôle de cohérence mathématique uniquement.")
-    else:
-        st.markdown(f"### Score : {financials.audit_score:.0f}/100 ({financials.audit_rating})")
-
-    st.markdown("---")
-    _render_audit_category_table(financials.audit_details, "Stabilité & Cohérence")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        _render_audit_category_table(financials.audit_details, "Qualité Données")
-    with col_b:
-        _render_audit_category_table(financials.audit_details, "Spécificité Hypothèses")
-    _render_audit_category_table(financials.audit_details, "Adéquation Méthode")
-
-
-def display_results(financials, params, result, mode, input_source):
-    if not isinstance(result, DCFResult): return
+def display_results(res: ValuationResult):
+    """Affiche les résultats complets de la valorisation."""
+    financials = res.financials
+    dcf = res.dcf
+    mode = res.request.mode
     currency = financials.currency
-    iv = result.intrinsic_value_per_share
-    price = financials.current_price
-    upside = (iv - price) / price if price > 0 else 0
 
-    st.subheader(f"Valorisation : {financials.ticker}")
+    # Header
+    st.subheader(f"Résultats : {financials.ticker}")
+
+    # Top KPIs
     c1, c2, c3 = st.columns(3)
-    c1.metric("Prix Marché", format_currency(price, currency))
 
-    val_label = "Valeur (P50)" if mode == ValuationMode.MONTE_CARLO else "Valeur Intrinsèque"
-    c2.metric(val_label, format_currency(iv, currency), delta=f"{iv - price:+.2f}")
-    c3.metric("Potentiel", f"{upside:+.1%}")
+    with c1:
+        st.metric("Prix Marché", format_currency(res.market_price, currency))
+
+    with c2:
+        label_val = "Valeur Intrinsèque"
+        if mode == ValuationMode.MONTE_CARLO: label_val += " (P50)"
+        st.metric(label_val, format_currency(res.intrinsic_value_per_share, currency),
+                  delta=f"{res.upside_pct:.1%}" if res.upside_pct else None)
+
+    with c3:
+        if dcf.quantiles:
+            st.metric("Fourchette (P10 - P90)",
+                      f"{dcf.quantiles['P10']:,.0f} - {dcf.quantiles['P90']:,.0f}")
+        else:
+            st.metric("Equity Value", format_currency(dcf.equity_value, currency))
 
     st.markdown("---")
-    audit_label = "Contrôle Tech." if input_source == InputSource.MANUAL else "Rapport Audit"
-    t1, t2, t3, t4 = st.tabs(["Synthèse", "Projections", "Méthodologie", audit_label])
+
+    # Tabs
+    t1, t2, t3, t4 = st.tabs(["Synthèse", "Projections", "Méthodologie", "Détail Audit"])
 
     with t1:
-        _render_assumptions_tab_content(financials, params, result, mode, currency)
+        _render_assumptions(financials, res.params, res, mode)
+
     with t2:
-        _render_fcf_projection_tab_content(result, currency)
+        fcfs = dcf.projected_fcfs
+        years = [f"An {i + 1}" for i in range(len(fcfs))]
+        df_proj = pd.DataFrame({
+            "Année": years,
+            "FCF Projeté": fcfs,
+            "Discount Factor": dcf.discount_factors
+        })
+        st.dataframe(df_proj.style.format({"FCF Projeté": "{:,.0f}", "Discount Factor": "{:.3f}"}),
+                     use_container_width=True)
+
     with t3:
         if mode == ValuationMode.SIMPLE_FCFF:
-            display_simple_dcf_formula(financials, params)
+            display_simple_dcf_formula(financials, res.params)
         elif mode == ValuationMode.FUNDAMENTAL_FCFF:
-            display_fundamental_dcf_formula(financials, params)
+            display_fundamental_dcf_formula(financials, res.params)
         elif mode == ValuationMode.MONTE_CARLO:
-            display_monte_carlo_formula(financials, params)
+            display_monte_carlo_formula(financials, res.params)
+
     with t4:
-        _render_audit_tab_content(financials, input_source)
-        if input_source == InputSource.AUTO: display_audit_methodology()
+        if res.audit_report:
+            # Pas de jauge globale, détail direct par catégorie
+            _render_detailed_audit_view(res.audit_report)
+        else:
+            st.info("Pas de rapport d'audit disponible.")

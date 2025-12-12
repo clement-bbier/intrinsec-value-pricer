@@ -43,7 +43,6 @@ def fetch_yahoo_data_cached(ticker: str) -> Dict[str, Any]:
     """
     Récupère les données brutes Yahoo.
     Retourne UNIQUEMENT des types serialisables (Dict, DataFrame).
-    PAS d'objets yfinance.Ticker (non-pickleable).
     """
     try:
         yt = yf.Ticker(ticker)
@@ -56,8 +55,6 @@ def fetch_yahoo_data_cached(ticker: str) -> Dict[str, Any]:
             if 'regularMarketPrice' not in info and 'currentPrice' not in info:
                 raise TickerNotFoundError(f"Ticker '{ticker}' introuvable ou radié.")
 
-        # On force le chargement des DataFrames ici pour qu'ils soient stockés dans le cache
-        # et on NE retourne PAS l'objet 'yt'
         return {
             "info": info,
             "balance_sheet": yt.balance_sheet,
@@ -94,7 +91,6 @@ class YahooFinanceProvider(DataProvider):
 
         if raw_price is None:
             # Fallback : On réinstancie un objet Ticker léger juste pour l'historique prix
-            # (Non caché dans fetch_yahoo_data_cached pour éviter l'erreur de pickling)
             try:
                 hist = yf.Ticker(ticker).history(period="1d")
                 if not hist.empty:
@@ -188,19 +184,19 @@ class YahooFinanceProvider(DataProvider):
             terminal_growth_volatility=DEFAULT_RISK_PROFILE["g_vol"] / 2.0
         )
 
-        # Audit Auto
+        # Audit Auto (Pré-audit pour avoir un score immédiat, le vrai audit est refait dans le workflow)
         audit = AuditEngine.compute_audit(financials, params)
-        financials.audit_score = audit.global_score
+        financials.audit_score = int(audit.global_score)
         financials.audit_rating = audit.rating
-        financials.audit_details = audit.ui_details
+
+        # [CORRECTION] Suppression de l'assignation ui_details qui n'existe plus
+        # Les détails de l'audit sont maintenant portés par l'objet AuditReport retourné par le workflow
         financials.audit_breakdown = audit.breakdown
 
         return financials, params
 
     def get_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
         try:
-            # On instancie un nouvel objet Ticker ici (non caché) pour récupérer l'historique
-            # car l'historique change en temps réel et l'objet Ticker n'est pas sérialisable.
             yt = yf.Ticker(ticker)
             hist = yt.history(period=period)
             if hist is None or hist.empty: return pd.DataFrame()
@@ -270,7 +266,6 @@ class YahooFinanceProvider(DataProvider):
         cagr = calculate_historical_cagr(data["income_statement"])
         if cagr:
             financials.source_growth = "cagr"
-            # On cape le CAGR historique pour ne pas projeter une croissance infinie
             return max(0.0, min(0.20, cagr * 0.8))
 
         # 3. Macro (PIB)
@@ -278,25 +273,19 @@ class YahooFinanceProvider(DataProvider):
         return 0.025
 
     def _resolve_cost_of_debt_strategy(self, rf: float, f: CompanyFinancials) -> float:
-        """
-        Détermine le coût de la dette.
-        """
         if f.total_debt > 0 and f.interest_expense > 0:
-            # [TECH DEBT] Approximation :
-            # Nous utilisons le FCF TTM comme proxy de l'EBIT pour calculer l'ICR (Interest Coverage Ratio).
             approx_ebit_proxy = f.fcf_last if f.fcf_last else 0.0
             icr = approx_ebit_proxy / f.interest_expense
 
-            # Spread basé sur la solvabilité apparente
             if icr > 5:
-                spread = 0.015  # Solide
+                spread = 0.015
             elif icr > 2:
-                spread = 0.03  # Moyen
+                spread = 0.03
             else:
-                spread = 0.06  # Risqué (Junk)
+                spread = 0.06
 
             f.source_debt = "synthetic"
             return rf + spread
 
         f.source_debt = "sector"
-        return 0.06  # Fallback sectoriel générique
+        return 0.06
