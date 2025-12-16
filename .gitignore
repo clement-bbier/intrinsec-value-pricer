@@ -29,3 +29,6 @@ Thumbs.db
 
 # Perso documentation
 .docs/
+
+# Logging
+app_logs.txt
