@@ -1,210 +1,233 @@
 import streamlit as st
 import pandas as pd
-from typing import List
+from typing import Optional
 
 from core.models import (
+    ValuationResult,
+    CalculationStep,
+    ValuationMode,
     DCFValuationResult,
-    DDMValuationResult,
+    RIMValuationResult,
     GrahamValuationResult,
-    AuditReport,
-    AuditLog
+    AuditReport
 )
 
 
-# --- UTILS DE FORMATAGE ---
+# ==============================================================================
+# 1. COMPOSANT : KPI PRINCIPAUX (Haut de page)
+# ==============================================================================
 
-def format_currency(value: float, currency: str) -> str:
-    """Formatage financier compact (M/B)."""
-    if value is None:
-        return "-"
-
-    abs_val = abs(value)
-    if abs_val >= 1e9:
-        return f"{value / 1e9:,.2f}B {currency}"
-    elif abs_val >= 1e6:
-        return f"{value / 1e6:,.2f}M {currency}"
-    else:
-        return f"{value:,.0f} {currency}"
-
-
-def render_financial_badge(label: str, value: str, score: float = 100) -> None:
+def display_main_kpis(result: ValuationResult) -> None:
     """
-    Affiche un badge style 'Terminal' avec CSS injecté.
-    Couleurs : Vert (>75), Jaune (50-75), Rouge (<50).
+    Affiche les cartes de résultats synthétiques (Valeur, Prix, Potentiel, Score).
+    Style : Sobriété Financière (Bloomberg Terminal style).
     """
-    if score >= 80:
-        bg_color = "#1b5e20"  # Dark Green
-        text_color = "#e8f5e9"
-    elif score >= 50:
-        bg_color = "#f57f17"  # Dark Orange/Yellow
-        text_color = "#fffde7"
-    else:
-        bg_color = "#b71c1c"  # Dark Red
-        text_color = "#ffebee"
 
-    html = f"""
-    <div style="
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background-color: {bg_color};
-        color: {text_color};
-        padding: 4px 12px;
-        border-radius: 4px;
-        font-family: 'Roboto Mono', monospace;
-        font-size: 0.9em;
-        font-weight: 600;
-        margin-bottom: 5px;
-    ">
-        <span style="margin-right: 8px; opacity: 0.8;">{label}</span>
-        <span>{value}</span>
-    </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+    # --- 1. Préparation des Données ---
+    intrinsic_val = result.intrinsic_value_per_share
+    market_price = result.market_price
+    currency = result.financials.currency
 
+    upside = result.upside_pct
+    upside_color = "normal"
+    if upside is not None:
+        upside_color = "off" if upside < 0 else "normal"  # Streamlit delta color logic
 
-# --- AFFICHAGE PAR STRATÉGIE ---
+    audit_score = 0
+    audit_rating = "N/A"
+    if result.audit_report:
+        audit_score = int(result.audit_report.global_score)
+        audit_rating = result.audit_report.rating
 
-def display_dcf_summary(res: DCFValuationResult) -> None:
-    """Affichage standard pour DCF (Simple, Fundamental, Growth, Monte Carlo)."""
-
-    # 1. KPIs Principaux
+    # --- 2. Affichage en Colonnes ---
     c1, c2, c3, c4 = st.columns(4)
+
     with c1:
-        st.metric("WACC", f"{res.wacc:.2%}", help="Coût Moyen Pondéré du Capital")
-    with c2:
-        st.metric("Croissance Perp.", f"{res.params.perpetual_growth_rate:.2%}", help="Hypothèse Terminale (g)")
-    with c3:
-        st.metric("Enterprise Value", format_currency(res.enterprise_value, res.financials.currency))
-    with c4:
-        st.metric("Equity Value", format_currency(res.equity_value, res.financials.currency))
-
-    # 2. Tableau de Flux (Projections)
-    st.subheader("Projections de Flux de Trésorerie (FCF)")
-
-    # Construction DataFrame
-    years = range(1, len(res.projected_fcfs) + 1)
-    df = pd.DataFrame({
-        "Année": [f"Year {y}" for y in years],
-        "FCF Projeté": res.projected_fcfs,
-        "Facteur Actu.": res.discount_factors,
-        "Valeur Actuelle (PV)": [f * d for f, d in zip(res.projected_fcfs, res.discount_factors)]
-    })
-
-    # Formatage colonne
-    st.dataframe(
-        df.style.format({
-            "FCF Projeté": "{:,.0f}",
-            "Facteur Actu.": "{:.4f}",
-            "Valeur Actuelle (PV)": "{:,.0f}"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # 3. Breakdown de la Valeur (Terminal Value Weight)
-    pv_explicit = res.sum_discounted_fcf
-    pv_terminal = res.discounted_terminal_value
-    total_ev = res.enterprise_value
-
-    if total_ev > 0:
-        pct_terminal = pv_terminal / total_ev
-        st.caption(f"Poids de la Valeur Terminale : {pct_terminal:.1%} (Explicit: {1 - pct_terminal:.1%})")
-        if pct_terminal > 0.8:
-            st.warning("Attention : >80% de la valeur repose sur l'infini (Terminal Value). Sensibilité élevée.")
-
-
-def display_ddm_summary(res: DDMValuationResult) -> None:
-    """Affichage spécifique Banques (DDM)."""
-
-    # 1. KPIs
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Cost of Equity (Ke)", f"{res.cost_of_equity:.2%}", help="Pas de WACC pour les banques")
-    with c2:
-        st.metric("Croissance Perp.", f"{res.params.perpetual_growth_rate:.2%}")
-    with c3:
-        st.metric("Equity Value", format_currency(res.equity_value, res.financials.currency))
-
-    # 2. Tableau Dividendes
-    st.subheader("Projections de Dividendes")
-
-    df = pd.DataFrame({
-        "Année": range(1, len(res.projected_dividends) + 1),
-        "Dividende Attendu": res.projected_dividends,
-        "Facteur (Ke)": res.discount_factors,
-        "PV Dividende": [d * f for d, f in zip(res.projected_dividends, res.discount_factors)]
-    })
-
-    st.dataframe(
-        df.style.format({
-            "Dividende Attendu": "{:,.2f}",
-            "Facteur (Ke)": "{:.4f}",
-            "PV Dividende": "{:,.2f}"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-
-
-def display_graham_summary(res: GrahamValuationResult) -> None:
-    """Affichage formule de Graham."""
-
-    st.info("ℹ️ La méthode de Graham est une approche heuristique 'Deep Value', sans projection de flux.")
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("EPS (Bénéfice/Action)", f"{res.eps_used:.2f}")
-    with c2:
-        st.metric("BVPS (Actif Net/Action)", f"{res.book_value_used:.2f}")
-    with c3:
-        st.metric("Multiplicateur", f"{res.graham_multiplier}")
-
-    st.markdown("---")
-    st.markdown(
-        f"#### Formule : $V = \\sqrt{{ {res.graham_multiplier} \\times {res.eps_used:.2f} \\times {res.book_value_used:.2f} }}$")
-
-
-# --- AUDIT REPORT ---
-
-def display_audit_report(report: AuditReport) -> None:
-    """Affichage sobre et tabulaire du rapport d'audit."""
-
-    with st.expander(f"Détail de l'Audit ({len(report.logs)} points)", expanded=False):
-        # Conversion des logs en DataFrame pour un affichage propre
-        if not report.logs:
-            st.success("Aucune anomalie détectée.")
-            return
-
-        data = []
-        for log in report.logs:
-            data.append({
-                "Sévérité": log.severity.upper(),
-                "Catégorie": log.category,
-                "Message": log.message,
-                "Impact Score": f"{log.penalty}"
-            })
-
-        df_audit = pd.DataFrame(data)
-
-        # Coloration conditionnelle simple via pandas styler si besoin,
-        # ou simple affichage dataframe Streamlit
-        st.dataframe(
-            df_audit,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Sévérité": st.column_config.TextColumn(
-                    "Niveau",
-                    help="CRITICAL, HIGH, WARN, INFO",
-                    width="small"
-                ),
-                "Impact Score": st.column_config.NumberColumn(
-                    "Pénalité",
-                    format="%d pts"
-                )
-            }
+        st.metric(
+            label="Valeur Intrinsèque",
+            value=f"{intrinsic_val:,.2f} {currency}",
+            help="Juste valeur estimée par le modèle (par action)."
         )
 
-        if report.critical_warning:
-            st.error("RÉSULTAT NON FIABLE : Des erreurs critiques ont été détectées (voir tableau ci-dessus).")
+    with c2:
+        st.metric(
+            label="Prix de Marché",
+            value=f"{market_price:,.2f} {currency}",
+            help="Dernier prix de clôture connu."
+        )
+
+    with c3:
+        if upside is not None:
+            st.metric(
+                label="Potentiel (Upside)",
+                value=f"{upside:+.1%}",
+                delta=f"{upside:+.1%}",
+                delta_color=upside_color,
+                help="Écart entre la valeur intrinsèque et le prix de marché."
+            )
+        else:
+            st.metric(label="Potentiel", value="N/A")
+
+    with c4:
+        st.metric(
+            label="Score de Confiance",
+            value=f"{audit_score}/100",
+            delta=audit_rating,
+            delta_color="off",
+            help="Note technique évaluant la cohérence des hypothèses et la qualité des données."
+        )
+
+    st.divider()
+
+
+# ==============================================================================
+# 2. COMPOSANT : MOTEUR DE CALCUL (GLASS BOX)
+# ==============================================================================
+
+def display_calculation_engine(result: ValuationResult) -> None:
+    """
+    Affiche la trace d'audit complète : Formules, Substitutions, Résultats.
+    C'est le cœur de l'expérience 'Glass Box'.
+    """
+    st.subheader("🔍 Moteur de Calcul (Trace d'Audit)")
+
+    if not result.calculation_trace:
+        st.warning("⚠️ Aucune trace de calcul disponible pour ce modèle.")
+        return
+
+    # Conteneur principal scrollable (visuellement propre)
+    with st.container():
+        mode_name = result.request.mode.value if result.request else 'Standard'
+        st.caption(f"Démonstration pas-à-pas pour la méthode : **{mode_name}**")
+
+        # On itère sur chaque étape enregistrée par le moteur
+        for i, step in enumerate(result.calculation_trace, 1):
+            _render_step(i, step)
+
+        st.caption("--- Fin du Calcul ---")
+
+
+def _render_step(index: int, step: CalculationStep) -> None:
+    """
+    Rendu graphique d'une étape de calcul unique.
+    Format : Titre | Formule (LaTeX) | Substitution | Résultat
+    """
+    with st.expander(f"{index}. {step.label}", expanded=True):
+        cols = st.columns([2, 3, 2])
+
+        # Colonne 1 : La Formule Théorique
+        with cols[0]:
+            st.markdown("**Formule Théorique**")
+            if step.formula and step.formula != "N/A":
+                # On nettoie un peu le LaTeX si besoin
+                clean_formula = step.formula.replace("$", "")
+                st.latex(clean_formula)
+            else:
+                st.text("—")
+
+        # Colonne 2 : L'application Numérique
+        with cols[1]:
+            st.markdown("**Application Numérique**")
+            st.code(f"{step.values}", language="text")
+            if step.description:
+                st.caption(f"ℹ️ {step.description}")
+
+        # Colonne 3 : Le Résultat
+        with cols[2]:
+            st.markdown("**Résultat**")
+            st.metric(
+                label="",
+                value=f"{step.result:,.2f} {step.unit}"
+            )
+
+
+# ==============================================================================
+# 3. COMPOSANT : DÉTAILS SPÉCIFIQUES (Onglets)
+# ==============================================================================
+
+def display_valuation_details(result: ValuationResult) -> None:
+    """
+    Zone principale d'affichage des détails (Onglets).
+    Orchestre l'affichage de la preuve, de l'audit et des paramètres.
+    """
+
+    tab_trace, tab_audit, tab_params = st.tabs([
+        "🧮 Preuve de Calcul",
+        "🛡️ Rapport d'Audit",
+        "⚙️ Paramètres Utilisés"
+    ])
+
+    # --- ONGLET 1 : TRACE D'AUDIT (GLASS BOX) ---
+    with tab_trace:
+        display_calculation_engine(result)
+
+    # --- ONGLET 2 : RAPPORT D'AUDIT ---
+    with tab_audit:
+        if result.audit_report:
+            _display_audit_report(result.audit_report)
+        else:
+            st.info("Audit non disponible.")
+
+    # --- ONGLET 3 : PARAMÈTRES ---
+    with tab_params:
+        _display_parameters_summary(result)
+
+
+def _display_audit_report(report: AuditReport) -> None:
+    """Affichage du rapport d'audit (Logs & Pénalités)."""
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        st.markdown(f"### Note Globale : {int(report.global_score)}/100")
+        st.metric("Rating", report.rating)
+
+        st.markdown("#### Détails par catégorie")
+        for cat, score in report.breakdown.items():
+            st.text(f"{cat}: {int(score)}/100")
+
+    with col2:
+        st.markdown("#### Journal d'Audit")
+        if not report.logs:
+            st.success("Aucune anomalie détectée.")
+
+        for log in report.logs:
+            icon = "✅"
+            if log.severity == "CRITICAL":
+                icon = "⛔"
+            elif log.severity == "HIGH":
+                icon = "🔴"
+            elif log.severity == "WARN":
+                icon = "🟠"
+            elif log.severity == "INFO":
+                icon = "🔵"
+
+            st.markdown(f"{icon} **[{log.category}]** {log.message} *(Impact: {log.penalty})*")
+
+
+def _display_parameters_summary(result: ValuationResult) -> None:
+    """Résumé des paramètres clés utilisés."""
+    p = result.params
+    f = result.financials
+
+    st.markdown("#### 1. Paramètres de Marché & Risque")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Taux Sans Risque (Rf)", f"{p.risk_free_rate:.2%}")
+    c2.metric("Prime de Risque (MRP)", f"{p.market_risk_premium:.2%}")
+    c3.metric("Beta Utilisé", f"{f.beta:.2f}")
+
+    st.markdown("#### 2. Croissance & Structure")
+    c4, c5, c6 = st.columns(3)
+    c4.metric("Croissance (g)", f"{p.fcf_growth_rate:.2%}")
+    c5.metric("Croissance Perpétuelle", f"{p.perpetual_growth_rate:.2%}")
+    c6.metric("Coût de la Dette", f"{p.cost_of_debt:.2%}")
+
+    # Affichage spécifique si RIM ou Graham
+    if isinstance(result, RIMValuationResult):
+        st.markdown("#### 3. Spécifique RIM (Banques)")
+        st.write(f"Book Value/Share: {result.current_book_value:.2f}")
+        st.write(f"Coût des Fonds Propres (Ke): {result.cost_of_equity:.2%}")
+
+    elif isinstance(result, GrahamValuationResult):
+        st.markdown("#### 3. Spécifique Graham 1974")
+        st.write(f"Yield AAA: {result.aaa_yield_used:.2%}")
+        st.write(f"EPS Normalisé: {result.eps_used:.2f}")

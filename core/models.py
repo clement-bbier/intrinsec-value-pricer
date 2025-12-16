@@ -6,16 +6,16 @@ from abc import ABC
 
 
 # ============================================================
-# Enums
+# 1. ENUMS & CONSTANTES
 # ============================================================
 
 class ValuationMode(str, Enum):
-    SIMPLE_FCFF = "SIMPLE_FCFF"
-    FUNDAMENTAL_FCFF = "FUNDAMENTAL_FCFF"
-    GROWTH_TECH = "GROWTH_TECH"
-    MONTE_CARLO = "MONTE_CARLO"
-    DDM_BANKS = "DDM_BANKS"
-    GRAHAM_VALUE = "GRAHAM_VALUE"
+    DISCOUNTED_CASH_FLOW_STANDARD = "Two-Stage FCFF (Standard)"
+    NORMALIZED_FCFF_CYCLICAL = "Normalized FCFF (Cyclical/Industrial)"
+    REVENUE_DRIVEN_GROWTH = "Revenue-Driven (High Growth/Tech)"
+    PROBABILISTIC_DCF_MONTE_CARLO = "Probabilistic DCF (Monte Carlo)"
+    RESIDUAL_INCOME_MODEL = "Residual Income Model (Banks/Insurance)"
+    GRAHAM_1974_REVISED = "Graham Intrinsic Value (1974 Revised)"
 
 
 class InputSource(str, Enum):
@@ -23,12 +23,33 @@ class InputSource(str, Enum):
     MANUAL = "MANUAL"
 
 
+class TerminalValueMethod(str, Enum):
+    GORDON_GROWTH = "GORDON_GROWTH"
+    EXIT_MULTIPLE = "EXIT_MULTIPLE"
+
+
 # ============================================================
-# Financial & Parameters Inputs
+# 2. TRAÇABILITÉ
+# ============================================================
+
+@dataclass
+class CalculationStep:
+    label: str
+    formula: str
+    values: str
+    result: float
+    unit: str
+    description: str
+
+
+# ============================================================
+# 3. DONNÉES FINANCIÈRES
 # ============================================================
 
 @dataclass
 class CompanyFinancials:
+    """Snapshot des données financières."""
+    # --- CHAMPS OBLIGATOIRES (Doivent être au début) ---
     ticker: str
     currency: str
     sector: str
@@ -38,22 +59,31 @@ class CompanyFinancials:
     current_price: float
     shares_outstanding: float
 
+    # Bilan
     total_debt: float
     cash_and_equivalents: float
     interest_expense: float
 
+    # Indicateur de Risque (OBLIGATOIRE)
     beta: float
 
-    # Champs optionnels (critiques pour Graham et DDM)
-    last_dividend: Optional[float] = None
+    # --- CHAMPS OPTIONNELS (Avec valeurs par défaut) ---
+    # Critiques pour certains modèles spécifiques
     book_value_per_share: Optional[float] = None
-    eps_ttm: Optional[float] = None
 
+    revenue_ttm: Optional[float] = None
+    ebitda_ttm: Optional[float] = None
+    ebit_ttm: Optional[float] = None
+    net_income_ttm: Optional[float] = None
+
+    eps_ttm: Optional[float] = None
+    last_dividend: Optional[float] = None
+
+    # Free Cash Flow
     fcf_last: Optional[float] = None
     fcf_fundamental_smoothed: Optional[float] = None
-    revenue_ttm: Optional[float] = None
 
-    # Audit info
+    # Audit Metadata
     source_growth: str = "unknown"
     source_debt: str = "unknown"
     source_fcf: str = "unknown"
@@ -63,23 +93,28 @@ class CompanyFinancials:
 
 @dataclass
 class DCFParameters:
-    """Paramètres unifiés pour tous les moteurs."""
+    """Paramètres unifiés."""
+
     risk_free_rate: float
     market_risk_premium: float
+    corporate_aaa_yield: float
+
     cost_of_debt: float
     tax_rate: float
 
     fcf_growth_rate: float
-    perpetual_growth_rate: float
     projection_years: int
-
-    # Options avancées
     high_growth_years: int = 0
+
+    terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
+    perpetual_growth_rate: float = 0.02
+    exit_multiple_value: Optional[float] = None
+
     target_equity_weight: float = 0.0
     target_debt_weight: float = 0.0
+
     target_fcf_margin: Optional[float] = 0.25
 
-    # Overrides & Monte Carlo
     manual_fcf_base: Optional[float] = None
     manual_cost_of_equity: Optional[float] = None
     wacc_override: Optional[float] = None
@@ -90,7 +125,6 @@ class DCFParameters:
     num_simulations: Optional[int] = None
 
     def normalize_weights(self) -> None:
-        """Assure que We + Wd = 1.0 si définis."""
         total = self.target_equity_weight + self.target_debt_weight
         if total > 0.001:
             self.target_equity_weight /= total
@@ -98,7 +132,7 @@ class DCFParameters:
 
 
 # ============================================================
-# Audit Models
+# 4. AUDIT & RÉSULTATS
 # ============================================================
 
 @dataclass
@@ -121,10 +155,6 @@ class AuditReport:
     critical_warning: bool = False
 
 
-# ============================================================
-# Valuation Request
-# ============================================================
-
 @dataclass(frozen=True)
 class ValuationRequest:
     ticker: str
@@ -136,14 +166,8 @@ class ValuationRequest:
     options: Dict[str, Any] = field(default_factory=dict)
 
 
-# ============================================================
-# Abstract Valuation Result (Polymorphic)
-# ============================================================
-
-# CORRECTION : Ajout de kw_only=True pour supporter l'héritage avec valeurs par défaut
 @dataclass(kw_only=True)
 class ValuationResult(ABC):
-    """Classe de base pour tout résultat de valorisation."""
     request: Optional[ValuationRequest]
     financials: CompanyFinancials
     params: DCFParameters
@@ -151,6 +175,8 @@ class ValuationResult(ABC):
     intrinsic_value_per_share: float
     market_price: float
     upside_pct: Optional[float] = None
+
+    calculation_trace: List[CalculationStep] = field(default_factory=list)
 
     audit_report: Optional[AuditReport] = None
     simulation_results: Optional[List[float]] = None
@@ -161,7 +187,6 @@ class ValuationResult(ABC):
             self.upside_pct = (self.intrinsic_value_per_share / self.market_price) - 1.0
 
 
-# --- Subclass 1: Standard DCF (Simple, Fundamental, Growth) ---
 @dataclass(kw_only=True)
 class DCFValuationResult(ValuationResult):
     wacc: float
@@ -179,24 +204,23 @@ class DCFValuationResult(ValuationResult):
     equity_value: float
 
 
-# --- Subclass 2: DDM (Banks) ---
 @dataclass(kw_only=True)
-class DDMValuationResult(ValuationResult):
+class RIMValuationResult(ValuationResult):
     cost_of_equity: float
-
-    projected_dividends: List[float]
+    current_book_value: float
+    projected_residual_incomes: List[float]
+    projected_book_values: List[float]
     discount_factors: List[float]
-
-    sum_discounted_dividends: float
-    terminal_value: float
+    sum_discounted_ri: float
+    terminal_value_ri: float
     discounted_terminal_value: float
+    total_equity_value: float
 
-    equity_value: float
 
-
-# --- Subclass 3: Graham (Value) ---
 @dataclass(kw_only=True)
 class GrahamValuationResult(ValuationResult):
     eps_used: float
-    book_value_used: float
-    graham_multiplier: float = 22.5
+    growth_rate_used: float
+    aaa_yield_used: float
+    base_pe: float = 8.5
+    multiplier_factor: float = 2.0

@@ -5,17 +5,17 @@ from core.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
-class SimpleFCFFStrategy(ValuationStrategy):
+class StandardFCFFStrategy(ValuationStrategy):
     """
-    STRATÉGIE 1 : DCF "SNAPSHOT" (BASE TTM).
-    Utilise fcf_last (Free Cash Flow Trailing 12 Months).
+    STRATÉGIE 1 : STANDARD TWO-STAGE FCFF.
+    (Anciennement Simple DCF)
+    Utilise le FCF TTM comme point de départ (Snapshot).
     """
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
         logger.info(
-            "[Strategy] Executing SimpleFCFFStrategy | ticker=%s | currency=%s | years=%s",
+            "[Strategy] Executing StandardFCFFStrategy | ticker=%s | years=%s",
             financials.ticker,
-            financials.currency,
             params.projection_years,
         )
 
@@ -25,24 +25,17 @@ class SimpleFCFFStrategy(ValuationStrategy):
         # Override manuel prioritaire (géré via params)
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
-            logger.info("[Simple] Override FCF Manuel : %s", fcf_base)
+            logger.info("[Standard] Override FCF Manuel : %s", fcf_base)
 
         if fcf_base is None:
             msg = (
                 "Donnée manquante : FCF TTM (fcf_last) introuvable. "
-                "Impossible d'exécuter la méthode Simple sans flux de départ."
+                "Impossible d'exécuter la méthode Standard sans flux de départ."
             )
             logger.error("%s | ticker=%s", msg, financials.ticker)
             raise CalculationError(msg)
 
-        logger.info(
-            "[Simple] FCF start=%s %s | source=%s",
-            f"{fcf_base:,.0f}",
-            financials.currency,
-            "manual" if params.manual_fcf_base else "ttm"
-        )
-
-        # 2. Délégation au moteur standard (Abstract)
+        # 2. Délégation au moteur standard (Abstract) qui gère la Trace d'Audit
         return self._run_dcf_math(
             base_flow=fcf_base,
             financials=financials,

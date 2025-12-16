@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, ValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
-from core.valuation.strategies.dcf_simple import SimpleFCFFStrategy
+from core.valuation.strategies.dcf_standard import SimpleFCFFStrategy
 from core.computation.statistics import generate_multivariate_samples, generate_independent_samples
 
 logger = logging.getLogger(__name__)

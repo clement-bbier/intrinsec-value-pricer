@@ -6,7 +6,7 @@ from typing import Optional, Dict
 import pandas as pd
 import yfinance as yf
 
-from core.exceptions import DataProviderError
+from core.models import DCFParameters  # Utilisation potentielle future
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 # ^TNX  = Treasury Yield 10 Years (en %, donc 4.5 = 4.5% -> doit être converti en 0.045)
 # EUS=F = Future sur EURO SHORT-TERM RATE (€STR) coté en prix ~ 100 - taux(%)
 RISK_FREE_TICKERS: Dict[str, str] = {
-    "USD": "^TNX",     # Taux sans risque USD (10Y)
-    "EUR": "EUS=F",    # Future €STR (proxy OIS risk-free court terme)
-    "CAD": "^GSPTSE",  # Proxy pour le marché canadien (à raffiner plus tard)
+    "USD": "^TNX",  # Taux sans risque USD (10Y)
+    "EUR": "EUS=F",  # Future €STR (proxy OIS risk-free court terme) ou Bund si dispo
+    "CAD": "^GSPTSE",  # Proxy simplifié
+    "GBP": "^FTSE",  # Placeholder, à affiner
 }
 
-# Ticker pour le marché (S&P 500) – pas encore utilisé dans cette V1.
+# Ticker pour le marché (S&P 500) – pas encore utilisé intensivement
 MARKET_TICKER = "^GSPC"
 
 
@@ -28,184 +29,124 @@ class MacroContext:
     """Contient les paramètres macro-économiques à une date donnée."""
     date: datetime
     currency: str
-    risk_free_rate: float        # ex: 0.04 pour 4%
-    market_risk_premium: float   # ex: 0.05 pour 5%
-    perpetual_growth_rate: float # ex: 0.02 pour 2%
+    risk_free_rate: float  # ex: 0.04 pour 4%
+    market_risk_premium: float  # ex: 0.05 pour 5%
+    perpetual_growth_rate: float  # ex: 0.02 pour 2%
+    corporate_aaa_yield: float  # ex: 0.047 (Nouveau: Requis pour Graham 1974)
 
 
 class YahooMacroProvider:
     """
-    Fournit les données macro (Rf, MRP) historiques via Yahoo Finance.
-    Utilise un cache simple pour éviter de retélécharger l'historique à chaque point.
+    Fournit les données macro (Rf, MRP, Yield AAA) via Yahoo Finance.
+    Intègre des fallbacks robustes et un cache en mémoire.
     """
 
     def __init__(self):
-        # Cache pour les séries historiques de taux sans risque (Rf)
-        # Clé: devise (str), Valeur: pd.Series (Index: date, Name: 'Risk_Free_Rate')
+        # Cache pour les séries historiques
         self._rf_cache: Dict[str, pd.Series] = {}
+
+        # Spread de crédit moyen pour les obligations AAA vs Taux Sans Risque (10Y)
+        # Historiquement entre 0.60% et 1.00%
+        self.DEFAULT_AAA_SPREAD = 0.0070
 
     def _load_risk_free_series(self, currency: str) -> Optional[pd.Series]:
         """
-        Charge l'historique de rendement sans risque pour une devise donnée, en utilisant le cache.
-        Convertit le rendement de % à décimal (ex: 4.5 -> 0.045).
-        Normalise aussi l'index en datetime **sans timezone** pour éviter
-        les erreurs de comparaison tz-naive / tz-aware.
+        Charge l'historique de rendement sans risque pour une devise donnée.
         """
         currency = currency.upper()
 
-        # 1) Cache
+        # 1) Cache Check
         if currency in self._rf_cache:
             return self._rf_cache[currency]
 
-        # 2) Ticker associé à la devise
+        # 2) Résolution Ticker
         ticker = RISK_FREE_TICKERS.get(currency)
         if not ticker:
-            logger.warning("[Macro] Ticker de taux sans risque inconnu pour la devise %s", currency)
+            # Silence warning pour devises exotiques, fallback géré plus haut
             return None
 
         logger.info("[Macro] Chargement de l'historique Rf pour %s (%s)...", ticker, currency)
 
         try:
-            # Utilisation de Ticker().history au lieu de yf.download pour éviter le bug
             yt = yf.Ticker(ticker)
+            # Fetch historique max pour couvrir les dates passées
             data = yt.history(period="max", interval="1d", auto_adjust=False)
 
             if data.empty or "Close" not in data.columns:
-                logger.error("[Macro] Données vides ou colonne 'Close' manquante pour %s.", ticker)
+                logger.warning("[Macro] Données vides pour %s.", ticker)
                 return None
 
-            # 🔧 Normalisation de l'index : datetime tz-naive
+            # Normalisation Index (Timezone Naive)
             idx = pd.to_datetime(data.index)
-            if isinstance(idx, pd.DatetimeIndex) and idx.tz is not None:
-                # on enlève la timezone (America/Chicago, Europe/Berlin, etc.)
+            if idx.tz is not None:
                 idx = idx.tz_localize(None)
             data.index = idx
 
-            # Conversion en taux selon le type de ticker
+            # Normalisation Valeur (Conversion en décimal)
             if ticker == "EUS=F":
-                # Future sur €STR : Price ≈ 100 - taux(%)  => taux(%) = 100 - Price
-                # Exemple : Price = 98.70 => taux ≈ 1.30% => 0.013 en décimal
-                implied_rate_pct = 100.0 - data["Close"]
-                series = (implied_rate_pct / 100.0).rename("Risk_Free_Rate")
+                # Future Rate = 100 - Price
+                implied_rate = 100.0 - data["Close"]
+                series = (implied_rate / 100.0).rename("Risk_Free_Rate")
             else:
-                # Cas standard : Close déjà en % (ex: 4.5) => 0.045 en décimal
+                # Yield standard (ex: 4.2 -> 0.042)
                 series = (data["Close"] / 100.0).rename("Risk_Free_Rate")
 
             self._rf_cache[currency] = series
-
-            logger.info("[Macro] Historique Rf chargé. %d points.", len(series))
+            logger.info("[Macro] Historique Rf chargé (%d points).", len(series))
             return series
 
         except Exception as e:
             logger.error("[Macro] Erreur lors du chargement de %s: %s", ticker, e)
             return None
 
+    def _estimate_aaa_yield(self, risk_free_rate: float) -> float:
+        """
+        Estime le rendement des obligations corporatives AAA.
+        Y_aaa = Rf + Spread_AAA
+        """
+        return risk_free_rate + self.DEFAULT_AAA_SPREAD
+
     def get_macro_context(
-        self,
-        date: datetime,
-        currency: str,
-        base_mrp: float = 0.05,
-        base_g_inf: float = 0.02,
+            self,
+            date: datetime,
+            currency: str,
+            base_mrp: float = 0.05,
+            base_g_inf: float = 0.02,
     ) -> Optional[MacroContext]:
         """
-        Retourne le contexte macro (Rf, MRP, g∞) à une date précise.
-        Pour Rf, prend la donnée la plus récente avant ou égale à cette date.
+        Retourne le contexte macro complet à une date précise.
         """
-
-        # Normalisation devise + date (tz-naive)
         currency = currency.upper()
         date = date.replace(tzinfo=None)
 
-        # --- Fallbacks par devise ---
-        DEFAULT_RF = 0.04       # fallback générique (4%)
-        DEFAULT_RF_EUR = 0.027  # fallback spécifique EUR (2.7% ~ Bund 10Y moyen)
+        # Valeurs par défaut (Fallback ultime)
+        rf_value = 0.04 if currency != "EUR" else 0.027
 
-        # 1. Taux sans risque historique (Rf)
+        # 1. Récupération Taux Sans Risque (Rf)
         rf_series = self._load_risk_free_series(currency)
 
-        # Valeur par défaut suivant la devise
-        rf_value = DEFAULT_RF_EUR if currency == "EUR" else DEFAULT_RF
-
         if rf_series is not None:
-            # (sécurité) s'assurer que l'index est bien tz-naive
-            if isinstance(rf_series.index, pd.DatetimeIndex) and rf_series.index.tz is not None:
-                rf_series = rf_series.copy()
-                rf_series.index = rf_series.index.tz_localize(None)
-
-            # On garde les valeurs <= date
-            try:
-                past_data = rf_series[rf_series.index <= date]
-            except TypeError as e:
-                logger.error(
-                    "[Macro] Erreur de comparaison dates (rf_series.index vs %s): %s",
-                    date,
-                    e,
-                )
-                past_data = rf_series
+            # Filtrage temporel : on prend la dernière valeur connue avant ou à la date
+            past_data = rf_series[rf_series.index <= date]
 
             if not past_data.empty:
                 rf_value = float(past_data.iloc[-1])
 
-                # ⛔ Cas particulier EUR : taux négatif ou aberrant → fallback 2.7 %
+                # Sanity check pour l'Euro (taux négatifs passés ou erreur future)
                 if currency == "EUR" and rf_value < 0.0:
-                    logger.warning(
-                        "[Macro] Rendement €STR/Bund proxy négatif pour EUR à la date %s — "
-                        "fallback 2.7%% utilisé comme Rf stable.",
-                        date.date(),
-                    )
-                    rf_value = DEFAULT_RF_EUR
+                    rf_value = 0.025  # Fallback conservateur
             else:
-                # Pas de data historique utilisable
-                if currency == "EUR":
-                    logger.warning(
-                        "[Macro] Pas de taux sans risque trouvé avant %s pour EUR. "
-                        "Fallback 2.7%% (proxy Bund 10Y moyen).",
-                        date.date(),
-                    )
-                    rf_value = DEFAULT_RF_EUR
-                else:
-                    logger.warning(
-                        "[Macro] Pas de taux sans risque trouvé avant %s pour %s. "
-                        "Utilisation défaut (4%%).",
-                        date.date(),
-                        currency,
-                    )
-                    rf_value = DEFAULT_RF
-        else:
-            # rf_series = None (échec complet du chargement)
-            if currency == "EUR":
-                logger.warning(
-                    "[Macro] Impossible de charger une série Rf pour EUR. "
-                    "Fallback 2.7%% (proxy Bund 10Y moyen)."
-                )
-                rf_value = DEFAULT_RF_EUR
-            else:
-                logger.warning(
-                    "[Macro] Impossible de charger une série Rf pour %s. "
-                    "Fallback générique 4%%.",
-                    currency,
-                )
-                rf_value = DEFAULT_RF
+                logger.warning(f"[Macro] Pas de donnée historique Rf pour {currency} avant {date.date()}")
 
-        # 2. Market Risk Premium (MRP) – constant en V1
-        mrp_value = base_mrp
+        # 2. Estimation du Yield AAA (Pour Graham)
+        aaa_yield = self._estimate_aaa_yield(rf_value)
 
-        # 3. Taux de croissance perpétuel (g∞) – constant en V1
-        g_inf_value = base_g_inf
-
-        logger.info(
-            "[Macro] Contexte pour %s (currency=%s): Rf=%.4f, MRP=%.4f, g∞=%.4f",
-            date.date(),
-            currency,
-            rf_value,
-            mrp_value,
-            g_inf_value,
-        )
-
+        # 3. Construction du Contexte
         return MacroContext(
             date=date,
             currency=currency,
             risk_free_rate=rf_value,
-            market_risk_premium=mrp_value,
-            perpetual_growth_rate=g_inf_value,
+            market_risk_premium=base_mrp,
+            perpetual_growth_rate=base_g_inf,
+            corporate_aaa_yield=aaa_yield
         )

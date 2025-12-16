@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Tuple, Optional
 from dataclasses import dataclass
 
 from core.exceptions import CalculationError
@@ -72,6 +72,16 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
             "La valeur terminale est mathématiquement infinie."
         )
     return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
+
+
+def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
+    """
+    Modèle de Sortie par Multiple (Market Approach).
+    TV = Metric_n * Multiple (ex: EBITDA_n * 10x)
+    """
+    if multiple < 0:
+        raise CalculationError("Le multiple de sortie ne peut pas être négatif.")
+    return final_metric * multiple
 
 
 def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float) -> float:
@@ -173,3 +183,72 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
         wacc=wacc_final,
         method=method
     )
+
+
+# ==============================================================================
+# 3. MODÈLES SPÉCIFIQUES (GRAHAM, RIM) - FORMULES RÉVISÉES
+# ==============================================================================
+
+def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
+    """
+    Formule Révisée de Benjamin Graham (1974) :
+    V = [EPS * (8.5 + 2g) * 4.4] / Y
+
+    Args:
+        eps: Earnings Per Share normalisé.
+        growth_rate: Taux de croissance (ex: 0.05 pour 5%).
+        aaa_yield: Rendement des obligations corporate AAA actuel (ex: 0.045).
+
+    Note: Dans la formule originale, '2g' implique g comme entier (2*5=10).
+    Ici, on convertit le décimal : 2 * (growth_rate * 100).
+    """
+    if aaa_yield <= 0:
+        raise CalculationError("Le rendement obligataire (AAA Yield) doit être positif.")
+
+    # Facteur de croissance : 8.5 (base PE) + 2 * croissance (%)
+    growth_multiplier = 8.5 + 2.0 * (growth_rate * 100.0)
+
+    # Ajustement aux taux : Multiplier par 4.4 (taux réf) et diviser par taux actuel
+    rate_adjustment = 4.4 / (aaa_yield * 100.0)
+
+    return eps * growth_multiplier * rate_adjustment
+
+
+def calculate_rim_vectors(
+        current_book_value: float,
+        cost_of_equity: float,
+        projected_earnings: List[float],
+        payout_ratio: float
+) -> Tuple[List[float], List[float]]:
+    """
+    Génère les vecteurs nécessaires pour le Residual Income Model.
+    Utilise la Clean Surplus Relationship : BV_t = BV_{t-1} + NI_t - Div_t
+
+    Returns:
+        (residual_incomes, book_values)
+    """
+    book_values = []
+    residual_incomes = []
+
+    prev_bv = current_book_value
+
+    for earnings in projected_earnings:
+        # 1. Calcul du Dividende (via payout fixe pour simplification)
+        dividend = earnings * payout_ratio
+
+        # 2. Charge de Capital (Equity Charge)
+        equity_charge = prev_bv * cost_of_equity
+
+        # 3. Residual Income (Profit économique)
+        ri = earnings - equity_charge
+
+        # 4. Mise à jour Book Value (Clean Surplus)
+        # BV_new = BV_old + Net Income - Dividends
+        new_bv = prev_bv + earnings - dividend
+
+        residual_incomes.append(ri)
+        book_values.append(new_bv)
+
+        prev_bv = new_bv
+
+    return residual_incomes, book_values
