@@ -1,412 +1,263 @@
-Pour transformer ce projet en quelque chose de **réellement défendable** (semi-pro solide), nous allons combler ces 4 trous béants. Voici les **mises à jour finales** pour atteindre ce standard. ----- ### Plan d'Action Correctif 1. **Réintégrer la Stabilité dans le Guardrail :** Si Monte Carlo donne n'importe quoi (CV \> 0.4), on doit le dire et potentiellement bloquer l'usage. 2. **Audit du Mode Historique :** Ajouter une vraie logique pour évaluer la qualité de la série temporelle, pas juste la qualité du dernier point. 3. **Flags Structurés :** Appliquer la modification dans models.py et yahoo_provider.py pour de bon. 4. **Documentation (Code) :** Ajouter des docstrings explicites sur les seuils heuristiques. ----- ### 1\. Mise à Jour du Modèle de Données (core/models.py) Ajout des flags pour sortir du "string parsing" fragile.
-python
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
-from enum import Enum
-
-class ValuationMode(str, Enum):
-    SIMPLE_FCFF = "simple_fcff"
-    FUNDAMENTAL_FCFF = "fundamental_fcff"
-    MONTE_CARLO = "monte_carlo"
-
-@dataclass
-class CompanyFinancials:
-    # ... (Champs existants: ticker, currency, prices, debt, cash, interest ...)
-    ticker: str
-    currency: str
-    sector: str = "Unknown"
-    industry: str = "Unknown"
-    current_price: float = 0.0
-    shares_outstanding: float = 0.0
-    total_debt: float = 0.0
-    cash_and_equivalents: float = 0.0
-    interest_expense: float = 0.0
-    fcf_last: float = 0.0
-    beta: float = 1.0
-    fcf_fundamental_smoothed: Optional[float] = None
-    implied_growth_rate: Optional[float] = None
-    warnings: List[str] = field(default_factory=list)
-
-    # --- METADATA POUR AUDIT ROBUSTE (Nouveau) ---
-    source_fcf: str = "unknown"        # "ttm", "weighted", "simple", "none"
-    source_growth: str = "unknown"     # "analysts", "cagr", "sustainable", "macro"
-    source_debt: str = "unknown"       # "synthetic", "sector", "manual"
-
-    # --- AUDIT ---
-    audit_score: float = 100.0
-    audit_rating: str = "Non Audité"
-    audit_details: List[Dict] = field(default_factory=list)
-    audit_logs: List[str] = field(default_factory=list)
-
-    # ... (Méthodes to_log_dict et __repr__ inchangées) ...
------ ### 2\. Mise à Jour du Moteur d'Audit (infra/data_providers/audit_engine.py) Voici la version qui intègre la logique pour l'**Historique** et les **Guardrails stricts**.
-python
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-import numpy as np
-
-from core.models import CompanyFinancials, DCFParameters, ValuationMode
-
-@dataclass
-class SubScore:
-    value: float
-    details: List[Dict] = field(default_factory=list)
-
-@dataclass
-class AuditReport:
-    global_score: float
-    rating: str
-    data_score: SubScore
-    assumption_score: SubScore
-    stability_score: SubScore
-    mode_score: SubScore
-    ui_details: List[Dict]
-    terminal_logs: List[str]
-    block_monte_carlo: bool = False
-    block_history: bool = False
-    critical_warning: bool = False
-
-class AuditEngine:
-    @staticmethod
-    def compute_audit(
-        financials: CompanyFinancials,
-        params: DCFParameters,
-        simulation_results: Optional[List[float]] = None,
-        hist_coverage: Optional[float] = None, # Nouveau : % de couverture historique (0.0 - 1.0)
-        mode: ValuationMode = ValuationMode.SIMPLE_FCFF
-    ) -> AuditReport:
-
-        # 1. Calcul des 4 Piliers
-        data = AuditEngine._evaluate_data_quality(financials)
-        assumptions = AuditEngine._evaluate_assumptions(financials, params)
-        stability = AuditEngine._evaluate_stability(simulation_results, params)
-        mode_specific = AuditEngine._evaluate_mode_fit(financials, mode, stability.value, hist_coverage)
-
-        # 2. Agrégation Pondérée
-        # Data & Assumptions = Socle (70%)
-        # Stability & Mode = Ajustements dynamiques (30%)
-        raw_score = (
-            data.value * 0.35 +
-            assumptions.value * 0.35 +
-            stability.value * 0.15 +
-            mode_specific.value * 0.15
-        )
-
-        # 3. Disjoncteurs (Maillon Faible)
-        # Si la donnée est critique, le score global plafonne
-        if data.value < 40: raw_score = min(raw_score, 45.0)
-        # Si le modèle est instable en MC, score global plafonne
-        if mode == ValuationMode.MONTE_CARLO and stability.value < 30:
-            raw_score = min(raw_score, 50.0)
-
-        final_score = max(0.0, min(100.0, raw_score))
-
-        # ... (Consolidation UI/Logs standard) ...
-        all_details = data.details + assumptions.details + stability.details + mode_specific.details
-        severity_map = {"high": 0, "medium": 1, "low": 2}
-        all_details.sort(key=lambda x: severity_map.get(x.get("severity", "low"), 3))
-
-        # 4. Guardrails Actifs
-        # On bloque MC si données pourries OU instabilité extrême
-        block_mc = (data.value < 40) or (stability.value < 20)
-
-        # On bloque historique si données pourries OU couverture historique faible
-        block_hist = (data.value < 40) or (hist_coverage is not None and hist_coverage < 0.5)
-
-        return AuditReport(
-            global_score=final_score,
-            rating=AuditEngine._get_rating(final_score),
-            data_score=data,
-            assumption_score=assumptions,
-            stability_score=stability,
-            mode_score=mode_specific,
-            ui_details=all_details,
-            terminal_logs=AuditEngine._generate_logs(all_details),
-            block_monte_carlo=block_mc,
-            block_history=block_hist,
-            critical_warning=(final_score < 45)
-        )
-
-    # ... ( _evaluate_data_quality et _evaluate_assumptions inchangés car bons) ...
-    # Rappel : Utiliser f.source_fcf == "ttm", f.source_growth == "analysts", etc.
-
-    @staticmethod
-    def _evaluate_stability(sim_results: Optional[List[float]], p: DCFParameters) -> SubScore:
-        score = 100.0
-        details = []
-
-        # Si pas de simu (Mode Simple), on utilise la volatilité théorique
-        if not sim_results:
-            if p.beta_volatility > 0.15:
-                score -= 15
-                details.append({"category": "Stabilité", "penalty": -15, "reason": "Volatilité sectorielle élevée (Théorique)", "severity": "medium"})
-            return SubScore(score, details)
-
-        # Analyse CV (Coefficient de Variation)
-        values = np.array(sim_results)
-        mean = np.mean(values)
-        if mean == 0: return SubScore(0, [{"category": "Stabilité", "penalty": -100, "reason": "Erreur calcul", "severity": "high"}])
-
-        cv = np.std(values) / mean
-
-        if cv > 0.40: # >40% de dispersion = Chaos
-            score -= 40
-            details.append({"category": "Sensibilité", "penalty": -40, "reason": "Modèle instable (Dispersion > 40%)", "severity": "high"})
-        elif cv > 0.25:
-            score -= 20
-            details.append({"category": "Sensibilité", "penalty": -20, "reason": "Dispersion significative", "severity": "medium"})
-
-        return SubScore(max(0, score), details)
-
-    @staticmethod
-    def _evaluate_mode_fit(f: CompanyFinancials, mode: ValuationMode, stability_val: float, hist_cov: Optional[float]) -> SubScore:
-        score = 100.0
-        details = []
-
-        if mode == ValuationMode.MONTE_CARLO:
-            # Pénalité cumulée : Données estimées + Instabilité
-            if f.source_growth == "macro" and stability_val < 50:
-                score -= 30
-                details.append({"category": "Mode", "penalty": -30, "reason": "Monte Carlo non fiable sur données macro instables", "severity": "high"})
-
-        elif mode == ValuationMode.SIMPLE_FCFF:
-            # Mode simple dangereux si cyclique
-            if f.beta > 1.5:
-                score -= 15
-                details.append({"category": "Mode", "penalty": -15, "reason": "DCF Simple risqué pour valeur très volatile", "severity": "medium"})
-
-        # Cas spécifique : Historique (ne s'applique pas au score global mais génère un warning)
-        if hist_cov is not None:
-            if hist_cov < 0.5: # Moins de 50% de points valides
-                score -= 20
-                details.append({"category": "Historique", "penalty": -20, "reason": f"Données historiques lacunaires ({hist_cov:.0%})", "severity": "high"})
-            elif hist_cov < 0.8:
-                score -= 10
-                details.append({"category": "Historique", "penalty": -10, "reason": "Trous dans l'historique financier", "severity": "medium"})
-
-        return SubScore(max(0, score), details)
+OK, on tranche.
+
+Tu n’as pas besoin d’une usine DDD hexagonale V5 pour l’instant.
+Tu n’as plus le droit non plus de rester dans le bricolage V3.
+
+La bonne réponse, c’est une **V4.1 structurée**, inspirée de la clean architecture, avec :
+
+* un **core math + DCF propre**,
+* un **infra Yahoo + audit** clairement séparé,
+* un **app/workflow** qui gère Auto vs Expert sans magie ni God object.
+
+Je te propose ce **plan final**, clair et implémentable.
+
+---
+
+## 1. Architecture cible (réaliste, propre, publiable)
+
+On part de ton repo actuel, on converge vers ça :
+
+```text
+intrinsic_value_pricer/
+│
+├── core/
+│   ├── models.py          # DCFParameters, CompanyFinancials, DCFResult, etc.
+│   ├── enums.py           # ValuationMode, FCFSource, GrowthSource...
+│   ├── audit_models.py    # SubScore, AuditReport
+│   └── dcf/
+│       ├── discounting.py # maths pures: WACC, TV, actualisation, equity value
+│       ├── engines.py     # DeterministicDCFEngine, MonteCarloEngine, HistoricalEngine
+│       └── strategies.py  # SimpleStrategy, FundamentalStrategy, ManualStrategy
+│
+├── infra/
+│   ├── data_providers/
+│   │   ├── yahoo_provider.py   # remplit CompanyFinancials + DCFParameters
+│   │   ├── yahoo_helpers.py
+│   │   └── audit_engine.py     # Audit V4 (Data/Assumption/Stability/Mode)
+│   ├── macro/
+│   │   └── yahoo_macro_provider.py
+│   └── ref_data/
+│       └── country_matrix.py
+│
+├── app/
+│   ├── main.py            # Streamlit entrypoint
+│   ├── workflow.py        # Orchestration Auto / Expert
+│   └── ui_components/
+│       ├── inputs_auto.py
+│       ├── inputs_expert.py
+│       ├── display_kpis.py
+│       ├── display_charts.py
+│       └── display_audit.py
+│
+├── config/
+│   ├── settings.yaml
+│   ├── defaults.yaml      # Defaults Mode Expert
+│   └── logging.conf
+│
+├── docs/
+│   ├── methodology.md
+│   ├── audit_spec_v4.md
+│   └── user_manual.md
+│
+├── tests/
+│   ├── test_discounting.py
+│   ├── test_engines.py
+│   ├── test_audit.py
+│   └── test_workflow.py
+│
+├── README.md
+└── requirements.txt
+```
+
+**Décisions fortes :**
+
+* **Pas de dossier `domain/`, pas de DDD complet** → overkill pour ton contexte.
+* **Pas de God Engine** → trois engines séparés, mais partageant `discounting.py`.
+* **Les enums / flags vont dans `core/enums.py`**, pas dans infra.
+
+---
+
+## 2. Rôles clairs de chaque couche
+
+### 2.1 `core/` = math + modèles (aucun accès à Yahoo, web, etc.)
+
+* `models.py` :
+
+  * `CompanyFinancials` (dataclass), avec flags structurés (`source_fcf`, `source_growth`, etc.)
+  * `DCFParameters`
+  * `DCFResult` (avec tous les détails numériques pour les logs/UI)
+* `enums.py` :
+
+  * `ValuationMode`
+  * `FCFSource`, `GrowthSource`, etc.
+* `dcf/discounting.py` :
+
+  * `calculate_wacc`
+  * `discount_cashflows`
+  * `calculate_terminal_value`
+  * `calculate_equity_value`
+* `dcf/engines.py` :
+
+  * `DeterministicDCFEngine` (ce qu’on a esquissé)
+  * `MonteCarloEngine` (qui wrappe le deterministic)
+  * `HistoricalEngine` (reconstruit VI dans le passé, en utilisant discounting)
+* `dcf/strategies.py` :
 
-    # ... (Helpers _get_rating et _generate_logs inchangés) ...
------ ### 3\. Mise à Jour du Provider (infra/data_providers/yahoo_provider.py) Il faut maintenant peupler les flags source_ pour que l'audit fonctionne.
-python
-    # Dans _resolve_fcf_strategy :
-    def _resolve_fcf_strategy(self, ticker: str, data: Dict[str, Any], warnings: List[str], financials: CompanyFinancials) -> float:
-        # ... TTM ...
-        if fcf_ttm is not None:
-            financials.source_fcf = "ttm"  # <--- FLAG
-            warnings.append(f"✅ FCF Source : TTM ...")
-            return float(fcf_ttm)
+  * `SimpleStrategy` (Mode 1 auto)
+  * `FundamentalStrategy` (Mode 2 auto)
+  * `ManualStrategy` (Mode Expert)
+  * éventuellement plus tard `MultiStageStrategy` si tu veux isoler le plateau
 
-        # ... Weighted ...
-        if fcf_weighted is not None:
-            financials.source_fcf = "weighted" # <--- FLAG
-            # ...
-            return float(fcf_weighted)
+**Règle dure :**
+Core **ne devine rien**. Il ne consulte aucune source externe.
+Tout ce qui est dans `DCFParameters` est considéré comme **déjà validé**.
 
-        # ... Simple ...
-        if fcf_simple is not None:
-            financials.source_fcf = "simple" # <--- FLAG
-            # ...
-*(Répéter pour Growth et Debt)* ----- ### 4\. Intégration Finale dans workflow.py Le workflow doit maintenant passer le paramètre hist_coverage à l'audit s'il a été calculé.
-python
-        # ... (Après calcul historique) ...
-        hist_coverage = None
-        if hist_iv_df is not None and not hist_iv_df.empty:
-             # Calcul simple de couverture : points valides / points attendus (ex: 5 ans * 52 semaines = 260)
-             expected_points = projection_years * 52 # Approx
-             hist_coverage = len(hist_iv_df) / expected_points
-             hist_coverage = min(1.0, hist_coverage)
+---
 
-        # --- MISE A JOUR AUDIT FINALE ---
-        audit_report = AuditEngine.compute_audit(
-            financials, params,
-            simulation_results=dcf_result.simulation_results,
-            hist_coverage=hist_coverage, # <--- NOUVEAU
-            mode=mode
-        )
+### 2.2 `infra/` = Yahoo + Audit + Macro
 
-        # ... Update financials ...
-### Verdict V4 1. **Fiabilité :** On se base sur des flags code ("ttm"), pas du texte. 2. **Couverture :** L'historique est audité (via hist_coverage). 3. **Risk Management :** Le Guardrail Monte Carlo prend en compte la stabilité (stability.value < 20). 4. **Transparence :** Le score est décomposé en piliers logiques. C'est maintenant une brique **solide et justifiable**. Tu peux la déployer.
+* `yahoo_provider.py` :
 
+  * Récupère les données brutes.
+  * Nettoie, agrège, choisit FCF TTM / weighted / etc.
+  * Remplit `CompanyFinancials` **+** `DCFParameters`.
+  * Met les bons flags (`source_fcf = FCFSource.TTM`, etc.).
+  * Ajoute des `warnings` textuels pour l’UI (mais audit ne dépend plus de ces strings).
 
-Oui — ce que tu as maintenant est cohérent, robuste, défendable et réaliste pour un moteur d’audit “semi-pro”.
-On n’est plus dans le bricolage, ni dans l’audit cosmétique.
-Tu as corrigé tous les points mortels que j’avais soulignés.
+* `audit_engine.py` :
 
-Mais je vais te donner le verdict complet, point par point : ce qui est validé, ce qui est acceptable, et ce qui reste parfaitible mais non bloquant.
+  * Prend `CompanyFinancials`, `DCFParameters`, `simulation_results` (optionnel), `hist_coverage` (optionnel), `mode`.
+  * Retourne un `AuditReport` (V4 qu’on a construit).
+  * Fait la différence Auto vs Expert par un simple paramètre `mode_expert: bool` :
 
-✅ 1. Flags structurés → SOLIDE
+    * `mode_expert=False` → DataScore + AssumptionScore + Stability + ModeScore
+    * `mode_expert=True` → DataScore/AssumptionScore ignorés, on garde : Stability + Mode (on peut garder un petit warning “vos hypothèses sont très éloignées des autos” si tu veux **optionnellement**, mais pas comme base de tout.)
 
-Tu as éliminé le péché originel du projet :
-l’audit basé sur du texte libre (warnings en français).
+**Règle dure :**
+Infra ne fait **pas** de math DCF → pas de WACC, pas de TV. Ça, c’est core.
+Infra ne fait **que** : data sourcing, mapping, audit.
 
-Maintenant :
+---
 
-source_fcf
+### 2.3 `app/` = flux Auto / Expert + UI
 
-source_growth
+* `workflow.py` :
 
-source_debt
+  * **Mode Auto** :
 
-is_fallback_active
+    1. Appelle `YahooProvider` → `financials`, `params`
+    2. Choisit la stratégie (simple / fundamental) selon l’onglet / la méthode
+    3. Appelle `DeterministicDCFEngine`
+    4. Si MC demandé → `MonteCarloEngine`
+    5. Si historique demandé → `HistoricalEngine`
+    6. Appelle `AuditEngine` avec `mode_expert=False`
+    7. Passe tout ça à l’UI
 
-sont des signaux déterministes, traitables par l’audit.
+  * **Mode Expert** :
 
-Conclusion :
-👉 C’est propre, maintenable, robuste. Rien à redire.
+    1. Récupère inputs utilisateur (rf, mrp, g, g∞, N_high, etc.)
+    2. Construit `DCFParameters` à partir de ces inputs (sans provider)
+    3. Crée une `ManualStrategy`
+    4. Appelle `DeterministicDCFEngine` / `MonteCarloEngine`
+    5. Appelle `AuditEngine` avec `mode_expert=True` (donc DataScore/AssumptionScore neutres)
+    6. (Option) bouton “Comparer avec Auto” → appelle YahooProvider + deterministic engine en “shadow” et affiche seulement un panneau comparatif, **sans toucher le score de confiance**
 
-✅ 2. Audit en deux temps → COHÉRENT
+* `ui_components/*` : affichage, pas de logique métier.
 
-Avant :
-Tu audites avant simulation ⇒ tu manques la stabilité réelle du modèle.
+---
 
-Maintenant :
+## 3. Logs et audit : règles strictes
 
-Pré-audit = Data + Assumptions
+Tu veux du **publable / pro**, donc :
 
-Post-audit = Stabilité via Monte Carlo
+### 3.1 Logs terminal
 
-Conclusion :
-👉 C’est exactement la bonne architecture.
-C’est même la seule qui permette d’être honnête intellectuellement.
+* Tous dans un logger structuré (`infra/logging` si tu veux, ou simple config logging.conf).
+* Par convention :
 
-🟩 3. ModeScore → BON, MAIS PAS ENCORE OPTIMAL
+```text
+[DCF] ticker=AAPL mode=simple year=1 fcf=12450000.32 df=0.91 pv=11329500.29
+[WACC] ticker=AAPL ke=0.112 rd=0.045 tax=0.25 we=0.82 wd=0.18 wacc=0.091
+[TV] ticker=AAPL fcf_T=14500000.00 g=0.025 tv=210000000.00 tv_pv=132000000.00
+[AUDIT] ticker=AAPL global=72 data=80 assumptions=65 stability=50 mode=90 mc_block=False hist_block=False
+```
 
-Est-ce qu’il existe vraiment maintenant ?
-Oui.
-Est-ce qu’il pénalise correctement les modes les plus fragiles ?
-En partie.
+**Toujours avec nombres explicites**, jamais “juste du texte narratif”.
 
-Tu gères maintenant :
+### 3.2 Audit UI
 
-MC + données fragiles
+* Un widget dédié (`display_audit.py`) qui :
 
-Simple DCF + entreprise volatile
+  * Affiche `global_score` + rating.
+  * Affiche une liste des `ui_details` triés par sévérité.
+  * Affiche, si mode expert, un badge :
+    *“Mode Expert : la qualité des données est sous votre responsabilité. L’audit se concentre uniquement sur la stabilité du modèle et la pertinence du mode.”*
 
-Historique → couverture faible → pénalité
+---
 
-C’est suffisant pour une v1 “semi-pro”.
-Ce n’est pas “industry-grade sensibilité multi-dimensionnelle”, mais c’est désormais rationnel, explicitable, cohérent.
+## 4. Auto vs Expert : règle de cohérence intellectuelle
 
-Conclusion :
-👉 Acceptable
-👉 Coherent avec le reste du moteur
-👉 Perfectible, mais plus un point faible critique
+### Mode Auto
 
-🟩 4. Stability Score → BON ET UTILE
+* Score = DataScore + AssumptionScore + StabilityScore + ModeScore.
+* Guardrails actifs (block MC, block historique).
+* Audit = juge de la **qualité du pipeline complet**.
 
-Tu utilises :
+### Mode Expert
 
-CV (coefficient de variation)
+* Score = StabilityScore + ModeScore uniquement.
+* Pas de pénalisation pour “données Yahoo pourries” → on s’en fiche, l’utilisateur a tout écrasé.
+* Pas de “shadow benchmark” imposé :
 
-seuils 25% / 40%
+  * seulement en option, sur action explicite du user (“Comparer à l’Auto”).
 
-C’est exactement ce qu’on fait dans les stress tests OU dans l'analyse de sensibilité simplifiée des modèles de risque.
+C’est la seule façon d’être **honnête** :
 
-C’est propre, rationnel et lisible.
+> Auto → tu juges la machine.
+> Expert → tu juges la stabilité et les conséquences, pas la data source.
 
-Conclusion :
-👉 Validé
-👉 Pertinent
-👉 Au niveau de ce qu’on peut attendre pour un modèle retail avancé
+---
 
-🟩 5. Guardrails → ENFIN COHÉRENTS
+## 5. Roadmap de migration (pour ne pas exploser ton code)
 
-Tu as corrigé l’erreur où Monte Carlo n’était plus bloqué par instabilité.
+Tu as déjà tout le code Phase 1 + audit V4. Voici un plan **réaliste** :
 
-Maintenant :
+### Étape 1 – Factoriser le DCF math
 
-Blocage MC si data catastrophique OU stabilité catastrophique
+* Créer `core/dcf/discounting.py`.
+* Migrer les formules communes depuis `basic_engine.py`, `valuation.py`, etc.
+* Adapter `basic_engine.py` pour qu’il consomme `discounting` (sans tout casser).
 
-Blocage historique si data fragiles OU couverture < 50%
+### Étape 2 – Introduire `DeterministicDCFEngine` + `strategies`
 
-C’est exactement comme un risk manager le ferait :
+* Créer `core/dcf/engines.py` + `strategies.py`.
+* Réimplémenter ce que fait aujourd’hui `basic_engine` dans `DeterministicDCFEngine + SimpleStrategy`.
+* Faire une **passerelle temporaire** : `basic_engine` appelle simplement `DeterministicDCFEngine(SimpleStrategy)`.
 
-“Si les fondations sont pourries ou si le modèle réagit de manière explosive, je bloque le mode.”
+### Étape 3 – Brancher `MonteCarloEngine` et `HistoricalEngine`
 
-Conclusion :
-👉 Correct et défendable
+* Refactoriser `simulation_engine.py` vers `MonteCarloEngine` qui wrappe le deterministic.
+* Refactoriser `historical_valuation_service.py` vers `HistoricalEngine` qui utilise `discounting`.
 
-🟧 6. Pondération des piliers → RAISONNABLE MAIS HEURISTIQUE
+### Étape 4 – Stabiliser `YahooProvider` + `AuditEngine`
 
-Tu es passé à :
+* Remplacer les strings magiques par enums/flags;
+* Assurer que `AuditEngine` ne dépend plus de texte mais de `source_fcf`, `source_growth`, etc.
 
-Data = 35%
+### Étape 5 – Ajouter Mode Expert dans `app/workflow.py` + UI
 
-Assumptions = 35%
+* Créer `inputs_expert.py`.
+* Ajouter la bascule “Mode Expert” dans `main.py`.
+* Implémenter le flux Expert dans `workflow.py` selon le schéma ci-dessus.
 
-Stability = 15%
+---
 
-Mode = 15%
+## Conclusion nette
 
-Ce n’est pas calibré empiriquement, mais :
+* **Non**, ta V4.0 initiale (God Engine + Shadow Benchmark systématique) n’était pas tenable.
+* **Oui**, la V4.1 que je te propose ici est **suffisamment propre, réaliste, et industrialisable** pour être publiée.
+* **Non**, tu n’as pas besoin de DDD/Hexagonale complète tant que tu restes sur Yahoo & 1 dev.
+* **Oui**, avec cette archi + audit V4 + Mode Expert, tu as un projet qui tient la route face à un reviewer quant / dev senior.
 
-les poids sont rationnels,
-
-le maillon faible est bien géré via les plafonds,
-
-la pondération ne produit pas de biais grotesque.
-
-Pour un moteur retail, c’est largement suffisant.
-
-Conclusion :
-👉 OK pour un usage réel
-👉 Mais calibration future possible si tu veux aller plus loin
-
-🟩 7. Historique couvert avec hist_coverage → CRUCIAL ET BIEN FAIT
-
-C’était un point de rupture majeur.
-Maintenant :
-
-Tu mesures la densité de points historiques.
-
-Tu pénalises sous 80%.
-
-Tu bloques sous 50%.
-
-C’est exactement la règle minimale qu’un comité de validation accepterait.
-
-Conclusion :
-👉 Très bien
-👉 Tu corriges le plus gros angle mort de la v3
-
-🟥 8. Ce qui manque encore (mais n’empêche pas de dire “semi-pro”)
-
-Aucun de ces points n’est bloquant.
-Mais si tu veux atteindre “niveau pro allégé”, tu devras un jour :
-
-(A) Harmoniser les warnings et les détails UI
-
-→ Aujourd’hui, le moteur d’audit et l’UI ne se parlent pas beaucoup.
-Pas grave, mais améliorable.
-
-(B) Construire un mini dataset de calibration (20–30 entreprises)
-
-→ Pas pour “valider la VI”,
-→ mais pour vérifier que la distribution du score est raisonnable.
-
-(C) Ajouter quelques sanity checks supplémentaires
-
-(ex. FCF négatif + croissance positive = pénalité automatique).
-
-Ce sont des micro-améliorations.
-
-🟦 Verdict final objectif
-
-🟢 Oui — on peut dire sérieusement que ton moteur d’audit est maintenant cohérent, rigoureux et à un niveau semi-professionnel.
-🟢 Oui — tu as éliminé les failles structurelles.
-🟢 Oui — il est maintenant conforme à ton storytelling (“multi-dimensionnel, sensible au mode, sensible au modèle”).
-🟡 Non — ce n’est pas encore “industry-grade” au sens bancaire réglementaire.
-🔵 Mais pour une app retail avancée, c’est nettement au-dessus de 99 % de ce qui existe.
-
-👉 Tu peux être satisfait.
-👉 Tu peux l’intégrer.
-👉 Tu peux le pitcher sans rougir.
-
-Si tu veux, je peux ensuite :
-
-faire une revue ligne-par-ligne du code à partir de tes 26 fichiers pour garantir l’intégration,
-
-te proposer une doc technique prête à mettre dans ton repo.
-
-Tu me dis.
+Si tu veux, prochain message :
+on prend **ton `core/dcf/basic_engine.py` actuel** et je te montre exactement comment le transformer en `DeterministicDCFEngine + SimpleStrategy` sans tout casser.

@@ -1,152 +1,158 @@
 import logging
-from typing import Sequence
-
 import streamlit as st
 
-from core.models import ValuationMode
-from core.dcf.historical_params import YahooMacroHistoricalParamsStrategy
-from core.dcf.historical_valuation_service import build_intrinsic_value_time_series
-from core.dcf.valuation_service import run_valuation
-from core.exceptions import CalculationError, DataProviderError
-from infra.data_providers.yahoo_provider import YahooFinanceProvider
-from infra.macro.yahoo_macro_provider import YahooMacroProvider
-
-# Imports UI
-from app.ui_kpis import display_results
-from app.ui_charts import (
-    display_price_chart,
-    _get_sample_dates,
-    display_simulation_chart,
+# --- CORE IMPORTS ---
+from core.valuation.engines import run_valuation
+from core.exceptions import DataProviderError, CalculationError, ExternalServiceError
+from core.models import (
+    ValuationRequest,
+    ValuationResult,
+    DCFValuationResult,
+    DDMValuationResult,
+    GrahamValuationResult,
+    ValuationMode
 )
+
+# --- INFRA IMPORTS ---
+from infra.data_providers.yahoo_provider import YahooFinanceProvider
+from infra.auditing.audit_engine import AuditEngine
+
+# --- UI IMPORTS (Modularité) ---
+# Ces fonctions sont définies dans app/ui_components/ui_kpis.py
+from app.ui_components.ui_kpis import (
+    display_dcf_summary,
+    display_ddm_summary,
+    display_graham_summary,
+    display_audit_report,
+    render_financial_badge
+)
+# Cette fonction est définie dans app/ui_components/ui_charts.py
+from app.ui_components.ui_charts import display_price_chart, display_simulation_chart
 
 logger = logging.getLogger(__name__)
 
-PROVIDER = YahooFinanceProvider()
-MACRO_PROVIDER = YahooMacroProvider()
 
-# --- LISTE DES SECTEURS INTERDITS POUR LE DCF ---
-FORBIDDEN_SECTORS = ["Financial Services", "Real Estate"]
-
-
-def run_workflow_and_display(
-        ticker: str,
-        projection_years: int,
-        mode: ValuationMode,
-) -> None:
+def run_workflow_and_display(request: ValuationRequest) -> None:
     """
-    Workflow complet avec garde-fous sectoriels, affichage des résultats,
-    du profil de risque et de l'historique de valorisation.
+    Orchestrateur Principal :
+    1. Acquisition Données (Provider)
+    2. Calcul (Engine)
+    3. Audit (AuditEngine)
+    4. Affichage (UI)
     """
-    logger.info("=== NOUVELLE DEMANDE : %s | Mode: %s ===", ticker, mode.value)
-
-    # Création du conteneur de statut
+    # Feedback visuel pour l'utilisateur
     status = st.status("Analyse en cours...", expanded=True)
 
     try:
-        # 1) Chargement
-        status.write(f"📥 Récupération des données pour {ticker}...")
-        financials, params = PROVIDER.get_company_financials_and_parameters(
-            ticker=ticker,
-            projection_years=projection_years,
+        # --- ÉTAPE 1 : DONNÉES ---
+        status.write("📡 Connexion aux services financiers (Yahoo)...")
+        provider = YahooFinanceProvider()
+
+        # Récupération automatique des états financiers et des paramètres macro
+        financials, auto_params = provider.get_company_financials_and_parameters(
+            request.ticker,
+            request.projection_years
         )
 
-        # --- GARDE-FOU SECTORIEL ---
-        if financials.sector in FORBIDDEN_SECTORS:
-            status.update(label="Analyse Interrompue 🛑", state="error", expanded=True)
-            st.error(f"🛑 Méthode Inadaptée pour ce Secteur : {financials.sector}")
-            st.markdown(
-                f"""
-                **Pourquoi ?**
-                L'entreprise **{financials.ticker}** appartient au secteur **{financials.sector}** (Industrie : {financials.industry}).
-                Les modèles DCF basés sur le Free Cash Flow ne fonctionnent pas correctement 
-                pour les Banques (Financial Services) ou les Foncières (REITs) car leur structure de bilan est différente.
+        # Application de la surcharge manuelle si nécessaire (Mode Expert)
+        final_params = request.manual_params if request.manual_params else auto_params
 
-                **Recommandation Pro :**
-                Ces secteurs nécessitent une valorisation par **Modèle de Dividende (DDM)** ou par **Multiples d'Actif Net (P/B)**.
-                """
-            )
-            logger.warning("[GUARDRAIL] DCF arrêté pour le secteur %s.", financials.sector)
-            return
-        # -------------------------------------
+        # --- ÉTAPE 2 : MOTEUR DE CALCUL ---
+        status.write(f"⚙️ Exécution du modèle : {request.mode.value}...")
 
-        logger.info("[1] Données récupérées. Secteur: %s", financials.sector)
+        # Appel du moteur (retourne un objet ValuationResult unique)
+        result = run_valuation(request, financials, final_params)
 
-        # 2) Calcul
-        status.write("🧮 Calcul de la valorisation actuelle...")
-        dcf_result = run_valuation(financials, params, mode)
-        logger.info("[2] Valorisation actuelle terminée.")
+        # --- ÉTAPE 3 : AUDIT ---
+        status.write("🔍 Audit de fiabilité et cohérence...")
+        audit_report = AuditEngine.compute_audit(result)
 
-        # 3) Historique (Sauf Monte Carlo)
-        price_history = None
-        hist_iv_df = None
-        hist_msgs: Sequence[str] = []
+        # On attache le rapport d'audit au résultat pour l'affichage
+        object.__setattr__(result, 'audit_report', audit_report)
 
-        try:
-            status.write("📈 Récupération de l'historique de prix...")
-            price_history = PROVIDER.get_price_history(ticker, period="5y")
+        status.update(label="Analyse terminée avec succès", state="complete", expanded=False)
 
-            if mode == ValuationMode.MONTE_CARLO:
-                status.write("📈 Mode Simulation : Historique désactivé.")
-            else:
-                status.write("📈 Construction de l'historique (Haute Résolution)...")
-                price_history_reset = price_history.reset_index()
-                sample_dates = _get_sample_dates(price_history_reset, freq="1W")
+        # --- ÉTAPE 4 : AFFICHAGE ---
+        # On passe le résultat ET le provider (pour l'historique de prix)
+        _display_valuation_results(result, provider)
 
-                if len(sample_dates) > 0:
-                    macro_strategy = YahooMacroHistoricalParamsStrategy(
-                        MACRO_PROVIDER, financials.currency
-                    )
-                    hist_iv_df, errors = build_intrinsic_value_time_series(
-                        ticker, financials, params, mode, PROVIDER, macro_strategy, sample_dates
-                    )
-                    hist_msgs.extend(errors)
-                    logger.info("[3] Historique construit (%d points).", len(hist_iv_df))
-                else:
-                    status.write("📈 Pas assez de points pour l'historique.")
-
-        except Exception as e:
-            logger.warning("[HistIV] Échec/Skip historique : %s", e)
-            st.warning("Historique de valorisation indisponible.")
-
-        # 4) Affichage
-        status.update(label="Analyse terminée ✅", state="complete", expanded=False)
-
-        # Info Contextuelle
-        vol_label = "Moyenne"
-        if params.beta_volatility > 0.12:
-            vol_label = "Élevée (Forte Incertitude)"
-        elif params.beta_volatility < 0.08:
-            vol_label = "Faible (Stable)"
-
-        st.caption(
-            f"📍 Secteur : **{financials.sector}** | Industrie : *{financials.industry}* | "
-            f"🎲 Profil de Risque : **{vol_label}**"
-        )
-
-        # Affiche les KPIs + Score + Onglets
-        display_results(financials, params, dcf_result, mode)
-
-        # Graphiques
-        if mode == ValuationMode.MONTE_CARLO and dcf_result.simulation_results:
-            display_simulation_chart(dcf_result.simulation_results, financials.current_price, financials.currency)
-
-        display_price_chart(ticker, price_history, hist_iv_df, dcf_result.intrinsic_value_per_share)
-
-        if hist_msgs:
-            with st.expander("ℹ️ Notes sur l'historique"):
-                for m in hist_msgs: st.info(m)
-
-    except DataProviderError as e:
-        status.update(label="Erreur de données", state="error")
-        st.error("Impossible de récupérer les données financières.")
-        st.caption(f"Détails : {e}")
+    except (DataProviderError, ExternalServiceError) as e:
+        status.update(label="Erreur de données", state="error", expanded=False)
+        st.error(f"Impossible de récupérer les données : {e.ui_user_message}")
+        logger.error(f"Data Error: {e}")
 
     except CalculationError as e:
-        status.update(label="Erreur de calcul", state="error")
-        st.error("Erreur mathématique dans le modèle.")
-        st.caption(f"Détails : {e}")
+        status.update(label="Erreur de calcul", state="error", expanded=False)
+        st.error(f"Le modèle n'a pas convergé : {e.ui_user_message}")
+        logger.error(f"Calc Error: {e}")
 
     except Exception as e:
-        status.update(label="Erreur critique", state="error")
-        st.error("Une erreur inattendue est survenue.")
-        st.exception(e)
+        status.update(label="Erreur système", state="error", expanded=False)
+        st.error(f"Une erreur inattendue est survenue : {str(e)}")
+        logger.error("Critical workflow error", exc_info=True)
+
+
+def _display_valuation_results(res: ValuationResult, provider: YahooFinanceProvider) -> None:
+    """
+    Routeur d'affichage (Vue).
+    Affiche les KPIs, les graphiques et l'audit selon la stratégie.
+    """
+    st.markdown("---")
+
+    # 1. En-tête (Prix vs Valeur)
+    c1, c2, c3 = st.columns([2, 2, 3])
+
+    with c1:
+        st.metric("Prix de Marché", f"{res.market_price:,.2f} {res.financials.currency}")
+
+    with c2:
+        st.metric(
+            "Valeur Intrinsèque",
+            f"{res.intrinsic_value_per_share:,.2f} {res.financials.currency}",
+            delta=f"{res.upside_pct:.1%}" if res.upside_pct is not None else None
+        )
+
+    with c3:
+        if res.audit_report:
+            # Badge de qualité
+            score = res.audit_report.global_score
+            render_financial_badge("AUDIT SCORE", f"{score:.0f}/100", score)
+
+    st.markdown("---")
+
+    # 2. Corps de page (Spécifique par Stratégie)
+    # On utilise le polymorphisme : isinstance vérifie le type de résultat
+
+    if isinstance(res, DCFValuationResult):
+        # Pour Simple, Fundamental, Growth
+        display_dcf_summary(res)
+
+        # Si c'est un Monte Carlo, on ajoute le graphique de distribution
+        if res.simulation_results:
+            st.subheader("Distribution Monte Carlo")
+            # Appel à ui_charts
+            display_simulation_chart(res.simulation_results, res.market_price, res.financials.currency)
+
+    elif isinstance(res, DDMValuationResult):
+        # Pour les Banques
+        display_ddm_summary(res)
+
+    elif isinstance(res, GrahamValuationResult):
+        # Pour la méthode Graham
+        display_graham_summary(res)
+
+    else:
+        st.warning(f"Type de résultat non reconnu : {type(res)}")
+
+    # 3. Rapport d'Audit Complet
+    if res.audit_report:
+        display_audit_report(res.audit_report)
+
+    # 4. Historique de Prix (Nécessite le provider passé en argument)
+    with st.expander("Historique de Prix & Analyse", expanded=False):
+        try:
+            hist_data = provider.get_price_history(res.financials.ticker)
+            # Appel à ui_charts
+            display_price_chart(res.financials.ticker, hist_data, None)
+        except Exception as e:
+            st.info(f"Graphique historique indisponible ({e}).")

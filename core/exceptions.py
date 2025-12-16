@@ -1,51 +1,68 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
-class CalculationError(Exception):
+class BaseValuationError(Exception):
     """
-    Raised when the DCF valuation cannot be computed
-    due to invalid assumptions, mathematical inconsistencies,
-    or structural model constraints.
-
-    Accepts optional context for better debugging:
-        raise CalculationError("WACC <= g", context={"wacc": wacc, "g": g})
+    Classe de base pour toutes les erreurs métier.
+    Loggue automatiquement l'erreur à l'instanciation.
     """
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(message)
         self.context = context
 
-        if context is not None:
-            logger.error("[CalculationError] %s | Context: %s", message, context)
-        else:
-            logger.error("[CalculationError] %s", message)
+        # Log structuré automatique
+        log_message = f"[{self.__class__.__name__}] {message}"
+        if context:
+            log_message += f" | context={context}"
+        logger.error(log_message)
 
-    def __repr__(self):
-        return f"CalculationError(message={self.args[0]!r}, context={self.context})"
+    @property
+    def ui_user_message(self) -> str:
+        """Message convivial pour l'interface utilisateur."""
+        return str(self)
 
 
-class DataProviderError(Exception):
-    """
-    Raised when the data provider fails to return valid financial information:
-        - missing critical fields (price, shares, cash flow, etc.)
-        - invalid ticker
-        - API failure or malformed data
-        - values inconsistent with model requirements
+class CalculationError(BaseValuationError):
+    @property
+    def ui_user_message(self) -> str:
+        # Correction du bug ici : on utilise self (le message) et non super().__init__
+        return f"Erreur de calcul : {self}"
 
-    Accepts optional context for traceability.
-    """
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.context = context
+class WorkflowError(BaseValuationError):
+    @property
+    def ui_user_message(self) -> str:
+        return "Erreur technique interne (Workflow). Veuillez réessayer."
 
-        if context is not None:
-            logger.error("[DataProviderError] %s | Context: %s", message, context)
-        else:
-            logger.error("[DataProviderError] %s", message)
 
-    def __repr__(self):
-        return f"DataProviderError(message={self.args[0]!r}, context={self.context})"
+class ApplicationStartupError(BaseValuationError):
+    pass
+
+
+# --- DATA PROVIDER ERRORS (HIÉRARCHIE) ---
+
+class DataProviderError(BaseValuationError):
+    """Erreur générique liée à la récupération de données."""
+    pass
+
+
+class TickerNotFoundError(DataProviderError):
+    @property
+    def ui_user_message(self) -> str:
+        return "Symbole (Ticker) introuvable ou radié. Vérifiez l'orthographe sur Yahoo Finance."
+
+
+class DataInsufficientError(DataProviderError):
+    @property
+    def ui_user_message(self) -> str:
+        return "Données financières insuffisantes ou incomplètes pour ce symbole (ex: Holding, SPAC ou données manquantes)."
+
+
+class ExternalServiceError(DataProviderError):
+    @property
+    def ui_user_message(self) -> str:
+        return "Erreur de connexion au fournisseur de données (Timeout/Réseau). Veuillez réessayer dans quelques instants."
