@@ -1,219 +1,153 @@
-from typing import List, Dict, Optional, Tuple
+import logging
 import numpy as np
+from typing import Optional, Union, List
 
 from core.models import (
+    ValuationResult,
+    ValuationMode,
+    AuditReport,
+    AuditLog,
     CompanyFinancials,
     DCFParameters,
-    ValuationMode,
-    InputSource,
-    AuditReport,
-    AuditLog
+    InputSource
 )
+# On importe les auditeurs spécialisés définis précédemment
+from infra.auditing.auditors import (
+    IValuationAuditor,
+    StandardDCFAuditor,
+    BankAuditor,
+    GrahamAuditor
+)
+
+logger = logging.getLogger(__name__)
 
 
 class AuditEngine:
     """
-    Moteur d'audit institutionnel.
-    Génère désormais des logs positifs (preuves de fiabilité) et négatifs (risques).
+    Moteur d'Audit Central (Factory Pattern).
+    Responsabilité : Router la demande vers le bon auditeur spécialisé.
+    Gère la compatibilité pour l'audit préliminaire (Données) et final (Résultats).
     """
 
     @staticmethod
     def compute_audit(
-            financials: CompanyFinancials,
-            params: DCFParameters,
-            simulation_results: Optional[List[float]] = None,
-            tv_ev_ratio: Optional[float] = None,
-            mode: ValuationMode = ValuationMode.SIMPLE_FCFF,
-            input_source: InputSource = InputSource.AUTO
+            arg1: Union[ValuationResult, CompanyFinancials],
+            arg2: Optional[DCFParameters] = None,
+            **kwargs
     ) -> AuditReport:
+        """
+        Point d'entrée unique et intelligent.
 
-        logs: List[AuditLog] = []
-        is_manual = (input_source == InputSource.MANUAL)
+        Signature 1 (Audit Final) : compute_audit(result: ValuationResult)
+        Signature 2 (Audit Data)  : compute_audit(financials: CompanyFinancials, params: DCFParameters)
+        """
+        try:
+            # --- CAS 1 : AUDIT SUR RÉSULTAT (FINAL) ---
+            if isinstance(arg1, ValuationResult):
+                result = arg1
+                auditor = AuditEngine._get_auditor_for_mode(result.request.mode if result.request else None)
 
-        # --- 1. AUDIT DES DONNÉES ---
-        score_data = 100.0
-        if not is_manual:
-            penalty, data_logs = AuditEngine._check_data_quality(financials)
-            score_data = max(0.0, 100.0 + penalty)
-            logs.extend(data_logs)
+                # Exécution Audit Métier
+                report = auditor.audit(result)
+
+                # Enrichissement Monte Carlo (si présent)
+                if result.simulation_results:
+                    AuditEngine._enrich_with_monte_carlo_audit(result.simulation_results, report)
+
+                return report
+
+            # --- CAS 2 : AUDIT SUR INPUTS (PRÉLIMINAIRE / COMPATIBILITÉ PROVIDER) ---
+            elif isinstance(arg1, CompanyFinancials) and isinstance(arg2, DCFParameters):
+                financials, params = arg1, arg2
+                # On crée un faux résultat temporaire pour utiliser la logique de l'auditeur
+                # Cela évite de dupliquer la logique de validation des données dans auditors.py
+                from core.models import DCFValuationResult, ValuationRequest
+
+                # Dummy Request
+                req = ValuationRequest(
+                    ticker=financials.ticker,
+                    mode=ValuationMode.SIMPLE_FCFF,  # Mode par défaut pour check data
+                    projection_years=params.projection_years,
+                    input_source=InputSource.AUTO
+                )
+
+                # Dummy Result (Vide, juste pour passer les financials à l'auditeur)
+                dummy_result = DCFValuationResult(
+                    request=req,
+                    financials=financials,
+                    params=params,
+                    intrinsic_value_per_share=0.0,
+                    market_price=financials.current_price,
+                    wacc=0.0, cost_of_equity=0.0, cost_of_debt_after_tax=0.0,
+                    projected_fcfs=[], discount_factors=[], sum_discounted_fcf=0.0,
+                    terminal_value=0.0, discounted_terminal_value=0.0,
+                    enterprise_value=0.0, equity_value=0.0
+                )
+
+                # On utilise l'auditeur standard juste pour checker la qualité des données (_check_data_quality)
+                auditor = StandardDCFAuditor()
+                report = auditor.audit(dummy_result)
+
+                # On marque que c'est un audit partiel
+                report.audit_mode = "DataQualityCheck"
+                return report
+
+            else:
+                raise ValueError("Arguments invalides pour compute_audit")
+
+        except Exception as e:
+            logger.error(f"Audit failed: {e}", exc_info=True)
+            return AuditEngine._get_fallback_report(str(e))
+
+    @staticmethod
+    def _get_auditor_for_mode(mode: Optional[ValuationMode]) -> IValuationAuditor:
+        """Factory : Instancie le bon auditeur."""
+        if mode == ValuationMode.DDM_BANKS:
+            return BankAuditor()
+        elif mode == ValuationMode.GRAHAM_VALUE:
+            return GrahamAuditor()
         else:
-            # En manuel, on valide explicitement
-            score_data = 100.0
-            logs.append(AuditLog("Données", "success", "Inputs validés manuellement par l'expert.", 0.0))
+            # Par défaut (Simple, Fundamental, Growth, Monte Carlo) -> Standard
+            return StandardDCFAuditor()
 
-        # --- 2. AUDIT DE COHÉRENCE MATHÉMATIQUE ---
-        penalty_math, math_logs = AuditEngine._check_math_coherence(params, financials, tv_ev_ratio)
-        score_math = max(0.0, 100.0 + penalty_math)
-        logs.extend(math_logs)
+    @staticmethod
+    def _enrich_with_monte_carlo_audit(sims: List[float], report: AuditReport) -> None:
+        """Analyse la stabilité statistique."""
+        if not sims: return
 
-        # --- 3. AUDIT SPÉCIFIQUE MÉTHODE ---
-        penalty_mode, mode_logs, stability_metric = AuditEngine._check_method_fit(
-            mode, financials, params, simulation_results
-        )
-        score_mode = max(0.0, 100.0 + penalty_mode)
-        logs.extend(mode_logs)
+        values = np.array(sims)
+        mean_val = np.mean(values)
 
-        # --- 4. CALCUL DU SCORE GLOBAL (Indicatif backend, moins visible UI) ---
-        if is_manual:
-            global_score = (score_math * 0.70) + (score_mode * 0.30)
-            audit_desc = "Cohérence Expert"
-        elif mode == ValuationMode.MONTE_CARLO:
-            global_score = (score_data * 0.30) + (score_math * 0.30) + (score_mode * 0.40)
-            audit_desc = "Robustesse Simulation"
-        else:
-            global_score = (score_data * 0.50) + (score_math * 0.30) + (score_mode * 0.20)
-            audit_desc = "Qualité Standard"
+        if mean_val > 0:
+            std_dev = np.std(values)
+            cv = std_dev / mean_val  # Coefficient de Variation
 
-        if score_math < 50:
-            global_score = min(global_score, score_math)
+            if cv > 0.50:
+                report.logs.append(AuditLog(
+                    "Monte Carlo", "HIGH",
+                    f"Instabilité extrême (CV={cv:.2f}). Résultat peu fiable.", -30
+                ))
+                report.global_score -= 30
+            elif cv > 0.30:
+                report.logs.append(AuditLog(
+                    "Monte Carlo", "WARN",
+                    f"Forte dispersion (CV={cv:.2f}). Fourchette large.", -10
+                ))
+                report.global_score -= 10
+            else:
+                report.logs.append(AuditLog(
+                    "Monte Carlo", "INFO",
+                    f"Convergence robuste (CV={cv:.2f}).", 0
+                ))
 
-        # --- 5. FORMATAGE ---
-        # On ne trie plus par sévérité brute, mais on garde l'ordre logique des catégories dans l'UI
+        report.global_score = max(0.0, report.global_score)
 
-        block_mc = (score_data < 50 and not is_manual) or (stability_metric < 40)
-
+    @staticmethod
+    def _get_fallback_report(error_msg: str) -> AuditReport:
         return AuditReport(
-            global_score=round(global_score, 1),
-            rating=AuditEngine._get_rating(global_score),
-            audit_mode=audit_desc,
-            logs=logs,
-            breakdown={
-                "Données": round(score_data, 1),
-                "Cohérence": round(score_math, 1),
-                "Méthode": round(score_mode, 1)
-            },
-            block_monte_carlo=block_mc,
-            block_history=(score_data < 40),
-            critical_warning=(global_score < 50)
+            global_score=0.0,
+            rating="Error",
+            audit_mode="SystemFailure",
+            logs=[AuditLog("System", "CRITICAL", f"Audit crash: {error_msg}", -100)],
+            breakdown={}
         )
-
-    # -------------------------------------------------------------------------
-    # RÈGLES DÉTAILLÉES (AVEC BRANCHES POSITIVES)
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    def _check_data_quality(f: CompanyFinancials) -> Tuple[float, List[AuditLog]]:
-        penalty = 0.0
-        logs = []
-
-        # 1. Source FCF
-        if f.source_fcf == "none":
-            penalty -= 100
-            logs.append(AuditLog("Données", "critical", "FATAL : Aucun Cash Flow disponible.", -100))
-        elif f.source_fcf == "simple":
-            penalty -= 30
-            logs.append(AuditLog("Données", "medium", "Source : FCF Annuel Unique (Risque Cyclicité).", -30))
-        elif f.source_fcf == "weighted":
-            logs.append(AuditLog("Données", "success", "Source : FCF Lissé sur 5 ans (Robuste).", 0))
-        elif f.source_fcf == "ttm":
-            logs.append(AuditLog("Données", "success", "Source : FCF TTM (À jour).", 0))
-
-        # 2. Croissance
-        if f.source_growth == "macro":
-            penalty -= 40
-            logs.append(AuditLog("Données", "high", "Croissance : Générique (PIB) - Manque de spécificité.", -40))
-        elif f.source_growth == "analysts":
-            logs.append(AuditLog("Données", "success", "Croissance : Consensus Analystes.", 0))
-        elif f.source_growth == "cagr":
-            logs.append(AuditLog("Données", "success", "Croissance : Historique (CAGR).", 0))
-
-        # 3. Dette
-        if f.source_debt == "sector":
-            penalty -= 20
-            logs.append(AuditLog("Données", "medium", "Coût Dette : Sectoriel (Générique).", -20))
-        elif f.source_debt == "synthetic":
-            logs.append(AuditLog("Données", "success", "Coût Dette : Synthétique (Basé sur ICR réel).", 0))
-
-        # 4. Intégrité Bilan
-        if f.total_debt == 0 and f.interest_expense > 0:
-            penalty -= 15
-            logs.append(AuditLog("Données", "low", "Bilan : Intérêts payés sans dette faciale.", -15))
-        else:
-            logs.append(AuditLog("Données", "success", "Bilan : Cohérence Dette/Intérêts.", 0))
-
-        return penalty, logs
-
-    @staticmethod
-    def _check_math_coherence(p: DCFParameters, f: CompanyFinancials, tv_ev_ratio: Optional[float]) -> Tuple[
-        float, List[AuditLog]]:
-        penalty = 0.0
-        logs = []
-
-        # WACC vs g
-        ke_approx = p.risk_free_rate + f.beta * p.market_risk_premium
-        if ke_approx <= p.perpetual_growth_rate:
-            penalty -= 100
-            logs.append(AuditLog("Cohérence", "critical", "Mathématique : WACC <= g (Convergence Impossible).", -100))
-        elif ke_approx < p.perpetual_growth_rate + 0.01:
-            penalty -= 50
-            logs.append(AuditLog("Cohérence", "high", "Mathématique : Spread WACC-g trop faible (<1%).", -50))
-        else:
-            spread = ke_approx - p.perpetual_growth_rate
-            logs.append(AuditLog("Cohérence", "success", f"Mathématique : Spread WACC-g sain ({spread:.1%}).", 0))
-
-        # Poids Terminal
-        if tv_ev_ratio is not None:
-            if tv_ev_ratio > 0.85:
-                penalty -= 30
-                logs.append(
-                    AuditLog("Cohérence", "high", f"Structure Valeur : Dépendance TV critique ({tv_ev_ratio:.0%}).",
-                             -30))
-            elif tv_ev_ratio > 0.75:
-                penalty -= 10
-                logs.append(
-                    AuditLog("Cohérence", "medium", f"Structure Valeur : Dépendance TV élevée ({tv_ev_ratio:.0%}).",
-                             -10))
-            else:
-                logs.append(
-                    AuditLog("Cohérence", "success", f"Structure Valeur : Équilibrée (TV={tv_ev_ratio:.0%}).", 0))
-
-        return penalty, logs
-
-    @staticmethod
-    def _check_method_fit(
-            mode: ValuationMode,
-            f: CompanyFinancials,
-            p: DCFParameters,
-            sim_results: Optional[List[float]]
-    ) -> Tuple[float, List[AuditLog], float]:
-
-        penalty = 0.0
-        logs = []
-        stability = 100.0
-
-        if mode == ValuationMode.SIMPLE_FCFF:
-            if f.beta > 1.4:
-                penalty -= 20
-                logs.append(
-                    AuditLog("Méthode", "medium", "Profil : Beta élevé (>1.4). Méthode Simple trop rigide.", -20))
-            else:
-                logs.append(AuditLog("Méthode", "success", "Profil : Compatible Méthode Simple.", 0))
-
-        elif mode == ValuationMode.MONTE_CARLO:
-            if sim_results:
-                values = np.array(sim_results)
-                mean = np.mean(values)
-                if mean > 0:
-                    cv = np.std(values) / mean
-                    if cv > 0.50:
-                        penalty -= 50
-                        stability = 20.0
-                        logs.append(
-                            AuditLog("Méthode", "high", f"Stabilité : Convergence critique (CV={cv:.2f}).", -50))
-                    elif cv > 0.30:
-                        penalty -= 20
-                        stability = 60.0
-                        logs.append(AuditLog("Méthode", "medium", f"Stabilité : Dispersion forte (CV={cv:.2f}).", -20))
-                    else:
-                        logs.append(
-                            AuditLog("Méthode", "success", f"Stabilité : Convergence robuste (CV={cv:.2f}).", 0))
-
-        return penalty, logs, stability
-
-    @staticmethod
-    def _get_rating(score: float) -> str:
-        if score >= 90: return "A"
-        if score >= 75: return "B"
-        if score >= 50: return "C"
-        if score >= 30: return "D"
-        return "F"

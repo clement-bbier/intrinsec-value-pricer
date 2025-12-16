@@ -1,230 +1,188 @@
 from __future__ import annotations
-
 from typing import Optional, Tuple
 
 import streamlit as st
 
-from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest
-from core.computation.transformations import relever_beta
+from core.models import (
+    DCFParameters,
+    InputSource,
+    ValuationMode,
+    ValuationRequest
+)
 from core.methodology.texts import TOOLTIPS
 
-ExpertReturn = Tuple[str, int, DCFParameters, float, ValuationMode, bool]
+# --- CONSTANTES PAR DÉFAUT ---
+DEFAULT_RF = 0.04
+DEFAULT_MRP = 0.05
+DEFAULT_TAX = 0.25
+DEFAULT_COST_DEBT = 0.05
 
 
-def _display_simple_expert_inputs(ticker: str, years: int) -> DCFParameters:
-    st.markdown("#### Hypothèses de Croissance")
-    c1, c2 = st.columns(2)
+def display_expert_request(
+        default_ticker: str,
+        default_years: int
+) -> Optional[ValuationRequest]:
+    """
+    Formulaire Expert Complet.
+    Permet de surcharger chaque hypothèse du modèle (Taux, Croissance, Structure).
+    Retourne une ValuationRequest prête à l'emploi.
+    """
+
+    st.markdown("### 🛠️ Configuration Expert")
+    st.caption("Contrôle total sur les hypothèses de modélisation.")
+
+    # 1. IDENTIFICATION & STRATÉGIE
+    c1, c2, c3 = st.columns([1, 1, 2])
     with c1:
-        g = st.number_input(
-            "Croissance FCF (g) %",
-            value=5.0, step=0.5, format="%.1f",
-            help=TOOLTIPS["growth_g"]
-        ) / 100.0
+        ticker = st.text_input("Ticker", value=default_ticker, help=TOOLTIPS["ticker"]).upper().strip()
     with c2:
-        g_perp = st.number_input(
-            "Croissance Terminale (g∞) %",
-            value=2.0, step=0.1, min_value=0.0, max_value=5.0, format="%.1f",
-            help=TOOLTIPS["growth_perp"]
-        ) / 100.0
-
-    st.markdown("#### Coût du Capital (WACC)")
-    c1, c2 = st.columns(2)
-    with c1:
-        rf = st.number_input(
-            "Taux sans risque (Rf) %",
-            value=4.0, step=0.1, format="%.1f",
-            help=TOOLTIPS["rf"]
-        ) / 100.0
-    with c2:
-        mrp = st.number_input(
-            "Prime de risque (MRP) %",
-            value=5.5, step=0.1, format="%.1f",
-            help=TOOLTIPS["mrp"]
-        ) / 100.0
-
-    c3, c4 = st.columns(2)
+        years = st.number_input("Horizon (Ans)", value=int(default_years), min_value=1, max_value=20)
     with c3:
-        kd = st.number_input(
-            "Coût Dette Brut (Kd) %",
-            value=5.0, step=0.25, format="%.2f",
-            help=TOOLTIPS["cost_debt"]
-        ) / 100.0
-    with c4:
-        tax = st.number_input(
-            "Taux Impôt (IS) %",
-            value=25.0, step=1.0, format="%.1f",
-            help=TOOLTIPS["tax_rate"]
-        ) / 100.0
+        # Mapping User-Friendly -> Enum Technique
+        strategies = {
+            "DCF Standard (FCF TTM)": ValuationMode.SIMPLE_FCFF,
+            "DCF Fondamental (Lissé)": ValuationMode.FUNDAMENTAL_FCFF,
+            "DCF Growth (Revenu + Marge)": ValuationMode.GROWTH_TECH,
+            "DDM Banques (Dividendes)": ValuationMode.DDM_BANKS,
+            "Graham (Deep Value)": ValuationMode.GRAHAM_VALUE,
+            "Monte Carlo (Simulation)": ValuationMode.MONTE_CARLO
+        }
+        selected_strat = st.selectbox("Stratégie de Valorisation", list(strategies.keys()))
+        mode = strategies[selected_strat]
 
-    return DCFParameters(
-        risk_free_rate=rf,
-        market_risk_premium=mrp,
-        cost_of_debt=kd,
-        tax_rate=tax,
-        fcf_growth_rate=g,
-        perpetual_growth_rate=g_perp,
-        projection_years=years,
-    )
+    st.markdown("---")
 
+    # 2. PARAMÈTRES DE MARCHÉ (WACC / Ke)
+    # On adapte l'affichage selon si on a besoin d'un WACC complet ou juste du Ke
+    show_wacc = mode not in [ValuationMode.DDM_BANKS, ValuationMode.GRAHAM_VALUE]
 
-def _display_fundamental_expert_inputs(ticker: str, years: int) -> Tuple[DCFParameters, float]:
-    # 1. CROISSANCE
-    with st.expander("Paramètres de Croissance (Cycle)", expanded=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            g = st.number_input(
-                "Croissance Initiale %",
-                value=5.0, step=0.5, format="%.1f",
-                help=TOOLTIPS["growth_g"]
-            ) / 100.0
-            high_growth_years = st.slider("Durée Plateau Croissance (années)", 0, 10, 5)
-        with c2:
-            g_perp = st.number_input(
-                "Croissance Terminale (g∞) %",
-                value=2.0, step=0.1, min_value=0.0, max_value=4.0, format="%.1f",
-                help=TOOLTIPS["growth_perp"]
-            ) / 100.0
+    with st.expander("1. Taux & Coût du Capital", expanded=True):
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 
-    # 2. STRUCTURE & DETTE
-    with st.expander("Structure Financière & Dette", expanded=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            kd = st.number_input(
-                "Coût Dette Brut (Kd) %",
-                value=5.0, step=0.25, key="kd_fund",
-                help=TOOLTIPS["cost_debt"]
-            ) / 100.0
-            tax = st.number_input(
-                "Taux Impôt (IS) %",
-                value=25.0, step=1.0, key="tax_fund",
-                help=TOOLTIPS["tax_rate"]
-            ) / 100.0
-        with c2:
-            st.markdown("**Poids Cibles (Target)**", help=TOOLTIPS["target_weights"])
-            w_e = st.number_input("Poids Equity %", value=80.0, step=5.0, max_value=100.0) / 100.0
-            w_d = st.number_input("Poids Dette %", value=20.0, step=5.0, max_value=100.0) / 100.0
+        with col_m1:
+            rf = st.number_input("Taux Sans Risque (Rf)", value=DEFAULT_RF, format="%.4f", step=0.001,
+                                 help=TOOLTIPS["rf"])
+        with col_m2:
+            mrp = st.number_input("Prime de Risque (MRP)", value=DEFAULT_MRP, format="%.4f", step=0.001,
+                                  help=TOOLTIPS["mrp"])
+        with col_m3:
+            beta = st.number_input("Beta", value=1.0, format="%.2f", step=0.05, help=TOOLTIPS["beta"])
+        with col_m4:
+            # Pour DDM, on n'a pas besoin du coût de la dette pour le discount rate, mais on le garde pour info
+            kd = st.number_input("Coût Dette (Pre-Tax)", value=DEFAULT_COST_DEBT, format="%.4f", step=0.001,
+                                 disabled=(not show_wacc))
 
-    # 3. EQUITY
-    with st.expander("Coût des Fonds Propres (Equity)", expanded=True):
-        mode_ke = st.radio("Méthode Calcul Ke", ["CAPM (Modèle)", "Saisie Directe"], horizontal=True,
-                           label_visibility="collapsed")
-
-        beta_final = 1.0
-        manual_ke = None
-        rf = 0.04
-        mrp = 0.055
-
-        if mode_ke == "CAPM (Modèle)":
-            beta_type = st.radio("Source Beta", ["Beta Levier (Observé)", "Beta Désendetté (Hamada)"], horizontal=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                rf = st.number_input("Taux sans Risque (Rf) %", value=4.0, step=0.1, help=TOOLTIPS["rf"]) / 100.0
-            with c2:
-                mrp = st.number_input("Prime de Risque (MRP) %", value=5.5, step=0.1, help=TOOLTIPS["mrp"]) / 100.0
-
-            if beta_type == "Beta Levier (Observé)":
-                beta_final = st.number_input("Beta", value=1.0, step=0.05, help=TOOLTIPS["beta"])
-            else:
-                beta_u = st.number_input("Beta Désendetté (Unlevered)", value=0.8, step=0.05,
-                                         help="Beta du risque opérationnel pur.")
-                target_d_e = st.number_input("Dette/Equity Cible %", value=30.0, step=5.0) / 100.0
-                beta_final = relever_beta(beta_u, tax, target_d_e, 1.0)
-                st.caption(f"Beta Réendetté Calculé : {beta_final:.2f}")
+        if show_wacc:
+            st.caption("Structure du Capital Cible (Doit sommer à 100%)")
+            cw1, cw2, cw3 = st.columns([1, 1, 2])
+            with cw1:
+                we = st.number_input("Poids Equity %", value=80.0, step=5.0, max_value=100.0) / 100.0
+            with cw2:
+                wd = st.number_input("Poids Dette %", value=20.0, step=5.0, max_value=100.0) / 100.0
+            with cw3:
+                tax = st.number_input("Taux IS (Tax)", value=DEFAULT_TAX, format="%.2f", step=0.01)
         else:
-            manual_ke = st.number_input("Coût Equity Cible (Ke) %", value=8.5, step=0.1) / 100.0
-            beta_final = st.number_input("Beta (Pour information)", value=1.0)
+            # Valeurs par défaut pour les modes sans WACC (pour éviter None)
+            we, wd, tax = 1.0, 0.0, DEFAULT_TAX
 
+    # 3. PARAMÈTRES DE CROISSANCE
+    # Graham n'utilise pas de projection explicite
+    if mode != ValuationMode.GRAHAM_VALUE:
+        with st.expander("2. Hypothèses de Croissance", expanded=True):
+            cg1, cg2, cg3 = st.columns(3)
+
+            label_g = "Croissance CA" if mode == ValuationMode.GROWTH_TECH else "Croissance FCF"
+
+            with cg1:
+                g_growth = st.number_input(f"{label_g} (CAGR)", value=0.05, format="%.3f", step=0.005,
+                                           help=TOOLTIPS["growth_g"])
+            with cg2:
+                g_perp = st.number_input("Croissance Terminale", value=0.02, format="%.3f", step=0.001,
+                                         help=TOOLTIPS["growth_perp"])
+            with cg3:
+                high_growth_years = st.slider("Années Croissance Forte", 0, years, 0,
+                                              help="Durée du plateau de croissance avant ralentissement.")
+
+    # 4. PARAMÈTRES SPÉCIFIQUES (Polymorphisme UI)
+    advanced_params: dict = {}
+
+    if mode == ValuationMode.GROWTH_TECH:
+        with st.expander("3. Spécifique Tech : Convergence de Marge", expanded=True):
+            target_margin = st.slider("Marge FCF Cible (à terme)", 0.05, 0.50, 0.25, step=0.01)
+            advanced_params["target_fcf_margin"] = target_margin
+
+    elif mode == ValuationMode.MONTE_CARLO:
+        with st.expander("3. Spécifique Monte Carlo : Volatilité", expanded=True):
+            cm1, cm2, cm3 = st.columns(3)
+            with cm1:
+                beta_vol = st.number_input("Volatilité Beta", value=0.10, step=0.01)
+            with cm2:
+                g_vol = st.number_input("Volatilité Croissance", value=0.015, step=0.001)
+            with cm3:
+                sims = st.selectbox("Nb Simulations", [1000, 2000, 5000, 10000], index=1)
+
+            advanced_params["beta_volatility"] = beta_vol
+            advanced_params["growth_volatility"] = g_vol
+            advanced_params["num_simulations"] = sims
+
+    # 5. OVERRIDES MANUELS (Optionnel)
+    manual_override_val = None
+    with st.expander("4. Override Point de Départ (Optionnel)", expanded=False):
+        label_base = "Revenu" if mode == ValuationMode.GROWTH_TECH else "EPS" if mode == ValuationMode.GRAHAM_VALUE else "Dividende" if mode == ValuationMode.DDM_BANKS else "FCF"
+        if st.checkbox(f"Forcer la valeur initiale ({label_base})",
+                       help="Remplace la donnée automatique par votre valeur."):
+            manual_override_val = st.number_input(f"Valeur {label_base} (Monnaie Locale)", value=0.0, step=1000.0)
+
+    # 6. VALIDATION
+    st.markdown("---")
+    submitted = st.button("Lancer l'analyse Expert", type="primary", use_container_width=True)
+
+    if not submitted:
+        return None
+
+    if not ticker:
+        st.error("Le ticker est requis.")
+        return None
+
+    # Construction de l'objet Paramètres
+    # On normalise les poids s'ils sont incohérents
+    total_w = we + wd
+    if abs(total_w - 1.0) > 0.01 and total_w > 0:
+        we /= total_w
+        wd /= total_w
+
+    # On peuple l'objet DCFParameters (Standardisé)
+    # Les champs inutiles pour certaines stratégies seront ignorés par le moteur
     params = DCFParameters(
         risk_free_rate=rf,
         market_risk_premium=mrp,
         cost_of_debt=kd,
         tax_rate=tax,
-        fcf_growth_rate=g,
-        perpetual_growth_rate=g_perp,
-        projection_years=years,
-        high_growth_years=int(high_growth_years),
-        target_equity_weight=float(w_e),
-        target_debt_weight=float(w_d),
-        manual_cost_of_equity=manual_ke,
+        fcf_growth_rate=g_growth if mode != ValuationMode.GRAHAM_VALUE else 0.0,
+        perpetual_growth_rate=g_perp if mode != ValuationMode.GRAHAM_VALUE else 0.0,
+        projection_years=int(years),
+        high_growth_years=high_growth_years if mode != ValuationMode.GRAHAM_VALUE else 0,
+        target_equity_weight=we,
+        target_debt_weight=wd,
+
+        # Spécifiques injectés
+        target_fcf_margin=advanced_params.get("target_fcf_margin"),
+        beta_volatility=advanced_params.get("beta_volatility", 0.0),
+        growth_volatility=advanced_params.get("growth_volatility", 0.0),
+        num_simulations=advanced_params.get("num_simulations"),
+
+        # Overrides
+        manual_fcf_base=manual_override_val
     )
-    params.normalize_weights()
-    return params, float(beta_final)
 
-
-def _display_monte_carlo_expert_inputs(ticker: str, years: int) -> Tuple[DCFParameters, float]:
-    base_params, beta = _display_fundamental_expert_inputs(ticker, years)
-
-    with st.expander("Simulation Monte Carlo (Volatilité)", expanded=True):
-        st.caption("Écart-type relatif des paramètres (Sigma).")
-        c1, c2 = st.columns(2)
-        with c1:
-            vol_beta = st.number_input(
-                "Volatilité Beta %",
-                value=15.0, step=1.0,
-                help=TOOLTIPS["volatility"]
-            ) / 100.0
-        with c2:
-            vol_g = st.number_input(
-                "Volatilité Croissance %",
-                value=20.0, step=1.0,
-                help=TOOLTIPS["volatility"]
-            ) / 100.0
-
-    base_params.beta_volatility = float(vol_beta)
-    base_params.growth_volatility = float(vol_g)
-    base_params.terminal_growth_volatility = float(vol_g) / 2.0
-
-    return base_params, beta
-
-
-def display_expert_request(default_ticker: str, default_years: int) -> Optional[ValuationRequest]:
-    st.subheader("Paramètres Manuels (Expert)")
-
-    method_options = {
-        "DCF Simplifié": ValuationMode.SIMPLE_FCFF,
-        "DCF Analytique": ValuationMode.FUNDAMENTAL_FCFF,
-        "DCF Probabiliste": ValuationMode.MONTE_CARLO,
-    }
-    label = st.selectbox("Méthode de Valorisation", list(method_options.keys()))
-    mode = method_options[label]
-
-    st.markdown("---")
-    c1, c2 = st.columns(2)
-    with c1:
-        ticker = st.text_input("Ticker", value=default_ticker).upper().strip()
-    with c2:
-        years = st.slider("Horizon de Projection (années)", 3, 15, int(default_years))
-
-    if mode == ValuationMode.SIMPLE_FCFF:
-        params = _display_simple_expert_inputs(ticker, years)
-        beta_final = st.number_input("Beta", value=1.0, step=0.05, help=TOOLTIPS["beta"])
-    elif mode == ValuationMode.FUNDAMENTAL_FCFF:
-        params, beta_final = _display_fundamental_expert_inputs(ticker, years)
-    else:
-        params, beta_final = _display_monte_carlo_expert_inputs(ticker, years)
-
-    with st.expander("Avancé : Surcharge Flux Initial", expanded=False):
-        if st.checkbox("Surcharger FCF de Base"):
-            params.manual_fcf_base = st.number_input("FCF Manuel (Devise Locale)", value=100_000_000.0,
-                                                     step=1_000_000.0, format="%.0f")
-
-    st.markdown("---")
-    submitted = st.button("Lancer l'analyse", type="primary", use_container_width=True)
-
-    if not submitted or not ticker:
-        return None
-
+    # Construction de la Requête
     return ValuationRequest(
         ticker=ticker,
         projection_years=int(years),
         mode=mode,
         input_source=InputSource.MANUAL,
         manual_params=params,
-        manual_beta=float(beta_final),
+        manual_beta=beta  # Le beta expert est forcé via le paramètre ou via financial override plus tard
+        # Note: Dans notre architecture, le beta est souvent attaché aux financials.
+        # Ici, on le passe dans request.manual_beta pour que le Provider puisse le surcharger.
     )
-
-
-def display_expert_inputs(default_ticker: str, default_years: int) -> Optional[ExpertReturn]:
-    req = display_expert_request(default_ticker, default_years)
-    if req is None: return None
-    return req.ticker, req.projection_years, req.manual_params, req.manual_beta, req.mode, True

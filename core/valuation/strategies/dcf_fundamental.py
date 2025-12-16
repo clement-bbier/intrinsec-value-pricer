@@ -1,30 +1,27 @@
 import logging
-
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFResult
+from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
-
 class FundamentalFCFFStrategy(ValuationStrategy):
     """
-    STRATÉGIE 2 : DCF "FONDAMENTAL" (BASE NORMALISÉE).
-    Utilise fcf_fundamental_smoothed.
+    STRATÉGIE 2 : DCF "FONDAMENTAL".
+    Utilise le Free Cash Flow normatif (lissé sur plusieurs années ou ajusté).
+    Idéal pour les entreprises industrielles cycliques.
     """
 
-    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFResult:
+    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
         logger.info(
-            "[Strategy] Executing FundamentalFCFFStrategy | ticker=%s | currency=%s | years=%s",
-            financials.ticker,
-            financials.currency,
-            params.projection_years,
+            "[Strategy] Executing FundamentalFCFFStrategy | ticker=%s",
+            financials.ticker
         )
 
-        # 1. Validation de l'input spécifique à la stratégie
+        # 1. Validation de l'input spécifique
         fcf_base = financials.fcf_fundamental_smoothed
 
-        # Override manuel prioritaire (géré au niveau global params, mais appliqué ici)
+        # Override manuel prioritaire
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
             logger.info("[Fundamental] Override FCF Manuel : %s", fcf_base)
@@ -32,13 +29,9 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         if fcf_base is None:
             msg = (
                 "Donnée manquante : FCF Fondamental Lissé non disponible. "
-                "Impossible d'exécuter la méthode Analytique sans historique suffisant."
+                "Impossible d'exécuter la méthode Analytique sans historique suffisant pour lisser les cycles."
             )
-            logger.warning(
-                "%s | ticker=%s",
-                msg,
-                financials.ticker,
-            )
+            logger.warning("%s | ticker=%s", msg, financials.ticker)
             raise CalculationError(msg)
 
         logger.info(
@@ -48,9 +41,9 @@ class FundamentalFCFFStrategy(ValuationStrategy):
             "manual" if params.manual_fcf_base else "smoothed"
         )
 
-        # 2. Exécution du moteur standard
-        return self._compute_standard_dcf(
-            fcf_start=fcf_base,
+        # 2. Délégation au moteur standard (Abstract)
+        return self._run_dcf_math(
+            base_flow=fcf_base,
             financials=financials,
-            params=params,
+            params=params
         )

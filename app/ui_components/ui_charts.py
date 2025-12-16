@@ -1,114 +1,156 @@
-from typing import Sequence
-from datetime import datetime
 import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
+from typing import List, Optional
 
 
-def _get_sample_dates(df_price: pd.DataFrame, freq: str = "1W") -> Sequence[datetime]:
-    if isinstance(df_price.index, pd.DatetimeIndex):
-        df_tmp = df_price.copy()
-    elif "Date" in df_price.columns:
-        df_tmp = df_price.set_index("Date")
-    else:
-        return []
-    tmp = df_tmp.resample(freq).first().dropna()
-    return [dt.to_pydatetime() for dt in tmp.index]
+# ==============================================================================
+# 1. GRAPHIQUE HISTORIQUE DE PRIX
+# ==============================================================================
 
-
-def display_price_chart(ticker: str, price_history: pd.DataFrame | None, hist_iv_df: pd.DataFrame | None,
-                        current_iv: float | None = None) -> None:
+def display_price_chart(
+        ticker: str,
+        price_history: Optional[pd.DataFrame],
+        valuation_history: Optional[pd.DataFrame] = None
+) -> None:
     """
-    Affiche l'historique de prix vs valeur intrinsèque.
-    Style: Financial Terminal (Rouge = Prix, Bleu = Valeur).
+    Affiche l'évolution du cours de bourse (et optionnellement de la valeur intrinsèque).
+    Utilise Altair pour un rendu interactif et performant.
     """
     if price_history is None or price_history.empty:
-        st.info("Historique de prix indisponible.")
+        st.info("Historique de prix indisponible pour ce ticker.")
         return
 
-    # Préparation Données Prix
-    df_price = price_history.reset_index()
-    if "Date" not in df_price.columns: df_price.columns = ["Date", "Close"]
-    df_price["Date"] = pd.to_datetime(df_price["Date"])
-    df_price = df_price.rename(columns={df_price.columns[1]: "Valeur"})
-    df_price["Type"] = "Prix Marché"
+    # 1. Préparation des Données
+    # On s'attend à un index Datetime ou une colonne 'Date'
+    df = price_history.copy()
+    if not isinstance(df.index, pd.DatetimeIndex) and "Date" not in df.columns:
+        # Tentative de reset index si l'index est la date
+        df = df.reset_index()
 
-    # Préparation Données Valeur (IV)
-    df_iv = pd.DataFrame()
-    if hist_iv_df is not None and not hist_iv_df.empty:
-        hist_iv_df["Date"] = pd.to_datetime(hist_iv_df["Date"])
-        df_iv = hist_iv_df[["Date", "Intrinsic Value"]].rename(columns={"Intrinsic Value": "Valeur"})
-        df_iv["Type"] = "Valeur Intrinsèque"
+    # Standardisation des colonnes
+    # On cherche une colonne de date
+    date_col = None
+    for col in df.columns:
+        if "date" in str(col).lower():
+            date_col = col
+            break
 
-    # Point Actuel
-    current_point_mark = None
-    if current_iv:
-        last_market_date = df_price["Date"].max()
-        if not df_iv.empty: df_iv = df_iv[df_iv["Date"] < last_market_date]
+    if not date_col and isinstance(df.index, pd.DatetimeIndex):
+        df = df.reset_index()
+        date_col = df.columns[0]  # Suppose que l'index devient la première colonne
 
-        df_curr = pd.DataFrame({"Date": [last_market_date], "Valeur": [current_iv], "Type": ["Valeur Intrinsèque"]})
-        df_iv = pd.concat([df_iv, df_curr], ignore_index=True)
+    if not date_col:
+        st.warning("Format de l'historique de prix non reconnu.")
+        return
 
-        current_point_mark = alt.Chart(df_curr).mark_point(
-            shape="diamond", size=150, filled=True, color="#1f77b4"
-        ).encode(
-            x="Date:T", y="Valeur:Q", tooltip=[alt.Tooltip("Valeur", format=".2f")]
-        )
+    # Renommage pour Altair
+    df = df.rename(columns={date_col: "Date", "Close": "Prix", "Adj Close": "Prix"})
+    # Garder uniquement Date et Prix
+    if "Prix" not in df.columns:
+        # Fallback : prend la première colonne numérique
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            df["Prix"] = df[numeric_cols[0]]
+        else:
+            return
 
-    # Graphique Combine
-    base_price = alt.Chart(df_price).mark_line(color="#d62728", strokeWidth=1.5).encode(
-        x=alt.X("Date:T", title=None, axis=alt.Axis(format="%Y")),
-        y=alt.Y("Valeur:Q", title="Prix / Valeur", scale=alt.Scale(zero=False)),
-        tooltip=["Date:T", alt.Tooltip("Valeur", format=".2f"), "Type"]
+    # 2. Construction du Graphique (Ligne de Prix)
+    base = alt.Chart(df).encode(
+        x=alt.X("Date:T", axis=alt.Axis(title=None, format="%Y-%m")),
+        tooltip=["Date:T", alt.Tooltip("Prix:Q", format=",.2f")]
     )
 
-    base_iv = alt.Chart(df_iv).mark_line(strokeDash=[5, 3], color="#1f77b4", strokeWidth=1.5).encode(
-        x="Date:T", y="Valeur:Q", tooltip=["Date:T", alt.Tooltip("Valeur", format=".2f"), "Type"]
-    ) if not df_iv.empty else None
+    line = base.mark_line(
+        color="#2962FF",
+        strokeWidth=1.5
+    ).encode(
+        y=alt.Y("Prix:Q", scale=alt.Scale(zero=False), axis=alt.Axis(title="Prix de Clôture"))
+    )
 
-    final_chart = base_price
-    if base_iv: final_chart += base_iv
-    if current_point_mark: final_chart += current_point_mark
+    # 3. Ajout Valeur Intrinsèque Historique (Optionnel - Chapitre Futur)
+    chart = line
 
-    # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
+    if valuation_history is not None and not valuation_history.empty:
+        # TODO: Implémenter la superposition quand le module historique sera prêt
+        pass
+
+    # 4. Rendu Final
     st.altair_chart(
-        final_chart.properties(height=350, title=f"Historique Valorisation : {ticker}").interactive(),
-        width="stretch"
+        chart.interactive(),
+        use_container_width=True
     )
 
 
-def display_simulation_chart(simulation_results: list[float], current_price: float, currency: str) -> None:
-    """
-    Histogramme de distribution Monte Carlo.
-    """
-    if not simulation_results: return
+# ==============================================================================
+# 2. DISTRIBUTION MONTE CARLO (HISTOGRAMME)
+# ==============================================================================
 
-    df_sim = pd.DataFrame(simulation_results, columns=["VI"])
+def display_simulation_chart(
+        simulation_results: List[float],
+        market_price: float,
+        currency: str
+) -> None:
+    """
+    Affiche la distribution des résultats de Monte Carlo.
+    Visualisation : Histogramme des fréquences + Lignes verticales (Prix vs Valeur).
+    """
+    if not simulation_results:
+        st.warning("Pas de données de simulation à afficher.")
+        return
+
+    # Conversion en DataFrame pour Altair
+    df_sim = pd.DataFrame({"Valeur Intrinsèque": simulation_results})
+
+    # Statistiques clés pour les lignes verticales
     median_val = np.median(simulation_results)
 
+    # 1. Histogramme
     base = alt.Chart(df_sim)
 
-    # Histogramme
-    hist = base.mark_bar(color="#7f97b2", opacity=0.8).encode(
-        x=alt.X("VI:Q", bin=alt.Bin(maxbins=40), title=f"Valeur Intrinsèque ({currency})"),
-        y=alt.Y('count()', title="Fréquence"),
-        tooltip=['count()']
+    hist = base.mark_bar(
+        color="#455A64",
+        opacity=0.7
+    ).encode(
+        x=alt.X(
+            "Valeur Intrinsèque:Q",
+            bin=alt.Bin(maxbins=50),
+            title=f"Valeur Intrinsèque ({currency})"
+        ),
+        y=alt.Y("count()", title="Fréquence"),
+        tooltip=["count()"]
     )
 
-    # Ligne Prix Actuel (Rouge)
-    rule_price = alt.Chart(pd.DataFrame({'x': [current_price]})).mark_rule(color='#d62728', strokeWidth=2).encode(
-        x='x', tooltip=[alt.Tooltip('x', title='Prix Marché')]
+    # 2. Ligne Prix de Marché (Rouge)
+    price_line = alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(
+        color='#D32F2F',
+        strokeWidth=2,
+        strokeDash=[4, 2]
+    ).encode(
+        x='x',
+        tooltip=[alt.Tooltip('x', format=",.2f", title="Prix Actuel")]
     )
 
-    # Ligne Médiane (Bleu)
-    rule_median = alt.Chart(pd.DataFrame({'x': [median_val]})).mark_rule(color='#1f77b4', strokeWidth=2,
-                                                                         strokeDash=[4, 2]).encode(
-        x='x', tooltip=[alt.Tooltip('x', title='Médiane (P50)')]
+    # 3. Ligne Valeur Médiane (Verte)
+    median_line = alt.Chart(pd.DataFrame({'x': [median_val]})).mark_rule(
+        color='#388E3C',
+        strokeWidth=2
+    ).encode(
+        x='x',
+        tooltip=[alt.Tooltip('x', format=",.2f", title="Valeur Médiane (P50)")]
     )
 
-    # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
-    st.altair_chart(
-        (hist + rule_price + rule_median).properties(height=250, title="Distribution des Scénarios de Valeur"),
-        width="stretch"
+    # Combinaison
+    final_chart = (hist + price_line + median_line).properties(
+        height=300,
+        title="Distribution des Probabilités de Valeur"
+    )
+
+    st.altair_chart(final_chart, use_container_width=True)
+
+    # Légende textuelle discrète
+    st.caption(
+        f"🟥 Prix de Marché: {market_price:,.2f} {currency} | "
+        f"🟩 Valeur Médiane: {median_val:,.2f} {currency}"
     )

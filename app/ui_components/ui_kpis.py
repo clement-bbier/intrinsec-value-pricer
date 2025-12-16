@@ -1,125 +1,210 @@
-from typing import Any, List, Dict
 import streamlit as st
 import pandas as pd
-import numpy as np
+from typing import List
 
 from core.models import (
-    ValuationResult,
-    ValuationMode,
+    DCFValuationResult,
+    DDMValuationResult,
+    GrahamValuationResult,
     AuditReport,
     AuditLog
 )
-from app.ui_components.ui_methodology import (
-    display_simple_dcf_formula,
-    display_fundamental_dcf_formula,
-    display_monte_carlo_formula
-)
 
 
-def format_currency(x: float | None, currency: str) -> str:
-    if x is None: return "-"
-    # Gestion automatique des grands nombres
-    if abs(x) >= 1_000_000_000:
-        return f"{x / 1e9:,.2f} B {currency}"
-    if abs(x) >= 1_000_000:
-        return f"{x / 1e6:,.2f} M {currency}"
-    return f"{x:,.2f} {currency}"
+# --- UTILS DE FORMATAGE ---
+
+def format_currency(value: float, currency: str) -> str:
+    """Formatage financier compact (M/B)."""
+    if value is None:
+        return "-"
+
+    abs_val = abs(value)
+    if abs_val >= 1e9:
+        return f"{value / 1e9:,.2f}B {currency}"
+    elif abs_val >= 1e6:
+        return f"{value / 1e6:,.2f}M {currency}"
+    else:
+        return f"{value:,.0f} {currency}"
 
 
-def _render_audit_category_block(title: str, score: float, logs: List[AuditLog]):
-    color = "green" if score >= 80 else "orange" if score >= 50 else "red"
-    with st.expander(f"{title} (Score: {score:.0f}/100)", expanded=(score < 100)):
-        st.progress(int(score) / 100, text=None)
-        for log in logs:
-            if log.severity == "success":
-                st.markdown(f":green[**[OK]**] {log.message}")
-            else:
-                tag = "[FAIL]" if log.severity in ["critical", "high"] else "[WARN]"
-                st.markdown(f":red[**{tag}**] {log.message} *(-{abs(log.penalty)} pts)*")
+def render_financial_badge(label: str, value: str, score: float = 100) -> None:
+    """
+    Affiche un badge style 'Terminal' avec CSS injecté.
+    Couleurs : Vert (>75), Jaune (50-75), Rouge (<50).
+    """
+    if score >= 80:
+        bg_color = "#1b5e20"  # Dark Green
+        text_color = "#e8f5e9"
+    elif score >= 50:
+        bg_color = "#f57f17"  # Dark Orange/Yellow
+        text_color = "#fffde7"
+    else:
+        bg_color = "#b71c1c"  # Dark Red
+        text_color = "#ffebee"
+
+    html = f"""
+    <div style="
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: {bg_color};
+        color: {text_color};
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-bottom: 5px;
+    ">
+        <span style="margin-right: 8px; opacity: 0.8;">{label}</span>
+        <span>{value}</span>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 
-def _render_detailed_audit_view(report: AuditReport):
-    categories = ["Données", "Cohérence", "Méthode"]
-    for cat in categories:
-        cat_logs = [l for l in report.logs if l.category == cat]
-        if not cat_logs: continue
-        cat_score = report.breakdown.get(cat, 0.0)
-        _render_audit_category_block(cat, cat_score, cat_logs)
+# --- AFFICHAGE PAR STRATÉGIE ---
 
+def display_dcf_summary(res: DCFValuationResult) -> None:
+    """Affichage standard pour DCF (Simple, Fundamental, Growth, Monte Carlo)."""
 
-def _render_assumptions(financials, params, result, mode):
-    currency = financials.currency
-    st.markdown("#### Hypothèses Clés")
-    c1, c2, c3 = st.columns(3)
-
+    # 1. KPIs Principaux
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("**Coût du Capital**")
-        st.metric("WACC", f"{result.dcf.wacc:.1%}")
-        st.caption(f"Ke: {result.dcf.cost_of_equity:.1%} | Kd(net): {result.dcf.after_tax_cost_of_debt:.1%}")
-
+        st.metric("WACC", f"{res.wacc:.2%}", help="Coût Moyen Pondéré du Capital")
     with c2:
-        st.markdown("**Croissance**")
-        st.metric("Croissance (g)", f"{params.fcf_growth_rate:.1%}")
-        st.caption(f"Terminale: {params.perpetual_growth_rate:.1%}")
-
+        st.metric("Croissance Perp.", f"{res.params.perpetual_growth_rate:.2%}", help="Hypothèse Terminale (g)")
     with c3:
-        st.markdown("**Structure**")
-        net_debt = financials.total_debt - financials.cash_and_equivalents
-        st.metric("Dette Nette", format_currency(net_debt, currency))
-        st.caption(f"Levier (D/E): {params.target_debt_weight / params.target_equity_weight:.2f}")
+        st.metric("Enterprise Value", format_currency(res.enterprise_value, res.financials.currency))
+    with c4:
+        st.metric("Equity Value", format_currency(res.equity_value, res.financials.currency))
+
+    # 2. Tableau de Flux (Projections)
+    st.subheader("Projections de Flux de Trésorerie (FCF)")
+
+    # Construction DataFrame
+    years = range(1, len(res.projected_fcfs) + 1)
+    df = pd.DataFrame({
+        "Année": [f"Year {y}" for y in years],
+        "FCF Projeté": res.projected_fcfs,
+        "Facteur Actu.": res.discount_factors,
+        "Valeur Actuelle (PV)": [f * d for f, d in zip(res.projected_fcfs, res.discount_factors)]
+    })
+
+    # Formatage colonne
+    st.dataframe(
+        df.style.format({
+            "FCF Projeté": "{:,.0f}",
+            "Facteur Actu.": "{:.4f}",
+            "Valeur Actuelle (PV)": "{:,.0f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # 3. Breakdown de la Valeur (Terminal Value Weight)
+    pv_explicit = res.sum_discounted_fcf
+    pv_terminal = res.discounted_terminal_value
+    total_ev = res.enterprise_value
+
+    if total_ev > 0:
+        pct_terminal = pv_terminal / total_ev
+        st.caption(f"Poids de la Valeur Terminale : {pct_terminal:.1%} (Explicit: {1 - pct_terminal:.1%})")
+        if pct_terminal > 0.8:
+            st.warning("Attention : >80% de la valeur repose sur l'infini (Terminal Value). Sensibilité élevée.")
 
 
-def display_results(res: ValuationResult):
-    financials = res.financials
-    dcf = res.dcf
-    mode = res.request.mode
-    currency = financials.currency
+def display_ddm_summary(res: DDMValuationResult) -> None:
+    """Affichage spécifique Banques (DDM)."""
 
-    st.subheader(f"Résultats : {financials.ticker}")
+    # 1. KPIs
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Cost of Equity (Ke)", f"{res.cost_of_equity:.2%}", help="Pas de WACC pour les banques")
+    with c2:
+        st.metric("Croissance Perp.", f"{res.params.perpetual_growth_rate:.2%}")
+    with c3:
+        st.metric("Equity Value", format_currency(res.equity_value, res.financials.currency))
+
+    # 2. Tableau Dividendes
+    st.subheader("Projections de Dividendes")
+
+    df = pd.DataFrame({
+        "Année": range(1, len(res.projected_dividends) + 1),
+        "Dividende Attendu": res.projected_dividends,
+        "Facteur (Ke)": res.discount_factors,
+        "PV Dividende": [d * f for d, f in zip(res.projected_dividends, res.discount_factors)]
+    })
+
+    st.dataframe(
+        df.style.format({
+            "Dividende Attendu": "{:,.2f}",
+            "Facteur (Ke)": "{:.4f}",
+            "PV Dividende": "{:,.2f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+def display_graham_summary(res: GrahamValuationResult) -> None:
+    """Affichage formule de Graham."""
+
+    st.info("ℹ️ La méthode de Graham est une approche heuristique 'Deep Value', sans projection de flux.")
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.metric("Prix Marché", format_currency(res.market_price, currency))
+        st.metric("EPS (Bénéfice/Action)", f"{res.eps_used:.2f}")
     with c2:
-        label_val = "Valeur Intrinsèque"
-        if mode == ValuationMode.MONTE_CARLO: label_val += " (P50)"
-        st.metric(label_val, format_currency(res.intrinsic_value_per_share, currency),
-                  delta=f"{res.upside_pct:.1%}" if res.upside_pct else None)
+        st.metric("BVPS (Actif Net/Action)", f"{res.book_value_used:.2f}")
     with c3:
-        if dcf.quantiles:
-            st.metric("Fourchette (P10 - P90)",
-                      f"{dcf.quantiles['P10']:,.0f} - {dcf.quantiles['P90']:,.0f}")
-        else:
-            st.metric("Equity Value", format_currency(dcf.equity_value, currency))
+        st.metric("Multiplicateur", f"{res.graham_multiplier}")
 
     st.markdown("---")
+    st.markdown(
+        f"#### Formule : $V = \\sqrt{{ {res.graham_multiplier} \\times {res.eps_used:.2f} \\times {res.book_value_used:.2f} }}$")
 
-    t1, t2, t3, t4 = st.tabs(["Synthèse", "Projections", "Méthodologie", "Détail Audit"])
 
-    with t1:
-        _render_assumptions(financials, res.params, res, mode)
-    with t2:
-        fcfs = dcf.projected_fcfs
-        years = [f"An {i + 1}" for i in range(len(fcfs))]
-        df_proj = pd.DataFrame({
-            "Année": years,
-            "FCF Projeté": fcfs,
-            "Discount Factor": dcf.discount_factors
-        })
-        # [CORRECTION] Utilisation de width="stretch" au lieu de use_container_width=True
+# --- AUDIT REPORT ---
+
+def display_audit_report(report: AuditReport) -> None:
+    """Affichage sobre et tabulaire du rapport d'audit."""
+
+    with st.expander(f"Détail de l'Audit ({len(report.logs)} points)", expanded=False):
+        # Conversion des logs en DataFrame pour un affichage propre
+        if not report.logs:
+            st.success("Aucune anomalie détectée.")
+            return
+
+        data = []
+        for log in report.logs:
+            data.append({
+                "Sévérité": log.severity.upper(),
+                "Catégorie": log.category,
+                "Message": log.message,
+                "Impact Score": f"{log.penalty}"
+            })
+
+        df_audit = pd.DataFrame(data)
+
+        # Coloration conditionnelle simple via pandas styler si besoin,
+        # ou simple affichage dataframe Streamlit
         st.dataframe(
-            df_proj.style.format({"FCF Projeté": "{:,.0f}", "Discount Factor": "{:.3f}"}),
-            width="stretch"
+            df_audit,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Sévérité": st.column_config.TextColumn(
+                    "Niveau",
+                    help="CRITICAL, HIGH, WARN, INFO",
+                    width="small"
+                ),
+                "Impact Score": st.column_config.NumberColumn(
+                    "Pénalité",
+                    format="%d pts"
+                )
+            }
         )
-    with t3:
-        if mode == ValuationMode.SIMPLE_FCFF:
-            display_simple_dcf_formula(financials, res.params)
-        elif mode == ValuationMode.FUNDAMENTAL_FCFF:
-            display_fundamental_dcf_formula(financials, res.params)
-        elif mode == ValuationMode.MONTE_CARLO:
-            display_monte_carlo_formula(financials, res.params)
-    with t4:
-        if res.audit_report:
-            _render_detailed_audit_view(res.audit_report)
-        else:
-            st.info("Pas de rapport d'audit disponible.")
+
+        if report.critical_warning:
+            st.error("RÉSULTAT NON FIABLE : Des erreurs critiques ont été détectées (voir tableau ci-dessus).")

@@ -1,19 +1,17 @@
 import logging
-
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFResult
+from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
-
 class SimpleFCFFStrategy(ValuationStrategy):
     """
     STRATÉGIE 1 : DCF "SNAPSHOT" (BASE TTM).
-    Utilise fcf_last.
+    Utilise fcf_last (Free Cash Flow Trailing 12 Months).
     """
 
-    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFResult:
+    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
         logger.info(
             "[Strategy] Executing SimpleFCFFStrategy | ticker=%s | currency=%s | years=%s",
             financials.ticker,
@@ -24,7 +22,7 @@ class SimpleFCFFStrategy(ValuationStrategy):
         # 1. Validation de l'input spécifique
         fcf_base = financials.fcf_last
 
-        # Override manuel prioritaire
+        # Override manuel prioritaire (géré via params)
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
             logger.info("[Simple] Override FCF Manuel : %s", fcf_base)
@@ -32,13 +30,9 @@ class SimpleFCFFStrategy(ValuationStrategy):
         if fcf_base is None:
             msg = (
                 "Donnée manquante : FCF TTM (fcf_last) introuvable. "
-                "Impossible d'exécuter la méthode Simple."
+                "Impossible d'exécuter la méthode Simple sans flux de départ."
             )
-            logger.error(
-                "%s | ticker=%s",
-                msg,
-                financials.ticker,
-            )
+            logger.error("%s | ticker=%s", msg, financials.ticker)
             raise CalculationError(msg)
 
         logger.info(
@@ -48,9 +42,9 @@ class SimpleFCFFStrategy(ValuationStrategy):
             "manual" if params.manual_fcf_base else "ttm"
         )
 
-        # 2. Exécution du moteur standard
-        return self._compute_standard_dcf(
-            fcf_start=fcf_base,
+        # 2. Délégation au moteur standard (Abstract)
+        return self._run_dcf_math(
+            base_flow=fcf_base,
             financials=financials,
-            params=params,
+            params=params
         )

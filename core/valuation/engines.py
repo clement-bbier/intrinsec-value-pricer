@@ -1,134 +1,106 @@
 import logging
-from typing import Dict, Type, Tuple, Optional
+from typing import Dict, Type, Optional
 
-from core.exceptions import CalculationError, WorkflowError
-from core.models import CompanyFinancials, DCFParameters, DCFResult, InputSource, ValuationMode, ValuationRequest
+from core.exceptions import CalculationError
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    ValuationResult,  # REMPLACEMENT CRITIQUE : DCFResult -> ValuationResult
+    ValuationMode,
+    ValuationRequest
+)
 from core.valuation.strategies.abstract import ValuationStrategy
 
-# Import des stratégies concrètes
+# --- IMPORT DES STRATÉGIES ---
 from core.valuation.strategies.dcf_simple import SimpleFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
+from core.valuation.strategies.ddm_banks import DDMBanksStrategy
+from core.valuation.strategies.graham_value import GrahamNumberStrategy
 from core.valuation.strategies.monte_carlo import MonteCarloDCFStrategy
 
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# REGISTRE DES STRATÉGIES (1 Mode = 1 Classe)
-# ============================================================
+# --- REGISTRE DES STRATÉGIES ---
+# Mappe l'Enum ValuationMode vers la classe de stratégie correspondante
 STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
     ValuationMode.SIMPLE_FCFF: SimpleFCFFStrategy,
     ValuationMode.FUNDAMENTAL_FCFF: FundamentalFCFFStrategy,
+    ValuationMode.GROWTH_TECH: RevenueBasedStrategy,
+    ValuationMode.DDM_BANKS: DDMBanksStrategy,
+    ValuationMode.GRAHAM_VALUE: GrahamNumberStrategy,
     ValuationMode.MONTE_CARLO: MonteCarloDCFStrategy,
 }
 
 
-def run_valuation(
-        request: ValuationRequest,
-        financials: CompanyFinancials,
-        auto_params: DCFParameters,
-) -> Tuple[DCFParameters, DCFResult]:
+def run_valuation(request: ValuationRequest, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
     """
-    Point d'entrée unique et agnostique du moteur de valorisation.
-
-    Responsabilités :
-    1. Préparer les paramètres (Auto vs Manuel).
-    2. Sélectionner la bonne stratégie via le Registre.
-    3. Exécuter.
+    Fonction principale d'exécution.
+    Instancie la bonne stratégie et retourne un résultat typé (Polymorphique).
     """
+    logger.info(f"Engine requested: {request.mode} for {request.ticker}")
 
-    # 1. Résolution des paramètres (Priorité : Manuel > Auto)
-    if request.input_source == InputSource.MANUAL:
-        if request.manual_params is None:
-            raise WorkflowError("manual_params est requis en mode MANUAL")
-
-        params = request.manual_params
-
-        # Injection du Beta manuel si présent
-        if request.manual_beta is not None:
-            financials.beta = float(request.manual_beta)
-
-        # Préservation des volatilités (pour Monte Carlo) depuis l'auto si non définies
-        # (Pour éviter des volatilités à 0 si l'expert ne les a pas touchées)
-        if params.beta_volatility == 0:
-            params.beta_volatility = auto_params.beta_volatility
-            params.growth_volatility = auto_params.growth_volatility
-            params.terminal_growth_volatility = auto_params.terminal_growth_volatility
-    else:
-        params = auto_params
-
-    # Override final : Horizon de projection
-    params.projection_years = int(request.projection_years)
-
-    # Injection des options Monte Carlo dans les paramètres (Stateless)
-    if request.mode == ValuationMode.MONTE_CARLO:
-        sims = request.options.get("num_simulations")
-        if sims:
-            params.num_simulations = int(sims)
-
-    params.normalize_weights()
-
-    logger.info(
-        "[Engine] run_valuation | ticker=%s | mode=%s | source=%s",
-        request.ticker,
-        request.mode.value,
-        request.input_source.value,
-    )
-
-    # 2. Sélection de la Stratégie (Lookup O(1))
     strategy_cls = STRATEGY_REGISTRY.get(request.mode)
 
     if not strategy_cls:
-        raise CalculationError(f"Mode de valorisation non supporté : {request.mode}")
+        raise CalculationError(f"Mode de valorisation inconnu ou non implémenté : {request.mode}")
 
-    # 3. Exécution
-    strategy = strategy_cls()
-    result = strategy.execute(financials, params)
+    try:
+        # Instanciation et Exécution
+        strategy = strategy_cls()
+        result = strategy.execute(financials, params)
 
-    return params, result
+        # On rattache la requête originale au résultat pour le traçage
+        object.__setattr__(result, 'request', request)
+
+        return result
+
+    except CalculationError as e:
+        logger.error(f"Calculation Error in {request.mode}: {e}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected Error in Engine ({request.mode}): {e}", exc_info=True)
+        raise CalculationError(f"Erreur interne du moteur de calcul : {str(e)}")
 
 
 def run_reverse_dcf(
         financials: CompanyFinancials,
         params: DCFParameters,
         market_price: float,
-        tolerance: float = 0.01,
-        max_iterations: int = 50,
+        max_iterations: int = 50
 ) -> Optional[float]:
     """
-    Reverse DCF (recherche binaire sur fcf_growth_rate).
-    Utilise exclusivement la méthode Fondamentale pour la cohérence.
+    Calcule le taux de croissance implicite (Reverse DCF) pour justifier le prix actuel.
+    Utilise la stratégie Fondamentale par défaut.
     """
     if market_price <= 0:
         return None
 
-    low = -0.10
-    high = 0.30
+    low = -0.20
+    high = 0.50
     strategy = FundamentalFCFFStrategy()
-
-    # Copie propre des params pour éviter les effets de bord
-    from dataclasses import replace
-    test_params = replace(params)
 
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
-        if abs(high - low) < 1e-5:
-            return mid
 
-        test_params.fcf_growth_rate = mid
+        # On crée des paramètres temporaires avec le taux de croissance testé
+        # Note: on utilise replace() si disponible ou on recrée l'objet
+        from dataclasses import replace
+        test_params = replace(params, fcf_growth_rate=mid)
 
         try:
             result = strategy.execute(financials, test_params)
             iv = result.intrinsic_value_per_share
-        except Exception:
-            iv = -999.0
 
-        diff = iv - market_price
-        if abs(diff) < tolerance:
-            return mid
+            if abs(iv - market_price) < 0.5:  # Convergence à 0.5$ près
+                return mid
 
-        if diff > 0:
+            if iv < market_price:
+                low = mid
+            else:
+                high = mid
+        except:
+            # Si le calcul plante (ex: WACC < g), on ajuste les bornes
             high = mid
-        else:
-            low = mid
 
-    return (low + high) / 2.0
+    return None

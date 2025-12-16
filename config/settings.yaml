@@ -1,25 +1,36 @@
-# Default financial assumptions for the DCF model
-# File last updated: 11/27/2025
-# Note: these are base-case assumptions. Adapt with care depending on macro environment, interest rates, region, company profile, effective tax regime, etc.
+# ============================================================
+# INTRINSIC VALUE PRICER - CONFIGURATION PAR DÉFAUT
+# ============================================================
 
-risk_free_rate: 0.04          # 4.0% — baseline risk-free rate (e.g. long-term government bond yield). Should reflect current long-term sovereign yield.
-market_risk_premium: 0.05     # 5.0% — equity risk premium assumption over risk-free. Varies with market conditions; choose based on historic data or consensus.
-default_cost_of_debt: 0.05    # 5.0% — assumed cost of corporate debt. Should reflect the company’s credit quality, debt maturity, and current yield curve.
-tax_rate: 0.25                # 25% — corporate tax rate assumption. Must be adapted to the actual statutory or effective tax rate depending on the firm and its jurisdiction.
+# --- Interface Utilisateur ---
+default_ticker: "AAPL"
+default_projection_years: 5
+price_history_period: "3y"
 
-fcf_growth_rate: 0.03         # 3.0% annual FCF growth — assumes stable, moderate growth. This assumption may be optimistic for very mature firms, or too conservative for high-growth firms.
-perpetual_growth_rate: 0.02   # 2.0% terminal growth — assumes steady long-term growth, in line with long-term GDP + inflation expectations. Terminal growth should not exceed expected long-term economic growth.
+# --- Hypothèses Macro-Economiques (Fallback) ---
+# Utilisées si les données live (Yahoo) échouent ou en mode manuel par défaut.
 
-default_projection_years: 5   # 5 years — standard explicit forecast horizon. May be extended (e.g. 7–10 years) for firms with longer-term growth visibility.
+# Taux sans risque (Risk-Free Rate) - ex: 10Y Treasury
+risk_free_rate: 0.042  # 4.2%
 
-# UI defaults
-default_ticker: "AAPL"        # Default ticker for UI (example)
-price_history_period: "5y"    # Default price history period for UI — useful for volatility and trend analysis
+# Prime de Risque Marché (Market Risk Premium)
+market_risk_premium: 0.050  # 5.0%
 
-# Important notes / limitations:
-# - risk_free_rate must reflect current, relevant risk-free yield (e.g. a long-term sovereign bond). Otherwise, WACC/CAPM calculations will be biased.
-# - market_risk_premium is subjective and varies over time; it should be updated to reflect current market conditions or historic return data.
-# - cost_of_debt should depend on the company’s actual credit risk and prevailing interest rates; a flat assumption may mis-state cost of capital.
-# - tax_rate must be adapted to the actual legal or effective corporate tax rate for the company under valuation.
-# - fcf_growth_rate and perpetual_growth_rate are very sensitive: overly optimistic assumptions may inflate intrinsic value; overly conservative assumptions may undervalue potential growth.
-# - projection horizon influences reliability: a too-short horizon may miss growth; a too-long horizon increases forecast uncertainty.
+# Coût de la dette (Cost of Debt Pre-Tax) - Spread corporate BBB par défaut
+default_cost_of_debt: 0.055  # 5.5%
+
+# Taux d'Impôt Société (Corporate Tax Rate) - Moyenne OCDE
+tax_rate: 0.25  # 25%
+
+# --- Hypothèses de Croissance (Fallback) ---
+
+# Croissance annuelle des flux (CAGR période explicite)
+fcf_growth_rate: 0.03  # 3.0%
+
+# Croissance terminale (Perpetual Growth) - Ne doit pas dépasser le PIB (2-3%)
+perpetual_growth_rate: 0.02  # 2.0%
+
+# --- Monte Carlo ---
+monte_carlo_simulations: 5000
+volatility_beta: 0.10
+volatility_growth: 0.015
