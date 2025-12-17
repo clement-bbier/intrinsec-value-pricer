@@ -1,3 +1,17 @@
+"""
+core/valuation/engines.py
+
+Moteur d'exécution central — Version V1 Normative
+
+Responsabilités :
+- Router une ValuationRequest vers une stratégie déterministe valide
+- Garantir l’alignement académique (CFA / Damodaran)
+- Préparer les extensions (Monte Carlo) sans les ériger en méthodes
+
+Règle fondamentale :
+- Une ValuationMode = une méthode académique déterministe
+"""
+
 import logging
 from typing import Dict, Type, Optional
 
@@ -11,94 +25,134 @@ from core.models import (
 )
 from core.valuation.strategies.abstract import ValuationStrategy
 
-# --- IMPORT DES STRATÉGIES (NOUVELLE NOMENCLATURE) ---
-# Assurez-vous que les fichiers stratégies contiennent bien ces noms de classes
+# ============================================================
+# IMPORT DES STRATÉGIES DÉTERMINISTES (V1)
+# ============================================================
+
 from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
 from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
 from core.valuation.strategies.rim_banks import RIMBankingStrategy
 from core.valuation.strategies.graham_value import GrahamNumberStrategy
+
+# Extension probabiliste (NON NORMATIVE)
 from core.valuation.strategies.monte_carlo import MonteCarloDCFStrategy
 
 logger = logging.getLogger(__name__)
 
-# --- REGISTRE DES STRATÉGIES ---
-# Mapping strict : Enum (models.py) -> Classe Python (strategies/*.py)
+
+# ============================================================
+# REGISTRE NORMATIF DES STRATÉGIES (V1)
+# ============================================================
+
 STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
-    # 1. Standard DCF (ex-Simple)
-    ValuationMode.DISCOUNTED_CASH_FLOW_STANDARD: StandardFCFFStrategy,
-
-    # 2. Cyclical / Fundamental (ex-Fundamental)
-    ValuationMode.NORMALIZED_FCFF_CYCLICAL: FundamentalFCFFStrategy,
-
-    # 3. High Growth / Tech
-    ValuationMode.REVENUE_DRIVEN_GROWTH: RevenueBasedStrategy,
-
-    # 4. Banks & Insurance (Nouveau RIM)
+    ValuationMode.FCFF_TWO_STAGE: StandardFCFFStrategy,
+    ValuationMode.FCFF_NORMALIZED: FundamentalFCFFStrategy,
+    ValuationMode.FCFF_REVENUE_DRIVEN: RevenueBasedStrategy,
     ValuationMode.RESIDUAL_INCOME_MODEL: RIMBankingStrategy,
-
-    # 5. Graham 1974 (Revised)
     ValuationMode.GRAHAM_1974_REVISED: GrahamNumberStrategy,
-
-    # 6. Monte Carlo
-    ValuationMode.PROBABILISTIC_DCF_MONTE_CARLO: MonteCarloDCFStrategy,
 }
 
 
-def run_valuation(request: ValuationRequest, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
-    """
-    Fonction principale d'exécution.
-    Instancie la bonne stratégie et retourne un résultat typé (Polymorphique).
-    """
-    logger.info(f"Engine requested: {request.mode} for {request.ticker}")
+# ============================================================
+# POINT D’ENTRÉE PRINCIPAL
+# ============================================================
 
+def run_valuation(
+    request: ValuationRequest,
+    financials: CompanyFinancials,
+    params: DCFParameters
+) -> ValuationResult:
+    """
+    Exécute une valorisation déterministe conforme au référentiel V1.
+
+    Étapes :
+    1. Sélection de la stratégie académique
+    2. Exécution du modèle déterministe
+    3. Application optionnelle d’extensions (ex: Monte Carlo)
+    """
+
+    logger.info(
+        "[Engine] Valuation requested | ticker=%s | mode=%s",
+        request.ticker,
+        request.mode.value
+    )
+
+    # --- 1. Sélection de la stratégie ---
     strategy_cls = STRATEGY_REGISTRY.get(request.mode)
 
     if not strategy_cls:
-        # Erreur fatale si le mode demandé n'est pas dans le registre
-        raise CalculationError(f"Mode de valorisation inconnu ou non implémenté : {request.mode}")
+        raise CalculationError(
+            f"Mode de valorisation non reconnu ou non autorisé (V1) : {request.mode}"
+        )
 
     try:
-        # Instanciation et Exécution de la stratégie
+        # --- 2. Exécution déterministe ---
         strategy = strategy_cls()
         result = strategy.execute(financials, params)
 
-        # On rattache la requête originale au résultat pour le traçage UI
-        # (Permet à l'UI de savoir quel mode a été demandé pour afficher le bon titre)
-        object.__setattr__(result, 'request', request)
+        # Injection de la requête pour la traçabilité UI / Audit
+        object.__setattr__(result, "request", request)
+
+        # --- 3. Extension probabiliste (OPTIONNELLE) ---
+        if request.options.get("enable_monte_carlo", False):
+            logger.info("[Engine] Monte Carlo extension enabled")
+
+            mc_runner = MonteCarloDCFStrategy()
+            result = mc_runner.execute(financials, params)
+
+            # On conserve la requête originale
+            object.__setattr__(result, "request", request)
 
         return result
 
     except CalculationError as e:
-        logger.error(f"Calculation Error in {request.mode}: {e}")
+        logger.error(
+            "[Engine] Calculation error | mode=%s | error=%s",
+            request.mode.value,
+            e
+        )
         raise e
-    except Exception as e:
-        logger.error(f"Unexpected Error in Engine ({request.mode}): {e}", exc_info=True)
-        raise CalculationError(f"Erreur interne du moteur de calcul : {str(e)}")
 
+    except Exception as e:
+        logger.error(
+            "[Engine] Unexpected error | mode=%s",
+            request.mode.value,
+            exc_info=True
+        )
+        raise CalculationError(
+            f"Erreur interne du moteur de valorisation : {str(e)}"
+        )
+
+
+# ============================================================
+# OUTIL AVANCÉ — REVERSE DCF (ANALYSE DE MARCHÉ)
+# ============================================================
 
 def run_reverse_dcf(
-        financials: CompanyFinancials,
-        params: DCFParameters,
-        market_price: float,
-        max_iterations: int = 50
+    financials: CompanyFinancials,
+    params: DCFParameters,
+    market_price: float,
+    max_iterations: int = 50
 ) -> Optional[float]:
     """
-    Calcule le taux de croissance implicite (Reverse DCF).
-    Utilise la stratégie Fondamentale (Bottom-Up) par défaut car plus stable.
+    Calcule le taux de croissance implicite du marché
+    tel que IV ≈ Prix de marché.
+
+    Méthode :
+    - Dichotomie sur g
+    - Basée sur un DCF Fondamental (normalisé)
     """
+
     if market_price <= 0:
         return None
 
-    low = -0.20
-    high = 0.50
-    # On utilise la stratégie fondamentale pour le Reverse DCF
+    low, high = -0.20, 0.50
     strategy = FundamentalFCFFStrategy()
 
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
 
-        # On crée une copie des paramètres avec le taux testé
         from dataclasses import replace
         test_params = replace(params, fcf_growth_rate=mid)
 
@@ -106,17 +160,16 @@ def run_reverse_dcf(
             result = strategy.execute(financials, test_params)
             iv = result.intrinsic_value_per_share
 
-            # Convergence trouvée
             if abs(iv - market_price) < 0.5:
                 return mid
 
-            # Dichotomie
             if iv < market_price:
                 low = mid
             else:
                 high = mid
-        except:
-            # En cas d'erreur de calcul (ex: WACC < g), on réduit la borne haute
+
+        except Exception:
+            # En cas de non-convergence (WACC <= g, etc.)
             high = mid
 
     return None
