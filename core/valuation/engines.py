@@ -1,15 +1,15 @@
 """
 core/valuation/engines.py
 
-Moteur d'exécution central — Version V1 Normative
+Moteur d'exécution central — Version V1.1 (Chapitre 3 conforme)
 
 Responsabilités :
-- Router une ValuationRequest vers une stratégie déterministe valide
-- Garantir l’alignement académique (CFA / Damodaran)
-- Préparer les extensions (Monte Carlo) sans les ériger en méthodes
+- Orchestrer une valorisation déterministe
+- Appliquer strictement le contrat de sortie Chapitre 3
+- Refuser toute sortie invalide ou incomplète
 
-Règle fondamentale :
-- Une ValuationMode = une méthode académique déterministe
+Principe clé :
+- Le moteur ne fait confiance à personne
 """
 
 import logging
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# REGISTRE NORMATIF DES STRATÉGIES (V1)
+# REGISTRE NORMATIF DES STRATÉGIES
 # ============================================================
 
 STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
@@ -55,7 +55,7 @@ STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
 
 
 # ============================================================
-# POINT D’ENTRÉE PRINCIPAL
+# POINT D’ENTRÉE PRINCIPAL — VALORISATION
 # ============================================================
 
 def run_valuation(
@@ -64,12 +64,8 @@ def run_valuation(
     params: DCFParameters
 ) -> ValuationResult:
     """
-    Exécute une valorisation déterministe conforme au référentiel V1.
-
-    Étapes :
-    1. Sélection de la stratégie académique
-    2. Exécution du modèle déterministe
-    3. Application optionnelle d’extensions (ex: Monte Carlo)
+    Exécute une valorisation conforme au référentiel V1
+    et au contrat de sortie Chapitre 3.
     """
 
     logger.info(
@@ -80,53 +76,61 @@ def run_valuation(
 
     # --- 1. Sélection de la stratégie ---
     strategy_cls = STRATEGY_REGISTRY.get(request.mode)
-
     if not strategy_cls:
         raise CalculationError(
-            f"Mode de valorisation non reconnu ou non autorisé (V1) : {request.mode}"
+            f"Mode de valorisation non autorisé : {request.mode}"
         )
 
+    # --- 2. Exécution déterministe ---
     try:
-        # --- 2. Exécution déterministe ---
         strategy = strategy_cls()
         result = strategy.execute(financials, params)
 
-        # Injection de la requête pour la traçabilité UI / Audit
+        # Injection requête (traçabilité)
         object.__setattr__(result, "request", request)
 
-        # --- 3. Extension probabiliste (OPTIONNELLE) ---
+        # --- 3. Vérification CONTRACTUELLE (OBLIGATOIRE) ---
+        contract = result.build_output_contract()
+        if not contract.is_valid():
+            raise CalculationError(
+                f"Contrat de sortie violé pour {request.mode.value} : {contract}"
+            )
+
+        # --- 4. Extension probabiliste (optionnelle, non normative) ---
         if request.options.get("enable_monte_carlo", False):
             logger.info("[Engine] Monte Carlo extension enabled")
 
             mc_runner = MonteCarloDCFStrategy()
-            result = mc_runner.execute(financials, params)
+            mc_result = mc_runner.execute(financials, params)
 
-            # On conserve la requête originale
-            object.__setattr__(result, "request", request)
+            # Revalidation contractuelle après extension
+            mc_contract = mc_result.build_output_contract()
+            if not mc_contract.is_valid():
+                raise CalculationError(
+                    "Monte Carlo a produit une sortie invalide"
+                )
+
+            object.__setattr__(mc_result, "request", request)
+            result = mc_result
 
         return result
 
-    except CalculationError as e:
-        logger.error(
-            "[Engine] Calculation error | mode=%s | error=%s",
-            request.mode.value,
-            e
-        )
-        raise e
+    except CalculationError:
+        raise
 
     except Exception as e:
         logger.error(
-            "[Engine] Unexpected error | mode=%s",
+            "[Engine] Unexpected failure | mode=%s",
             request.mode.value,
             exc_info=True
         )
         raise CalculationError(
-            f"Erreur interne du moteur de valorisation : {str(e)}"
+            f"Erreur interne du moteur de valorisation : {e}"
         )
 
 
 # ============================================================
-# OUTIL AVANCÉ — REVERSE DCF (ANALYSE DE MARCHÉ)
+# OUTIL AVANCÉ — REVERSE DCF (HORS CONTRAT DE SORTIE)
 # ============================================================
 
 def run_reverse_dcf(
@@ -136,12 +140,11 @@ def run_reverse_dcf(
     max_iterations: int = 50
 ) -> Optional[float]:
     """
-    Calcule le taux de croissance implicite du marché
-    tel que IV ≈ Prix de marché.
+    Analyse de marché (Reverse DCF).
 
-    Méthode :
-    - Dichotomie sur g
-    - Basée sur un DCF Fondamental (normalisé)
+    ⚠️ Hors périmètre Chapitre 3 :
+    - ce n’est PAS une sortie de valorisation
+    - aucun contrat de sortie n’est exigé ici
     """
 
     if market_price <= 0:
@@ -150,10 +153,10 @@ def run_reverse_dcf(
     low, high = -0.20, 0.50
     strategy = FundamentalFCFFStrategy()
 
+    from dataclasses import replace
+
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
-
-        from dataclasses import replace
         test_params = replace(params, fcf_growth_rate=mid)
 
         try:
@@ -169,7 +172,6 @@ def run_reverse_dcf(
                 high = mid
 
         except Exception:
-            # En cas de non-convergence (WACC <= g, etc.)
             high = mid
 
     return None

@@ -2,11 +2,12 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V1 Normative (CFA / Damodaran / Buy-Side)
+Version : V1.1 — Chapitre 3 conforme (Glass Box Valuation Engine)
 
-Règle fondamentale :
-- ValuationMode = référentiel académique unique
-- Aucune méthode non référencée académiquement
+Principes non négociables :
+- Contrat de sortie explicite et vérifiable
+- Comparabilité stricte inter-modèles
+- Refus des sorties incomplètes
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 # ============================================================
@@ -57,7 +58,7 @@ class TerminalValueMethod(str, Enum):
 @dataclass
 class CalculationStep:
     """
-    Une étape atomique du raisonnement financier.
+    Étape atomique du raisonnement financier.
     Sert de preuve mathématique auditable.
     """
     label: str
@@ -76,10 +77,6 @@ class CalculationStep:
 class CompanyFinancials:
     """
     Snapshot cohérent et figé des données financières d'une entreprise.
-
-    Ces données sont :
-    - soit fournies automatiquement (Provider)
-    - soit corrigées / enrichies manuellement
     """
 
     # --- Identité ---
@@ -167,7 +164,6 @@ class DCFParameters:
     num_simulations: Optional[int] = None
 
     def normalize_weights(self) -> None:
-        """Normalise les poids de structure financière si nécessaire."""
         total = self.target_equity_weight + self.target_debt_weight
         if total > 0.0:
             self.target_equity_weight /= total
@@ -175,7 +171,43 @@ class DCFParameters:
 
 
 # ============================================================
-# 5. AUDIT & CONTRÔLE QUALITÉ
+# 5. CONTRAT DE SORTIE — CHAPITRE 3 (NORMATIF)
+# ============================================================
+
+@dataclass(frozen=True)
+class ValuationOutputContract:
+    """
+    Contrat minimal obligatoire pour toute valorisation valide.
+
+    Toute stratégie DOIT produire :
+    1. Hypothèses explicites
+    2. Taux utilisés et justifiés
+    3. Projection explicite
+    4. Valeur terminale
+    5. Bridge EV → Equity → Valeur par action
+    6. Trace Glass Box complète
+    """
+
+    has_params: bool
+    has_projection: bool
+    has_terminal_value: bool
+    has_equity_bridge: bool
+    has_intrinsic_value: bool
+    has_calculation_trace: bool
+
+    def is_valid(self) -> bool:
+        return all([
+            self.has_params,
+            self.has_projection,
+            self.has_terminal_value,
+            self.has_equity_bridge,
+            self.has_intrinsic_value,
+            self.has_calculation_trace
+        ])
+
+
+# ============================================================
+# 6. AUDIT & CONTRÔLE QUALITÉ
 # ============================================================
 
 @dataclass
@@ -201,7 +233,7 @@ class AuditReport:
 
 
 # ============================================================
-# 6. REQUÊTE DE VALORISATION
+# 7. REQUÊTE DE VALORISATION
 # ============================================================
 
 @dataclass(frozen=True)
@@ -223,7 +255,7 @@ class ValuationRequest:
 
 
 # ============================================================
-# 7. RÉSULTATS (OUTPUT DU MODÈLE)
+# 8. RÉSULTATS — CONTRAT DE SORTIE APPLICABLE
 # ============================================================
 
 @dataclass(kw_only=True)
@@ -250,8 +282,22 @@ class ValuationResult(ABC):
 
     def __post_init__(self):
         if self.market_price > 0:
-            self.upside_pct = (self.intrinsic_value_per_share / self.market_price) - 1.0
+            self.upside_pct = (
+                self.intrinsic_value_per_share / self.market_price
+            ) - 1.0
 
+    @abstractmethod
+    def build_output_contract(self) -> ValuationOutputContract:
+        """
+        Chaque résultat DOIT être capable d'exprimer explicitement
+        s'il respecte le contrat de sortie Chapitre 3.
+        """
+        raise NotImplementedError
+
+
+# ============================================================
+# 9. RÉSULTATS SPÉCIFIQUES
+# ============================================================
 
 @dataclass(kw_only=True)
 class DCFValuationResult(ValuationResult):
@@ -269,6 +315,16 @@ class DCFValuationResult(ValuationResult):
     enterprise_value: float
     equity_value: float
 
+    def build_output_contract(self) -> ValuationOutputContract:
+        return ValuationOutputContract(
+            has_params=self.params is not None,
+            has_projection=bool(self.projected_fcfs),
+            has_terminal_value=self.terminal_value is not None,
+            has_equity_bridge=self.enterprise_value is not None and self.equity_value is not None,
+            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_calculation_trace=len(self.calculation_trace) > 0
+        )
+
 
 @dataclass(kw_only=True)
 class RIMValuationResult(ValuationResult):
@@ -285,6 +341,16 @@ class RIMValuationResult(ValuationResult):
     discounted_terminal_value: float
     total_equity_value: float
 
+    def build_output_contract(self) -> ValuationOutputContract:
+        return ValuationOutputContract(
+            has_params=self.params is not None,
+            has_projection=bool(self.projected_residual_incomes),
+            has_terminal_value=self.terminal_value_ri is not None,
+            has_equity_bridge=self.total_equity_value is not None,
+            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_calculation_trace=len(self.calculation_trace) > 0
+        )
+
 
 @dataclass(kw_only=True)
 class GrahamValuationResult(ValuationResult):
@@ -294,3 +360,13 @@ class GrahamValuationResult(ValuationResult):
 
     base_pe: float = 8.5
     multiplier_factor: float = 2.0
+
+    def build_output_contract(self) -> ValuationOutputContract:
+        return ValuationOutputContract(
+            has_params=self.params is not None,
+            has_projection=False,  # Méthode sans projection explicite
+            has_terminal_value=True,  # Heuristique intégrée
+            has_equity_bridge=True,
+            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_calculation_trace=len(self.calculation_trace) > 0
+        )

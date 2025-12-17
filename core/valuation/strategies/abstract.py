@@ -1,18 +1,18 @@
 """
 core/valuation/strategies/abstract.py
 
-Contrat académique des stratégies de valorisation.
-Version : V1 Normative (CFA / Damodaran / Buy-Side)
+Contrat académique et contractuel des stratégies de valorisation.
+Version : V1.1 — Chapitre 3 conforme (Glass Box Valuation Engine)
 
-Rôle :
+Responsabilités :
 - Définir le socle commun obligatoire à toutes les méthodes
 - Garantir la traçabilité (Glass Box)
-- Encadrer les invariants financiers
+- Faire respecter le contrat de sortie Chapitre 3
 """
 
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from core.exceptions import CalculationError
 from core.models import (
@@ -22,7 +22,8 @@ from core.models import (
     DCFValuationResult,
     ValuationRequest,
     CalculationStep,
-    TerminalValueMethod
+    TerminalValueMethod,
+    ValuationOutputContract
 )
 
 from core.computation.financial_math import (
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# CONTRAT ABSTRAIT — STRATÉGIE DE VALORISATION
+# STRATÉGIE ABSTRAITE — SOCLE NORMATIF
 # ============================================================
 
 class ValuationStrategy(ABC):
@@ -48,22 +49,15 @@ class ValuationStrategy(ABC):
 
     Toute stratégie DOIT :
     - être académiquement référencée
-    - déclarer explicitement son domaine de validité
-    - respecter les invariants financiers
-    - produire une preuve de calcul complète (Glass Box)
+    - produire une trace Glass Box complète
+    - retourner un résultat conforme au contrat de sortie Chapitre 3
     """
 
-    #: Référence académique principale (ex: "Damodaran", "Penman", "Graham")
     academic_reference: str = "UNSPECIFIED"
-
-    #: Domaine économique de validité (ex: "Mature firms", "Banks", "High growth")
     economic_domain: str = "UNSPECIFIED"
-
-    #: Invariants financiers obligatoires
     financial_invariants: List[str] = []
 
     def __init__(self):
-        # Trace complète du raisonnement financier (preuve mathématique)
         self.trace: List[CalculationStep] = []
 
     # --------------------------------------------------------
@@ -79,7 +73,6 @@ class ValuationStrategy(ABC):
         unit: str,
         description: str = ""
     ) -> None:
-        """Enregistre une étape atomique du calcul."""
         self.trace.append(
             CalculationStep(
                 label=label,
@@ -92,7 +85,7 @@ class ValuationStrategy(ABC):
         )
 
     # --------------------------------------------------------
-    # CONTRAT D’EXÉCUTION
+    # CONTRAT D’EXÉCUTION (STRATÉGIE)
     # --------------------------------------------------------
 
     @abstractmethod
@@ -106,13 +99,52 @@ class ValuationStrategy(ABC):
 
         Toute implémentation DOIT :
         - valider ses préconditions
-        - respecter les invariants financiers
-        - produire une ValuationResult cohérente
+        - produire un ValuationResult
         """
         raise NotImplementedError
 
     # --------------------------------------------------------
-    # OUTIL MUTUALISÉ — DCF DÉTERMINISTE STANDARD
+    # CONTRAT DE SORTIE — ENFORCEMENT CENTRAL
+    # --------------------------------------------------------
+
+    def _finalize_result(
+        self,
+        result: ValuationResult,
+        request_stub: Optional[ValuationRequest] = None
+    ) -> ValuationResult:
+        """
+        Point de sortie UNIQUE de toute stratégie.
+
+        - injecte la requête si nécessaire
+        - attache la trace Glass Box
+        - vérifie le contrat de sortie Chapitre 3
+        - bloque toute sortie invalide
+        """
+
+        # Injection requête (traçabilité)
+        if request_stub is not None:
+            object.__setattr__(result, "request", request_stub)
+
+        # Injection trace
+        result.calculation_trace = self.trace
+
+        # Validation contractuelle
+        contract: ValuationOutputContract = result.build_output_contract()
+
+        if not contract.is_valid():
+            logger.error(
+                "[ContractViolation] %s produced an invalid valuation output",
+                self.__class__.__name__
+            )
+            raise CalculationError(
+                f"Contrat de sortie invalide pour {self.__class__.__name__} : "
+                f"{contract}"
+            )
+
+        return result
+
+    # --------------------------------------------------------
+    # MOTEUR DCF MUTUALISÉ (DÉTERMINISTE)
     # --------------------------------------------------------
 
     def _run_dcf_math(
@@ -128,40 +160,26 @@ class ValuationStrategy(ABC):
         Conforme :
         - Damodaran
         - CFA Institute
-
-        Invariants imposés :
-        - WACC > g_terminal
-        - Horizon de projection > 0
         """
 
-        # ====================================================
-        # 1. VALIDATION PRÉLIMINAIRE
-        # ====================================================
-
-        years = params.projection_years
-        if years <= 0:
-            raise CalculationError("Horizon de projection invalide (<= 0).")
+        # 1. Validation
+        if params.projection_years <= 0:
+            raise CalculationError("Horizon de projection invalide.")
 
         if base_flow is None:
             raise CalculationError("Flux de trésorerie initial manquant.")
 
-        # ====================================================
-        # 2. POINT DE DÉPART
-        # ====================================================
-
+        # 2. Point de départ
         self.add_step(
             "Flux de Trésorerie Initial",
             "FCF_0",
             f"{base_flow:,.2f}",
             base_flow,
             financials.currency,
-            "Base des projections (TTM ou normalisée)."
+            "Base des projections."
         )
 
-        # ====================================================
-        # 3. COÛT DU CAPITAL (WACC)
-        # ====================================================
-
+        # 3. WACC
         wacc_ctx = calculate_wacc(financials, params)
         wacc = wacc_ctx.wacc
 
@@ -177,38 +195,29 @@ class ValuationStrategy(ABC):
             f"Méthode : {wacc_ctx.method}"
         )
 
-        # ====================================================
-        # 4. PROJECTION DES FLUX
-        # ====================================================
-
+        # 4. Projection
         projected_flows = project_flows(
             base_flow=base_flow,
-            years=years,
+            years=params.projection_years,
             g_start=params.fcf_growth_rate,
             g_term=params.perpetual_growth_rate,
             high_growth_years=params.high_growth_years
         )
 
-        # ====================================================
-        # 5. ACTUALISATION DES FLUX
-        # ====================================================
-
+        # 5. Actualisation
         discounted_sum = calculate_npv(projected_flows, wacc)
-        discount_factors = calculate_discount_factors(wacc, years)
+        discount_factors = calculate_discount_factors(wacc, params.projection_years)
 
         self.add_step(
-            f"Valeur actuelle des FCF ({years} ans)",
+            "Valeur actuelle des FCF",
             "∑ FCF_t / (1+WACC)^t",
             f"NPV(FCF, {wacc:.2%})",
             discounted_sum,
             financials.currency,
-            "Valeur des flux explicites."
+            "Flux explicites."
         )
 
-        # ====================================================
-        # 6. VALEUR TERMINALE
-        # ====================================================
-
+        # 6. Valeur terminale
         final_flow = projected_flows[-1]
 
         if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
@@ -218,34 +227,28 @@ class ValuationStrategy(ABC):
                 final_flow,
                 params.exit_multiple_value
             )
-            tv_formula = "FCF_n × Multiple"
-            tv_desc = "Approche par multiple de marché."
+            tv_desc = "Exit Multiple"
         else:
             tv = calculate_terminal_value_gordon(
                 final_flow,
                 wacc,
                 params.perpetual_growth_rate
             )
-            tv_formula = "FCF_n·(1+g)/(WACC−g)"
-            tv_desc = "Modèle Gordon-Shapiro."
+            tv_desc = "Gordon-Shapiro"
 
         discounted_tv = tv * discount_factors[-1]
 
         self.add_step(
             "Valeur Terminale Actualisée",
-            tv_formula,
-            f"{tv:,.2f} × {discount_factors[-1]:.4f}",
+            tv_desc,
+            f"{tv:,.2f}",
             discounted_tv,
             financials.currency,
-            tv_desc
+            "Valeur terminale."
         )
 
-        # ====================================================
-        # 7. ENTERPRISE VALUE → EQUITY VALUE
-        # ====================================================
-
+        # 7. Bridge EV → Equity
         enterprise_value = discounted_sum + discounted_tv
-
         equity_value = calculate_equity_value_bridge(
             enterprise_value,
             financials.total_debt,
@@ -255,19 +258,11 @@ class ValuationStrategy(ABC):
         self.add_step(
             "Valeur des Capitaux Propres",
             "EV − Dette + Cash",
-            (
-                f"{enterprise_value:,.2f} − "
-                f"{financials.total_debt:,.2f} + "
-                f"{financials.cash_and_equivalents:,.2f}"
-            ),
+            f"{enterprise_value:,.2f}",
             equity_value,
             financials.currency,
-            "Valeur revenant aux actionnaires."
+            "Bridge EV → Equity."
         )
-
-        # ====================================================
-        # 8. VALEUR PAR ACTION
-        # ====================================================
 
         if financials.shares_outstanding <= 0:
             raise CalculationError("Nombre d’actions invalide.")
@@ -276,21 +271,14 @@ class ValuationStrategy(ABC):
 
         self.add_step(
             "Valeur Intrinsèque par Action",
-            "Equity Value / Shares",
-            (
-                f"{equity_value:,.2f} / "
-                f"{financials.shares_outstanding:,.0f}"
-            ),
+            "Equity / Shares",
+            f"{iv_per_share:,.2f}",
             iv_per_share,
             financials.currency,
-            "Résultat final du modèle."
+            "Résultat final."
         )
 
-        # ====================================================
-        # 9. CONSTRUCTION DU RÉSULTAT
-        # ====================================================
-
-        return DCFValuationResult(
+        result = DCFValuationResult(
             request=request_stub,
             financials=financials,
             params=params,
@@ -305,6 +293,7 @@ class ValuationStrategy(ABC):
             terminal_value=tv,
             discounted_terminal_value=discounted_tv,
             enterprise_value=enterprise_value,
-            equity_value=equity_value,
-            calculation_trace=self.trace
+            equity_value=equity_value
         )
+
+        return self._finalize_result(result, request_stub)
