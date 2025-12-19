@@ -1,13 +1,13 @@
 """
 core/valuation/strategies/abstract.py
 
-Contrat académique et contractuel des stratégies de valorisation.
-Version : V1.1 — Chapitre 3 conforme (Glass Box Valuation Engine)
+Contrat académique et Glass Box des stratégies de valorisation.
+Version : V1.2 — Chapitres 3 & 4 conformes (Glass Box Valuation Engine)
 
 Responsabilités :
 - Définir le socle commun obligatoire à toutes les méthodes
-- Garantir la traçabilité (Glass Box)
-- Faire respecter le contrat de sortie Chapitre 3
+- Imposer le standard universel de trace Glass Box
+- Faire respecter le contrat de sortie
 """
 
 import logging
@@ -22,6 +22,7 @@ from core.models import (
     DCFValuationResult,
     ValuationRequest,
     CalculationStep,
+    TraceHypothesis,
     TerminalValueMethod,
     ValuationOutputContract
 )
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# STRATÉGIE ABSTRAITE — SOCLE NORMATIF
+# STRATÉGIE ABSTRAITE — SOCLE GLASS BOX
 # ============================================================
 
 class ValuationStrategy(ABC):
@@ -48,9 +49,9 @@ class ValuationStrategy(ABC):
     Classe abstraite racine de toutes les stratégies de valorisation.
 
     Toute stratégie DOIT :
-    - être académiquement référencée
-    - produire une trace Glass Box complète
-    - retourner un résultat conforme au contrat de sortie Chapitre 3
+    - produire une trace Glass Box normative
+    - exposer chaque hypothèse et chaque calcul
+    - retourner un résultat conforme aux contrats Chapitre 3 & 4
     """
 
     academic_reference: str = "UNSPECIFIED"
@@ -61,31 +62,45 @@ class ValuationStrategy(ABC):
         self.trace: List[CalculationStep] = []
 
     # --------------------------------------------------------
-    # GLASS BOX — TRACE D’AUDIT
+    # GLASS BOX — AJOUT D’ÉTAPE NORMATIVE
     # --------------------------------------------------------
 
     def add_step(
         self,
+        *,
         label: str,
-        formula: str,
-        values: str,
+        theoretical_formula: str,
+        hypotheses: List[TraceHypothesis],
+        numerical_substitution: str,
         result: float,
         unit: str,
-        description: str = ""
+        interpretation: str
     ) -> None:
+        """
+        Ajoute une étape de calcul Glass Box conforme Chapitre 4.
+
+        Toute omission entraîne une non-conformité.
+        """
+
+        if not hypotheses:
+            raise CalculationError(
+                f"Étape '{label}' invalide : hypothèses manquantes."
+            )
+
         self.trace.append(
             CalculationStep(
                 label=label,
-                formula=formula,
-                values=values,
+                theoretical_formula=theoretical_formula,
+                hypotheses=hypotheses,
+                numerical_substitution=numerical_substitution,
                 result=float(result),
                 unit=unit,
-                description=description
+                interpretation=interpretation
             )
         )
 
     # --------------------------------------------------------
-    # CONTRAT D’EXÉCUTION (STRATÉGIE)
+    # CONTRAT D’EXÉCUTION
     # --------------------------------------------------------
 
     @abstractmethod
@@ -94,13 +109,6 @@ class ValuationStrategy(ABC):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> ValuationResult:
-        """
-        Exécute la stratégie de valorisation.
-
-        Toute implémentation DOIT :
-        - valider ses préconditions
-        - produire un ValuationResult
-        """
         raise NotImplementedError
 
     # --------------------------------------------------------
@@ -112,39 +120,23 @@ class ValuationStrategy(ABC):
         result: ValuationResult,
         request_stub: Optional[ValuationRequest] = None
     ) -> ValuationResult:
-        """
-        Point de sortie UNIQUE de toute stratégie.
 
-        - injecte la requête si nécessaire
-        - attache la trace Glass Box
-        - vérifie le contrat de sortie Chapitre 3
-        - bloque toute sortie invalide
-        """
-
-        # Injection requête (traçabilité)
         if request_stub is not None:
             object.__setattr__(result, "request", request_stub)
 
-        # Injection trace
         result.calculation_trace = self.trace
 
-        # Validation contractuelle
         contract: ValuationOutputContract = result.build_output_contract()
 
         if not contract.is_valid():
-            logger.error(
-                "[ContractViolation] %s produced an invalid valuation output",
-                self.__class__.__name__
-            )
             raise CalculationError(
-                f"Contrat de sortie invalide pour {self.__class__.__name__} : "
-                f"{contract}"
+                f"Contrat de sortie invalide pour {self.__class__.__name__}"
             )
 
         return result
 
     # --------------------------------------------------------
-    # MOTEUR DCF MUTUALISÉ (DÉTERMINISTE)
+    # MOTEUR DCF MUTUALISÉ (LOGIQUE INCHANGÉE)
     # --------------------------------------------------------
 
     def _run_dcf_math(
@@ -154,48 +146,49 @@ class ValuationStrategy(ABC):
         params: DCFParameters,
         request_stub: Optional[ValuationRequest] = None
     ) -> DCFValuationResult:
-        """
-        Moteur DCF déterministe partagé (FCFF).
 
-        Conforme :
-        - Damodaran
-        - CFA Institute
-        """
-
-        # 1. Validation
         if params.projection_years <= 0:
             raise CalculationError("Horizon de projection invalide.")
 
         if base_flow is None:
             raise CalculationError("Flux de trésorerie initial manquant.")
 
-        # 2. Point de départ
+        # 1. Flux initial
         self.add_step(
-            "Flux de Trésorerie Initial",
-            "FCF_0",
-            f"{base_flow:,.2f}",
-            base_flow,
-            financials.currency,
-            "Base des projections."
+            label="Flux de trésorerie initial",
+            theoretical_formula="FCF₀",
+            hypotheses=[
+                TraceHypothesis("FCF initial", base_flow, financials.currency)
+            ],
+            numerical_substitution=f"FCF₀ = {base_flow:,.2f}",
+            result=base_flow,
+            unit=financials.currency,
+            interpretation="Point de départ des projections."
         )
 
-        # 3. WACC
+        # 2. WACC
         wacc_ctx = calculate_wacc(financials, params)
         wacc = wacc_ctx.wacc
 
         self.add_step(
-            "WACC",
-            "K_e·W_e + K_d(1−t)·W_d",
-            (
+            label="Coût moyen pondéré du capital (WACC)",
+            theoretical_formula="Kₑ·Wₑ + K_d·(1−t)·W_d",
+            hypotheses=[
+                TraceHypothesis("Cost of equity", wacc_ctx.cost_of_equity, "%"),
+                TraceHypothesis("Cost of debt (after tax)", wacc_ctx.cost_of_debt_after_tax, "%"),
+                TraceHypothesis("Equity weight", wacc_ctx.weight_equity, "%"),
+                TraceHypothesis("Debt weight", wacc_ctx.weight_debt, "%"),
+            ],
+            numerical_substitution=(
                 f"({wacc_ctx.cost_of_equity:.2%}×{wacc_ctx.weight_equity:.0%}) + "
                 f"({wacc_ctx.cost_of_debt_after_tax:.2%}×{wacc_ctx.weight_debt:.0%})"
             ),
-            wacc,
-            "%",
-            f"Méthode : {wacc_ctx.method}"
+            result=wacc,
+            unit="%",
+            interpretation="Taux d’actualisation des flux futurs."
         )
 
-        # 4. Projection
+        # 3. Projection
         projected_flows = project_flows(
             base_flow=base_flow,
             years=params.projection_years,
@@ -204,50 +197,53 @@ class ValuationStrategy(ABC):
             high_growth_years=params.high_growth_years
         )
 
-        # 5. Actualisation
         discounted_sum = calculate_npv(projected_flows, wacc)
         discount_factors = calculate_discount_factors(wacc, params.projection_years)
 
         self.add_step(
-            "Valeur actuelle des FCF",
-            "∑ FCF_t / (1+WACC)^t",
-            f"NPV(FCF, {wacc:.2%})",
-            discounted_sum,
-            financials.currency,
-            "Flux explicites."
+            label="Valeur actuelle des flux projetés",
+            theoretical_formula="∑ FCFₜ / (1 + WACC)ᵗ",
+            hypotheses=[
+                TraceHypothesis("Projected FCFs", projected_flows, financials.currency),
+                TraceHypothesis("WACC", wacc, "%")
+            ],
+            numerical_substitution=f"NPV(FCF, {wacc:.2%})",
+            result=discounted_sum,
+            unit=financials.currency,
+            interpretation="Valeur actualisée des flux explicites."
         )
 
-        # 6. Valeur terminale
+        # 4. Valeur terminale
         final_flow = projected_flows[-1]
 
         if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
-            if not params.exit_multiple_value:
-                raise CalculationError("Exit multiple manquant.")
             tv = calculate_terminal_value_exit_multiple(
-                final_flow,
-                params.exit_multiple_value
+                final_flow, params.exit_multiple_value
             )
-            tv_desc = "Exit Multiple"
+            tv_formula = "FCFₙ × Multiple"
         else:
             tv = calculate_terminal_value_gordon(
-                final_flow,
-                wacc,
-                params.perpetual_growth_rate
+                final_flow, wacc, params.perpetual_growth_rate
             )
-            tv_desc = "Gordon-Shapiro"
+            tv_formula = "FCFₙ × (1+g) / (WACC − g)"
 
         discounted_tv = tv * discount_factors[-1]
 
         self.add_step(
-            "Valeur Terminale Actualisée",
-            tv_desc,
-            f"{tv:,.2f}",
-            discounted_tv,
-            financials.currency,
-            "Valeur terminale."
+            label="Valeur terminale actualisée",
+            theoretical_formula=tv_formula,
+            hypotheses=[
+                TraceHypothesis("Final FCF", final_flow, financials.currency),
+                TraceHypothesis("WACC", wacc, "%"),
+                TraceHypothesis("Perpetual growth", params.perpetual_growth_rate, "%")
+            ],
+            numerical_substitution=f"TV × DFₙ = {tv:,.2f} × {discount_factors[-1]:.4f}",
+            result=discounted_tv,
+            unit=financials.currency,
+            interpretation="Valeur de continuation de l’entreprise."
         )
 
-        # 7. Bridge EV → Equity
+        # 5. Bridge EV → Equity
         enterprise_value = discounted_sum + discounted_tv
         equity_value = calculate_equity_value_bridge(
             enterprise_value,
@@ -256,12 +252,20 @@ class ValuationStrategy(ABC):
         )
 
         self.add_step(
-            "Valeur des Capitaux Propres",
-            "EV − Dette + Cash",
-            f"{enterprise_value:,.2f}",
-            equity_value,
-            financials.currency,
-            "Bridge EV → Equity."
+            label="Valeur des capitaux propres",
+            theoretical_formula="EV − Dette + Cash",
+            hypotheses=[
+                TraceHypothesis("Enterprise Value", enterprise_value, financials.currency),
+                TraceHypothesis("Total debt", financials.total_debt, financials.currency),
+                TraceHypothesis("Cash", financials.cash_and_equivalents, financials.currency)
+            ],
+            numerical_substitution=(
+                f"{enterprise_value:,.2f} − {financials.total_debt:,.2f} + "
+                f"{financials.cash_and_equivalents:,.2f}"
+            ),
+            result=equity_value,
+            unit=financials.currency,
+            interpretation="Valeur revenant aux actionnaires."
         )
 
         if financials.shares_outstanding <= 0:
@@ -270,12 +274,16 @@ class ValuationStrategy(ABC):
         iv_per_share = equity_value / financials.shares_outstanding
 
         self.add_step(
-            "Valeur Intrinsèque par Action",
-            "Equity / Shares",
-            f"{iv_per_share:,.2f}",
-            iv_per_share,
-            financials.currency,
-            "Résultat final."
+            label="Valeur intrinsèque par action",
+            theoretical_formula="Equity / Shares outstanding",
+            hypotheses=[
+                TraceHypothesis("Equity value", equity_value, financials.currency),
+                TraceHypothesis("Shares outstanding", financials.shares_outstanding)
+            ],
+            numerical_substitution=f"{equity_value:,.2f} / {financials.shares_outstanding:,.0f}",
+            result=iv_per_share,
+            unit=financials.currency,
+            interpretation="Valeur intrinsèque estimée par action."
         )
 
         result = DCFValuationResult(

@@ -2,22 +2,22 @@
 core/valuation/strategies/dcf_fundamental.py
 
 Méthode : FCFF Normalized Discounted Cash Flow
-Version : V1 Normative
+Version : V1.1 — Chapitre 4 conforme (Glass Box)
 
 Références académiques :
 - CFA Institute – Equity Valuation
 - Damodaran, A. – Normalized Earnings & Cash Flows
-
-Usage :
-- Entreprises cycliques
-- Industries capitalistiques
-- Activités soumises à des cycles macroéconomiques
 """
 
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    DCFValuationResult,
+    TraceHypothesis
+)
 from core.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
@@ -26,23 +26,6 @@ logger = logging.getLogger(__name__)
 class FundamentalFCFFStrategy(ValuationStrategy):
     """
     FCFF Normalisé (Cyclical / Fundamental).
-
-    Principe :
-    - On ne valorise PAS le dernier FCF observé
-    - On valorise un FCF normatif représentatif d’un cycle moyen
-
-    Référence académique :
-    - CFA Institute
-    - Damodaran (Normalized Earnings)
-
-    Domaine de validité :
-    - Cycliques (commodities, industrie lourde, construction)
-    - Entreprises avec forte volatilité conjoncturelle
-
-    Invariants financiers :
-    - FCF normalisé économiquement cohérent
-    - WACC > g_terminal
-    - Horizon de projection > 0
     """
 
     academic_reference = "CFA Institute / Damodaran"
@@ -58,14 +41,6 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> DCFValuationResult:
-        """
-        Exécute un DCF basé sur un FCF normalisé.
-
-        Étapes :
-        - Sélection du FCF fondamental lissé
-        - Validation de la cohérence économique
-        - Délégation au moteur DCF déterministe partagé
-        """
 
         logger.info(
             "[Strategy] FCFF Normalized | ticker=%s",
@@ -73,17 +48,15 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 1. SÉLECTION DU FCF NORMALISÉ
+        # 1. SÉLECTION DU FCF NORMALISÉ (GLASS BOX)
         # ====================================================
-
-        fcf_base = financials.fcf_fundamental_smoothed
 
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
-            logger.info(
-                "[FCFF Normalized] FCF override manuel utilisé : %.2f",
-                fcf_base
-            )
+            source = "Manual override"
+        else:
+            fcf_base = financials.fcf_fundamental_smoothed
+            source = "Fundamental smoothed FCF"
 
         if fcf_base is None:
             raise CalculationError(
@@ -91,22 +64,57 @@ class FundamentalFCFFStrategy(ValuationStrategy):
                 "(fcf_fundamental_smoothed manquant)."
             )
 
+        self.add_step(
+            label="Sélection du flux de trésorerie normalisé",
+            theoretical_formula="FCF₀ (normalisé)",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Normalized FCF",
+                    value=fcf_base,
+                    unit=financials.currency,
+                    source=source
+                )
+            ],
+            numerical_substitution=f"FCF₀ = {fcf_base:,.2f}",
+            result=fcf_base,
+            unit=financials.currency,
+            interpretation=(
+                "Flux de trésorerie libre représentatif d’un cycle économique "
+                "normalisé, utilisé comme base de projection."
+            )
+        )
+
         # ====================================================
-        # 2. CONTRÔLE DE COHÉRENCE ÉCONOMIQUE
+        # 2. CONTRÔLE DE COHÉRENCE ÉCONOMIQUE (GLASS BOX)
         # ====================================================
 
-        if fcf_base <= 0:
-            logger.warning(
-                "[FCFF Normalized] FCF normalisé négatif ou nul : %.2f",
-                fcf_base
+        self.add_step(
+            label="Test de cohérence du FCF normalisé",
+            theoretical_formula="FCF₀ > 0",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Normalized FCF",
+                    value=fcf_base,
+                    unit=financials.currency
+                )
+            ],
+            numerical_substitution=f"{fcf_base:,.2f} > 0",
+            result=1.0 if fcf_base > 0 else 0.0,
+            unit="boolean",
+            interpretation=(
+                "Vérification que le FCF normalisé est économiquement cohérent "
+                "pour une valorisation DCF."
             )
+        )
+
+        if fcf_base <= 0:
             raise CalculationError(
                 "FCF normalisé négatif : "
                 "méthode inadaptée sans ajustement manuel."
             )
 
         # ====================================================
-        # 3. EXÉCUTION DU DCF
+        # 3. EXÉCUTION DU DCF DÉTERMINISTE
         # ====================================================
 
         return self._run_dcf_math(

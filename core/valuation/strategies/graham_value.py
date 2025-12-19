@@ -2,24 +2,24 @@
 core/valuation/strategies/graham_value.py
 
 Méthode : Graham Intrinsic Value (1974 Revised)
-Version : V1 Normative
+Version : V1.1 — Chapitre 4 conforme (Glass Box)
 
 Référence académique :
 - Graham, B. – The Intelligent Investor (1974, revised)
 
-Principe :
-- Méthode heuristique de valorisation
-- Basée sur le bénéfice, la croissance attendue et le niveau des taux
-- Non fondée sur l’actualisation des cash-flows
-
-⚠️ Ce n’est PAS un DCF
-⚠️ Méthode indicative, à usage comparatif
+⚠️ Méthode heuristique (non DCF)
+⚠️ Usage comparatif uniquement
 """
 
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, GrahamValuationResult
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    GrahamValuationResult,
+    TraceHypothesis
+)
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.computation.financial_math import calculate_graham_1974_value
 
@@ -29,22 +29,10 @@ logger = logging.getLogger(__name__)
 class GrahamNumberStrategy(ValuationStrategy):
     """
     Graham Intrinsic Value — Formule révisée 1974.
-
-    Référence académique :
-    - Benjamin Graham
-
-    Domaine de validité :
-    - Entreprises value / matures
-    - Earnings positifs et relativement stables
-
-    Invariants financiers :
-    - EPS > 0
-    - Yield AAA > 0
-    - Croissance modérée (raisonnable)
     """
 
     academic_reference = "Graham (1974)"
-    economic_domain = "Value / Deep Value (Mature firms)"
+    economic_domain = "Value / Mature firms"
     financial_invariants = [
         "EPS > 0",
         "AAA_yield > 0",
@@ -56,12 +44,6 @@ class GrahamNumberStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> GrahamValuationResult:
-        """
-        Exécute la formule de Graham 1974 révisée.
-
-        Formule :
-        V = [EPS × (8.5 + 2g) × 4.4] / Y_AAA
-        """
 
         logger.info(
             "[Strategy] Graham 1974 Revised | ticker=%s",
@@ -69,7 +51,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 1. EPS (ANCRAGE BÉNÉFICIAIRE)
+        # 1. EPS — ANCRAGE BÉNÉFICIAIRE
         # ====================================================
 
         eps = financials.eps_ttm
@@ -85,55 +67,139 @@ class GrahamNumberStrategy(ValuationStrategy):
         # Override manuel (expert)
         if params.manual_fcf_base is not None:
             eps = params.manual_fcf_base
+            eps_source = "Manual override"
+        else:
+            eps_source = "Reported EPS / Derived EPS"
 
         if eps is None or eps <= 0:
             raise CalculationError(
-                "EPS positif requis pour la méthode Graham."
+                "EPS strictement positif requis pour la méthode Graham."
             )
 
         self.add_step(
-            "Bénéfice par Action (EPS)",
-            "EPS",
-            f"{eps:.2f}",
-            eps,
-            financials.currency,
-            "Capacité bénéficiaire de référence."
+            label="Bénéfice par action (EPS)",
+            theoretical_formula="EPS",
+            hypotheses=[
+                TraceHypothesis(
+                    name="EPS",
+                    value=eps,
+                    unit=financials.currency,
+                    source=eps_source
+                )
+            ],
+            numerical_substitution=f"EPS = {eps:.2f}",
+            result=eps,
+            unit=financials.currency,
+            interpretation=(
+                "Capacité bénéficiaire utilisée comme ancrage "
+                "de la valorisation heuristique."
+            )
         )
 
         # ====================================================
-        # 2. TAUX DE RÉFÉRENCE (AAA)
+        # 2. TAUX DE RÉFÉRENCE — AAA
         # ====================================================
 
         aaa_yield = params.corporate_aaa_yield
 
         if aaa_yield is None or aaa_yield <= 0:
             raise CalculationError(
-                "Rendement obligataire AAA requis."
+                "Rendement obligataire AAA requis pour la méthode Graham."
             )
 
         self.add_step(
-            "Rendement Obligataire AAA",
-            "Y_AAA",
-            f"{aaa_yield:.2%}",
-            aaa_yield,
-            "%",
-            "Taux d’actualisation implicite (coût d’opportunité)."
+            label="Rendement obligataire AAA",
+            theoretical_formula="Y_AAA",
+            hypotheses=[
+                TraceHypothesis(
+                    name="AAA yield",
+                    value=aaa_yield,
+                    unit="%",
+                    source="Corporate bond market"
+                )
+            ],
+            numerical_substitution=f"Y_AAA = {aaa_yield:.2%}",
+            result=aaa_yield,
+            unit="%",
+            interpretation=(
+                "Taux de référence servant d’ajustement macro-financier "
+                "dans la formule de Graham."
+            )
         )
 
         # ====================================================
-        # 3. CROISSANCE (HEURISTIQUE)
+        # 3. CROISSANCE — HYPOTHÈSE HEURISTIQUE
         # ====================================================
 
         growth_rate = params.fcf_growth_rate
 
-        if growth_rate < 0:
-            logger.warning(
-                "[Graham] Croissance négative utilisée : %.2f%%",
-                growth_rate * 100
+        self.add_step(
+            label="Hypothèse de croissance",
+            theoretical_formula="g",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Growth rate",
+                    value=growth_rate,
+                    unit="%",
+                    source="User input / Analyst assumption"
+                )
+            ],
+            numerical_substitution=f"g = {growth_rate:.2%}",
+            result=growth_rate,
+            unit="%",
+            interpretation=(
+                "Hypothèse de croissance utilisée de manière heuristique "
+                "dans la formule de Graham."
             )
+        )
 
         # ====================================================
-        # 4. CALCUL GRAHAM (FORMULE RÉVISÉE)
+        # 4. COMPOSANTS DU MULTIPLICATEUR
+        # ====================================================
+
+        growth_multiplier = 8.5 + 2.0 * (growth_rate * 100.0)
+        rate_adjustment = 4.4 / (aaa_yield * 100.0)
+
+        self.add_step(
+            label="Multiplicateur de croissance",
+            theoretical_formula="8.5 + 2g",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Growth rate",
+                    value=growth_rate,
+                    unit="%"
+                )
+            ],
+            numerical_substitution=f"8.5 + 2×{growth_rate * 100:.2f}",
+            result=growth_multiplier,
+            unit="x",
+            interpretation=(
+                "Ajustement du multiple de bénéfice en fonction "
+                "de la croissance attendue."
+            )
+        )
+
+        self.add_step(
+            label="Ajustement aux taux",
+            theoretical_formula="4.4 / Y_AAA",
+            hypotheses=[
+                TraceHypothesis(
+                    name="AAA yield",
+                    value=aaa_yield,
+                    unit="%"
+                )
+            ],
+            numerical_substitution=f"4.4 / {aaa_yield * 100:.2f}",
+            result=rate_adjustment,
+            unit="factor",
+            interpretation=(
+                "Ajustement relatif aux conditions de taux d’intérêt "
+                "historiques."
+            )
+        )
+
+        # ====================================================
+        # 5. VALEUR INTRINSÈQUE (GRAHAM)
         # ====================================================
 
         try:
@@ -147,52 +213,32 @@ class GrahamNumberStrategy(ValuationStrategy):
                 f"Erreur dans la formule Graham : {e}"
             )
 
-        growth_multiplier = 8.5 + 2.0 * (growth_rate * 100.0)
-        rate_adjustment = 4.4 / (aaa_yield * 100.0)
-
         self.add_step(
-            "Multiplicateur de Croissance",
-            "8.5 + 2g",
-            f"8.5 + 2×{growth_rate * 100:.1f}",
-            growth_multiplier,
-            "x",
-            "Ajustement du P/E selon la croissance."
-        )
-
-        self.add_step(
-            "Ajustement aux Taux",
-            "4.4 / Y_AAA",
-            f"4.4 / {aaa_yield * 100:.2f}",
-            rate_adjustment,
-            "facteur",
-            "Ajustement relatif aux taux historiques."
-        )
-
-        self.add_step(
-            "Valeur Intrinsèque (Graham 1974)",
-            "EPS × (8.5 + 2g) × (4.4 / Y)",
-            (
-                f"{eps:.2f} × "
-                f"{growth_multiplier:.2f} × "
-                f"{rate_adjustment:.2f}"
+            label="Valeur intrinsèque (Graham 1974)",
+            theoretical_formula="EPS × (8.5 + 2g) × (4.4 / Y)",
+            hypotheses=[
+                TraceHypothesis("EPS", eps, financials.currency),
+                TraceHypothesis("Growth multiplier", growth_multiplier, "x"),
+                TraceHypothesis("Rate adjustment", rate_adjustment, "factor")
+            ],
+            numerical_substitution=(
+                f"{eps:.2f} × {growth_multiplier:.2f} × {rate_adjustment:.2f}"
             ),
-            intrinsic_value,
-            financials.currency,
-            "Estimation heuristique de la valeur."
+            result=intrinsic_value,
+            unit=financials.currency,
+            interpretation=(
+                "Estimation heuristique de la valeur intrinsèque "
+                "selon la formule révisée de Graham (1974)."
+            )
         )
-
-        # ====================================================
-        # 5. RÉSULTAT FINAL
-        # ====================================================
 
         return GrahamValuationResult(
-            request=None,  # injecté par le moteur
+            request=None,
             financials=financials,
             params=params,
             intrinsic_value_per_share=intrinsic_value,
             market_price=financials.current_price,
             eps_used=eps,
             growth_rate_used=growth_rate,
-            aaa_yield_used=aaa_yield,
-            calculation_trace=self.trace
+            aaa_yield_used=aaa_yield
         )

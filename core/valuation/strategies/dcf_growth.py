@@ -2,22 +2,22 @@
 core/valuation/strategies/dcf_growth.py
 
 Méthode : Revenue-Driven FCFF (High Growth DCF)
-Version : V1 Normative
+Version : V1.1 — Chapitre 4 conforme (Glass Box)
 
 Références académiques :
 - Damodaran, A. – Valuation of Young, Growth and Tech Firms
 - CFA Institute – Equity Valuation (Growth Companies)
-
-Principe :
-- La valeur est dérivée du chiffre d’affaires
-- Les marges convergent vers un niveau soutenable
-- La croissance ralentit vers le long terme
 """
 
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    DCFValuationResult,
+    TraceHypothesis
+)
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.computation.financial_math import (
     calculate_wacc,
@@ -33,19 +33,6 @@ logger = logging.getLogger(__name__)
 class RevenueBasedStrategy(ValuationStrategy):
     """
     Revenue-Driven FCFF DCF (High Growth / Tech).
-
-    Référence académique :
-    - Aswath Damodaran
-
-    Domaine de validité :
-    - Entreprises en forte croissance
-    - Modèle économique scalable
-    - FCF actuels faibles ou négatifs
-
-    Invariants financiers :
-    - Convergence des marges vers un niveau réaliste
-    - WACC > g_terminal
-    - Croissance décroissante à long terme
     """
 
     academic_reference = "Damodaran"
@@ -61,14 +48,6 @@ class RevenueBasedStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> DCFValuationResult:
-        """
-        Exécute un DCF Revenue-Driven.
-
-        Étapes :
-        1. Projection du chiffre d’affaires
-        2. Convergence progressive de la marge FCF
-        3. Actualisation et valeur terminale disciplinée
-        """
 
         logger.info(
             "[Strategy] Revenue-Driven FCFF | ticker=%s",
@@ -76,26 +55,74 @@ class RevenueBasedStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 1. BASE DE REVENUE
+        # 1. BASE DE REVENUE (GLASS BOX)
         # ====================================================
 
         revenue_base = financials.revenue_ttm
-
         if revenue_base is None or revenue_base <= 0:
             raise CalculationError(
                 "Revenue TTM requis pour la stratégie Revenue-Driven."
             )
 
+        self.add_step(
+            label="Sélection du chiffre d’affaires de base",
+            theoretical_formula="Revenue₀ (TTM)",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Revenue TTM",
+                    value=revenue_base,
+                    unit=financials.currency,
+                    source="Financial statements"
+                )
+            ],
+            numerical_substitution=f"Revenue₀ = {revenue_base:,.2f}",
+            result=revenue_base,
+            unit=financials.currency,
+            interpretation=(
+                "Chiffre d’affaires utilisé comme base de projection "
+                "dans le modèle Revenue-Driven."
+            )
+        )
+
         # ====================================================
-        # 2. MARGES (ACTUELLE → CIBLE)
+        # 2. MARGE ACTUELLE (GLASS BOX)
         # ====================================================
 
-        # Marge actuelle implicite (peut être négative)
-        current_margin = 0.0
         if financials.fcf_last is not None and revenue_base > 0:
             current_margin = financials.fcf_last / revenue_base
+        else:
+            current_margin = 0.0
 
-        # Marge cible long terme (discipline imposée)
+        self.add_step(
+            label="Marge FCF actuelle",
+            theoretical_formula="FCF / Revenue",
+            hypotheses=[
+                TraceHypothesis(
+                    name="FCF last",
+                    value=financials.fcf_last,
+                    unit=financials.currency
+                ),
+                TraceHypothesis(
+                    name="Revenue TTM",
+                    value=revenue_base,
+                    unit=financials.currency
+                )
+            ],
+            numerical_substitution=(
+                f"{financials.fcf_last or 0:,.2f} / {revenue_base:,.2f}"
+            ),
+            result=current_margin,
+            unit="%",
+            interpretation=(
+                "Marge actuelle implicite, pouvant être faible ou négative "
+                "pour une entreprise en forte croissance."
+            )
+        )
+
+        # ====================================================
+        # 3. MARGE CIBLE LONG TERME (GLASS BOX)
+        # ====================================================
+
         target_margin = (
             params.target_fcf_margin
             if params.target_fcf_margin is not None
@@ -107,15 +134,28 @@ class RevenueBasedStrategy(ValuationStrategy):
                 "Marge cible irréaliste pour une valorisation soutenable."
             )
 
-        logger.info(
-            "[Growth] Revenue base=%.0f | Margin %.1f%% → %.1f%%",
-            revenue_base,
-            current_margin * 100,
-            target_margin * 100
+        self.add_step(
+            label="Marge FCF cible long terme",
+            theoretical_formula="FCF_margin_target",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Target margin",
+                    value=target_margin,
+                    unit="%",
+                    source="User input / Damodaran benchmarks"
+                )
+            ],
+            numerical_substitution=f"Margin_target = {target_margin:.2%}",
+            result=target_margin,
+            unit="%",
+            interpretation=(
+                "Marge FCF soutenable à long terme, "
+                "cohérente avec la maturité du modèle économique."
+            )
         )
 
         # ====================================================
-        # 3. PROJECTION DES FCF (REVENUE → MARGE)
+        # 4. PROJECTION DES FCF (REVENUE → MARGE)
         # ====================================================
 
         projected_fcfs = []
@@ -126,22 +166,46 @@ class RevenueBasedStrategy(ValuationStrategy):
             raise CalculationError("Taux de croissance du revenu invalide.")
 
         for year in range(1, params.projection_years + 1):
-            # A. Croissance du revenu
             current_revenue *= (1.0 + revenue_growth)
 
-            # B. Convergence progressive de la marge
             progress = year / params.projection_years
             applied_margin = (
                 current_margin
                 + (target_margin - current_margin) * progress
             )
 
-            # C. FCF implicite
             fcf = current_revenue * applied_margin
             projected_fcfs.append(fcf)
 
+        self.add_step(
+            label="Projection des flux de trésorerie libres",
+            theoretical_formula="Revenueₜ × Marginₜ",
+            hypotheses=[
+                TraceHypothesis(
+                    name="Revenue growth rate",
+                    value=revenue_growth,
+                    unit="%"
+                ),
+                TraceHypothesis(
+                    name="Margin convergence",
+                    value=f"{current_margin:.2%} → {target_margin:.2%}",
+                    unit="%"
+                )
+            ],
+            numerical_substitution=(
+                "FCFₜ = Revenueₜ × Marginₜ "
+                "(convergence linéaire sur l’horizon)"
+            ),
+            result=sum(projected_fcfs),
+            unit=financials.currency,
+            interpretation=(
+                "Transformation du chiffre d’affaires projeté en flux "
+                "de trésorerie libres via une convergence progressive des marges."
+            )
+        )
+
         # ====================================================
-        # 4. ACTUALISATION & VALEUR TERMINALE
+        # 5. ACTUALISATION & VALEUR TERMINALE
         # ====================================================
 
         wacc_ctx = calculate_wacc(financials, params)
@@ -152,7 +216,6 @@ class RevenueBasedStrategy(ValuationStrategy):
             wacc, len(projected_fcfs)
         )
 
-        # Valeur terminale (croissance disciplinée)
         tv = calculate_terminal_value_gordon(
             projected_fcfs[-1],
             wacc,
@@ -160,8 +223,24 @@ class RevenueBasedStrategy(ValuationStrategy):
         )
         discounted_tv = tv * discount_factors[-1]
 
+        self.add_step(
+            label="Valeur terminale actualisée",
+            theoretical_formula="FCFₙ × (1+g) / (WACC − g)",
+            hypotheses=[
+                TraceHypothesis("Final FCF", projected_fcfs[-1], financials.currency),
+                TraceHypothesis("WACC", wacc, "%"),
+                TraceHypothesis("Perpetual growth", params.perpetual_growth_rate, "%")
+            ],
+            numerical_substitution=(
+                f"TV × DFₙ = {tv:,.2f} × {discount_factors[-1]:.4f}"
+            ),
+            result=discounted_tv,
+            unit=financials.currency,
+            interpretation="Valeur de continuation disciplinée."
+        )
+
         # ====================================================
-        # 5. PASSAGE À LA VALEUR PAR ACTION
+        # 6. PASSAGE À LA VALEUR PAR ACTION
         # ====================================================
 
         enterprise_value = discounted_sum + discounted_tv
@@ -176,12 +255,26 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         intrinsic_value = equity_value / financials.shares_outstanding
 
-        # ====================================================
-        # 6. CONSTRUCTION DU RÉSULTAT
-        # ====================================================
+        self.add_step(
+            label="Valeur intrinsèque par action",
+            theoretical_formula="Equity / Shares outstanding",
+            hypotheses=[
+                TraceHypothesis("Equity value", equity_value, financials.currency),
+                TraceHypothesis(
+                    "Shares outstanding",
+                    financials.shares_outstanding
+                )
+            ],
+            numerical_substitution=(
+                f"{equity_value:,.2f} / {financials.shares_outstanding:,.0f}"
+            ),
+            result=intrinsic_value,
+            unit=financials.currency,
+            interpretation="Valeur intrinsèque estimée par action."
+        )
 
         return DCFValuationResult(
-            request=None,  # injecté par le moteur
+            request=None,
             financials=financials,
             params=params,
             intrinsic_value_per_share=intrinsic_value,

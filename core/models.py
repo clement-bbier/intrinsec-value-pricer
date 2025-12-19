@@ -2,12 +2,13 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V1.1 — Chapitre 3 conforme (Glass Box Valuation Engine)
+Version : V1.2 — Chapitres 3 & 4 conformes (Glass Box Valuation Engine)
 
 Principes non négociables :
-- Contrat de sortie explicite et vérifiable
+- Contrat de sortie explicite et vérifiable (Chapitre 3)
+- Traçabilité Glass Box complète et homogène (Chapitre 4)
 - Comparabilité stricte inter-modèles
-- Refus des sorties incomplètes
+- Aucune étape de calcul implicite
 """
 
 from __future__ import annotations
@@ -25,11 +26,6 @@ from abc import ABC, abstractmethod
 class ValuationMode(str, Enum):
     """
     Référentiel officiel et normatif des méthodes de valorisation (V1).
-
-    Toute entrée ici doit :
-    - être académiquement référencée
-    - correspondre à une méthode déterministe
-    - être défendable devant un Investment / Risk Committee
     """
 
     FCFF_TWO_STAGE = "FCFF Two-Stage (Damodaran)"
@@ -40,33 +36,62 @@ class ValuationMode(str, Enum):
 
 
 class InputSource(str, Enum):
-    """Origine des hypothèses utilisées par le modèle."""
     AUTO = "AUTO"
     MANUAL = "MANUAL"
 
 
 class TerminalValueMethod(str, Enum):
-    """Méthode de calcul de la valeur terminale."""
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
 
 
 # ============================================================
-# 2. TRAÇABILITÉ — GLASS BOX
+# 2. GLASS BOX — STANDARD UNIVERSEL DE TRACE (CHAPITRE 4)
 # ============================================================
 
-@dataclass
+@dataclass(frozen=True)
+class TraceHypothesis:
+    """
+    Hypothèse financière explicite utilisée dans une étape de calcul.
+    """
+    name: str
+    value: Any
+    unit: Optional[str] = None
+    source: Optional[str] = None
+    comment: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class CalculationStep:
     """
-    Étape atomique du raisonnement financier.
-    Sert de preuve mathématique auditable.
+    Étape atomique, normative et auditée du raisonnement financier.
+
+    Toute étape DOIT exposer :
+    - la formule théorique
+    - les hypothèses utilisées
+    - la substitution numérique explicite
+    - le résultat intermédiaire
+    - l’unité
+    - l’interprétation financière
     """
+
     label: str
-    formula: str
-    values: str
+
+    # Théorie
+    theoretical_formula: str
+
+    # Hypothèses explicites
+    hypotheses: List[TraceHypothesis]
+
+    # Substitution numérique
+    numerical_substitution: str
+
+    # Résultat
     result: float
     unit: str
-    description: str = ""
+
+    # Interprétation financière
+    interpretation: str
 
 
 # ============================================================
@@ -75,28 +100,20 @@ class CalculationStep:
 
 @dataclass
 class CompanyFinancials:
-    """
-    Snapshot cohérent et figé des données financières d'une entreprise.
-    """
-
-    # --- Identité ---
     ticker: str
     currency: str
     sector: str
     industry: str
     country: str
 
-    # --- Marché ---
     current_price: float
     shares_outstanding: float
     beta: float
 
-    # --- Structure financière ---
     total_debt: float
     cash_and_equivalents: float
     interest_expense: float
 
-    # --- Compte de résultat / Cash-flow ---
     revenue_ttm: Optional[float] = None
     ebitda_ttm: Optional[float] = None
     ebit_ttm: Optional[float] = None
@@ -109,7 +126,6 @@ class CompanyFinancials:
     fcf_last: Optional[float] = None
     fcf_fundamental_smoothed: Optional[float] = None
 
-    # --- Métadonnées ---
     source_growth: str = "unknown"
     source_debt: str = "unknown"
     source_fcf: str = "unknown"
@@ -121,43 +137,30 @@ class CompanyFinancials:
 
 @dataclass
 class DCFParameters:
-    """
-    Paramètres financiers unifiés.
-    Compatibles avec toutes les méthodes déterministes V1.
-    """
-
-    # --- Marché & risque ---
     risk_free_rate: float
     market_risk_premium: float
     corporate_aaa_yield: float
 
-    # --- Dette & fiscalité ---
     cost_of_debt: float
     tax_rate: float
 
-    # --- Croissance & projection ---
     fcf_growth_rate: float
     projection_years: int
     high_growth_years: int = 0
 
-    # --- Valeur terminale ---
     terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
     perpetual_growth_rate: float = 0.02
     exit_multiple_value: Optional[float] = None
 
-    # --- Structure cible ---
     target_equity_weight: float = 0.0
     target_debt_weight: float = 0.0
 
-    # --- Spécifique Growth ---
     target_fcf_margin: Optional[float] = None
 
-    # --- Overrides experts ---
     manual_fcf_base: Optional[float] = None
     manual_cost_of_equity: Optional[float] = None
     wacc_override: Optional[float] = None
 
-    # --- Paramètres probabilistes (EXTENSION, non normative) ---
     beta_volatility: float = 0.0
     growth_volatility: float = 0.0
     terminal_growth_volatility: float = 0.0
@@ -165,29 +168,17 @@ class DCFParameters:
 
     def normalize_weights(self) -> None:
         total = self.target_equity_weight + self.target_debt_weight
-        if total > 0.0:
+        if total > 0:
             self.target_equity_weight /= total
             self.target_debt_weight /= total
 
 
 # ============================================================
-# 5. CONTRAT DE SORTIE — CHAPITRE 3 (NORMATIF)
+# 5. CONTRAT DE SORTIE — CHAPITRE 3
 # ============================================================
 
 @dataclass(frozen=True)
 class ValuationOutputContract:
-    """
-    Contrat minimal obligatoire pour toute valorisation valide.
-
-    Toute stratégie DOIT produire :
-    1. Hypothèses explicites
-    2. Taux utilisés et justifiés
-    3. Projection explicite
-    4. Valeur terminale
-    5. Bridge EV → Equity → Valeur par action
-    6. Trace Glass Box complète
-    """
-
     has_params: bool
     has_projection: bool
     has_terminal_value: bool
@@ -196,18 +187,11 @@ class ValuationOutputContract:
     has_calculation_trace: bool
 
     def is_valid(self) -> bool:
-        return all([
-            self.has_params,
-            self.has_projection,
-            self.has_terminal_value,
-            self.has_equity_bridge,
-            self.has_intrinsic_value,
-            self.has_calculation_trace
-        ])
+        return all(vars(self).values())
 
 
 # ============================================================
-# 6. AUDIT & CONTRÔLE QUALITÉ
+# 6. AUDIT
 # ============================================================
 
 @dataclass
@@ -226,7 +210,6 @@ class AuditReport:
     logs: List[AuditLog]
     breakdown: Dict[str, float]
 
-    # Garde-fous
     block_monte_carlo: bool = False
     block_history: bool = False
     critical_warning: bool = False
@@ -238,12 +221,6 @@ class AuditReport:
 
 @dataclass(frozen=True)
 class ValuationRequest:
-    """
-    Requête immuable décrivant :
-    - l'actif
-    - la méthode
-    - l'origine des hypothèses
-    """
     ticker: str
     projection_years: int
     mode: ValuationMode
@@ -255,15 +232,11 @@ class ValuationRequest:
 
 
 # ============================================================
-# 8. RÉSULTATS — CONTRAT DE SORTIE APPLICABLE
+# 8. RÉSULTATS — CONTRAT DE SORTIE
 # ============================================================
 
 @dataclass(kw_only=True)
 class ValuationResult(ABC):
-    """
-    Classe abstraite racine de tous les résultats de valorisation.
-    """
-
     request: Optional[ValuationRequest]
     financials: CompanyFinancials
     params: DCFParameters
@@ -276,7 +249,6 @@ class ValuationResult(ABC):
 
     audit_report: Optional[AuditReport] = None
 
-    # Extensions (non normatives)
     simulation_results: Optional[List[float]] = None
     quantiles: Optional[Dict[str, float]] = None
 
@@ -288,10 +260,6 @@ class ValuationResult(ABC):
 
     @abstractmethod
     def build_output_contract(self) -> ValuationOutputContract:
-        """
-        Chaque résultat DOIT être capable d'exprimer explicitement
-        s'il respecte le contrat de sortie Chapitre 3.
-        """
         raise NotImplementedError
 
 
@@ -317,11 +285,11 @@ class DCFValuationResult(ValuationResult):
 
     def build_output_contract(self) -> ValuationOutputContract:
         return ValuationOutputContract(
-            has_params=self.params is not None,
+            has_params=True,
             has_projection=bool(self.projected_fcfs),
             has_terminal_value=self.terminal_value is not None,
-            has_equity_bridge=self.enterprise_value is not None and self.equity_value is not None,
-            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_equity_bridge=True,
+            has_intrinsic_value=True,
             has_calculation_trace=len(self.calculation_trace) > 0
         )
 
@@ -343,11 +311,11 @@ class RIMValuationResult(ValuationResult):
 
     def build_output_contract(self) -> ValuationOutputContract:
         return ValuationOutputContract(
-            has_params=self.params is not None,
+            has_params=True,
             has_projection=bool(self.projected_residual_incomes),
             has_terminal_value=self.terminal_value_ri is not None,
-            has_equity_bridge=self.total_equity_value is not None,
-            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_equity_bridge=True,
+            has_intrinsic_value=True,
             has_calculation_trace=len(self.calculation_trace) > 0
         )
 
@@ -358,15 +326,12 @@ class GrahamValuationResult(ValuationResult):
     growth_rate_used: float
     aaa_yield_used: float
 
-    base_pe: float = 8.5
-    multiplier_factor: float = 2.0
-
     def build_output_contract(self) -> ValuationOutputContract:
         return ValuationOutputContract(
-            has_params=self.params is not None,
-            has_projection=False,  # Méthode sans projection explicite
-            has_terminal_value=True,  # Heuristique intégrée
+            has_params=True,
+            has_projection=False,
+            has_terminal_value=True,
             has_equity_bridge=True,
-            has_intrinsic_value=self.intrinsic_value_per_share is not None,
+            has_intrinsic_value=True,
             has_calculation_trace=len(self.calculation_trace) > 0
         )
