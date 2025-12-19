@@ -1,13 +1,5 @@
-from core.valuation.strategies.abstract import ValuationStrategy
-from core.valuation.strategies.dcf_standard import SimpleFCFFStrategy
-from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
-from core.valuation.strategies.monte_carlo import MonteCarloDCFStrategy
-
-__all__ = [
-    "ValuationStrategy",
-    "SimpleFCFFStrategy",
-    "FundamentalFCFFStrategy",
-    "RevenueBasedStrategy",
-    "MonteCarloDCFStrategy",
-]
+"""
+Package d'initialisation pour les stratégies.
+Laisser ce fichier vide ou minimal pour éviter les références circulaires.
+Les stratégies sont chargées dynamiquement par core.valuation.engines.
+"""

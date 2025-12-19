@@ -1,0 +1,3 @@
+"""
+Module du core.
+"""
