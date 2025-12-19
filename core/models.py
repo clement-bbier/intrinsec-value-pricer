@@ -2,11 +2,13 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V1.2 — Chapitres 3 & 4 conformes (Glass Box Valuation Engine)
+Version : V1.3 — Chapitres 3, 4, 5 & 6 conformes
 
 Principes non négociables :
 - Contrat de sortie explicite et vérifiable (Chapitre 3)
-- Traçabilité Glass Box complète et homogène (Chapitre 4)
+- Traçabilité Glass Box complète (Chapitre 4)
+- Responsabilité AUTO / EXPERT claire (Chapitre 5)
+- Audit comme méthode normalisée et auditable (Chapitre 6)
 - Comparabilité stricte inter-modèles
 - Aucune étape de calcul implicite
 """
@@ -25,9 +27,8 @@ from abc import ABC, abstractmethod
 
 class ValuationMode(str, Enum):
     """
-    Référentiel officiel et normatif des méthodes de valorisation (V1).
+    Référentiel officiel et normatif des méthodes de valorisation.
     """
-
     FCFF_TWO_STAGE = "FCFF Two-Stage (Damodaran)"
     FCFF_NORMALIZED = "FCFF Normalized (Cyclical / Industrial)"
     FCFF_REVENUE_DRIVEN = "FCFF Revenue-Driven (High Growth / Tech)"
@@ -36,6 +37,9 @@ class ValuationMode(str, Enum):
 
 
 class InputSource(str, Enum):
+    """
+    Source de responsabilité des hypothèses.
+    """
     AUTO = "AUTO"
     MANUAL = "MANUAL"
 
@@ -65,32 +69,13 @@ class TraceHypothesis:
 class CalculationStep:
     """
     Étape atomique, normative et auditée du raisonnement financier.
-
-    Toute étape DOIT exposer :
-    - la formule théorique
-    - les hypothèses utilisées
-    - la substitution numérique explicite
-    - le résultat intermédiaire
-    - l’unité
-    - l’interprétation financière
     """
-
     label: str
-
-    # Théorie
     theoretical_formula: str
-
-    # Hypothèses explicites
     hypotheses: List[TraceHypothesis]
-
-    # Substitution numérique
     numerical_substitution: str
-
-    # Résultat
     result: float
     unit: str
-
-    # Interprétation financière
     interpretation: str
 
 
@@ -191,8 +176,40 @@ class ValuationOutputContract:
 
 
 # ============================================================
-# 6. AUDIT
+# 6. AUDIT — MODÈLE NORMALISÉ (CHAPITRE 6)
 # ============================================================
+
+class AuditPillar(str, Enum):
+    """
+    Piliers normatifs d’incertitude de la valorisation.
+    """
+    DATA_CONFIDENCE = "Data Confidence"
+    ASSUMPTION_RISK = "Assumption Risk"
+    MODEL_RISK = "Model Risk"
+    METHOD_FIT = "Method Fit"
+
+
+@dataclass(frozen=True)
+class AuditPillarScore:
+    """
+    Score mesuré pour un pilier donné.
+    """
+    pillar: AuditPillar
+    score: float          # [0 ; 100]
+    weight: float         # dépend du mode et du modèle
+    contribution: float   # score × weight
+    diagnostics: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class AuditScoreBreakdown:
+    """
+    Décomposition complète et auditable du score de confiance.
+    """
+    pillars: Dict[AuditPillar, AuditPillarScore]
+    aggregation_formula: str
+    total_score: float
+
 
 @dataclass
 class AuditLog:
@@ -204,12 +221,20 @@ class AuditLog:
 
 @dataclass
 class AuditReport:
+    """
+    Rapport d’audit normalisé — Audit comme méthode (CH6).
+    """
     global_score: float
     rating: str
     audit_mode: str
+
     logs: List[AuditLog]
     breakdown: Dict[str, float]
 
+    # CH6 — audit explicable
+    pillar_breakdown: Optional[AuditScoreBreakdown] = None
+
+    # Gouvernance
     block_monte_carlo: bool = False
     block_history: bool = False
     critical_warning: bool = False

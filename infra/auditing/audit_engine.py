@@ -1,153 +1,201 @@
+"""
+infra/auditing/audit_engine.py
+
+Audit Engine — Chapitre 6
+Audit comme méthode normalisée et auditable.
+
+Responsabilités :
+- Router vers l’auditeur métier
+- Agréger les piliers d’incertitude
+- Appliquer les pondérations (mode × modèle)
+- Produire un AuditReport entièrement explicable
+"""
+
+from __future__ import annotations
+
 import logging
-import numpy as np
-from typing import Optional, Union, List
+from typing import Dict, Optional
 
 from core.models import (
     ValuationResult,
     ValuationMode,
     AuditReport,
     AuditLog,
-    CompanyFinancials,
-    DCFParameters,
+    AuditPillar,
+    AuditPillarScore,
+    AuditScoreBreakdown,
     InputSource
 )
-# On importe les auditeurs spécialisés définis précédemment
-from infra.auditing.auditors import (
-    IValuationAuditor,
-    StandardDCFAuditor,
-    BankAuditor,
-    GrahamAuditor
-)
+
+from infra.auditing.auditors import IValuationAuditor
 
 logger = logging.getLogger(__name__)
 
 
+# ==============================================================================
+# PONDÉRATIONS NORMATIVES — MODE × MÉTHODE
+# ==============================================================================
+
+# Invariants par MODE
+MODE_WEIGHTS = {
+    InputSource.AUTO: {
+        AuditPillar.DATA_CONFIDENCE: 0.30,
+        AuditPillar.ASSUMPTION_RISK: 0.30,
+        AuditPillar.MODEL_RISK: 0.25,
+        AuditPillar.METHOD_FIT: 0.15,
+    },
+    InputSource.MANUAL: {  # EXPERT
+        AuditPillar.DATA_CONFIDENCE: 0.10,
+        AuditPillar.ASSUMPTION_RISK: 0.40,
+        AuditPillar.MODEL_RISK: 0.30,
+        AuditPillar.METHOD_FIT: 0.20,
+    },
+}
+
+
+# ==============================================================================
+# AUDIT ENGINE
+# ==============================================================================
+
 class AuditEngine:
     """
-    Moteur d'Audit Central (Factory Pattern).
-    Responsabilité : Router la demande vers le bon auditeur spécialisé.
-    Gère la compatibilité pour l'audit préliminaire (Données) et final (Résultats).
+    Moteur d’audit central — Chapitre 6.
+
+    - Le moteur est unique
+    - Les règles sont dans les auditeurs
+    - Le score est une formule explicite
     """
 
     @staticmethod
     def compute_audit(
-            arg1: Union[ValuationResult, CompanyFinancials],
-            arg2: Optional[DCFParameters] = None,
-            **kwargs
+        result: ValuationResult,
+        auditor: IValuationAuditor
     ) -> AuditReport:
         """
-        Point d'entrée unique et intelligent.
+        Point d’entrée unique pour l’audit final.
 
-        Signature 1 (Audit Final) : compute_audit(result: ValuationResult)
-        Signature 2 (Audit Data)  : compute_audit(financials: CompanyFinancials, params: DCFParameters)
+        Paramètres :
+        - result : résultat de valorisation
+        - auditor : auditeur métier déjà sélectionné
+
+        Retour :
+        - AuditReport complet et auditable
         """
+
         try:
-            # --- CAS 1 : AUDIT SUR RÉSULTAT (FINAL) ---
-            if isinstance(arg1, ValuationResult):
-                result = arg1
-                auditor = AuditEngine._get_auditor_for_mode(result.request.mode if result.request else None)
+            # --------------------------------------------------------------
+            # 1. MESURE DES PILIERS (AUCUNE AGRÉGATION ICI)
+            # --------------------------------------------------------------
+            pillar_scores = auditor.audit_pillars(result)
 
-                # Exécution Audit Métier
-                report = auditor.audit(result)
+            # --------------------------------------------------------------
+            # 2. RÉCUPÉRATION DU MODE (AUTO / EXPERT)
+            # --------------------------------------------------------------
+            if result.request is None:
+                raise ValueError("Audit impossible sans ValuationRequest.")
 
-                # Enrichissement Monte Carlo (si présent)
-                if result.simulation_results:
-                    AuditEngine._enrich_with_monte_carlo_audit(result.simulation_results, report)
+            input_source = result.request.input_source
+            weights = MODE_WEIGHTS[input_source]
 
-                return report
+            # --------------------------------------------------------------
+            # 3. AGRÉGATION EXPLICITE DU SCORE
+            # --------------------------------------------------------------
+            total_score = 0.0
+            enriched_pillars: Dict[AuditPillar, AuditPillarScore] = {}
 
-            # --- CAS 2 : AUDIT SUR INPUTS (PRÉLIMINAIRE / COMPATIBILITÉ PROVIDER) ---
-            elif isinstance(arg1, CompanyFinancials) and isinstance(arg2, DCFParameters):
-                financials, params = arg1, arg2
-                # On crée un faux résultat temporaire pour utiliser la logique de l'auditeur
-                # Cela évite de dupliquer la logique de validation des données dans auditors.py
-                from core.models import DCFValuationResult, ValuationRequest
+            for pillar, pillar_score in pillar_scores.items():
+                weight = weights[pillar]
+                contribution = pillar_score.score * weight
 
-                # Dummy Request
-                req = ValuationRequest(
-                    ticker=financials.ticker,
-                    mode=ValuationMode.SIMPLE_FCFF,  # Mode par défaut pour check data
-                    projection_years=params.projection_years,
-                    input_source=InputSource.AUTO
+                enriched_pillars[pillar] = AuditPillarScore(
+                    pillar=pillar,
+                    score=pillar_score.score,
+                    weight=weight,
+                    contribution=contribution,
+                    diagnostics=pillar_score.diagnostics
                 )
 
-                # Dummy Result (Vide, juste pour passer les financials à l'auditeur)
-                dummy_result = DCFValuationResult(
-                    request=req,
-                    financials=financials,
-                    params=params,
-                    intrinsic_value_per_share=0.0,
-                    market_price=financials.current_price,
-                    wacc=0.0, cost_of_equity=0.0, cost_of_debt_after_tax=0.0,
-                    projected_fcfs=[], discount_factors=[], sum_discounted_fcf=0.0,
-                    terminal_value=0.0, discounted_terminal_value=0.0,
-                    enterprise_value=0.0, equity_value=0.0
+                total_score += contribution
+
+            total_score = max(0.0, min(100.0, total_score))
+
+            # --------------------------------------------------------------
+            # 4. RATING (INDICATIF, NON CONTRACTUEL)
+            # --------------------------------------------------------------
+            rating = AuditEngine._compute_rating(total_score)
+
+            # --------------------------------------------------------------
+            # 5. CONSTRUCTION DU RAPPORT FINAL
+            # --------------------------------------------------------------
+            breakdown = AuditScoreBreakdown(
+                pillars=enriched_pillars,
+                aggregation_formula="Σ (w_i × S_i), avec Σ w_i = 1",
+                total_score=total_score
+            )
+
+            return AuditReport(
+                global_score=total_score,
+                rating=rating,
+                audit_mode=auditor.__class__.__name__,
+                logs=AuditEngine._collect_logs(enriched_pillars),
+                breakdown={p.value: s.score for p, s in enriched_pillars.items()},
+                pillar_breakdown=breakdown,
+                critical_warning=any(
+                    s.score < 40 for s in enriched_pillars.values()
                 )
+            )
 
-                # On utilise l'auditeur standard juste pour checker la qualité des données (_check_data_quality)
-                auditor = StandardDCFAuditor()
-                report = auditor.audit(dummy_result)
+        except Exception as exc:
+            logger.error("Audit failed", exc_info=True)
+            return AuditEngine._fallback_report(str(exc))
 
-                # On marque que c'est un audit partiel
-                report.audit_mode = "DataQualityCheck"
-                return report
-
-            else:
-                raise ValueError("Arguments invalides pour compute_audit")
-
-        except Exception as e:
-            logger.error(f"Audit failed: {e}", exc_info=True)
-            return AuditEngine._get_fallback_report(str(e))
+    # ------------------------------------------------------------------
+    # UTILITAIRES
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _compute_rating(score: float) -> str:
+        if score >= 90:
+            return "AAA (High Confidence)"
+        if score >= 75:
+            return "AA (Good)"
+        if score >= 60:
+            return "BBB (Moderate)"
+        if score >= 40:
+            return "BB (Speculative)"
+        return "C (Low Confidence)"
 
     @staticmethod
-    def _get_auditor_for_mode(mode: Optional[ValuationMode]) -> IValuationAuditor:
-        """Factory : Instancie le bon auditeur."""
-        if mode == ValuationMode.DDM_BANKS:
-            return BankAuditor()
-        elif mode == ValuationMode.GRAHAM_VALUE:
-            return GrahamAuditor()
-        else:
-            # Par défaut (Simple, Fundamental, Growth, Monte Carlo) -> Standard
-            return StandardDCFAuditor()
+    def _collect_logs(
+        pillars: Dict[AuditPillar, AuditPillarScore]
+    ) -> list[AuditLog]:
+        logs: list[AuditLog] = []
+        for ps in pillars.values():
+            for msg in ps.diagnostics:
+                logs.append(
+                    AuditLog(
+                        category=ps.pillar.value,
+                        severity="INFO",
+                        message=msg,
+                        penalty=0
+                    )
+                )
+        return logs
 
     @staticmethod
-    def _enrich_with_monte_carlo_audit(sims: List[float], report: AuditReport) -> None:
-        """Analyse la stabilité statistique."""
-        if not sims: return
-
-        values = np.array(sims)
-        mean_val = np.mean(values)
-
-        if mean_val > 0:
-            std_dev = np.std(values)
-            cv = std_dev / mean_val  # Coefficient de Variation
-
-            if cv > 0.50:
-                report.logs.append(AuditLog(
-                    "Monte Carlo", "HIGH",
-                    f"Instabilité extrême (CV={cv:.2f}). Résultat peu fiable.", -30
-                ))
-                report.global_score -= 30
-            elif cv > 0.30:
-                report.logs.append(AuditLog(
-                    "Monte Carlo", "WARN",
-                    f"Forte dispersion (CV={cv:.2f}). Fourchette large.", -10
-                ))
-                report.global_score -= 10
-            else:
-                report.logs.append(AuditLog(
-                    "Monte Carlo", "INFO",
-                    f"Convergence robuste (CV={cv:.2f}).", 0
-                ))
-
-        report.global_score = max(0.0, report.global_score)
-
-    @staticmethod
-    def _get_fallback_report(error_msg: str) -> AuditReport:
+    def _fallback_report(error: str) -> AuditReport:
         return AuditReport(
             global_score=0.0,
             rating="Error",
             audit_mode="SystemFailure",
-            logs=[AuditLog("System", "CRITICAL", f"Audit crash: {error_msg}", -100)],
-            breakdown={}
+            logs=[
+                AuditLog(
+                    category="System",
+                    severity="CRITICAL",
+                    message=f"Audit failure: {error}",
+                    penalty=-100
+                )
+            ],
+            breakdown={},
+            pillar_breakdown=None,
+            critical_warning=True
         )
