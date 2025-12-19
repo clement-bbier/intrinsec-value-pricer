@@ -11,63 +11,114 @@ def display_auto_inputs(
         default_years: int,
 ) -> Optional[ValuationRequest]:
     """
-    Formulaire Mode Automatique (Sidebar).
-    Configure la requête sans demander de paramètres financiers complexes.
-    L'utilisateur choisit juste le Ticker et la Stratégie.
-    """
-    st.sidebar.subheader("Configuration (Auto)")
+    MODE AUTO — Estimation standardisée et prudente.
 
-    # 1. Ticker
+    Principes :
+    - Hypothèses normatives
+    - Proxies autorisés
+    - Audit complet et pénalisant
+    - Responsabilité portée par le système
+    """
+
+    st.sidebar.subheader("Configuration — Mode AUTO")
+
+    # ------------------------------------------------------------------
+    # CONTRAT UTILISATEUR — MODE AUTO
+    # ------------------------------------------------------------------
+    with st.sidebar.expander("ℹ️ À propos du mode AUTO", expanded=True):
+        st.markdown(
+            """
+            **Mode AUTO = estimation standardisée et prudente**
+
+            - Les hypothèses financières sont **déduites automatiquement**
+            - Des **proxies normatifs** peuvent être utilisés
+            - L’**audit est strict et pénalisant**
+            - Les résultats sont fournis **à titre indicatif**
+
+            👉 Pour un contrôle total des hypothèses, utilisez le **mode EXPERT**.
+            """
+        )
+
+    st.sidebar.markdown("---")
+
+    # ------------------------------------------------------------------
+    # 1. TICKER
+    # ------------------------------------------------------------------
     ticker = st.sidebar.text_input(
-        "Symbole (Ticker)",
+        "Symbole boursier (Ticker)",
         value=default_ticker,
-        help=TOOLTIPS["ticker"]
+        help=TOOLTIPS.get("ticker")
     ).upper().strip()
 
-    # 2. Horizon
+    # ------------------------------------------------------------------
+    # 2. HORIZON DE PROJECTION
+    # ------------------------------------------------------------------
     years = st.sidebar.number_input(
-        "Horizon (Années)",
-        min_value=3, max_value=15, value=int(default_years),
-        help=TOOLTIPS["years"]
+        "Horizon de projection (années)",
+        min_value=3,
+        max_value=15,
+        value=int(default_years),
+        help=TOOLTIPS.get("years")
     )
 
-    # 3. Sélecteur de Stratégie (Mappage User-Friendly)
+    # ------------------------------------------------------------------
+    # 3. MÉTHODE DE VALORISATION
+    # ------------------------------------------------------------------
     strategies_map = {
-        "Standard (FCF TTM)": ValuationMode.SIMPLE_FCFF,
-        "Avancé (Fondamental)": ValuationMode.FUNDAMENTAL_FCFF,
-        "Tech / Growth (Revenu)": ValuationMode.GROWTH_TECH,
-        "Banque / Dividendes (DDM)": ValuationMode.DDM_BANKS,
-        "Graham (Value Invest)": ValuationMode.GRAHAM_VALUE,
-        "Monte Carlo (Probabiliste)": ValuationMode.MONTE_CARLO
+        "Standard — DCF FCFF (TTM)": ValuationMode.SIMPLE_FCFF,
+        "Fondamental — FCFF normalisé": ValuationMode.FUNDAMENTAL_FCFF,
+        "Croissance / Tech — Revenu": ValuationMode.GROWTH_TECH,
+        "Banque — Dividendes (DDM)": ValuationMode.DDM_BANKS,
+        "Graham — Value": ValuationMode.GRAHAM_VALUE,
+        "Monte Carlo — Analyse de risque": ValuationMode.MONTE_CARLO,
     }
 
     selected_label = st.sidebar.selectbox(
-        "Méthode de Valorisation",
+        "Méthode de valorisation",
         options=list(strategies_map.keys()),
-        index=1,  # Par défaut : Fondamental
-        help="Choisissez la stratégie adaptée au secteur de l'entreprise."
+        index=1,
+        help="Sélectionnez une méthode adaptée au profil de l’entreprise."
     )
+
     mode = strategies_map[selected_label]
 
-    # 4. Options Spécifiques (Monte Carlo uniquement)
+    # ------------------------------------------------------------------
+    # 4. OPTIONS SPÉCIFIQUES (ENCADRÉES)
+    # ------------------------------------------------------------------
     options: Dict[str, Any] = {}
 
     if mode == ValuationMode.MONTE_CARLO:
         st.sidebar.markdown("---")
-        st.sidebar.caption("Paramètres Simulation")
+        st.sidebar.caption("⚠️ Extension probabiliste (non normative)")
+
+        st.sidebar.markdown(
+            """
+            La simulation Monte Carlo **n’est pas une méthode de valorisation**.
+
+            Elle sert uniquement à :
+            - analyser la **sensibilité**
+            - mesurer la **dispersion des scénarios**
+            """
+        )
+
         sims = st.sidebar.select_slider(
-            "Nombre de Simulations",
+            "Nombre de simulations",
             options=[1000, 2000, 5000, 10000],
             value=2000
         )
-        # On passe cette option via le dictionnaire générique de la requête
+
         options["num_simulations"] = sims
 
     st.sidebar.markdown("---")
 
-    # 5. Validation
-    # En mode Auto, le bouton est dans la sidebar pour être toujours accessible
-    submitted = st.sidebar.button("Lancer l'analyse", type="primary", use_container_width=True)
+    # ------------------------------------------------------------------
+    # 5. VALIDATION
+    # ------------------------------------------------------------------
+    submitted = st.sidebar.button(
+        "Lancer l’estimation",
+        type="primary",
+        use_container_width=True
+    )
 
     if not submitted:
         return None
@@ -76,8 +127,9 @@ def display_auto_inputs(
         st.sidebar.error("Le ticker est requis.")
         return None
 
-    # Construction de la requête simplifiée
-    # InputSource.AUTO signale au Workflow d'utiliser le Provider pour tout remplir
+    # ------------------------------------------------------------------
+    # CONSTRUCTION DE LA REQUÊTE AUTO
+    # ------------------------------------------------------------------
     return ValuationRequest(
         ticker=ticker,
         projection_years=int(years),
