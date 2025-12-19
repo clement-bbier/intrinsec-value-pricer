@@ -1,33 +1,49 @@
 """
-ui_charts.py
+app/ui_components/ui_charts.py
 
-Visualisations — Chapitre 6
-Représentation graphique de la valeur, du risque et de l’incertitude.
+VISUALISATIONS — VALEUR, RISQUE & INCERTITUDE
+Version : V2.0 — Chapitres 6 & 7 conformes
 
-Principes :
-- Les graphiques complètent l’audit (ils ne le remplacent pas)
-- Aucune visualisation ne doit masquer une incohérence
-- Style sobre, institutionnel, lisible
+STATUT NORMATIF
+---------------
+Ce module assure exclusivement la restitution VISUELLE des résultats.
+
+Principes non négociables :
+- Les graphiques COMPLÈTENT l’audit, ils ne le remplacent jamais
+- Aucune visualisation ne doit masquer une incohérence économique
+- Monte Carlo = représentation d’INCERTITUDE, pas de prédiction
+- Style institutionnel : sobre, lisible, non promotionnel
+
+Les graphiques :
+- ne modifient aucun calcul
+- n’influencent aucun score
+- n’introduisent aucune interprétation implicite
 """
 
-import streamlit as st
-import pandas as pd
-import altair as alt
-import numpy as np
+from __future__ import annotations
+
 from typing import List, Optional, Callable
 
+import numpy as np
+import pandas as pd
+import altair as alt
+import streamlit as st
 
-# ==============================================================================
+
+# ============================================================================
 # 1. HISTORIQUE DE PRIX — CONTEXTE DE MARCHÉ
-# ==============================================================================
+# ============================================================================
 
 def display_price_chart(
     ticker: str,
     price_history: Optional[pd.DataFrame],
 ) -> None:
     """
-    Évolution historique du prix de marché.
-    Sert de contexte, pas de justification de la valeur intrinsèque.
+    Affiche l’évolution historique du prix de marché.
+
+    Rôle :
+    - fournir un CONTEXTE de marché
+    - ne JAMAIS justifier la valeur intrinsèque
     """
 
     if price_history is None or price_history.empty:
@@ -36,7 +52,7 @@ def display_price_chart(
 
     df = price_history.copy()
 
-    # Normalisation Date
+    # Normalisation de la date
     if not isinstance(df.index, pd.DatetimeIndex):
         df = df.reset_index()
 
@@ -46,17 +62,18 @@ def display_price_chart(
     )
 
     df = df.rename(columns={date_col: "Date"})
+
+    # Détection robuste du prix
     if "Close" in df.columns:
         df["Prix"] = df["Close"]
     elif "Adj Close" in df.columns:
         df["Prix"] = df["Adj Close"]
     else:
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        if numeric_cols.any():
-            df["Prix"] = df[numeric_cols[0]]
-        else:
-            st.warning("Impossible d’identifier la série de prix.")
+        if len(numeric_cols) == 0:
+            st.warning("Impossible d’identifier une série de prix.")
             return
+        df["Prix"] = df[numeric_cols[0]]
 
     base = alt.Chart(df).encode(
         x=alt.X("Date:T", axis=alt.Axis(title=None)),
@@ -70,7 +87,11 @@ def display_price_chart(
         color="#1E88E5",
         strokeWidth=1.8
     ).encode(
-        y=alt.Y("Prix:Q", scale=alt.Scale(zero=False), title="Prix de marché")
+        y=alt.Y(
+            "Prix:Q",
+            scale=alt.Scale(zero=False),
+            title="Prix de marché"
+        )
     )
 
     st.altair_chart(
@@ -79,9 +100,9 @@ def display_price_chart(
     )
 
 
-# ==============================================================================
+# ============================================================================
 # 2. MONTE CARLO — DISTRIBUTION D’INCERTITUDE
-# ==============================================================================
+# ============================================================================
 
 def display_simulation_chart(
     simulation_results: List[float],
@@ -89,16 +110,23 @@ def display_simulation_chart(
     currency: str
 ) -> None:
     """
-    Distribution des valeurs intrinsèques simulées.
-    Visualisation de l’incertitude (pas une prédiction).
+    Représentation de la distribution Monte Carlo.
+
+    Rôle :
+    - visualiser la DISPERSION des valeurs
+    - illustrer la sensibilité aux hypothèses
+    - ne jamais suggérer une prédiction de prix
     """
 
     if not simulation_results:
         st.warning("Aucune simulation Monte Carlo disponible.")
         return
 
-    values = np.array(simulation_results)
-    median_val = np.median(values)
+    values = np.array(simulation_results, dtype=float)
+
+    median_val = float(np.median(values))
+    p10 = float(np.percentile(values, 10))
+    p90 = float(np.percentile(values, 90))
 
     df = pd.DataFrame({"Valeur": values})
 
@@ -115,93 +143,122 @@ def display_simulation_chart(
         tooltip=["count()"]
     )
 
-    price_line = alt.Chart(
-        pd.DataFrame({"x": [market_price]})
-    ).mark_rule(
-        color="#C62828",
-        strokeWidth=2,
-        strokeDash=[4, 2]
-    ).encode(
-        x="x",
-        tooltip=[alt.Tooltip("x:Q", format=",.2f", title="Prix de marché")]
+    # --- Repères visuels ---
+    rules = []
+
+    if market_price and market_price > 0:
+        rules.append(
+            alt.Chart(pd.DataFrame({"x": [market_price]}))
+            .mark_rule(
+                color="#C62828",
+                strokeWidth=2,
+                strokeDash=[4, 2]
+            )
+            .encode(
+                x="x",
+                tooltip=[
+                    alt.Tooltip("x:Q", format=",.2f", title="Prix de marché")
+                ]
+            )
+        )
+
+    rules.append(
+        alt.Chart(pd.DataFrame({"x": [median_val]}))
+        .mark_rule(
+            color="#2E7D32",
+            strokeWidth=2
+        )
+        .encode(
+            x="x",
+            tooltip=[
+                alt.Tooltip("x:Q", format=",.2f", title="Médiane (P50)")
+            ]
+        )
     )
 
-    median_line = alt.Chart(
-        pd.DataFrame({"x": [median_val]})
-    ).mark_rule(
-        color="#2E7D32",
-        strokeWidth=2
-    ).encode(
-        x="x",
-        tooltip=[alt.Tooltip("x:Q", format=",.2f", title="Médiane (P50)")]
+    rules.append(
+        alt.Chart(pd.DataFrame({"x": [p10, p90]}))
+        .mark_rule(
+            color="#9E9E9E",
+            strokeDash=[2, 2]
+        )
+        .encode(
+            x="x"
+        )
     )
 
     st.subheader("Distribution Monte Carlo")
     st.caption(
-        "Représentation de l’incertitude du modèle. "
-        "La dispersion reflète la sensibilité aux hypothèses."
+        "Visualisation de l’incertitude du modèle. "
+        "La dispersion reflète la sensibilité aux hypothèses, "
+        "pas une prévision de marché."
     )
 
+    chart = hist
+    for r in rules:
+        chart += r
+
     st.altair_chart(
-        (hist + price_line + median_line).properties(height=320),
+        chart.properties(height=320),
         use_container_width=True
     )
 
 
-# ==============================================================================
-# 3. SENSIBILITÉ WACC × CROISSANCE — ROBUSTESSE DU MODÈLE
-# ==============================================================================
+# ============================================================================
+# 3. ANALYSE DE SENSIBILITÉ — WACC × CROISSANCE
+# ============================================================================
 
 def display_sensitivity_heatmap(
     base_wacc: float,
     base_growth: float,
-    calculator_func: Callable[[float, float], float],
+    calculator_func: Callable[[float, float], Optional[float]],
     currency: str = "EUR"
 ) -> None:
     """
     Matrice de sensibilité WACC / Croissance terminale.
 
-    Objectif :
-    - tester la robustesse du modèle
-    - visualiser les zones instables
+    Rôle :
+    - tester la ROBUSTESSE du modèle
+    - mettre en évidence les zones instables
     """
 
     st.subheader("Analyse de sensibilité (WACC × Croissance)")
     st.caption(
-        "Impact des variations raisonnables du WACC et de la croissance "
+        "Impact de variations raisonnables du WACC et de la croissance "
         "sur la valeur intrinsèque."
     )
 
     wacc_shifts = [-0.01, -0.005, 0.0, 0.005, 0.01]
     growth_shifts = [-0.005, -0.0025, 0.0, 0.0025, 0.005]
 
-    data = []
+    rows = []
 
     for dw in wacc_shifts:
         for dg in growth_shifts:
-            w = base_wacc + dw
-            g = base_growth + dg
+            wacc = base_wacc + dw
+            growth = base_growth + dg
 
-            if w <= g:
+            # Invariant économique fondamental
+            if wacc <= growth:
                 continue
 
             try:
-                value = calculator_func(w, g)
+                value = calculator_func(wacc, growth)
             except Exception:
                 value = None
 
             if value is not None:
-                data.append({
-                    "WACC": f"{w:.2%}",
-                    "Croissance": f"{g:.2%}",
+                rows.append({
+                    "WACC": f"{wacc:.2%}",
+                    "Croissance": f"{growth:.2%}",
                     "Valeur": value
                 })
 
-    if not data:
+    if not rows:
         st.warning("Analyse impossible : incohérence WACC / croissance.")
         return
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(rows)
 
     heatmap = alt.Chart(df).mark_rect().encode(
         x=alt.X("Croissance:O", title="Croissance terminale (g)"),
@@ -218,11 +275,11 @@ def display_sensitivity_heatmap(
         ]
     ).properties(height=350)
 
-    text = heatmap.mark_text(
+    labels = heatmap.mark_text(
         baseline="middle",
         color="black"
     ).encode(
         text=alt.Text("Valeur:Q", format=",.0f")
     )
 
-    st.altair_chart(heatmap + text, use_container_width=True)
+    st.altair_chart(heatmap + labels, use_container_width=True)

@@ -1,20 +1,33 @@
 """
 core/valuation/strategies/monte_carlo.py
 
-EXTENSION PROBABILISTE — MONTE CARLO DCF
-Version : V1.1 — Chapitre 4 conforme (Glass Box Extension)
+EXTENSION PROBABILISTE — MONTE CARLO
+Version : V2.0 — Chapitre 7 conforme (Glass Box Extension)
 
-Règles non négociables :
+STATUT NORMATIF
+---------------
+Monte Carlo est une EXTENSION PROBABILISTE appliquée exclusivement
+aux paramètres d’entrée d’un modèle de valorisation déterministe.
+
+Principes NON NÉGOCIABLES :
 - Monte Carlo n’est PAS une méthode de valorisation
-- Il s’applique uniquement à un DCF déterministe valide
-- Le scénario pivot reste déterministe (P50)
+- La logique financière reste strictement déterministe
+- Chaque simulation = exécution complète du moteur déterministe
+- Le scénario pivot (P50) est calculé sans stochasticité
+- Aucune donnée comptable historique n’est modifiée
+
+Références :
+- CFA Institute — Model Risk & Sensitivity Analysis
+- Damodaran — Narrative & Probabilistic Valuation
 """
 
-import logging
-import numpy as np
-from typing import List
+from __future__ import annotations
 
+import logging
+from typing import List, Dict
 from dataclasses import replace
+
+import numpy as np
 
 from core.exceptions import CalculationError
 from core.models import (
@@ -35,27 +48,52 @@ from core.computation.statistics import (
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# STRATÉGIE — EXTENSION MONTE CARLO
+# ============================================================================
+
 class MonteCarloDCFStrategy(ValuationStrategy):
     """
     Extension Monte Carlo autour d’un DCF FCFF déterministe valide.
+
+    Cette classe :
+    - n’introduit AUCUNE logique financière nouvelle
+    - n’altère AUCUNE formule de valorisation
+    - mesure exclusivement l’incertitude des hypothèses
     """
 
     academic_reference = "CFA Institute / Damodaran"
-    economic_domain = "Risk analysis / Uncertainty quantification"
+    economic_domain = "Uncertainty & Risk Quantification"
     financial_invariants = [
-        "Deterministic DCF required",
-        "WACC > g_terminal in majority of runs",
-        "Sufficient number of valid simulations"
+        "Deterministic model invariance",
+        "Monte Carlo applied to inputs only",
+        "Scenario pivot must remain deterministic",
     ]
 
-    DEFAULT_SIMULATIONS = 2000
+    # --- Paramètres par défaut (repères, non normatifs)
+    DEFAULT_SIMULATIONS = 2_000
     MIN_VALID_RATIO = 0.50
+
+    # ------------------------------------------------------------------------
+    # EXECUTION PRINCIPALE
+    # ------------------------------------------------------------------------
 
     def execute(
         self,
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> DCFValuationResult:
+        """
+        Exécute une analyse Monte Carlo autour d’un DCF déterministe valide.
+
+        Retour :
+        - un DCFValuationResult
+        - enrichi de distributions, quantiles et métriques d’incertitude
+        """
+
+        # ==============================================================
+        # 0. PARAMÉTRAGE GLOBAL
+        # ==============================================================
 
         num_simulations = (
             params.num_simulations
@@ -64,23 +102,26 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         )
 
         logger.info(
-            "[Monte Carlo] Extension enabled | ticker=%s | simulations=%d",
+            "[Monte Carlo] Enabled | ticker=%s | simulations=%d",
             financials.ticker,
             num_simulations
         )
 
-        # ====================================================
+        if num_simulations < 500:
+            raise CalculationError(
+                "Nombre de simulations insuffisant pour une analyse robuste."
+            )
+
+        # ==============================================================
         # 1. PARAMÉTRAGE DES INCERTITUDES (GLASS BOX)
-        # ====================================================
+        # ==============================================================
 
-        sigma_beta = params.beta_volatility if params.beta_volatility > 0 else 0.10
-        sigma_growth = params.growth_volatility if params.growth_volatility > 0 else 0.015
-        sigma_terminal = (
-            params.terminal_growth_volatility
-            if params.terminal_growth_volatility > 0
-            else 0.005
-        )
+        sigma_beta = params.beta_volatility or 0.10
+        sigma_growth = params.growth_volatility or 0.015
+        sigma_terminal = params.terminal_growth_volatility or 0.005
 
+        # Corrélation économique standard :
+        # hausse du risque → pression sur la croissance
         rho_beta_growth = -0.30
 
         self.add_step(
@@ -90,20 +131,20 @@ class MonteCarloDCFStrategy(ValuationStrategy):
                 TraceHypothesis("Beta volatility", sigma_beta, "%"),
                 TraceHypothesis("Growth volatility", sigma_growth, "%"),
                 TraceHypothesis("Terminal growth volatility", sigma_terminal, "%"),
-                TraceHypothesis("Correlation beta-growth", rho_beta_growth)
+                TraceHypothesis("Correlation (beta, growth)", rho_beta_growth)
             ],
             numerical_substitution="Définition des paramètres statistiques",
             result=1.0,
             unit="configuration",
             interpretation=(
-                "Définition des paramètres d’incertitude utilisés pour la "
-                "simulation probabiliste autour du DCF déterministe."
+                "Paramétrage des distributions probabilistes appliquées "
+                "aux hypothèses exogènes du modèle."
             )
         )
 
-        # ====================================================
-        # 2. GÉNÉRATION DES SCÉNARIOS
-        # ====================================================
+        # ==============================================================
+        # 2. GÉNÉRATION DES SCÉNARIOS STOCHASTIQUES
+        # ==============================================================
 
         betas, growths = generate_multivariate_samples(
             mu_beta=financials.beta,
@@ -124,52 +165,60 @@ class MonteCarloDCFStrategy(ValuationStrategy):
 
         self.add_step(
             label="Génération des scénarios Monte Carlo",
-            theoretical_formula="Sampling multivarié",
+            theoretical_formula="Sampling multivarié corrélé",
             hypotheses=[
-                TraceHypothesis("Number of simulations", num_simulations),
-                TraceHypothesis("Distribution", "Normal / Correlated")
+                TraceHypothesis("Simulations", num_simulations),
+                TraceHypothesis("Distributions", "Normal / Corrélées")
             ],
-            numerical_substitution="Sampling stochastique",
+            numerical_substitution="Sampling stochastique des hypothèses",
             result=num_simulations,
             unit="runs",
             interpretation=(
-                "Génération de scénarios aléatoires corrélés pour les "
-                "paramètres clés du DCF."
+                "Création d’un ensemble de scénarios économiquement cohérents "
+                "pour mesurer la dispersion de la valeur intrinsèque."
             )
         )
 
-        # ====================================================
-        # 3. BOUCLE DE SIMULATION
-        # ====================================================
+        # ==============================================================
+        # 3. BOUCLE DE SIMULATION — MODÈLE DÉTERMINISTE INVARIANT
+        # ==============================================================
 
         base_strategy = StandardFCFFStrategy()
         simulated_values: List[float] = []
+
         valid_runs = 0
 
         for i in range(num_simulations):
-            sim_financials = replace(financials, beta=betas[i])
+
+            sim_financials = replace(
+                financials,
+                beta=float(betas[i])
+            )
+
             sim_params = replace(
                 params,
-                fcf_growth_rate=growths[i],
-                perpetual_growth_rate=terminal_growths[i]
+                fcf_growth_rate=float(growths[i]),
+                perpetual_growth_rate=float(terminal_growths[i])
             )
 
             try:
-                res = base_strategy.execute(sim_financials, sim_params)
-                iv = res.intrinsic_value_per_share
+                result = base_strategy.execute(sim_financials, sim_params)
+                iv = result.intrinsic_value_per_share
 
+                # Filtre économique conservateur
                 if 0.0 < iv < 50_000:
                     simulated_values.append(iv)
                     valid_runs += 1
 
             except Exception:
+                # Un scénario instable est simplement rejeté
                 continue
 
         valid_ratio = valid_runs / num_simulations
 
         self.add_step(
             label="Filtrage des scénarios valides",
-            theoretical_formula="Valid runs / Total runs",
+            theoretical_formula="Valid / Total",
             hypotheses=[
                 TraceHypothesis("Valid runs", valid_runs),
                 TraceHypothesis("Total runs", num_simulations)
@@ -178,75 +227,90 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             result=valid_ratio,
             unit="ratio",
             interpretation=(
-                "Filtrage des scénarios instables ou économiquement aberrants."
+                "Élimination des scénarios économiquement aberrants "
+                "ou numériquement instables."
             )
         )
 
-        # ====================================================
-        # 4. SCÉNARIO PIVOT DÉTERMINISTE
-        # ====================================================
+        if valid_ratio < self.MIN_VALID_RATIO:
+            raise CalculationError(
+                "Trop peu de scénarios Monte Carlo valides. "
+                "Analyse d’incertitude non fiable."
+            )
+
+        # ==============================================================
+        # 4. SCÉNARIO PIVOT — DÉTERMINISTE PUR
+        # ==============================================================
 
         final_result = base_strategy.execute(financials, params)
 
         self.add_step(
-            label="Scénario pivot déterministe",
+            label="Scénario pivot déterministe (P50)",
             theoretical_formula="DCF déterministe",
             hypotheses=[
-                TraceHypothesis("Method", "Standard FCFF DCF"),
-                TraceHypothesis("Role", "Reference scenario (P50)")
+                TraceHypothesis("Model", "Standard FCFF DCF"),
+                TraceHypothesis("Nature", "Deterministic reference")
             ],
-            numerical_substitution="Execution DCF sans stochasticité",
+            numerical_substitution="Exécution sans stochasticité",
             result=final_result.intrinsic_value_per_share,
             unit=financials.currency,
             interpretation=(
-                "Scénario central servant de référence pour la "
-                "valorisation et l’analyse de risque."
+                "Scénario central de référence, servant d’ancrage "
+                "à l’analyse probabiliste."
             )
         )
 
-        # ====================================================
-        # 5. ANALYSE STATISTIQUE
-        # ====================================================
+        # ==============================================================
+        # 5. ANALYSE STATISTIQUE DES SORTIES
+        # ==============================================================
 
-        if simulated_values:
-            arr = np.array(simulated_values)
+        values = np.array(simulated_values)
 
-            p10 = float(np.percentile(arr, 10))
-            p50 = float(np.percentile(arr, 50))
-            p90 = float(np.percentile(arr, 90))
-            mean = float(np.mean(arr))
+        p10 = float(np.percentile(values, 10))
+        p50 = float(np.percentile(values, 50))
+        p90 = float(np.percentile(values, 90))
+        mean = float(np.mean(values))
+        std = float(np.std(values))
 
-            final_result.intrinsic_value_per_share = p50
-            final_result.simulation_results = simulated_values
-            final_result.quantiles = {
-                "P10": p10,
-                "P50": p50,
-                "P90": p90,
-                "Mean": mean
-            }
+        quantiles: Dict[str, float] = {
+            "P10": p10,
+            "P50": p50,
+            "P90": p90,
+            "Mean": mean,
+            "Std": std
+        }
 
-            if final_result.market_price > 0:
-                final_result.upside_pct = (
-                    final_result.intrinsic_value_per_share
-                    / final_result.market_price
-                ) - 1.0
+        # La valeur centrale reste la médiane (robustesse)
+        final_result.intrinsic_value_per_share = p50
+        final_result.simulation_results = simulated_values
+        final_result.quantiles = quantiles
 
-            self.add_step(
-                label="Sélection de la valeur centrale (P50)",
-                theoretical_formula="Median(simulations)",
-                hypotheses=[
-                    TraceHypothesis("P10", p10, financials.currency),
-                    TraceHypothesis("P50", p50, financials.currency),
-                    TraceHypothesis("P90", p90, financials.currency)
-                ],
-                numerical_substitution="P50 retenu comme valeur centrale",
-                result=p50,
-                unit=financials.currency,
-                interpretation=(
-                    "La médiane est retenue comme estimation robuste "
-                    "face aux distributions asymétriques."
-                )
+        if final_result.market_price > 0:
+            final_result.upside_pct = (
+                p50 / final_result.market_price
+            ) - 1.0
+
+        self.add_step(
+            label="Sélection de la valeur centrale",
+            theoretical_formula="Median(simulations)",
+            hypotheses=[
+                TraceHypothesis("P10", p10, financials.currency),
+                TraceHypothesis("P50", p50, financials.currency),
+                TraceHypothesis("P90", p90, financials.currency),
+                TraceHypothesis("Std dev", std, financials.currency)
+            ],
+            numerical_substitution="P50 retenu comme estimation centrale",
+            result=p50,
+            unit=financials.currency,
+            interpretation=(
+                "La médiane est privilégiée pour sa robustesse "
+                "face aux distributions asymétriques."
             )
+        )
+
+        # ==============================================================
+        # FINALISATION — TRACE GLASS BOX
+        # ==============================================================
 
         final_result.calculation_trace.extend(self.trace)
         return final_result
