@@ -1,17 +1,26 @@
 """
 ui_methodology.py
 
-Documentation méthodologique — Chapitre 6
-Audit comme méthode normalisée et explicable.
+MÉTHODOLOGIE & GOUVERNANCE — RAPPORT D’ANALYSTE
+Version : V2.0 — Chapitres 6, 7 & 8 conformes
 
-Objectifs :
-- Expliquer la logique de valorisation (DCF, Graham, Monte Carlo)
-- Expliquer le rôle du Confidence Score
-- Formaliser les piliers d’incertitude
-- Aligner la restitution avec les standards CFA / institutions
+Rôle :
+- Exposer la méthode de valorisation utilisée
+- Justifier les hypothèses et cadres théoriques
+- Expliciter l’audit et le Confidence Score
+- Garantir l’alignement strict UI ↔ moteur
+
+Principes :
+- Pédagogie institutionnelle (CFA / Buy-Side)
+- Zéro décoratif, 100 % explicatif
+- Aucun texte sans ancrage méthodologique réel
 """
 
+from __future__ import annotations
+
 import streamlit as st
+from typing import Iterable
+
 from core.models import CompanyFinancials, DCFParameters
 from core.methodology.texts import (
     SIMPLE_DCF_TITLE, SIMPLE_DCF_SECTIONS,
@@ -21,27 +30,47 @@ from core.methodology.texts import (
 
 
 # ==============================================================================
-# OUTILS DE RENDU
+# OUTILS DE RENDU — BLOCS MÉTHODOLOGIQUES
 # ==============================================================================
 
-def _render_sections(sections) -> None:
+def _render_sections(sections: Iterable[dict]) -> None:
+    """
+    Rendu standardisé de sections méthodologiques.
+
+    Chaque section est une structure éditoriale contrôlée :
+    - subtitle (optionnel)
+    - markdown_blocks
+    - latex_blocks
+    """
     for section in sections:
         if section.get("subtitle"):
             st.markdown(section["subtitle"])
+
         for md in section.get("markdown_blocks", []):
             st.markdown(md)
+
         for latex in section.get("latex_blocks", []):
             st.latex(latex)
 
 
-def _render_live_wacc_check(financials: CompanyFinancials, params: DCFParameters) -> None:
+def _render_live_wacc_check(
+    financials: CompanyFinancials,
+    params: DCFParameters
+) -> None:
     """
-    Vérification pédagogique et traçable du calcul du WACC.
+    Vérification traçable et pédagogique du calcul du WACC.
+
+    Objectif :
+    - démontrer la cohérence du coût du capital
+    - rendre le calcul auditable en lecture seule
     """
+
     with st.expander("🔍 Vérification détaillée du calcul du WACC", expanded=False):
+
+        # --- Coût des fonds propres ---
         if params.manual_cost_of_equity is not None:
             ke = params.manual_cost_of_equity
-            source_ke = "Manuel (Expert)"
+            source_ke = "Manuel (Mode EXPERT)"
             formula_ke = f"{ke:.2%}"
         else:
             ke = params.risk_free_rate + financials.beta * params.market_risk_premium
@@ -51,9 +80,18 @@ def _render_live_wacc_check(financials: CompanyFinancials, params: DCFParameters
                 f"{financials.beta:.2f} × {params.market_risk_premium:.2%}"
             )
 
+        # --- Coût de la dette après impôt ---
         kd_net = params.cost_of_debt * (1 - params.tax_rate)
+
+        # --- Pondérations ---
         we, wd = params.target_equity_weight, params.target_debt_weight
-        wacc = params.wacc_override if params.wacc_override else (we * ke + wd * kd_net)
+
+        # --- WACC ---
+        wacc = (
+            params.wacc_override
+            if params.wacc_override is not None
+            else (we * ke + wd * kd_net)
+        )
 
         st.markdown(f"""
         ### 1️⃣ Coût des fonds propres ($K_e$) — *{source_ke}*
@@ -70,34 +108,68 @@ def _render_live_wacc_check(financials: CompanyFinancials, params: DCFParameters
 
 
 # ==============================================================================
-# 1. MÉTHODOLOGIE DE VALORISATION
+# 1. MÉTHODOLOGIES DE VALORISATION
 # ==============================================================================
 
-def display_simple_dcf_formula(financials: CompanyFinancials, params: DCFParameters) -> None:
+def display_simple_dcf_formula(
+    financials: CompanyFinancials,
+    params: DCFParameters
+) -> None:
+    """
+    Méthode DCF Standard (FCFF Two-Stage).
+
+    Usage :
+    - entreprises matures
+    - cash-flows relativement stables
+    """
     st.markdown(SIMPLE_DCF_TITLE)
     _render_sections(SIMPLE_DCF_SECTIONS)
     _render_live_wacc_check(financials, params)
 
 
-def display_fundamental_dcf_formula(financials: CompanyFinancials, params: DCFParameters) -> None:
+def display_fundamental_dcf_formula(
+    financials: CompanyFinancials,
+    params: DCFParameters
+) -> None:
+    """
+    Méthode DCF Fondamentale (FCFF normalisé).
+
+    Usage :
+    - entreprises cycliques
+    - lissage des flux économiques
+    """
     st.markdown(FUNDAMENTAL_DCF_TITLE)
     _render_sections(FUNDAMENTAL_DCF_SECTIONS)
     _render_live_wacc_check(financials, params)
 
 
-def display_monte_carlo_formula(financials: CompanyFinancials, params: DCFParameters) -> None:
+def display_monte_carlo_formula(
+    financials: CompanyFinancials,
+    params: DCFParameters
+) -> None:
+    """
+    Extension Monte Carlo (Chapitre 7).
+
+    Rappel normatif :
+    - Monte Carlo ≠ méthode de valorisation
+    - extension probabiliste des hypothèses uniquement
+    """
     st.markdown(MONTE_CARLO_TITLE)
     _render_sections(MONTE_CARLO_SECTIONS)
     _render_live_wacc_check(financials, params)
 
 
 # ==============================================================================
-# 2. MÉTHODOLOGIE D’AUDIT — CHAPITRE 6
+# 2. AUDIT & CONFIDENCE SCORE — CHAPITRE 6
 # ==============================================================================
 
 def display_audit_methodology() -> None:
     """
-    Présentation institutionnelle du Confidence Score.
+    Présentation institutionnelle de l’audit et du Confidence Score.
+
+    Cette section correspond à la partie :
+    “Model Governance & Validation”
+    d’un rapport professionnel.
     """
 
     st.header("🛡️ Audit & Score de Confiance — Méthode Normalisée")
@@ -106,11 +178,15 @@ def display_audit_methodology() -> None:
     Le **Confidence Score** est un indicateur synthétique visant à mesurer
     le **niveau d’incertitude** associé à une valorisation financière.
 
-    Il **ne remet pas en cause la valeur intrinsèque calculée**,
-    mais permet d’en apprécier la **robustesse**, conformément aux pratiques
-    de gouvernance des modèles utilisées par les institutions financières.
+    Il **ne remet jamais en cause la valeur intrinsèque calculée**,
+    mais permet d’en apprécier la **robustesse**, conformément aux
+    pratiques de gouvernance des modèles utilisées par les institutions
+    financières (banques, asset managers, buy-side).
     """)
 
+    # ------------------------------------------------------------------
+    # FORMULE DU SCORE
+    # ------------------------------------------------------------------
     st.markdown("### 🔢 Formule du score")
 
     st.latex(r"""
@@ -122,44 +198,51 @@ def display_audit_methodology() -> None:
     st.markdown("""
     où chaque $S_i$ représente le score d’un **pilier d’incertitude**,
     pondéré par un poids $w_i$ dépendant du **mode d’utilisation**
-    (AUTO ou EXPERT).
+    (**AUTO** ou **EXPERT**).
     """)
 
+    # ------------------------------------------------------------------
+    # PILIERS D’INCERTITUDE
+    # ------------------------------------------------------------------
     st.markdown("### 🧱 Piliers d’incertitude")
 
     st.markdown("""
     **1️⃣ Data Confidence**  
-    Qualité, cohérence et fiabilité des données d’entrée
-    (sources, proxies, données reconstruites).
+    Qualité, cohérence et fiabilité des données d’entrée  
+    (sources publiées, proxies, données reconstruites).
 
     **2️⃣ Assumption Risk**  
-    Sensibilité du résultat aux hypothèses clés
+    Sensibilité du résultat aux hypothèses clés  
     (croissance, WACC, marges, volatilité).
 
     **3️⃣ Model Risk**  
-    Risque inhérent au modèle utilisé
-    (dépendance à la valeur terminale, extrapolation, heuristique).
+    Risque inhérent au modèle utilisé  
+    (poids de la valeur terminale, extrapolation, heuristique).
 
     **4️⃣ Method Fit**  
-    Adéquation entre la méthode de valorisation et le profil économique
-    de l’entreprise analysée.
+    Adéquation entre la méthode de valorisation
+    et le profil économique de l’entreprise analysée.
     """)
 
-    st.markdown("### ⚖️ Différence AUTO vs EXPERT")
+    # ------------------------------------------------------------------
+    # RESPONSABILITÉ AUTO VS EXPERT
+    # ------------------------------------------------------------------
+    st.markdown("### ⚖️ Différence entre les modes AUTO et EXPERT")
 
     st.markdown("""
-    - **Mode AUTO**  
-      Hypothèses normatives, proxies autorisés.  
-      Le score est **pénalisant et conservateur**.
+    **Mode AUTO**  
+    - Hypothèses normatives et prudentes  
+    - Proxies autorisés  
+    - Score **pénalisant et conservateur**  
+    - Responsabilité portée par le système  
 
-    - **Mode EXPERT**  
-      Hypothèses fournies par l’utilisateur.  
-      La **responsabilité est transférée** : la qualité des données est
-      informative, mais les incohérences économiques restent bloquantes.
+    **Mode EXPERT**  
+    - Hypothèses fournies par l’utilisateur  
+    - Responsabilité **explicitement transférée**  
+    - Les incohérences économiques restent **bloquantes**
     """)
 
     st.markdown("""
     > 📌 Le Confidence Score est **auditable**, **traçable** et
     **réplicable**, au même titre que le calcul de la valeur intrinsèque.
     """)
-

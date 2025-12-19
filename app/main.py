@@ -1,24 +1,31 @@
 """
 app/main.py
 
-Point d’entrée de l’application Streamlit.
-Version conforme Chapitres 1 → 6.
+POINT D’ENTRÉE — RAPPORT D’ANALYSTE INTERACTIF
+Version : V2.0 — Chapitres 1 → 8 conformes
 
-Rôles :
-- Orchestration UI
-- Sélection AUTO / EXPERT
-- Appel moteur de valorisation
-- Appel AuditEngine (audit comme méthode)
-- Restitution complète et transparente
+Rôle :
+- Orchestration complète du rapport
+- Séparation claire : Inputs → Calcul → Audit → Restitution
+- Alignement strict UI ↔ moteur
+- UX institutionnelle (lecture top-down, drill-down)
+
+Ce fichier NE contient :
+- aucune logique financière
+- aucune logique d’audit
+- aucune hypothèse métier
 """
 
+from __future__ import annotations
+
 import sys
-from pathlib import Path
 import logging
+from pathlib import Path
+
 import streamlit as st
 
 # ==============================================================================
-# 0. SETUP PYTHON PATH
+# 0. SETUP ENVIRONNEMENT
 # ==============================================================================
 
 FILE_PATH = Path(__file__).resolve()
@@ -26,8 +33,11 @@ ROOT_PATH = FILE_PATH.parent.parent
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # ==============================================================================
-# 1. CONFIG STREAMLIT
+# 1. CONFIG STREAMLIT — SOBRE & INSTITUTIONNEL
 # ==============================================================================
 
 st.set_page_config(
@@ -35,9 +45,6 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # ==============================================================================
 # 2. IMPORTS CORE / INFRA
@@ -55,7 +62,7 @@ from infra.macro.yahoo_macro_provider import YahooMacroProvider
 from infra.auditing.audit_engine import AuditEngine
 
 # ==============================================================================
-# 3. IMPORTS UI
+# 3. IMPORTS UI — RAPPORT D’ANALYSTE
 # ==============================================================================
 
 from app.ui_components.ui_inputs_auto import display_auto_inputs
@@ -77,18 +84,27 @@ from app.ui_components.ui_methodology import (
 )
 
 # ==============================================================================
-# 4. MAIN APP
+# 4. APPLICATION PRINCIPALE
 # ==============================================================================
 
 def main() -> None:
-    st.title("💎 Intrinsic Value Pricer")
+    """
+    Orchestration du rapport d’analyste interactif.
+    """
+
+    # ------------------------------------------------------------------
+    # PAGE DE GARDE
+    # ------------------------------------------------------------------
+    st.title("Intrinsic Value Pricer")
     st.caption(
-        "Standard institutionnel (CFA / Damodaran) • "
-        "Architecture Glass Box • Audit comme méthode"
+        "Rapport d’analyste interactif • "
+        "Standards CFA / Damodaran • "
+        "Architecture Glass Box • "
+        "Audit comme méthode"
     )
 
     # ------------------------------------------------------------------
-    # A. MODE D’UTILISATION
+    # A. MODE D’UTILISATION (SIDEBAR)
     # ------------------------------------------------------------------
     st.sidebar.header("Mode d’utilisation")
 
@@ -96,31 +112,37 @@ def main() -> None:
         "Source des données et des hypothèses",
         options=[InputSource.AUTO.value, InputSource.MANUAL.value],
         format_func=lambda x: (
-            "🚀 AUTO — Données & hypothèses normatives"
+            "AUTO — Hypothèses normatives"
             if x == InputSource.AUTO.value
-            else "🛠️ EXPERT — Hypothèses manuelles"
+            else "EXPERT — Hypothèses manuelles"
         )
     )
 
     input_source = InputSource(mode_choice)
 
     # ------------------------------------------------------------------
-    # B. INPUTS UTILISATEUR
+    # B. SAISIE DES INPUTS
     # ------------------------------------------------------------------
     request: ValuationRequest | None = None
 
     if input_source == InputSource.AUTO:
-        request = display_auto_inputs(default_ticker="AAPL", default_years=5)
+        request = display_auto_inputs(
+            default_ticker="AAPL",
+            default_years=5
+        )
     else:
-        request = display_expert_request(default_ticker="AAPL", default_years=5)
+        request = display_expert_request(
+            default_ticker="AAPL",
+            default_years=5
+        )
 
-    # ------------------------------------------------------------------
-    # C. EXECUTION PIPELINE
-    # ------------------------------------------------------------------
     if request is None:
         st.info("👈 Configurez les paramètres et lancez l’analyse.")
         return
 
+    # ------------------------------------------------------------------
+    # C. PIPELINE DE CALCUL (TRANSACTIONNEL)
+    # ------------------------------------------------------------------
     try:
         with st.spinner(f"Analyse en cours pour {request.ticker}…"):
 
@@ -156,27 +178,30 @@ def main() -> None:
                     financials.beta = request.manual_beta
 
             # ----------------------------------------------------------
-            # 3. VALUATION ENGINE
+            # 3. MOTEUR DE VALORISATION
             # ----------------------------------------------------------
             result = run_valuation(request, financials, params)
 
             # ----------------------------------------------------------
-            # 4. AUDIT ENGINE (CHAPITRE 6)
+            # 4. AUDIT — CHAPITRE 6
             # ----------------------------------------------------------
-            audit_report = AuditEngine.compute_audit(result)
-            result.audit_report = audit_report
+            result.audit_report = AuditEngine.compute_audit(result)
 
         # ------------------------------------------------------------------
-        # D. RESTITUTION
+        # D. RESTITUTION — RAPPORT STRUCTURÉ
         # ------------------------------------------------------------------
+
+        # === PAGE 1 : SYNTHÈSE EXÉCUTIVE ===
         display_main_kpis(result)
 
-        # === CONTEXTE MARCHÉ & VISU ===
+        st.markdown("---")
+
+        # === CONTEXTE DE MARCHÉ & INCERTITUDE ===
+        st.subheader("Contexte de marché & incertitude")
+
         c_left, c_right = st.columns([2, 1])
 
         with c_left:
-            st.subheader("Contexte de marché")
-
             try:
                 history = data_provider.get_price_history(request.ticker)
                 display_price_chart(request.ticker, history)
@@ -191,6 +216,7 @@ def main() -> None:
                 )
 
         with c_right:
+            # Sensibilité uniquement si DCF compatible
             if (
                 request.mode
                 in {
@@ -233,16 +259,16 @@ def main() -> None:
 
         st.markdown("---")
 
-        # === DÉTAIL COMPLET ===
+        # === DÉTAIL COMPLET : GLASS BOX & AUDIT ===
         display_valuation_details(result)
 
         st.markdown("---")
 
-        # === MÉTHODOLOGIE & AUDIT ===
+        # === MÉTHODOLOGIE & GOUVERNANCE ===
         display_audit_methodology()
 
     except Exception as exc:
-        logger.error("Erreur critique", exc_info=True)
+        logger.error("Erreur critique lors de l’analyse", exc_info=True)
         st.error("❌ Une erreur est survenue lors de l’analyse.")
         st.exception(exc)
 

@@ -1,20 +1,23 @@
 """
 ui_kpis.py
 
-Restitution utilisateur — Chapitre 6
-Audit comme méthode normalisée et explicable.
+RESTITUTION PRINCIPALE — RAPPORT D’ANALYSTE
+Version : V2.0 — Chapitres 6 & 8 conformes
+
+Rôle :
+- Page de garde & résumé exécutif
+- Accès structuré au détail (drill-down)
+- Alignement strict UI ↔ moteur
+- Zéro décoratif, 100 % informationnel
 
 Principes :
-- Même niveau de transparence que la valeur intrinsèque
-- Score de confiance = formule auditable
-- Piliers visibles, pondérations visibles
-- Diagnostics traçables
-- Style institutionnel (CFA / Asset Management)
+- Aucun KPI sans source moteur
+- Même niveau d’exigence pour la valeur et le score
+- Lisibilité buy-side / comité d’investissement
 """
 
-from typing import Optional, Dict
+from typing import Optional
 import streamlit as st
-import pandas as pd
 
 from core.models import (
     ValuationResult,
@@ -26,15 +29,23 @@ from core.models import (
     GrahamValuationResult
 )
 
-
 # ==============================================================================
-# 1. KPI PRINCIPAUX — SYNTHÈSE EXÉCUTIVE
+# 1. PAGE DE GARDE — SYNTHÈSE EXÉCUTIVE
 # ==============================================================================
 
 def display_main_kpis(result: ValuationResult) -> None:
     """
-    Bandeau exécutif : Valeur, Prix, Upside, Confidence Score.
-    Comparable à un factsheet institutionnel.
+    PAGE 1 — Synthèse exécutive.
+
+    Comparable à :
+    - factsheet buy-side
+    - cover page de note d’analyste
+
+    Contenu :
+    - Valeur intrinsèque
+    - Prix de marché
+    - Upside
+    - Confidence Score
     """
 
     f = result.financials
@@ -49,6 +60,8 @@ def display_main_kpis(result: ValuationResult) -> None:
     if result.audit_report:
         audit_score = int(result.audit_report.global_score)
         audit_rating = result.audit_report.rating
+
+    st.subheader("Résumé exécutif")
 
     c1, c2, c3, c4 = st.columns(4)
 
@@ -86,8 +99,8 @@ def display_main_kpis(result: ValuationResult) -> None:
                 delta=audit_rating,
                 delta_color="off",
                 help=(
-                    "Indicateur synthétique du niveau de confiance attaché à la valorisation. "
-                    "Score agrégé à partir de piliers d’incertitude mesurés."
+                    "Indicateur synthétique du niveau de confiance attaché "
+                    "à la valorisation (audit comme méthode)."
                 )
             )
         else:
@@ -97,18 +110,25 @@ def display_main_kpis(result: ValuationResult) -> None:
 
 
 # ==============================================================================
-# 2. ZONE PRINCIPALE — ONGLETÉE
+# 2. CORPS DU RAPPORT — NAVIGATION STRUCTURÉE
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult) -> None:
     """
-    Zone centrale de restitution détaillée.
+    Corps principal du rapport d’analyste.
+
+    Structure :
+    - Démonstration de calcul (Glass Box)
+    - Audit & Confiance
+    - Paramètres & hypothèses
     """
 
+    st.subheader("Analyse détaillée")
+
     tab_calc, tab_audit, tab_params = st.tabs([
-        "🧮 Démonstration de calcul",
+        "🧮 Calcul — Glass Box",
         "🛡️ Audit & Confiance",
-        "⚙️ Paramètres utilisés"
+        "⚙️ Hypothèses & paramètres"
     ])
 
     with tab_calc:
@@ -125,32 +145,37 @@ def display_valuation_details(result: ValuationResult) -> None:
 
 
 # ==============================================================================
-# 3. GLASS BOX — TRACE DE CALCUL
+# 3. DÉMONSTRATION — GLASS BOX
 # ==============================================================================
 
 def _display_calculation_trace(result: ValuationResult) -> None:
     """
-    Démonstration pas-à-pas du calcul (Glass Box).
+    Démonstration complète et traçable du calcul.
+
+    Objectif :
+    - auditabilité
+    - pédagogie
+    - reproductibilité
     """
 
-    st.subheader("Trace de calcul — Glass Box")
+    st.markdown("### Démonstration du calcul — Glass Box")
 
     if not result.calculation_trace:
-        st.warning("Aucune trace de calcul disponible pour ce modèle.")
+        st.warning("Aucune trace de calcul disponible.")
         return
 
     if result.request:
         st.caption(f"Méthode utilisée : **{result.request.mode.value}**")
 
-    for i, step in enumerate(result.calculation_trace, start=1):
-        _render_calculation_step(i, step)
+    for idx, step in enumerate(result.calculation_trace, start=1):
+        _render_calculation_step(idx, step)
 
-    st.caption("Fin de la démonstration.")
+    st.caption("Fin de la démonstration du calcul.")
 
 
 def _render_calculation_step(index: int, step: CalculationStep) -> None:
     """
-    Rendu institutionnel d’une étape de calcul.
+    Rendu standardisé d’une étape de calcul.
     """
 
     with st.expander(f"{index}. {step.label}", expanded=True):
@@ -175,47 +200,44 @@ def _render_calculation_step(index: int, step: CalculationStep) -> None:
 
 
 # ==============================================================================
-# 4. AUDIT — MÉTHODE NORMALISÉE (CHAPITRE 6)
+# 4. AUDIT & CONFIANCE — CHAPITRE 6
 # ==============================================================================
 
 def _display_confidence_audit(report: AuditReport) -> None:
     """
-    Restitution complète du score de confiance :
-    - score global
-    - piliers
-    - pondérations
-    - diagnostics
+    Restitution institutionnelle du Confidence Score.
     """
 
-    st.subheader("Audit de confiance — Méthode normalisée")
+    st.markdown("### Audit de confiance — Méthode normalisée")
 
     c1, c2 = st.columns([1, 2])
 
-    # --- SYNTHÈSE ---
     with c1:
         st.metric("Score global", f"{int(report.global_score)}/100")
         st.metric("Rating", report.rating)
 
-        st.markdown("**Formule utilisée**")
+        st.markdown("**Formule d’agrégation**")
         st.code(
             report.pillar_breakdown.aggregation_formula
             if report.pillar_breakdown else "—",
             language="text"
         )
 
-    # --- DÉTAIL PAR PILIER ---
     with c2:
         if not report.pillar_breakdown:
             st.warning("Détail par pilier indisponible.")
             return
 
         for pillar, ps in report.pillar_breakdown.pillars.items():
-            with st.expander(f"{pillar.value} — {int(ps.score)}/100", expanded=True):
+            with st.expander(
+                f"{pillar.value} — {int(ps.score)}/100",
+                expanded=True
+            ):
                 st.markdown(
                     f"""
                     **Score du pilier** : {int(ps.score)}/100  
                     **Pondération** : {ps.weight:.0%}  
-                    **Contribution au score final** : {ps.contribution:.1f} pts
+                    **Contribution** : {ps.contribution:.1f} points
                     """
                 )
 
@@ -228,12 +250,12 @@ def _display_confidence_audit(report: AuditReport) -> None:
 
 
 # ==============================================================================
-# 5. PARAMÈTRES UTILISÉS
+# 5. HYPOTHÈSES & PARAMÈTRES
 # ==============================================================================
 
 def _display_parameters_summary(result: ValuationResult) -> None:
     """
-    Résumé structuré des paramètres clés utilisés par le modèle.
+    Résumé structuré des hypothèses utilisées.
     """
 
     p = result.params
@@ -245,7 +267,7 @@ def _display_parameters_summary(result: ValuationResult) -> None:
     c2.metric("Prime de risque (MRP)", f"{p.market_risk_premium:.2%}")
     c3.metric("Beta utilisé", f"{f.beta:.2f}")
 
-    st.markdown("### Hypothèses de croissance et de structure")
+    st.markdown("### Hypothèses de croissance & structure")
     c4, c5, c6 = st.columns(3)
     c4.metric("Croissance FCF", f"{p.fcf_growth_rate:.2%}")
     c5.metric("Croissance terminale", f"{p.perpetual_growth_rate:.2%}")
@@ -254,11 +276,17 @@ def _display_parameters_summary(result: ValuationResult) -> None:
     if isinstance(result, DCFValuationResult):
         st.markdown("### Spécifique DCF")
         st.write(f"WACC : {result.wacc:.2%}")
-        st.write(f"Valeur d’entreprise : {result.enterprise_value:,.0f} {f.currency}")
+        st.write(
+            f"Valeur d’entreprise : "
+            f"{result.enterprise_value:,.0f} {f.currency}"
+        )
 
     if isinstance(result, RIMValuationResult):
         st.markdown("### Spécifique RIM (Banques)")
-        st.write(f"Valeur comptable initiale : {result.current_book_value:,.2f}")
+        st.write(
+            f"Valeur comptable initiale : "
+            f"{result.current_book_value:,.2f} {f.currency}"
+        )
         st.write(f"Coût des fonds propres : {result.cost_of_equity:.2%}")
 
     if isinstance(result, GrahamValuationResult):
