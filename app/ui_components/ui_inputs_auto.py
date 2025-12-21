@@ -7,8 +7,8 @@ from core.methodology.texts import TOOLTIPS
 
 
 def display_auto_inputs(
-        default_ticker: str,
-        default_years: int,
+    default_ticker: str,
+    default_years: int,
 ) -> Optional[ValuationRequest]:
     """
     MODE AUTO — Estimation standardisée et prudente.
@@ -23,17 +23,17 @@ def display_auto_inputs(
     st.sidebar.subheader("Configuration — Mode AUTO")
 
     # ------------------------------------------------------------------
-    # CONTRAT UTILISATEUR — MODE AUTO
+    # À PROPOS DU MODE AUTO
     # ------------------------------------------------------------------
     with st.sidebar.expander("ℹ️ À propos du mode AUTO", expanded=True):
         st.markdown(
             """
             **Mode AUTO = estimation standardisée et prudente**
 
-            - Les hypothèses financières sont **déduites automatiquement**
-            - Des **proxies normatifs** peuvent être utilisés
-            - L’**audit est strict et pénalisant**
-            - Les résultats sont fournis **à titre indicatif**
+            - Hypothèses financières **déduites automatiquement**
+            - Utilisation de **proxies normatifs**
+            - **Audit strict et pénalisant**
+            - Résultats fournis **à titre indicatif**
 
             👉 Pour un contrôle total des hypothèses, utilisez le **mode EXPERT**.
             """
@@ -62,32 +62,37 @@ def display_auto_inputs(
     )
 
     # ------------------------------------------------------------------
-    # 3. MÉTHODE DE VALORISATION
+    # 3. MÉTHODE DE VALORISATION (UI → ENUM OFFICIEL)
     # ------------------------------------------------------------------
     strategies_map = {
-        "Standard — DCF FCFF (TTM)": ValuationMode.SIMPLE_FCFF,
-        "Fondamental — FCFF normalisé": ValuationMode.FUNDAMENTAL_FCFF,
-        "Croissance / Tech — Revenu": ValuationMode.GROWTH_TECH,
-        "Banque — Dividendes (DDM)": ValuationMode.DDM_BANKS,
-        "Graham — Value": ValuationMode.GRAHAM_VALUE,
-        "Monte Carlo — Analyse de risque": ValuationMode.MONTE_CARLO,
+        # DCF
+        "Standard — DCF FCFF (Two-Stage)": ValuationMode.FCFF_TWO_STAGE,
+        "Fondamental — FCFF normalisé": ValuationMode.FCFF_NORMALIZED,
+        "Croissance / Tech — FCFF revenu": ValuationMode.FCFF_REVENUE_DRIVEN,
+
+        # Modèles alternatifs
+        "Graham — Value (1974)": ValuationMode.GRAHAM_1974_REVISED,
+        "Banques — Residual Income Model (RIM)": ValuationMode.RESIDUAL_INCOME_MODEL,
+
+        # Extension probabiliste
+        "Monte Carlo — Analyse de risque": ValuationMode.FCFF_TWO_STAGE,
     }
 
     selected_label = st.sidebar.selectbox(
         "Méthode de valorisation",
         options=list(strategies_map.keys()),
-        index=1,
+        index=0,
         help="Sélectionnez une méthode adaptée au profil de l’entreprise."
     )
 
     mode = strategies_map[selected_label]
 
     # ------------------------------------------------------------------
-    # 4. OPTIONS SPÉCIFIQUES (ENCADRÉES)
+    # 4. OPTIONS SPÉCIFIQUES (MONTE CARLO)
     # ------------------------------------------------------------------
     options: Dict[str, Any] = {}
 
-    if mode == ValuationMode.MONTE_CARLO:
+    if "Monte Carlo" in selected_label:
         st.sidebar.markdown("---")
         st.sidebar.caption("⚠️ Extension probabiliste (non normative)")
 
@@ -95,9 +100,9 @@ def display_auto_inputs(
             """
             La simulation Monte Carlo **n’est pas une méthode de valorisation**.
 
-            Elle sert uniquement à :
-            - analyser la **sensibilité**
-            - mesurer la **dispersion des scénarios**
+            Elle permet uniquement :
+            - l’analyse de **sensibilité**
+            - l’étude de la **dispersion des scénarios**
             """
         )
 
@@ -107,6 +112,7 @@ def display_auto_inputs(
             value=2000
         )
 
+        options["enable_monte_carlo"] = True
         options["num_simulations"] = sims
 
     st.sidebar.markdown("---")

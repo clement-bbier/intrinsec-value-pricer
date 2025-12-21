@@ -2,18 +2,13 @@
 ui_kpis.py
 
 RESTITUTION PRINCIPALE — RAPPORT D’ANALYSTE
-Version : V2.0 — Chapitres 6 & 8 conformes
+Version : V2.1 — Bugfix Label & Optimisation
 
 Rôle :
 - Page de garde & résumé exécutif
 - Accès structuré au détail (drill-down)
 - Alignement strict UI ↔ moteur
 - Zéro décoratif, 100 % informationnel
-
-Principes :
-- Aucun KPI sans source moteur
-- Même niveau d’exigence pour la valeur et le score
-- Lisibilité buy-side / comité d’investissement
 """
 
 from typing import Optional
@@ -36,16 +31,7 @@ from core.models import (
 def display_main_kpis(result: ValuationResult) -> None:
     """
     PAGE 1 — Synthèse exécutive.
-
-    Comparable à :
-    - factsheet buy-side
-    - cover page de note d’analyste
-
-    Contenu :
-    - Valeur intrinsèque
-    - Prix de marché
-    - Upside
-    - Confidence Score
+    Comparable à une factsheet buy-side.
     """
 
     f = result.financials
@@ -98,10 +84,7 @@ def display_main_kpis(result: ValuationResult) -> None:
                 f"{audit_score}/100",
                 delta=audit_rating,
                 delta_color="off",
-                help=(
-                    "Indicateur synthétique du niveau de confiance attaché "
-                    "à la valorisation (audit comme méthode)."
-                )
+                help="Indicateur de confiance (Audit)."
             )
         else:
             st.metric("Confidence Score", "N/A")
@@ -116,11 +99,6 @@ def display_main_kpis(result: ValuationResult) -> None:
 def display_valuation_details(result: ValuationResult) -> None:
     """
     Corps principal du rapport d’analyste.
-
-    Structure :
-    - Démonstration de calcul (Glass Box)
-    - Audit & Confiance
-    - Paramètres & hypothèses
     """
 
     st.subheader("Analyse détaillée")
@@ -151,11 +129,6 @@ def display_valuation_details(result: ValuationResult) -> None:
 def _display_calculation_trace(result: ValuationResult) -> None:
     """
     Démonstration complète et traçable du calcul.
-
-    Objectif :
-    - auditabilité
-    - pédagogie
-    - reproductibilité
     """
 
     st.markdown("### Démonstration du calcul — Glass Box")
@@ -176,6 +149,7 @@ def _display_calculation_trace(result: ValuationResult) -> None:
 def _render_calculation_step(index: int, step: CalculationStep) -> None:
     """
     Rendu standardisé d’une étape de calcul.
+    CORRECTIF : Utilisation de label_visibility="collapsed" pour éviter les warnings.
     """
 
     with st.expander(f"{index}. {step.label}", expanded=True):
@@ -184,7 +158,9 @@ def _render_calculation_step(index: int, step: CalculationStep) -> None:
         with c1:
             st.markdown("**Formule théorique**")
             if step.theoretical_formula and step.theoretical_formula != "N/A":
-                st.latex(step.theoretical_formula.replace("$", ""))
+                # Nettoyage basique du LaTeX pour Streamlit
+                formula = step.theoretical_formula.replace("$", "")
+                st.latex(formula)
             else:
                 st.text("—")
 
@@ -196,7 +172,12 @@ def _render_calculation_step(index: int, step: CalculationStep) -> None:
 
         with c3:
             st.markdown("**Résultat**")
-            st.metric("", f"{step.result:,.2f} {step.unit}")
+            # --- C'EST ICI LA MODIFICATION ---
+            st.metric(
+                label="Résultat",  # Label obligatoire
+                value=f"{step.result:,.2f} {step.unit}",
+                label_visibility="collapsed"  # On le cache proprement
+            )
 
 
 # ==============================================================================

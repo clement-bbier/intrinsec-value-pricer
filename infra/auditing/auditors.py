@@ -13,7 +13,7 @@ Principes :
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from core.models import (
     ValuationResult,
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 class IValuationAuditor(ABC):
     """
-    Auditeur abstrait.
+    Auditeur abstrait et implémentation par défaut.
 
     Rôle :
     - produire des scores par pilier
@@ -70,7 +70,7 @@ class IValuationAuditor(ABC):
     def _audit_data_confidence(
         self,
         result: ValuationResult
-    ) -> tuple[AuditPillarScore, List[AuditLog]]:
+    ) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs: List[AuditLog] = []
         score = 100.0
         f = result.financials
@@ -83,10 +83,10 @@ class IValuationAuditor(ABC):
         if is_expert:
             logs.append(
                 AuditLog(
-                    "Data",
-                    "INFO",
-                    "Mode EXPERT : données présumées exactes. Qualité informative.",
-                    0
+                    category="Data",
+                    severity="INFO",
+                    message="Mode EXPERT : données présumées exactes. Qualité informative.",
+                    penalty=0
                 )
             )
 
@@ -94,10 +94,10 @@ class IValuationAuditor(ABC):
         if f.total_debt == 0 and f.interest_expense > 0:
             logs.append(
                 AuditLog(
-                    "Data",
-                    "WARN",
-                    "Dette nulle mais charges d’intérêts présentes.",
-                    -10
+                    category="Data",
+                    severity="WARN",
+                    message="Dette nulle mais charges d’intérêts présentes.",
+                    penalty=-10
                 )
             )
             if not is_expert:
@@ -107,10 +107,10 @@ class IValuationAuditor(ABC):
         if f.beta < 0.4 or f.beta > 3.0:
             logs.append(
                 AuditLog(
-                    "Data",
-                    "WARN",
-                    f"Beta atypique ({f.beta:.2f}).",
-                    -10
+                    category="Data",
+                    severity="WARN",
+                    message=f"Beta atypique ({f.beta:.2f}).",
+                    penalty=-10
                 )
             )
             if not is_expert:
@@ -120,10 +120,10 @@ class IValuationAuditor(ABC):
         if f.source_growth == "macro":
             logs.append(
                 AuditLog(
-                    "Data",
-                    "WARN",
-                    "Croissance issue de proxy macro-économique.",
-                    -20
+                    category="Data",
+                    severity="WARN",
+                    message="Croissance issue de proxy macro-économique.",
+                    penalty=-20
                 )
             )
             if not is_expert:
@@ -148,7 +148,7 @@ class IValuationAuditor(ABC):
     def _audit_assumption_risk(
         self,
         result: ValuationResult
-    ) -> tuple[AuditPillarScore, List[AuditLog]]:
+    ) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs: List[AuditLog] = []
         score = 100.0
         p = result.params
@@ -157,10 +157,10 @@ class IValuationAuditor(ABC):
         if p.fcf_growth_rate > 0.20:
             logs.append(
                 AuditLog(
-                    "Assumptions",
-                    "HIGH",
-                    f"Croissance élevée ({p.fcf_growth_rate:.1%}).",
-                    -20
+                    category="Assumptions",
+                    severity="HIGH",
+                    message=f"Croissance élevée ({p.fcf_growth_rate:.1%}).",
+                    penalty=-20
                 )
             )
             score -= 20
@@ -175,10 +175,10 @@ class IValuationAuditor(ABC):
             elif spread < 0.015:
                 logs.append(
                     AuditLog(
-                        "Assumptions",
-                        "HIGH",
-                        f"Spread WACC − g très faible ({spread:.2%}).",
-                        -25
+                        category="Assumptions",
+                        severity="HIGH",
+                        message=f"Spread WACC − g très faible ({spread:.2%}).",
+                        penalty=-25
                     )
                 )
                 score -= 25
@@ -202,7 +202,7 @@ class IValuationAuditor(ABC):
     def _audit_model_risk(
         self,
         result: ValuationResult
-    ) -> tuple[AuditPillarScore, List[AuditLog]]:
+    ) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs: List[AuditLog] = []
         score = 100.0
 
@@ -215,20 +215,20 @@ class IValuationAuditor(ABC):
             if tv_weight > 0.85:
                 logs.append(
                     AuditLog(
-                        "Model",
-                        "HIGH",
-                        f"Dépendance excessive à la valeur terminale ({tv_weight:.1%}).",
-                        -30
+                        category="Model",
+                        severity="HIGH",
+                        message=f"Dépendance excessive à la valeur terminale ({tv_weight:.1%}).",
+                        penalty=-30
                     )
                 )
                 score -= 30
             elif tv_weight > 0.70:
                 logs.append(
                     AuditLog(
-                        "Model",
-                        "MEDIUM",
-                        f"Poids TV élevé ({tv_weight:.1%}).",
-                        -15
+                        category="Model",
+                        severity="MEDIUM",
+                        message=f"Poids TV élevé ({tv_weight:.1%}).",
+                        penalty=-15
                     )
                 )
                 score -= 15
@@ -236,10 +236,10 @@ class IValuationAuditor(ABC):
         if isinstance(result, GrahamValuationResult):
             logs.append(
                 AuditLog(
-                    "Model",
-                    "INFO",
-                    "Méthode Graham : heuristique, non DCF.",
-                    -20
+                    category="Model",
+                    severity="INFO",
+                    message="Méthode Graham : heuristique, non DCF.",
+                    penalty=-20
                 )
             )
             score -= 20
@@ -263,10 +263,10 @@ class IValuationAuditor(ABC):
     def _audit_method_fit(
         self,
         result: ValuationResult
-    ) -> tuple[AuditPillarScore, List[AuditLog]]:
+    ) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs: List[AuditLog] = []
         score = 100.0
-        f = result.financials
+        # f = result.financials # (Inutilisé ici mais gardé pour cohérence structurelle)
 
         # Graham appliqué à une entreprise non rentable
         if isinstance(result, GrahamValuationResult):
@@ -294,3 +294,16 @@ class IValuationAuditor(ABC):
             ),
             logs
         )
+
+
+# ==============================================================================
+# STANDARD AUDITOR — LA CLASSE MANQUANTE
+# ==============================================================================
+
+class StandardValuationAuditor(IValuationAuditor):
+    """
+    Implémentation standard de l'auditeur.
+    Hérite de toute la logique définie dans IValuationAuditor.
+    Utilisée par défaut par le moteur d'audit.
+    """
+    pass

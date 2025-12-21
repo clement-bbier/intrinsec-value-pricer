@@ -2,7 +2,7 @@
 core/valuation/strategies/monte_carlo.py
 
 EXTENSION PROBABILISTE — MONTE CARLO
-Version : V2.0 — Chapitre 7 conforme (Glass Box Extension)
+Version : V2.2 — Chapitre 7 conforme (High Perf 5k)
 
 STATUT NORMATIF
 ---------------
@@ -13,8 +13,8 @@ Principes NON NÉGOCIABLES :
 - Monte Carlo n’est PAS une méthode de valorisation
 - La logique financière reste strictement déterministe
 - Chaque simulation = exécution complète du moteur déterministe
-- Le scénario pivot (P50) est calculé sans stochasticité
-- Aucune donnée comptable historique n’est modifiée
+- Le scénario pivot (P50) est calculé sans stochasticité (Glass Box active)
+- Les simulations de masse tournent en "Silent Mode" (Performance)
 
 Références :
 - CFA Institute — Model Risk & Sensitivity Analysis
@@ -70,8 +70,8 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         "Scenario pivot must remain deterministic",
     ]
 
-    # --- Paramètres par défaut (repères, non normatifs)
-    DEFAULT_SIMULATIONS = 2_000
+    # --- Paramètres par défaut (Norme V2.2) ---
+    DEFAULT_SIMULATIONS = 5_000  # Augmenté pour plus de précision statistique
     MIN_VALID_RATIO = 0.50
 
     # ------------------------------------------------------------------------
@@ -86,9 +86,9 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         """
         Exécute une analyse Monte Carlo autour d’un DCF déterministe valide.
 
-        Retour :
-        - un DCFValuationResult
-        - enrichi de distributions, quantiles et métriques d’incertitude
+        Optimisation :
+        Les simulations utilisent le mode "Silent" (glass_box_enabled=False)
+        pour réduire l'empreinte mémoire et CPU.
         """
 
         # ==============================================================
@@ -113,8 +113,9 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             )
 
         # ==============================================================
-        # 1. PARAMÉTRAGE DES INCERTITUDES (GLASS BOX)
+        # 1. PARAMÉTRAGE DES INCERTITUDES (GLASS BOX - TRACE VISIBLE)
         # ==============================================================
+        # On trace la configuration de Monte Carlo car c'est une décision méthodologique.
 
         sigma_beta = params.beta_volatility or 0.10
         sigma_growth = params.growth_volatility or 0.015
@@ -128,6 +129,7 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             label="Paramétrage des incertitudes Monte Carlo",
             theoretical_formula="σ, ρ",
             hypotheses=[
+                TraceHypothesis("Simulations", num_simulations, "runs"),
                 TraceHypothesis("Beta volatility", sigma_beta, "%"),
                 TraceHypothesis("Growth volatility", sigma_growth, "%"),
                 TraceHypothesis("Terminal growth volatility", sigma_terminal, "%"),
@@ -137,8 +139,7 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             result=1.0,
             unit="configuration",
             interpretation=(
-                "Paramétrage des distributions probabilistes appliquées "
-                "aux hypothèses exogènes du modèle."
+                f"Paramétrage des distributions probabilistes sur {num_simulations} scénarios."
             )
         )
 
@@ -180,16 +181,21 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         )
 
         # ==============================================================
-        # 3. BOUCLE DE SIMULATION — MODÈLE DÉTERMINISTE INVARIANT
+        # 3. BOUCLE DE SIMULATION — MODÈLE DÉTERMINISTE OPTIMISÉ (SILENT)
         # ==============================================================
 
-        base_strategy = StandardFCFFStrategy()
-        simulated_values: List[float] = []
+        # --- OPTIMISATION CPU ---
+        # On instancie la stratégie en mode "Silent" (glass_box_enabled=False).
+        # Cela évite de créer des millions d'objets TraceHypothesis inutiles.
+        worker_strategy = StandardFCFFStrategy(glass_box_enabled=False)
 
+        simulated_values: List[float] = []
         valid_runs = 0
 
+        # Boucle critique de performance
         for i in range(num_simulations):
 
+            # Injection des paramètres perturbés (Non-intrusif)
             sim_financials = replace(
                 financials,
                 beta=float(betas[i])
@@ -202,16 +208,17 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             )
 
             try:
-                result = base_strategy.execute(sim_financials, sim_params)
+                # Exécution sans trace (Rapide)
+                result = worker_strategy.execute(sim_financials, sim_params)
                 iv = result.intrinsic_value_per_share
 
-                # Filtre économique conservateur
+                # Filtre économique conservateur (évite les valeurs négatives ou infinies)
                 if 0.0 < iv < 50_000:
                     simulated_values.append(iv)
                     valid_runs += 1
 
             except Exception:
-                # Un scénario instable est simplement rejeté
+                # Un scénario instable est simplement rejeté (robustesse)
                 continue
 
         valid_ratio = valid_runs / num_simulations
@@ -239,10 +246,13 @@ class MonteCarloDCFStrategy(ValuationStrategy):
             )
 
         # ==============================================================
-        # 4. SCÉNARIO PIVOT — DÉTERMINISTE PUR
+        # 4. SCÉNARIO PIVOT — DÉTERMINISTE PUR (GLASS BOX ACTIVE)
         # ==============================================================
 
-        final_result = base_strategy.execute(financials, params)
+        # Pour le résultat final affiché à l'utilisateur, on veut la trace complète.
+        # On réinstancie donc une stratégie normale (glass_box_enabled=True par défaut).
+        reference_strategy = StandardFCFFStrategy(glass_box_enabled=True)
+        final_result = reference_strategy.execute(financials, params)
 
         self.add_step(
             label="Scénario pivot déterministe (P50)",
@@ -251,7 +261,7 @@ class MonteCarloDCFStrategy(ValuationStrategy):
                 TraceHypothesis("Model", "Standard FCFF DCF"),
                 TraceHypothesis("Nature", "Deterministic reference")
             ],
-            numerical_substitution="Exécution sans stochasticité",
+            numerical_substitution="Exécution sans stochasticité (Glass Box)",
             result=final_result.intrinsic_value_per_share,
             unit=financials.currency,
             interpretation=(
@@ -281,6 +291,7 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         }
 
         # La valeur centrale reste la médiane (robustesse)
+        # Note : On enrichit l'objet final_result (le pivot) avec les stats
         final_result.intrinsic_value_per_share = p50
         final_result.simulation_results = simulated_values
         final_result.quantiles = quantiles
@@ -312,5 +323,7 @@ class MonteCarloDCFStrategy(ValuationStrategy):
         # FINALISATION — TRACE GLASS BOX
         # ==============================================================
 
-        final_result.calculation_trace.extend(self.trace)
+        # On fusionne la trace de Monte Carlo (config) avec la trace du Pivot (DCF)
+        final_result.calculation_trace.extend(self.calculation_trace)
+
         return final_result
