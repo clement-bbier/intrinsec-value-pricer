@@ -1,12 +1,13 @@
 """
-ui_inputs_expert.py
+app/ui_components/ui_inputs_expert.py
 
-INTERFACE — MODE EXPERT
-Version : V2.6 — Stable & Debuggée
+INTERFACE — MODE EXPERT (CONTEXT-AWARE V3.3)
+Version : V3.3 — Correctif Constantes & Polymorphisme
 
-Correctifs :
-- Ajout de l'argument obligatoire 'projection_years' dans ValuationRequest
-- Conforme à 100% avec core/models.py
+Rôle :
+- Interface de saisie manuelle complète.
+- S'adapte au contexte (Banque vs Tech vs Industrie).
+- Intègre les définitions de toutes les constantes par défaut.
 """
 
 from __future__ import annotations
@@ -28,212 +29,207 @@ try:
 except ImportError:
     TOOLTIPS = {}
 
-# --- CONSTANTES PAR DÉFAUT ---
-DEFAULT_RF = 0.042
-DEFAULT_MRP = 0.055
-DEFAULT_TAX = 0.25
-DEFAULT_COST_DEBT = 0.05
+# ==============================================================================
+# CONSTANTES PAR DÉFAUT (CRITIQUE : NE PAS SUPPRIMER)
+# ==============================================================================
+DEFAULT_RF = 0.042        # 4.2% (Taux sans risque)
+DEFAULT_MRP = 0.055       # 5.5% (Prime de risque)
+DEFAULT_TAX = 0.25        # 25% (Impôt société)
+DEFAULT_COST_DEBT = 0.05  # 5% (Coût dette brut)
+DEFAULT_GROWTH = 0.03     # 3% (Croissance phase 1) - C'ÉTAIT CELUI-LA QUI MANQUAIT
+DEFAULT_PERP = 0.02       # 2% (Croissance perpétuelle / Inflation)
 
 
 def display_expert_request(
     default_ticker: str = "AAPL",
-    default_years: int = 5
+    selected_mode: ValuationMode = ValuationMode.FCFF_TWO_STAGE
 ) -> Optional[ValuationRequest]:
     """
-    MODE EXPERT — Contrôle total des hypothèses.
+    Formulaire Expert Polymorphe.
+    S'adapte intelligemment selon le modèle de valorisation choisi.
     """
 
-    st.markdown("### 🛠️ Configuration — Mode EXPERT")
+    st.markdown(f"### 🛠️ Paramétrage Expert : {selected_label(selected_mode)}")
 
-    # ------------------------------------------------------------------
-    # AVERTISSEMENT
-    # ------------------------------------------------------------------
-    with st.expander("⚠️ Responsabilité utilisateur", expanded=False):
-        st.info("Vous définissez manuellement toutes les hypothèses. L'audit ne vérifiera que la cohérence mathématique.")
+    # Indicateurs de contexte
+    is_rim = selected_mode == ValuationMode.RESIDUAL_INCOME_MODEL
+    is_growth = selected_mode == ValuationMode.FCFF_REVENUE_DRIVEN
+    is_graham = selected_mode == ValuationMode.GRAHAM_1974_REVISED
+    # is_standard = not (is_rim or is_growth or is_graham)
 
-    # ------------------------------------------------------------------
-    # 1. IDENTIFICATION & STRATÉGIE
-    # ------------------------------------------------------------------
-    c1, c2, c3 = st.columns([1, 1, 2])
+    with st.form("expert_form"):
 
-    with c1:
-        ticker = st.text_input(
-            "Ticker",
-            value=default_ticker,
-            help=TOOLTIPS.get("ticker", "Symbole boursier")
-        ).upper().strip()
+        # ==============================================================================
+        # 1. RISQUE & TAUX (Adaptatif)
+        # ==============================================================================
+        st.markdown("#### 1. Environnement de Taux & Risque")
 
-    with c2:
-        years = st.number_input(
-            "Horizon (ans)",
-            value=int(default_years),
-            min_value=1,
-            max_value=20
+        c1, c2, c3 = st.columns(3)
+
+        rf = c1.number_input(
+            "Taux sans risque (Rf)",
+            0.0, 0.20, DEFAULT_RF, 0.001, format="%.3f",
+            help="Obligations d'État 10 ans"
+        )
+        mrp = c2.number_input(
+            "Prime de risque (MRP)",
+            0.0, 0.20, DEFAULT_MRP, 0.001, format="%.3f",
+            help="Prime de risque marché actions"
         )
 
-    with c3:
-        # MAPPING STRICT basé sur ton fichier core/models.py
-        strategies = {
-            "DCF Standard (Damodaran)": ValuationMode.FCFF_TWO_STAGE,
-            "DCF Fondamental (Normalisé)": ValuationMode.FCFF_NORMALIZED,
-            "DCF Tech (Revenu & Marge)": ValuationMode.FCFF_REVENUE_DRIVEN,
-            "RIM (Banques / Assurances)": ValuationMode.RESIDUAL_INCOME_MODEL,
-            "Graham (Value Investor)": ValuationMode.GRAHAM_1974_REVISED,
-        }
+        # Le 3ème champ change selon le modèle
+        manual_beta = 1.0 # Valeur par défaut
+        rate_val = 0.0
 
-        selected_label = st.selectbox("Méthode de valorisation", list(strategies.keys()))
-        mode = strategies[selected_label]
+        if is_graham:
+            rate_val = c3.number_input("Taux AAA (Corporate)", 0.0, 0.15, 0.045, 0.001, help="Référence obligataire privée")
+        elif is_rim:
+            # Pour les banques, le coût de la dette est opérationnel, on se focus sur le Beta
+            manual_beta = c3.number_input("Beta (Risque Bancaire)", 0.0, 3.0, 1.0, 0.05, help="Volatilité systématique")
+            rate_val = 0.0 # Pas utilisé comme input direct Kd
+        else:
+            rate_val = c3.number_input("Coût de la dette (Kd brut)", 0.0, 0.20, DEFAULT_COST_DEBT, 0.001, help="Taux d'emprunt de l'entreprise")
+            manual_beta = 1.0 # Sera géré plus bas ou via surcharge
 
-    st.markdown("---")
-
-    # ------------------------------------------------------------------
-    # 2. TAUX & COÛT DU CAPITAL
-    # ------------------------------------------------------------------
-    is_graham = mode == ValuationMode.GRAHAM_1974_REVISED
-
-    # Titre dynamique pour le 4ème champ (Kd ou AAA Yield)
-    label_kd = "Taux obligataire AAA" if is_graham else "Coût dette (pré-impôt)"
-
-    with st.expander("1. Taux & Coût du Capital", expanded=True):
-        m1, m2, m3, m4 = st.columns(4)
-
-        with m1:
-            rf = st.number_input("Taux sans risque (Rf)", value=DEFAULT_RF, format="%.4f", step=0.001)
-        with m2:
-            mrp = st.number_input("Prime de risque (MRP)", value=DEFAULT_MRP, format="%.4f", step=0.001)
-        with m3:
-            beta = st.number_input("Beta", value=1.00, format="%.2f", step=0.05)
-        with m4:
-            # Ce champ servira de Kd pour le DCF, ou de AAA Yield pour Graham
-            kd_or_aaa = st.number_input(label_kd, value=DEFAULT_COST_DEBT, format="%.4f", step=0.001)
-
-        # Structure du capital (uniquement utile pour DCF)
+        # ==============================================================================
+        # 2. STRUCTURE DU CAPITAL (Caché pour RIM/Graham)
+        # ==============================================================================
         we, wd, tax = 1.0, 0.0, DEFAULT_TAX
 
-        if not is_graham:
-            st.caption("Structure de capital cible (Target Weights)")
-            w1, w2, w3 = st.columns([1, 1, 2])
-            with w1:
-                we_input = st.number_input("Poids Equity %", value=80.0, step=5.0)
-            with w2:
-                wd_input = st.number_input("Poids Dette %", value=20.0, step=5.0)
-            with w3:
-                tax = st.number_input("Taux d’imposition", value=DEFAULT_TAX, step=0.01)
+        if not (is_rim or is_graham):
+            with st.expander("⚖️ Structure du Capital (WACC)", expanded=True):
+                w1, w2, w3, w4 = st.columns(4)
+                manual_beta = w1.number_input("Beta", 0.0, 5.0, 1.0, 0.05)
+                tax = w2.number_input("Taux IS (Tax)", 0.0, 0.50, DEFAULT_TAX, 0.01)
 
-            # Normalisation
-            total_w = we_input + wd_input
-            if total_w > 0:
-                we = we_input / total_w
-                wd = wd_input / total_w
-            else:
-                we, wd = 0.8, 0.2
+                # Saisie intelligente des poids
+                we_input = w3.number_input("Poids Equity (%)", 0.0, 100.0, 80.0, 5.0)
+                wd_input = w4.number_input("Poids Dette (%)", 0.0, 100.0, 100.0 - we_input, 5.0)
 
-    # ------------------------------------------------------------------
-    # 3. CROISSANCE
-    # ------------------------------------------------------------------
-    g_growth = 0.05
-    g_perp = 0.02
-    high_growth_years = 0
+                # Normalisation immédiate pour le calcul
+                total_w = we_input + wd_input
+                if total_w > 0:
+                    we = we_input / total_w
+                    wd = wd_input / total_w
 
-    with st.expander("2. Hypothèses de croissance", expanded=True):
-        g1, g2, g3 = st.columns(3)
+        # ==============================================================================
+        # 3. CROISSANCE & PERFORMANCES (Le cœur du polymorphisme)
+        # ==============================================================================
+        st.markdown("#### 2. Hypothèses de Croissance")
 
-        label_g = "Croissance Revenu" if mode == ValuationMode.FCFF_REVENUE_DRIVEN else "Croissance FCF"
+        # LABEL DYNAMIQUE
+        if is_growth:
+            growth_label = "Croissance du Chiffre d'Affaires (CAGR)"
+            growth_help = "Taux de croissance annuel des ventes sur la période explicite."
+        elif is_rim:
+            growth_label = "Croissance du Bénéfice (EPS)"
+            growth_help = "Croissance du Net Income / EPS pour projeter les profits futurs."
+        else:
+            growth_label = "Croissance du FCF"
+            growth_help = "Taux de croissance du Cash Flow Libre."
 
-        with g1:
-            g_growth = st.number_input(f"{label_g} (CAGR)", value=0.05, format="%.3f", step=0.005)
-        with g2:
-            g_perp = st.number_input("Croissance terminale", value=0.02, format="%.3f", step=0.001)
-        with g3:
-            high_growth_years = st.slider("Années croissance forte", 0, int(years), 0)
+        cg1, cg2, cg3 = st.columns(3)
+        years = cg1.slider("Horizon de projection (ans)", 3, 15, 5)
 
-    # ------------------------------------------------------------------
-    # 4. PARAMÈTRES SPÉCIFIQUES
-    # ------------------------------------------------------------------
-    target_margin = None
-    manual_override = None
+        # --- C'EST ICI QUE CA PLANTAIT AVANT (DEFAULT_GROWTH manquant) ---
+        g_growth = cg2.number_input(growth_label, -0.50, 1.0, DEFAULT_GROWTH, 0.005, format="%.3f", help=growth_help)
+        g_perp = cg3.number_input("Croissance Terminale (g)", 0.0, 0.05, DEFAULT_PERP, 0.001, help="Ne doit pas dépasser le Rf.")
 
-    # --- Spécifique Tech (Revenue Driven) ---
-    if mode == ValuationMode.FCFF_REVENUE_DRIVEN:
-        with st.expander("3. Spécifique Tech — Marge", expanded=True):
-            target_margin = st.slider("Marge FCF cible long terme", 0.05, 0.50, 0.25, step=0.01)
+        # ==============================================================================
+        # 4. PARAMÈTRES SPÉCIFIQUES AU MODÈLE
+        # ==============================================================================
+        target_margin = None
+        high_growth_years = 0 # Par défaut
 
-    # --- Override Manuel ---
-    with st.expander("4. Override manuel du point de départ", expanded=False):
-        label_override = "FCF"
-        if mode == ValuationMode.FCFF_REVENUE_DRIVEN: label_override = "Revenu"
-        elif mode == ValuationMode.GRAHAM_1974_REVISED: label_override = "EPS"
-        elif mode == ValuationMode.RESIDUAL_INCOME_MODEL: label_override = "Book Value / EPS"
+        if is_growth:
+            st.info("💎 **Mode Revenue-Driven** : La valeur dépend de la convergence des marges.")
+            cm1, cm2 = st.columns(2)
+            target_margin = cm1.number_input("Marge FCF Cible (Long Terme)", 0.01, 0.60, 0.20, 0.01, help="Marge normative à l'équilibre")
+            manual_base_label = "Chiffre d'Affaires TTM (Override)"
 
-        if st.checkbox(f"Forcer la valeur initiale ({label_override})"):
-            manual_override = st.number_input(f"{label_override} initial (monnaie locale)", value=0.0, step=100.0)
+        elif is_rim:
+            st.info("🏦 **Mode Banques (RIM)** : La valeur dépend de la Book Value et du ROE.")
+            manual_base_label = "EPS de base (Override)"
 
-    # --- Monte Carlo ---
-    st.divider()
-    use_mc = st.checkbox("Activer l'analyse Monte Carlo")
+        else:
+            manual_base_label = "FCF de base (Override)"
 
-    sims = 1000
-    beta_vol = 0.10
-    growth_vol = 0.015
-    term_vol = 0.005
+        # ==============================================================================
+        # 5. SURCHARGES & MONTE CARLO
+        # ==============================================================================
+        with st.expander("⚙️ Surcharges & Analyse de Risque (Monte Carlo)", expanded=False):
+            c_ov1, c_ov2 = st.columns(2)
+            manual_base = c_ov1.number_input(f"Forcer {manual_base_label}", value=0.0, step=100.0, help="Laisser 0 pour utiliser Yahoo Finance")
+            wacc_ov = c_ov2.number_input("Forcer WACC / Ke Global", 0.0, 0.30, 0.0, 0.001, help="Surcharge le calcul automatique du taux d'actualisation")
 
-    if use_mc:
-        c_mc1, c_mc2, c_mc3 = st.columns(3)
-        with c_mc1:
-            sims = st.selectbox("Simulations", [1000, 2000, 5000], index=1)
-        with c_mc2:
-            beta_vol = st.number_input("Volatilité Beta", value=0.10, step=0.01)
-        with c_mc3:
-            growth_vol = st.number_input("Volatilité Croissance", value=0.015, step=0.001)
+            st.divider()
+            st.markdown("**🎲 Configuration Monte Carlo**")
+            use_mc = st.toggle("Activer la simulation", value=False)
 
-    # ------------------------------------------------------------------
-    # 5. SOUMISSION
-    # ------------------------------------------------------------------
-    st.markdown("---")
-    submitted = st.button("Lancer l’analyse (EXPERT) 🚀", type="primary", use_container_width=True)
+            mc1, mc2, mc3 = st.columns(3)
+            sims = mc1.selectbox("Simulations", [1000, 2000, 5000, 10000], index=1)
+            beta_vol = mc2.number_input("Incertitude Beta (Vol)", 0.05, 0.50, 0.10, 0.01, help="Écart-type sur le risque")
+            growth_vol = mc3.number_input("Incertitude Croissance (Vol)", 0.005, 0.10, 0.015, 0.001, help="Écart-type sur la croissance")
 
-    if submitted and ticker:
+            # Ajout variable manquante pour éviter tout NameError futur
+            term_vol = 0.005
 
-        # Mapping contextuel pour Graham : le champ Kd devient le AAA Yield
-        aaa_yield_val = kd_or_aaa if is_graham else 0.0
-        cost_debt_val = kd_or_aaa if not is_graham else 0.0
+        st.markdown("---")
 
-        # Construction de l'objet paramètres
-        params = DCFParameters(
-            risk_free_rate=rf,
-            market_risk_premium=mrp,
-            corporate_aaa_yield=aaa_yield_val,
-            cost_of_debt=cost_debt_val,
-            tax_rate=tax,
-            fcf_growth_rate=g_growth,
-            perpetual_growth_rate=g_perp,
-            projection_years=int(years),
-            high_growth_years=high_growth_years,
+        # ==============================================================================
+        # 6. SOUMISSION (Le bouton est bien là !)
+        # ==============================================================================
+        submitted = st.form_submit_button("Lancer l'Analyse Expert", type="primary", use_container_width=True)
 
-            target_equity_weight=we,
-            target_debt_weight=wd,
+        if submitted:
+            # Mapping logique
+            aaa_val = rate_val if is_graham else 0.0
+            kd_val = rate_val if not (is_graham or is_rim) else 0.0
 
-            target_fcf_margin=target_margin,
-            manual_fcf_base=manual_override,
+            final_manual_base = manual_base if manual_base != 0.0 else None
+            final_wacc_ov = wacc_ov if wacc_ov != 0.0 else None
 
-            enable_monte_carlo=use_mc,
-            num_simulations=sims,
-            beta_volatility=beta_vol,
-            growth_volatility=growth_vol,
-            terminal_growth_volatility=term_vol,
+            try:
+                params = DCFParameters(
+                    risk_free_rate=rf,
+                    market_risk_premium=mrp,
+                    corporate_aaa_yield=aaa_val,
+                    cost_of_debt=kd_val,
+                    tax_rate=tax,
+                    fcf_growth_rate=g_growth,
+                    perpetual_growth_rate=g_perp,
+                    projection_years=int(years),
+                    high_growth_years=high_growth_years,
 
-            terminal_method=TerminalValueMethod.GORDON_SHAPIRO
-        )
+                    target_equity_weight=we,
+                    target_debt_weight=wd,
 
-        # RETOUR CORRIGÉ : Ajout de 'projection_years' qui manquait
-        return ValuationRequest(
-            ticker=ticker,
-            projection_years=int(years),  # <--- AJOUT CRITIQUE ICI
-            mode=mode,
-            input_source=InputSource.MANUAL,
-            manual_params=params,
-            manual_beta=beta,
-            options={"compute_monte_carlo": use_mc}
-        )
+                    target_fcf_margin=target_margin,
+                    manual_fcf_base=final_manual_base,
+                    wacc_override=final_wacc_ov,
+
+                    enable_monte_carlo=use_mc,
+                    num_simulations=sims,
+                    beta_volatility=beta_vol,
+                    growth_volatility=growth_vol,
+                    terminal_growth_volatility=term_vol
+                )
+
+                return ValuationRequest(
+                    ticker=default_ticker,
+                    projection_years=int(years),
+                    mode=selected_mode,
+                    input_source=InputSource.MANUAL,
+                    manual_params=params,
+                    manual_beta=manual_beta
+                )
+
+            except Exception as e:
+                st.error(f"Erreur de paramètres : {e}")
+                return None
 
     return None
+
+def selected_label(mode: ValuationMode) -> str:
+    """Helper pour afficher un nom joli dans le titre."""
+    return mode.value

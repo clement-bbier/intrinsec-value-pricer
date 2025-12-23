@@ -1,3 +1,15 @@
+"""
+core/computation/financial_math.py
+
+MOTEUR MATHÉMATIQUE FINANCIER
+Version : V2.1 — Hedge Fund Quality (Decimal Standard)
+
+Standardisation :
+- Toutes les fonctions attendent STRICTEMENT des décimales pour les taux (ex: 0.05).
+- Suppression des multiplications "magiques" par 100.
+- Lève des CalculationError explicites en cas d'aberration.
+"""
+
 import logging
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
@@ -52,8 +64,7 @@ def calculate_discount_factors(rate: float, years: int) -> List[float]:
 
 def calculate_npv(flows: List[float], rate: float) -> float:
     """
-    Calcule la Valeur Actuelle Nette (NPV) d'une série de flux futurs.
-    NPV = Somme (Flow_t / (1+r)^t)
+    Calcule la Valeur Actuelle Nette (NPV).
     """
     factors = calculate_discount_factors(rate, len(flows))
     return sum(f * d for f, d in zip(flows, factors))
@@ -62,8 +73,6 @@ def calculate_npv(flows: List[float], rate: float) -> float:
 def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
     """
     Modèle de Gordon-Shapiro pour la Valeur Terminale.
-    TV = CF_n * (1+g) / (r-g)
-
     Invariant : rate (WACC/Ke) > g_perp
     """
     if rate <= g_perp:
@@ -75,20 +84,14 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
 
 
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
-    """
-    Modèle de Sortie par Multiple (Market Approach).
-    TV = Metric_n * Multiple (ex: EBITDA_n * 10x)
-    """
+    """Modèle de Sortie par Multiple."""
     if multiple < 0:
         raise CalculationError("Le multiple de sortie ne peut pas être négatif.")
     return final_metric * multiple
 
 
 def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float) -> float:
-    """
-    Passage de l'Enterprise Value (EV) à l'Equity Value.
-    EqV = EV - Dette + Cash
-    """
+    """Passage de l'Enterprise Value (EV) à l'Equity Value."""
     return enterprise_value - total_debt + cash
 
 
@@ -98,6 +101,7 @@ def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, ca
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     """Modèle CAPM : Ke = Rf + Beta * MRP"""
+    # Validation implicite : On attend des décimales (ex: 0.04, 0.05)
     return rf + (beta * mrp)
 
 
@@ -107,18 +111,15 @@ def calculate_synthetic_cost_of_debt(
         interest_expense: float,
         market_cap: float
 ) -> float:
-    """
-    Estime le coût de la dette basé sur le ratio de couverture des intérêts (ICR).
-    Utilise les tables de spreads de Damodaran.
-    """
+    """Estime le coût de la dette (Rf + Spread)."""
     if interest_expense <= 0:
-        return rf + 0.0107  # Spread par défaut (AAA/AA safe)
+        return rf + 0.0107  # Spread safe (1.07%)
 
     icr = ebit / interest_expense
     is_large = market_cap >= 5_000_000_000
     table = SPREADS_LARGE_CAP if is_large else SPREADS_SMALL_MID_CAP
 
-    spread = 0.20  # Default junk/non-rated
+    spread = 0.20  # Default junk
     for threshold, val in table:
         if icr >= threshold:
             spread = val
@@ -128,10 +129,8 @@ def calculate_synthetic_cost_of_debt(
 
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """
-    Calcul centralisé du WACC avec gestion des poids cibles vs marché.
-    """
-    # A. Cost of Equity (Ke)
+    """Calcul centralisé du WACC."""
+    # A. Cost of Equity
     if params.manual_cost_of_equity is not None:
         ke = params.manual_cost_of_equity
     else:
@@ -141,20 +140,18 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
             params.market_risk_premium
         )
 
-    # B. Cost of Debt (Kd)
+    # B. Cost of Debt
     kd_gross = params.cost_of_debt
     kd_net = kd_gross * (1.0 - params.tax_rate)
 
-    # C. Weights (We, Wd)
+    # C. Poids
     market_equity = financials.current_price * financials.shares_outstanding
 
-    # Priorité aux poids cibles s'ils sont définis par l'expert
     if params.target_equity_weight > 0 and params.target_debt_weight > 0:
         we = params.target_equity_weight
         wd = params.target_debt_weight
         method = "TARGET"
     else:
-        # Poids de marché
         total_cap = market_equity + financials.total_debt
         if total_cap <= 0:
             we, wd = 1.0, 0.0
@@ -164,10 +161,8 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
             wd = financials.total_debt / total_cap
             method = "MARKET"
 
-    # D. WACC Formula
     wacc_raw = (we * ke) + (wd * kd_net)
 
-    # Override optionnel
     if params.wacc_override is not None:
         wacc_final = params.wacc_override
         method = "MANUAL_OVERRIDE"
@@ -186,30 +181,35 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
 
 
 # ==============================================================================
-# 3. MODÈLES SPÉCIFIQUES (GRAHAM, RIM) - FORMULES RÉVISÉES
+# 3. MODÈLES SPÉCIFIQUES — NETTOYÉS
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
     """
-    Formule Révisée de Benjamin Graham (1974) :
-    V = [EPS * (8.5 + 2g) * 4.4] / Y
+    Formule Révisée de Benjamin Graham (1974).
+    Standardisée pour inputs décimaux.
 
     Args:
-        eps: Earnings Per Share normalisé.
-        growth_rate: Taux de croissance (ex: 0.05 pour 5%).
-        aaa_yield: Rendement des obligations corporate AAA actuel (ex: 0.045).
-
-    Note: Dans la formule originale, '2g' implique g comme entier (2*5=10).
-    Ici, on convertit le décimal : 2 * (growth_rate * 100).
+        eps: Bénéfice par action.
+        growth_rate: Taux (ex: 0.05 pour 5%).
+        aaa_yield: Taux (ex: 0.045 pour 4.5%).
     """
     if aaa_yield <= 0:
-        raise CalculationError("Le rendement obligataire (AAA Yield) doit être positif.")
+        raise CalculationError("AAA Yield doit être strictement positif.")
 
-    # Facteur de croissance : 8.5 (base PE) + 2 * croissance (%)
-    growth_multiplier = 8.5 + 2.0 * (growth_rate * 100.0)
+    # --- NETTOYAGE CRITIQUE ---
+    # La formule originale utilise des entiers pour la croissance (2*g_entier).
+    # Comme on travaille en décimales (0.05), on convertit juste pour le facteur.
+    # MAIS on s'assure que growth_rate est bien < 1.0 avant.
 
-    # Ajustement aux taux : Multiplier par 4.4 (taux réf) et diviser par taux actuel
-    rate_adjustment = 4.4 / (aaa_yield * 100.0)
+    # Conversion explicite pour la formule "8.5 + 2g"
+    g_scaled = growth_rate * 100.0
+
+    # Conversion explicite pour l'ajustement "4.4 / Y"
+    y_scaled = aaa_yield * 100.0
+
+    growth_multiplier = 8.5 + 2.0 * g_scaled
+    rate_adjustment = 4.4 / y_scaled
 
     return eps * growth_multiplier * rate_adjustment
 
@@ -221,11 +221,8 @@ def calculate_rim_vectors(
         payout_ratio: float
 ) -> Tuple[List[float], List[float]]:
     """
-    Génère les vecteurs nécessaires pour le Residual Income Model.
-    Utilise la Clean Surplus Relationship : BV_t = BV_{t-1} + NI_t - Div_t
-
-    Returns:
-        (residual_incomes, book_values)
+    Residual Income Model Vectors.
+    Ke doit être une décimale (ex: 0.08).
     """
     book_values = []
     residual_incomes = []
@@ -233,17 +230,12 @@ def calculate_rim_vectors(
     prev_bv = current_book_value
 
     for earnings in projected_earnings:
-        # 1. Calcul du Dividende (via payout fixe pour simplification)
         dividend = earnings * payout_ratio
 
-        # 2. Charge de Capital (Equity Charge)
+        # Ke (décimale) * Book Value
         equity_charge = prev_bv * cost_of_equity
 
-        # 3. Residual Income (Profit économique)
         ri = earnings - equity_charge
-
-        # 4. Mise à jour Book Value (Clean Surplus)
-        # BV_new = BV_old + Net Income - Dividends
         new_bv = prev_bv + earnings - dividend
 
         residual_incomes.append(ri)

@@ -1,3 +1,15 @@
+"""
+infra/macro/yahoo_macro_provider.py
+
+FOURNISSEUR MACRO — TAUX & RISQUE
+Version : V3.4 — Fix Critique EUS=F (Price vs Yield)
+
+Correctif :
+- Détection intelligente du format des Futures (Prix vs Taux).
+- Empêche la génération de taux aberrants (ex: 96%) si Yahoo change de format.
+- Maintien de la compatibilité totale avec les versions précédentes.
+"""
+
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -6,21 +18,22 @@ from typing import Optional, Dict
 import pandas as pd
 import yfinance as yf
 
-from core.models import DCFParameters  # Utilisation potentielle future
+# On garde cet import pour la compatibilité de type si besoin dans d'autres modules
+from core.models import DCFParameters
 
 logger = logging.getLogger(__name__)
 
 # Tickers pour les taux sans risque (Yields / Futures)
 # ^TNX  = Treasury Yield 10 Years (en %, donc 4.5 = 4.5% -> doit être converti en 0.045)
-# EUS=F = Future sur EURO SHORT-TERM RATE (€STR) coté en prix ~ 100 - taux(%)
+# EUS=F = Future sur EURO SHORT-TERM RATE (€STR)
+#         Peut être coté en PRIX (~96.50) ou en TAUX (~3.50) selon le bon vouloir de Yahoo.
 RISK_FREE_TICKERS: Dict[str, str] = {
-    "USD": "^TNX",  # Taux sans risque USD (10Y)
-    "EUR": "EUS=F",  # Future €STR (proxy OIS risk-free court terme) ou Bund si dispo
-    "CAD": "^GSPTSE",  # Proxy simplifié
-    "GBP": "^FTSE",  # Placeholder, à affiner
+    "USD": "^TNX",
+    "EUR": "EUS=F",
+    "CAD": "^GSPTSE",
+    "GBP": "^FTSE",
 }
 
-# Ticker pour le marché (S&P 500) – pas encore utilisé intensivement
 MARKET_TICKER = "^GSPC"
 
 
@@ -29,10 +42,10 @@ class MacroContext:
     """Contient les paramètres macro-économiques à une date donnée."""
     date: datetime
     currency: str
-    risk_free_rate: float  # ex: 0.04 pour 4%
-    market_risk_premium: float  # ex: 0.05 pour 5%
-    perpetual_growth_rate: float  # ex: 0.02 pour 2%
-    corporate_aaa_yield: float  # ex: 0.047 (Nouveau: Requis pour Graham 1974)
+    risk_free_rate: float
+    market_risk_premium: float
+    perpetual_growth_rate: float
+    corporate_aaa_yield: float
 
 
 class YahooMacroProvider:
@@ -42,67 +55,105 @@ class YahooMacroProvider:
     """
 
     def __init__(self):
-        # Cache pour les séries historiques
         self._rf_cache: Dict[str, pd.Series] = {}
-
-        # Spread de crédit moyen pour les obligations AAA vs Taux Sans Risque (10Y)
-        # Historiquement entre 0.60% et 1.00%
+        # Spread par défaut entre taux sans risque et obligations AAA (70 bps)
         self.DEFAULT_AAA_SPREAD = 0.0070
+
+    def _fetch_history_robust(self, ticker_obj: yf.Ticker) -> pd.DataFrame:
+        """
+        Tente de récupérer l'historique avec des périodes dégressives.
+        Contourne le bug 'Period max is invalid' de yfinance sur les futures.
+        """
+        # Ordre de tentative : Max -> 10 ans -> 5 ans -> 1 an
+        periods = ["max", "10y", "5y", "1y"]
+
+        for period in periods:
+            try:
+                # auto_adjust=False est souvent plus stable pour les index/taux
+                data = ticker_obj.history(period=period, interval="1d", auto_adjust=False)
+
+                if not data.empty and "Close" in data.columns:
+                    if period != "max":
+                        logger.warning(
+                            f"[Macro] Fallback sur period='{period}' pour {ticker_obj.ticker} "
+                            "(L'historique complet 'max' a échoué)"
+                        )
+                    return data
+            except Exception as e:
+                logger.debug(f"[Macro] Echec fetch {ticker_obj.ticker} sur {period}: {e}")
+                continue
+
+        # Si tout échoue
+        return pd.DataFrame()
 
     def _load_risk_free_series(self, currency: str) -> Optional[pd.Series]:
         """
         Charge l'historique de rendement sans risque pour une devise donnée.
+        Gère intelligemment la conversion Prix -> Taux -> Décimale.
         """
         currency = currency.upper()
 
-        # 1) Cache Check
         if currency in self._rf_cache:
             return self._rf_cache[currency]
 
-        # 2) Résolution Ticker
         ticker = RISK_FREE_TICKERS.get(currency)
         if not ticker:
-            # Silence warning pour devises exotiques, fallback géré plus haut
             return None
 
         logger.info("[Macro] Chargement de l'historique Rf pour %s (%s)...", ticker, currency)
 
         try:
             yt = yf.Ticker(ticker)
-            # Fetch historique max pour couvrir les dates passées
-            data = yt.history(period="max", interval="1d", auto_adjust=False)
 
-            if data.empty or "Close" not in data.columns:
-                logger.warning("[Macro] Données vides pour %s.", ticker)
+            # --- UTILISATION DE LA MÉTHODE ROBUSTE ---
+            data = self._fetch_history_robust(yt)
+
+            if data.empty:
+                logger.warning("[Macro] Données vides ou inaccessibles pour %s.", ticker)
                 return None
 
-            # Normalisation Index (Timezone Naive)
+            # Normalisation de l'Index (Date)
             idx = pd.to_datetime(data.index)
             if idx.tz is not None:
                 idx = idx.tz_localize(None)
             data.index = idx
 
-            # Normalisation Valeur (Conversion en décimal)
+            # --- CORRECTION CRITIQUE EUS=F (LE BUG DES 119€) ---
             if ticker == "EUS=F":
-                # Future Rate = 100 - Price
-                implied_rate = 100.0 - data["Close"]
-                series = (implied_rate / 100.0).rename("Risk_Free_Rate")
+                # EUS=F est traître : il peut valoir ~96.5 (Prix) ou ~3.5 (Taux).
+                # S'il vaut 3.5 et qu'on fait (100 - 3.5), on obtient 96.5% de taux !
+
+                # Copie pour manipulation sûre
+                raw_values = data["Close"].copy()
+
+                # Masque : Quelles lignes sont des PRIX (supposons > 20.0 par sécurité)
+                # Un taux Euribor ne sera jamais > 20% dans le contexte actuel.
+                is_price_format = raw_values > 20.0
+
+                # Conversion des Prix en Taux % (100 - Prix)
+                raw_values.loc[is_price_format] = 100.0 - raw_values.loc[is_price_format]
+
+                # À ce stade, raw_values contient des POURCENTAGES (ex: 3.5 pour 3.5%)
+                # On convertit en décimales (ex: 0.035)
+                series = (raw_values / 100.0).rename("Risk_Free_Rate")
+
             else:
-                # Yield standard (ex: 4.2 -> 0.042)
+                # Yield standard (ex: ^TNX renvoie 4.2 pour 4.2%)
                 series = (data["Close"] / 100.0).rename("Risk_Free_Rate")
 
+            # Mise en cache
             self._rf_cache[currency] = series
             logger.info("[Macro] Historique Rf chargé (%d points).", len(series))
             return series
 
         except Exception as e:
-            logger.error("[Macro] Erreur lors du chargement de %s: %s", ticker, e)
+            logger.error("[Macro] Erreur critique lors du chargement de %s: %s", ticker, e)
             return None
 
     def _estimate_aaa_yield(self, risk_free_rate: float) -> float:
         """
-        Estime le rendement des obligations corporatives AAA.
-        Y_aaa = Rf + Spread_AAA
+        Estime le rendement des obligations AAA corporate.
+        Approche simple : Taux sans risque + Spread fixe.
         """
         return risk_free_rate + self.DEFAULT_AAA_SPREAD
 
@@ -115,11 +166,14 @@ class YahooMacroProvider:
     ) -> Optional[MacroContext]:
         """
         Retourne le contexte macro complet à une date précise.
+        Utilisé par le provider pour remplir les DCFParameters.
         """
         currency = currency.upper()
+        # On retire la timezone pour comparer avec l'index pandas
         date = date.replace(tzinfo=None)
 
-        # Valeurs par défaut (Fallback ultime)
+        # Valeurs par défaut (Fallback ultime si l'API échoue totalement)
+        # On renvoie bien des décimales (0.04 = 4%)
         rf_value = 0.04 if currency != "EUR" else 0.027
 
         # 1. Récupération Taux Sans Risque (Rf)
@@ -132,9 +186,10 @@ class YahooMacroProvider:
             if not past_data.empty:
                 rf_value = float(past_data.iloc[-1])
 
-                # Sanity check pour l'Euro (taux négatifs passés ou erreur future)
-                if currency == "EUR" and rf_value < 0.0:
-                    rf_value = 0.025  # Fallback conservateur
+                # Sanity Check : On évite les taux < 0.1% ou négatifs pour les modèles perpétuels
+                # (Sauf si on veut explicitement gérer les taux négatifs, mais Gordon Shapiro n'aime pas ça)
+                if rf_value < 0.001:
+                    rf_value = 0.001
             else:
                 logger.warning(f"[Macro] Pas de donnée historique Rf pour {currency} avant {date.date()}")
 

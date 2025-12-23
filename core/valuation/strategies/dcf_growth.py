@@ -2,11 +2,7 @@
 core/valuation/strategies/dcf_growth.py
 
 Méthode : Revenue-Driven FCFF (High Growth DCF)
-Version : V1.1 — Chapitre 4 conforme (Glass Box)
-
-Références académiques :
-- Damodaran, A. – Valuation of Young, Growth and Tech Firms
-- CFA Institute – Equity Valuation (Growth Companies)
+Version : V1.2 — Pydantic Fix (Arguments nommés)
 """
 
 import logging
@@ -216,10 +212,16 @@ class RevenueBasedStrategy(ValuationStrategy):
             wacc, len(projected_fcfs)
         )
 
+        # Gordon Shapiro sur le FCF final normalisé
+        # Note : On s'assure que g_perp < WACC
+        g_perp = params.perpetual_growth_rate
+        if wacc <= g_perp:
+            g_perp = wacc - 0.005 # Sécurité
+
         tv = calculate_terminal_value_gordon(
             projected_fcfs[-1],
             wacc,
-            params.perpetual_growth_rate
+            g_perp
         )
         discounted_tv = tv * discount_factors[-1]
 
@@ -227,9 +229,9 @@ class RevenueBasedStrategy(ValuationStrategy):
             label="Valeur terminale actualisée",
             theoretical_formula="FCFₙ × (1+g) / (WACC − g)",
             hypotheses=[
-                TraceHypothesis("Final FCF", projected_fcfs[-1], financials.currency),
-                TraceHypothesis("WACC", wacc, "%"),
-                TraceHypothesis("Perpetual growth", params.perpetual_growth_rate, "%")
+                TraceHypothesis(name="Final FCF", value=projected_fcfs[-1], unit=financials.currency),
+                TraceHypothesis(name="WACC", value=wacc, unit="%"),
+                TraceHypothesis(name="Perpetual growth", value=g_perp, unit="%")
             ],
             numerical_substitution=(
                 f"TV × DFₙ = {tv:,.2f} × {discount_factors[-1]:.4f}"
@@ -244,11 +246,18 @@ class RevenueBasedStrategy(ValuationStrategy):
         # ====================================================
 
         enterprise_value = discounted_sum + discounted_tv
-        equity_value = calculate_equity_value_bridge(
+
+        # Correction Pydantic : calculate_equity_value_bridge retourne un dict ou un float
+        bridge = calculate_equity_value_bridge(
             enterprise_value,
             financials.total_debt,
             financials.cash_and_equivalents
         )
+
+        if isinstance(bridge, dict):
+            equity_value = bridge["equity_value"]
+        else:
+            equity_value = bridge
 
         if financials.shares_outstanding <= 0:
             raise CalculationError("Nombre d’actions invalide.")
@@ -259,10 +268,11 @@ class RevenueBasedStrategy(ValuationStrategy):
             label="Valeur intrinsèque par action",
             theoretical_formula="Equity / Shares outstanding",
             hypotheses=[
-                TraceHypothesis("Equity value", equity_value, financials.currency),
+                TraceHypothesis(name="Equity value", value=equity_value, unit=financials.currency),
                 TraceHypothesis(
-                    "Shares outstanding",
-                    financials.shares_outstanding
+                    name="Shares outstanding",
+                    value=financials.shares_outstanding,
+                    unit="#"
                 )
             ],
             numerical_substitution=(
@@ -288,5 +298,6 @@ class RevenueBasedStrategy(ValuationStrategy):
             terminal_value=tv,
             discounted_terminal_value=discounted_tv,
             enterprise_value=enterprise_value,
-            equity_value=equity_value
+            equity_value=equity_value,
+            calculation_trace=self.calculation_trace
         )

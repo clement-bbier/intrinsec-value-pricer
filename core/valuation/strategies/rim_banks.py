@@ -2,11 +2,7 @@
 core/valuation/strategies/rim_banks.py
 
 Méthode : Residual Income Model (RIM)
-Version : V1.1 — Chapitre 4 conforme (Glass Box)
-
-Références académiques :
-- Penman, S. – Financial Statement Analysis and Security Valuation
-- CFA Institute – Equity Valuation (Financial Institutions)
+Version : V1.2 — Pydantic Fix (Arguments nommés stricts)
 """
 
 import logging
@@ -115,17 +111,14 @@ class RIMBankingStrategy(ValuationStrategy):
         if ke <= 0:
             raise CalculationError("Cost of Equity invalide.")
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Coût des fonds propres",
             theoretical_formula="Rf + β × MRP",
             hypotheses=[
-                TraceHypothesis("Risk-free rate", params.risk_free_rate, "%"),
-                TraceHypothesis("Beta", financials.beta),
-                TraceHypothesis(
-                    "Market risk premium",
-                    params.market_risk_premium,
-                    "%"
-                )
+                TraceHypothesis(name="Risk-free rate", value=params.risk_free_rate, unit="%"),
+                TraceHypothesis(name="Beta", value=financials.beta, unit=""),
+                TraceHypothesis(name="Market risk premium", value=params.market_risk_premium, unit="%")
             ],
             numerical_substitution=f"Ke = {ke:.2%} ({ke_source})",
             result=ke,
@@ -146,12 +139,13 @@ class RIMBankingStrategy(ValuationStrategy):
         if eps_base > 0:
             payout_ratio = max(0.0, min(0.90, dividend / eps_base))
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Politique de distribution",
             theoretical_formula="Dividend / EPS",
             hypotheses=[
-                TraceHypothesis("Dividend", dividend, financials.currency),
-                TraceHypothesis("EPS base", eps_base, financials.currency)
+                TraceHypothesis(name="Dividend", value=dividend, unit=financials.currency),
+                TraceHypothesis(name="EPS base", value=eps_base, unit=financials.currency)
             ],
             numerical_substitution=(
                 f"Payout = {dividend:,.2f} / {eps_base:,.2f}"
@@ -179,16 +173,13 @@ class RIMBankingStrategy(ValuationStrategy):
             current_eps *= (1.0 + params.fcf_growth_rate)
             projected_eps.append(current_eps)
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Projection des résultats par action",
             theoretical_formula="EPSₜ = EPSₜ₋₁ × (1 + g)",
             hypotheses=[
-                TraceHypothesis("EPS base", eps_base, financials.currency),
-                TraceHypothesis(
-                    "Growth rate",
-                    params.fcf_growth_rate,
-                    "%"
-                )
+                TraceHypothesis(name="EPS base", value=eps_base, unit=financials.currency),
+                TraceHypothesis(name="Growth rate", value=params.fcf_growth_rate, unit="%")
             ],
             numerical_substitution=f"Projection sur {years} ans",
             result=sum(projected_eps),
@@ -210,12 +201,13 @@ class RIMBankingStrategy(ValuationStrategy):
             payout_ratio=payout_ratio
         )
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Calcul des profits résiduels",
             theoretical_formula="RIₜ = EPSₜ − Ke × BVₜ₋₁",
             hypotheses=[
-                TraceHypothesis("Cost of equity", ke, "%"),
-                TraceHypothesis("Payout ratio", payout_ratio, "%")
+                TraceHypothesis(name="Cost of equity", value=ke, unit="%"),
+                TraceHypothesis(name="Payout ratio", value=payout_ratio, unit="%")
             ],
             numerical_substitution="Application du clean surplus",
             result=sum(residual_incomes),
@@ -233,12 +225,13 @@ class RIMBankingStrategy(ValuationStrategy):
         discount_factors = calculate_discount_factors(ke, years)
         discounted_ri_sum = calculate_npv(residual_incomes, ke)
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Valeur actuelle des profits résiduels",
             theoretical_formula="∑ RIₜ / (1+Ke)ᵗ",
             hypotheses=[
-                TraceHypothesis("Residual incomes", residual_incomes, financials.currency),
-                TraceHypothesis("Cost of equity", ke, "%")
+                TraceHypothesis(name="Sum Residual Incomes", value=sum(residual_incomes), unit=financials.currency),
+                TraceHypothesis(name="Cost of equity", value=ke, unit="%")
             ],
             numerical_substitution=f"NPV(RI, {ke:.2%})",
             result=discounted_ri_sum,
@@ -262,17 +255,14 @@ class RIMBankingStrategy(ValuationStrategy):
             terminal_value_ri * discount_factors[-1]
         )
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Valeur terminale des profits résiduels",
             theoretical_formula="RIₙ × (1+g)/(Ke−g)",
             hypotheses=[
-                TraceHypothesis("Terminal RI", terminal_ri, financials.currency),
-                TraceHypothesis("Ke", ke, "%"),
-                TraceHypothesis(
-                    "Perpetual growth",
-                    params.perpetual_growth_rate,
-                    "%"
-                )
+                TraceHypothesis(name="Terminal RI", value=terminal_ri, unit=financials.currency),
+                TraceHypothesis(name="Ke", value=ke, unit="%"),
+                TraceHypothesis(name="Perpetual growth", value=params.perpetual_growth_rate, unit="%")
             ],
             numerical_substitution=(
                 f"TV × DFₙ = {terminal_value_ri:,.2f} × {discount_factors[-1]:.4f}"
@@ -294,17 +284,14 @@ class RIMBankingStrategy(ValuationStrategy):
             + discounted_terminal_ri
         )
 
+        # [CORRECTIF PYDANTIC] Usage d'arguments nommés
         self.add_step(
             label="Valeur intrinsèque par action (RIM)",
             theoretical_formula="BV₀ + RI + TV",
             hypotheses=[
-                TraceHypothesis("Book value", bv_per_share, financials.currency),
-                TraceHypothesis("Discounted RI", discounted_ri_sum, financials.currency),
-                TraceHypothesis(
-                    "Discounted terminal RI",
-                    discounted_terminal_ri,
-                    financials.currency
-                )
+                TraceHypothesis(name="Book value", value=bv_per_share, unit=financials.currency),
+                TraceHypothesis(name="Discounted RI", value=discounted_ri_sum, unit=financials.currency),
+                TraceHypothesis(name="Discounted TV", value=discounted_terminal_ri, unit=financials.currency)
             ],
             numerical_substitution=f"IV = {intrinsic_value:,.2f}",
             result=intrinsic_value,
@@ -332,5 +319,6 @@ class RIMBankingStrategy(ValuationStrategy):
             sum_discounted_ri=discounted_ri_sum,
             terminal_value_ri=terminal_value_ri,
             discounted_terminal_value=discounted_terminal_ri,
-            total_equity_value=total_equity_value
+            total_equity_value=total_equity_value,
+            calculation_trace=self.calculation_trace
         )

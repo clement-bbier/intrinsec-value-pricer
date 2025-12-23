@@ -1,8 +1,8 @@
 """
-ui_kpis.py
+app/ui_components/ui_kpis.py
 
 RESTITUTION PRINCIPALE — RAPPORT D’ANALYSTE
-Version : V2.1 — Bugfix Label & Optimisation
+Version : V2.2 — Compatibilité Workflow V3 & Enrichissement
 
 Rôle :
 - Page de garde & résumé exécutif
@@ -11,7 +11,7 @@ Rôle :
 - Zéro décoratif, 100 % informationnel
 """
 
-from typing import Optional
+from typing import Optional, Any
 import streamlit as st
 
 from core.models import (
@@ -21,8 +21,43 @@ from core.models import (
     AuditPillar,
     DCFValuationResult,
     RIMValuationResult,
-    GrahamValuationResult
+    GrahamValuationResult,
+    DDMValuationResult
 )
+
+# ==============================================================================
+# 0. COMPOSANTS VISUELS PARTAGÉS (Helpers)
+# ==============================================================================
+
+def render_financial_badge(label: str, value: str, score: float = 100) -> None:
+    """
+    Affiche un badge visuel type 'score' ou 'rating' avec code couleur.
+    Utilisé par le workflow pour afficher le Score Audit.
+    """
+    # Définition de la couleur selon le score
+    if score >= 75:
+        color = "green"
+    elif score >= 50:
+        color = "orange"
+    else:
+        color = "red"
+
+    # Rendu visuel propre
+    st.markdown(
+        f"""
+        <div style="
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 5px 10px;
+            text-align: center;
+            background-color: #f9f9f9;
+        ">
+            <small style="color: #666; text-transform: uppercase;">{label}</small><br>
+            <strong style="color: {color}; font-size: 1.2em;">{value}</strong>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ==============================================================================
 # 1. PAGE DE GARDE — SYNTHÈSE EXÉCUTIVE
@@ -32,6 +67,8 @@ def display_main_kpis(result: ValuationResult) -> None:
     """
     PAGE 1 — Synthèse exécutive.
     Comparable à une factsheet buy-side.
+    Note : Le workflow V3 peut parfois reconstruire ces métriques manuellement,
+    mais cette fonction reste disponible pour un usage autonome.
     """
 
     f = result.financials
@@ -93,12 +130,44 @@ def display_main_kpis(result: ValuationResult) -> None:
 
 
 # ==============================================================================
-# 2. CORPS DU RAPPORT — NAVIGATION STRUCTURÉE
+# 2. ADAPTATEURS DE MODÈLES (V3 Workflow Hooks)
+# ==============================================================================
+# Ces fonctions permettent au workflow.py d'appeler des affichages spécifiques
+# sans connaître les détails internes de ui_kpis.py.
+
+def display_dcf_summary(result: DCFValuationResult) -> None:
+    """Affiche le détail complet pour un modèle DCF."""
+    st.caption("Détails du modèle : Discounted Cash Flow (DCF)")
+    display_valuation_details(result)
+
+def display_rim_summary(result: RIMValuationResult) -> None:
+    """Affiche le détail complet pour un modèle RIM (Banques)."""
+    st.caption("Détails du modèle : Residual Income Model (RIM)")
+    display_valuation_details(result)
+
+def display_graham_summary(result: GrahamValuationResult) -> None:
+    """Affiche le détail complet pour un modèle Graham."""
+    st.caption("Détails du modèle : Graham Intrinsic Value")
+    display_valuation_details(result)
+
+def display_ddm_summary(result: DDMValuationResult) -> None:
+    """Affiche le détail complet pour un modèle DDM."""
+    st.caption("Détails du modèle : Dividend Discount Model (DDM)")
+    display_valuation_details(result)
+
+def display_audit_report(report: AuditReport) -> None:
+    """Wrapper pour afficher le rapport d'audit seul."""
+    _display_confidence_audit(report)
+
+
+# ==============================================================================
+# 3. CORPS DU RAPPORT — NAVIGATION STRUCTURÉE
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult) -> None:
     """
     Corps principal du rapport d’analyste.
+    Génère les onglets : Calcul, Audit, Paramètres.
     """
 
     st.subheader("Analyse détaillée")
@@ -123,7 +192,7 @@ def display_valuation_details(result: ValuationResult) -> None:
 
 
 # ==============================================================================
-# 3. DÉMONSTRATION — GLASS BOX
+# 4. DÉMONSTRATION — GLASS BOX
 # ==============================================================================
 
 def _display_calculation_trace(result: ValuationResult) -> None:
@@ -149,7 +218,6 @@ def _display_calculation_trace(result: ValuationResult) -> None:
 def _render_calculation_step(index: int, step: CalculationStep) -> None:
     """
     Rendu standardisé d’une étape de calcul.
-    CORRECTIF : Utilisation de label_visibility="collapsed" pour éviter les warnings.
     """
 
     with st.expander(f"{index}. {step.label}", expanded=True):
@@ -172,16 +240,15 @@ def _render_calculation_step(index: int, step: CalculationStep) -> None:
 
         with c3:
             st.markdown("**Résultat**")
-            # --- C'EST ICI LA MODIFICATION ---
             st.metric(
-                label="Résultat",  # Label obligatoire
+                label="Résultat",
                 value=f"{step.result:,.2f} {step.unit}",
-                label_visibility="collapsed"  # On le cache proprement
+                label_visibility="collapsed"
             )
 
 
 # ==============================================================================
-# 4. AUDIT & CONFIANCE — CHAPITRE 6
+# 5. AUDIT & CONFIANCE — CHAPITRE 6
 # ==============================================================================
 
 def _display_confidence_audit(report: AuditReport) -> None:
@@ -197,12 +264,12 @@ def _display_confidence_audit(report: AuditReport) -> None:
         st.metric("Score global", f"{int(report.global_score)}/100")
         st.metric("Rating", report.rating)
 
-        st.markdown("**Formule d’agrégation**")
-        st.code(
-            report.pillar_breakdown.aggregation_formula
-            if report.pillar_breakdown else "—",
-            language="text"
-        )
+        if report.pillar_breakdown:
+            st.markdown("**Formule d’agrégation**")
+            st.code(
+                report.pillar_breakdown.aggregation_formula,
+                language="text"
+            )
 
     with c2:
         if not report.pillar_breakdown:
@@ -210,8 +277,11 @@ def _display_confidence_audit(report: AuditReport) -> None:
             return
 
         for pillar, ps in report.pillar_breakdown.pillars.items():
+            # Gestion sécurisée de l'affichage du nom du pilier
+            pillar_name = pillar.value if isinstance(pillar, AuditPillar) else str(pillar)
+
             with st.expander(
-                f"{pillar.value} — {int(ps.score)}/100",
+                f"{pillar_name} — {int(ps.score)}/100",
                 expanded=True
             ):
                 st.markdown(
@@ -231,7 +301,7 @@ def _display_confidence_audit(report: AuditReport) -> None:
 
 
 # ==============================================================================
-# 5. HYPOTHÈSES & PARAMÈTRES
+# 6. HYPOTHÈSES & PARAMÈTRES
 # ==============================================================================
 
 def _display_parameters_summary(result: ValuationResult) -> None:

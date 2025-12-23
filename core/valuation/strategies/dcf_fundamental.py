@@ -3,10 +3,6 @@ core/valuation/strategies/dcf_fundamental.py
 
 Méthode : FCFF Normalized Discounted Cash Flow
 Version : V1.1 — Chapitre 4 conforme (Glass Box)
-
-Références académiques :
-- CFA Institute – Equity Valuation
-- Damodaran, A. – Normalized Earnings & Cash Flows
 """
 
 import logging

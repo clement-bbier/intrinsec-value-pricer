@@ -1,68 +1,112 @@
+"""
+core/exceptions.py
+Exceptions typées transportant des diagnostics structurés.
+"""
+
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional, Any
+from core.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
 
 logger = logging.getLogger(__name__)
 
 
-class BaseValuationError(Exception):
+class ValuationException(Exception):
     """
-    Classe de base pour toutes les erreurs métier.
-    Loggue automatiquement l'erreur à l'instanciation.
+    Exception racine standardisée.
+    Elle transporte un DiagnosticEvent structuré au lieu d'un simple message texte.
     """
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(message)
-        self.context = context
-
-        # Log structuré automatique
-        log_message = f"[{self.__class__.__name__}] {message}"
-        if context:
-            log_message += f" | context={context}"
-        logger.error(log_message)
-
-    @property
-    def ui_user_message(self) -> str:
-        """Message convivial pour l'interface utilisateur."""
-        return str(self)
+    def __init__(self, diagnostic: DiagnosticEvent):
+        self.diagnostic = diagnostic
+        super().__init__(diagnostic.message)
+        # Log automatique structuré
+        logger.error(
+            f"[{diagnostic.code}] {diagnostic.message} "
+            f"(Severity: {diagnostic.severity.value}, Domain: {diagnostic.domain.value})"
+        )
 
 
-class CalculationError(BaseValuationError):
-    @property
-    def ui_user_message(self) -> str:
-        # Correction du bug ici : on utilise self (le message) et non super().__init__
-        return f"Erreur de calcul : {self}"
+# --- ADAPTATEURS INTELLIGENTS ---
+
+class TickerNotFoundError(ValuationException):
+    def __init__(self, ticker: str):
+        event = DiagnosticEvent(
+            code="DATA_TICKER_NOT_FOUND",
+            severity=SeverityLevel.CRITICAL,
+            domain=DiagnosticDomain.DATA,
+            message=f"Le ticker '{ticker}' est introuvable sur Yahoo Finance.",
+            technical_detail=f"Symbole reçu : {ticker}",
+            remediation_hint="Vérifiez l'orthographe (ex: 'AIR.PA' pour Airbus) ou si l'entreprise est radiée."
+        )
+        super().__init__(event)
 
 
-class WorkflowError(BaseValuationError):
-    @property
-    def ui_user_message(self) -> str:
-        return "Erreur technique interne (Workflow). Veuillez réessayer."
+class DataMissingError(ValuationException):
+    """
+    Plus précis que 'DataInsufficient'.
+    Utilisé quand un champ précis manque (ex: Pas de Beta, Pas de FCF 2023).
+    """
+
+    def __init__(self, missing_field: str, ticker: str, year: Optional[int] = None):
+        if year:
+            msg = f"Donnée manquante pour {ticker} : '{missing_field}' pour l'année {year}."
+        else:
+            msg = f"Donnée fondamentale manquante pour {ticker} : '{missing_field}' est vide ou invalide."
+
+        event = DiagnosticEvent(
+            code="DATA_MISSING_FIELD",
+            severity=SeverityLevel.ERROR,  # Bloquant pour le calcul
+            domain=DiagnosticDomain.DATA,
+            message=msg,
+            remediation_hint="Cette entreprise ne publie peut-être pas cette donnée, ou l'historique est trop court."
+        )
+        super().__init__(event)
 
 
-class ApplicationStartupError(BaseValuationError):
-    pass
+class ModelIncoherenceError(ValuationException):
+    """
+    Utilisé quand les maths sont impossibles (ex: WACC < Growth).
+    """
+
+    def __init__(self, model_name: str, issue: str, values_context: str):
+        event = DiagnosticEvent(
+            code="MODEL_LOGIC_ERROR",
+            severity=SeverityLevel.WARNING,
+            domain=DiagnosticDomain.MODEL,
+            message=f"Incohérence dans le modèle {model_name} : {issue}",
+            technical_detail=f"Valeurs : {values_context}",
+            remediation_hint="Vérifiez vos hypothèses de croissance ou de taux d'actualisation."
+        )
+        super().__init__(event)
 
 
-# --- DATA PROVIDER ERRORS (HIÉRARCHIE) ---
-
-class DataProviderError(BaseValuationError):
-    """Erreur générique liée à la récupération de données."""
-    pass
-
-
-class TickerNotFoundError(DataProviderError):
-    @property
-    def ui_user_message(self) -> str:
-        return "Symbole (Ticker) introuvable ou radié. Vérifiez l'orthographe sur Yahoo Finance."
-
-
-class DataInsufficientError(DataProviderError):
-    @property
-    def ui_user_message(self) -> str:
-        return "Données financières insuffisantes ou incomplètes pour ce symbole (ex: Holding, SPAC ou données manquantes)."
+class ExternalServiceError(ValuationException):
+    def __init__(self, provider: str, error_detail: str):
+        event = DiagnosticEvent(
+            code="PROVIDER_CONNECTION_FAIL",
+            severity=SeverityLevel.CRITICAL,
+            domain=DiagnosticDomain.PROVIDER,
+            message=f"Échec de connexion au fournisseur {provider}.",
+            technical_detail=error_detail,
+            remediation_hint="Vérifiez votre connexion internet. L'API est peut-être temporairement indisponible."
+        )
+        super().__init__(event)
 
 
-class ExternalServiceError(DataProviderError):
-    @property
-    def ui_user_message(self) -> str:
-        return "Erreur de connexion au fournisseur de données (Timeout/Réseau). Veuillez réessayer dans quelques instants."
+# --- AJOUT CRITIQUE POUR LA RÉTRO-COMPATIBILITÉ ---
+
+class CalculationError(ValuationException):
+    """
+    Erreur générique de calcul.
+    Permet d'utiliser `raise CalculationError("Message")` tout en restant conforme
+    au système DiagnosticEvent (V2.2).
+    """
+    def __init__(self, message: str):
+        event = DiagnosticEvent(
+            code="CALCULATION_GENERIC_ERROR",
+            severity=SeverityLevel.ERROR,
+            domain=DiagnosticDomain.MODEL,
+            message=message,
+            remediation_hint="Vérifiez les données d'entrée ou les paramètres du modèle."
+        )
+        super().__init__(event)

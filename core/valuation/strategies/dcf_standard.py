@@ -3,10 +3,6 @@ core/valuation/strategies/dcf_standard.py
 
 Méthode : FCFF Two-Stage Discounted Cash Flow
 Version : V1.1 — Chapitre 4 conforme (Glass Box)
-
-Références académiques :
-- Damodaran, A. – Investment Valuation
-- CFA Institute – Equity Valuation
 """
 
 import logging

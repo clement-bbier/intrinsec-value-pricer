@@ -1,18 +1,13 @@
 """
 infra/data_providers/yahoo_provider.py
 
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE (OPTIMIZED)
-Version : V2.1 — Caching & Robustesse
+FOURNISSEUR DE DONNÉES — YAHOO FINANCE (ULTIMATE V3.7)
+Version : V3.7 — Pydantic Integration & Validation Safety
 
-Responsabilités :
-- Interface concrète avec l'API yfinance
-- Normalisation des données brutes en objets du domaine (CompanyFinancials)
-- Gestion du Caching pour la performance UI (Streamlit)
-- Gestion des erreurs réseaux et des données manquantes
-
-Politique de Performance :
-- Les données sont mises en cache pour éviter le ban IP et la latence.
-- Le cache est invalidé toutes les 2 heures (TTL).
+Changelog :
+- Intégration Pydantic : Gestion des ValidationErrors lors de la création des paramètres.
+- Sécurisation des inputs (float vs None).
+- Maintien du Deep Fetch et de la robustesse existante.
 """
 
 import logging
@@ -21,31 +16,36 @@ from typing import Tuple, Optional
 
 import pandas as pd
 import yfinance as yf
-import streamlit as st  # Import nécessaire pour le caching de performance
+import streamlit as st
+from pydantic import ValidationError
 
-# Assurez-vous que core/computation/financial_math.py existe bien
+# --- CORE IMPORTS ---
 from core.computation.financial_math import calculate_synthetic_cost_of_debt
-from core.exceptions import TickerNotFoundError, DataInsufficientError
+from core.exceptions import (
+    TickerNotFoundError,
+    DataMissingError,
+    ExternalServiceError
+)
 from core.models import CompanyFinancials, DCFParameters
 
+# --- INFRA IMPORTS ---
 from infra.data_providers.base_provider import DataProvider
 from infra.data_providers.yahoo_helpers import (
-    INTEREST_EXPENSE_ALIASES,
-    _safe_get_first,
+    safe_api_call,
     get_simple_annual_fcf,
     normalize_currency_and_price,
-    safe_api_call,
+    extract_most_recent_value,
     calculate_historical_cagr
 )
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
+from infra.ref_data.country_matrix import COUNTRY_CONTEXT, DEFAULT_COUNTRY
 
 logger = logging.getLogger(__name__)
 
 
 class YahooFinanceProvider(DataProvider):
     """
-    Implémentation concrète via yfinance.
-    Intègre une couche de caching pour optimiser l'expérience utilisateur.
+    Implémentation robuste via yfinance avec stratégies de repli (Fallback).
     """
 
     def __init__(self, macro_provider: YahooMacroProvider):
@@ -55,135 +55,159 @@ class YahooFinanceProvider(DataProvider):
     # 1. RÉCUPÉRATION DES DONNÉES FINANCIÈRES (SNAPSHOT)
     # ==========================================================================
 
-    @st.cache_data(ttl=7200, show_spinner=False)
-    @safe_api_call(max_retries=3)
+    @st.cache_data(ttl=3600, show_spinner=False)
     def get_company_financials(_self, ticker: str) -> CompanyFinancials:
         """
         Récupère les états financiers normalisés.
-
-        Optimisation :
-        - @st.cache_data : Stocke le résultat 2h pour éviter de rappeler Yahoo.
-        - L'argument 'self' est nommé '_self' pour que Streamlit n'essaie pas de hasher l'objet provider.
+        Utilise le 'Deep Fetch' pour reconstruire les données manquantes.
         """
+        ticker = ticker.upper().strip()
         logger.info(f"[Yahoo] Fetching financials for {ticker}...")
 
-        ticker_obj = yf.Ticker(ticker)
-
         try:
-            # 1. Info Générale (Métadonnées)
-            info = ticker_obj.info
-            if not info or "regularMarketPrice" not in info:
-                # Parfois info est vide mais l'historique existe, mais pour le DCF on a besoin d'info
-                raise TickerNotFoundError(f"Ticker '{ticker}' introuvable ou incomplet via Yahoo.")
+            yt = yf.Ticker(ticker)
 
-            currency = info.get("currency", "USD")
-            current_price = info.get("regularMarketPrice", 0.0)
+            # --- A. Info Générale (Métadonnées) ---
+            info = safe_api_call(lambda: yt.info, "Info")
 
-            # Normalisation (ex: GBp -> GBP)
-            current_price, currency = normalize_currency_and_price(current_price, currency)
+            # Diagnostic : Ticker inconnu ou sans prix
+            if not info or ("currentPrice" not in info and "regularMarketPrice" not in info):
+                suffixes = [".PA", ".US", ".L", ".DE"]
+                if not any(ticker.endswith(s) for s in suffixes):
+                    logger.info(f"Tentative de suffixe automatique .PA pour {ticker}")
+                    return _self.get_company_financials(f"{ticker}.PA")
 
+                raise TickerNotFoundError(ticker=ticker)
+
+            currency, current_price = normalize_currency_and_price(info)
+
+            # --- B. États Financiers ---
+            balance_sheet = safe_api_call(lambda: yt.balance_sheet, "Balance Sheet")
+            income_stmt = safe_api_call(lambda: yt.income_stmt, "Income Stmt")
+            cash_flow = safe_api_call(lambda: yt.cash_flow, "Cash Flow")
+
+            # --- C. Extraction & Reconstruction (Deep Fetch) ---
+
+            # 1. Shares Outstanding
             shares = info.get("sharesOutstanding")
+            if not shares and balance_sheet is not None:
+                shares = extract_most_recent_value(balance_sheet, ["Ordinary Shares Number", "Share Issued"])
+
             if not shares:
-                # Fallback sur la market cap
                 mcap = info.get("marketCap", 0.0)
                 if mcap > 0 and current_price > 0:
                     shares = mcap / current_price
-                else:
-                    raise DataInsufficientError(f"Nombre d'actions introuvable pour {ticker}.")
 
-            # 2. États Financiers (DataFrames)
-            # On force le chargement explicite
-            balance_sheet = ticker_obj.balance_sheet
-            income_stmt = ticker_obj.financials
-            cashflow = ticker_obj.cashflow
+            shares = float(shares) if shares else 1.0
 
-            if balance_sheet.empty or income_stmt.empty:
-                raise DataInsufficientError(f"États financiers vides pour {ticker}.")
+            # 2. Book Value
+            book_value_total = None
+            if balance_sheet is not None:
+                book_value_total = extract_most_recent_value(balance_sheet, [
+                    "Total Stockholder Equity",
+                    "Stockholders Equity",
+                    "Total Equity Gross Minority Interest"
+                ])
 
-            # 3. Extraction des données clés (Helpers robustes)
-
-            # Dette Totale
-            total_debt = _safe_get_first(
-                balance_sheet,
-                ["Total Debt", "Long Term Debt And Capital Lease Obligation", "Long Term Debt"]
-            )
-            if total_debt is None:
-                # Fallback : Short Term + Long Term
-                std = _safe_get_first(balance_sheet, ["Current Debt", "Commercial Paper"]) or 0.0
-                ltd = _safe_get_first(balance_sheet, ["Long Term Debt"]) or 0.0
-                total_debt = std + ltd
-
-            # Cash
-            cash = _safe_get_first(
-                balance_sheet,
-                ["Cash And Cash Equivalents", "Cash Financial"]
-            ) or 0.0
-
-            # Interest Expense (souvent positif dans Yahoo, on veut la valeur absolue)
-            interest_expense = _safe_get_first(income_stmt, INTEREST_EXPENSE_ALIASES)
-            if interest_expense:
-                interest_expense = abs(interest_expense)
+            if book_value_total and shares > 0:
+                book_value_per_share = float(book_value_total) / shares
             else:
-                interest_expense = 0.0
-                logger.warning(f"Charges d'intérêts introuvables pour {ticker}. WACC approximatif.")
+                book_value_per_share = float(info.get("bookValue", 0.0))
 
-            # Free Cash Flow (Last TTM or Year)
-            fcf = get_simple_annual_fcf(cashflow)
+            # 3. Dette Totale
+            total_debt = info.get("totalDebt")
+            if (not total_debt or total_debt == 0) and balance_sheet is not None:
+                total_debt = extract_most_recent_value(balance_sheet, ["Total Debt", "Net Debt"])
+                if not total_debt:
+                    std = extract_most_recent_value(balance_sheet, ["Current Debt", "Current Debt And Capital Lease Obligation"]) or 0
+                    ltd = extract_most_recent_value(balance_sheet, ["Long Term Debt", "Long Term Debt And Capital Lease Obligation"]) or 0
+                    total_debt = std + ltd
 
-            # Dividendes (pour RIM / Graham)
-            div_rate = info.get("dividendRate", 0.0)
-            div_yield = info.get("dividendYield", 0.0)
-            div = div_rate if div_rate else (div_yield * current_price if div_yield else 0.0)
+            total_debt = float(total_debt) if total_debt else 0.0
 
-            # Beta (Brut Yahoo)
+            # 4. Cash
+            total_cash = info.get("totalCash")
+            if (not total_cash or total_cash == 0) and balance_sheet is not None:
+                total_cash = extract_most_recent_value(balance_sheet, ["Cash And Cash Equivalents", "Cash Financial"])
+
+            total_cash = float(total_cash) if total_cash else 0.0
+
+            # 5. Interest Expense
+            interest_expense = 0.0
+            if income_stmt is not None:
+                val = extract_most_recent_value(income_stmt, ["Interest Expense", "Interest Expense Non Operating"])
+                interest_expense = float(abs(val)) if val else 0.0
+
+            # 6. FCF
+            fcf = get_simple_annual_fcf(cash_flow)
+            if fcf is None:
+                fcf = 0.0
+            else:
+                fcf = float(fcf)
+
+            # Dividendes
+            div_rate = info.get("dividendRate")
+            if div_rate is None:
+                # Fallback : Yield * Price
+                dy = info.get("dividendYield", 0.0)
+                if dy:
+                    div_rate = dy * current_price
+                else:
+                    div_rate = 0.0
+
+            div_rate = float(div_rate)
+
+            # Beta
             beta = info.get("beta", 1.0)
-            if beta is None:
-                beta = 1.0  # Fallback neutre
+            beta = float(beta) if beta is not None else 1.0
 
-            # Book Value (pour RIM)
-            book_value = _safe_get_first(balance_sheet, ["Total Equity Gross Minority Interest", "Stockholders Equity"])
-            if not book_value:
-                book_value = info.get("bookValue") * shares if info.get("bookValue") else 0.0
-
-            # Industrie / Pays (pour Macro)
-            industry = info.get("industry", "Unknown")
-            country = info.get("country", "United States")
-
-            logger.info(f"[Yahoo] Success {ticker} | Price={current_price} {currency} | Debt={total_debt:,.0f}")
-
+            # Instanciation Pydantic (CompanyFinancials)
+            # Pydantic va convertir et valider les types automatiquement
             return CompanyFinancials(
-                ticker=ticker.upper(),
-                name=info.get("shortName", ticker),
+                ticker=ticker,
+                name=str(info.get("shortName", ticker)),
+                sector=str(info.get("sector", "Unknown")),
+                industry=str(info.get("industry", "Unknown")),
+                country=str(info.get("country", "Unknown")),
                 currency=currency,
-                current_price=current_price,
+                current_price=float(current_price),
                 shares_outstanding=shares,
+
                 total_debt=total_debt,
-                cash_and_equivalents=cash,
+                cash_and_equivalents=total_cash,
                 interest_expense=interest_expense,
+                book_value_per_share=book_value_per_share,
+
                 beta=beta,
-                industry=industry,
-                country=country,
-                dividend_share=float(div) if div else None,
-                revenue_ttm=info.get("totalRevenue"),
-                book_value=book_value,
+                revenue_ttm=float(info.get("totalRevenue") or 0.0),
+                ebitda_ttm=float(info.get("ebitda") or 0.0),
+                net_income_ttm=float(info.get("netIncomeToCommon") or 0.0),
+                eps_ttm=float(info.get("trailingEps") or 0.0),
+
+                last_dividend=info.get("lastDividendValue"), # Peut être None
+                dividend_share=div_rate,
+
                 fcf_last=fcf,
-                fcf_fundamental_smoothed=fcf,  # Par défaut identique, sauf si stratégie fondamentale
-                source_fcf="yahoo_api"
+                fcf_fundamental_smoothed=fcf,
+                source_fcf="yahoo_deep_fetch"
             )
 
+        except TickerNotFoundError:
+            raise
+        except ValidationError as ve:
+            # Catch des erreurs Pydantic si les données sont trop pourries
+            logger.error(f"[Yahoo] Validation Error for {ticker}: {ve}")
+            raise ExternalServiceError(provider="Yahoo/Pydantic", error_detail=str(ve))
         except Exception as e:
-            logger.error(f"[Yahoo] Failed to fetch {ticker}: {e}")
-            raise e
+            logger.error(f"[Yahoo] Unexpected error for {ticker}: {str(e)}")
+            raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e))
 
     # ==========================================================================
-    # 2. HISTORIQUE DE PRIX (GRAPHIQUES)
+    # 2. HISTORIQUE DE PRIX
     # ==========================================================================
 
-    @st.cache_data(ttl=3600 * 4)  # Cache long (4h) pour l'historique
+    @st.cache_data(ttl=3600 * 4)
     def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """
-        Récupère l'historique de prix (Close).
-        """
         try:
             df = yf.Ticker(ticker).history(period=period)
             return df
@@ -199,56 +223,67 @@ class YahooFinanceProvider(DataProvider):
     ) -> Tuple[CompanyFinancials, DCFParameters]:
         """
         Méthode orchestrateur pour le mode AUTO.
-        Récupère les données ET construit les paramètres macro par défaut.
+        Instancie DCFParameters avec validation stricte.
         """
-
-        # 1. Données Entreprise (Cachées)
+        # 1. Données Entreprise
         financials = self.get_company_financials(ticker)
 
-        # 2. Données Macro (Live)
-        macro_ctx = self.macro_provider.get_macro_context(
-            date=datetime.now(),
-            currency=financials.currency
-        )
+        # 2. Données Macro
+        try:
+            macro_ctx = self.macro_provider.get_macro_context(
+                date=datetime.now(),
+                currency=financials.currency
+            )
+        except Exception as e:
+            logger.error(f"Macro failure: {e}. Switching to country fallback.")
+            country_data = COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)
 
-        # 3. Calcul du Coût de la dette synthétique
-        # (Car Yahoo ne donne pas le Kd explicite)
+            # Reconstruction manuelle du contexte (Fallback)
+            # Attention : on s'assure que les valeurs par défaut sont bien des floats
+            from infra.macro.yahoo_macro_provider import MacroContext
+            macro_ctx = MacroContext(
+                date=datetime.now(),
+                currency=financials.currency,
+                risk_free_rate=float(country_data["risk_free_rate"]),
+                market_risk_premium=float(country_data["market_risk_premium"]),
+                perpetual_growth_rate=float(country_data["inflation_rate"]),
+                corporate_aaa_yield=float(country_data["risk_free_rate"] + 0.01)
+            )
+
+        # 3. Calcul des paramètres implicites
         kd_synthetic = calculate_synthetic_cost_of_debt(
             rf=macro_ctx.risk_free_rate,
-            ebit=financials.fcf_last or 1.0,  # Proxy EBIT
+            ebit=financials.fcf_last or 1.0,
             interest_expense=financials.interest_expense,
             market_cap=financials.current_price * financials.shares_outstanding
         )
 
-        # 4. Estimation de la croissance (Basée sur l'historique CA)
-        # Note : On ne cache pas cette étape car elle est rapide si financials est déjà là
-        historical_cagr = None
+        growth_assumption = 0.03 # Hypothèse de base 3%
+
+        # 4. Création SÉCURISÉE des paramètres
         try:
-            # On accède directement à l'objet yfinance sans refaire une requête réseau complète
-            # car get_company_financials ne retourne que le DTO.
-            # Pour bien faire, on peut faire une estimation prudente par défaut
-            # ou rappeler yf.Ticker(ticker).financials (qui sera cachée par yfinance interne)
-            pass
-        except:
-            pass
+            params = DCFParameters(
+                risk_free_rate=macro_ctx.risk_free_rate,
+                market_risk_premium=macro_ctx.market_risk_premium,
+                corporate_aaa_yield=macro_ctx.corporate_aaa_yield,
+                cost_of_debt=kd_synthetic,
+                tax_rate=0.25,
+                fcf_growth_rate=growth_assumption,
+                perpetual_growth_rate=macro_ctx.perpetual_growth_rate,
+                projection_years=projection_years,
+                target_equity_weight=financials.market_cap,
+                target_debt_weight=financials.total_debt
+            )
 
-        # Valeur normative par défaut (Conservative)
-        growth_assumption = 0.03
+            # Normalisation des poids (Méthode du modèle)
+            params.normalize_weights()
 
-        # 5. Construction des Paramètres DCF
-        params = DCFParameters(
-            risk_free_rate=macro_ctx.risk_free_rate,
-            market_risk_premium=macro_ctx.market_risk_premium,
-            corporate_aaa_yield=macro_ctx.corporate_aaa_yield,
-            cost_of_debt=kd_synthetic,
-            tax_rate=0.25,  # TODO: Affiner via Country Matrix
+            return financials, params
 
-            fcf_growth_rate=growth_assumption,
-            perpetual_growth_rate=min(growth_assumption, 0.025),  # Caped at 2.5%
-
-            projection_years=projection_years,
-            target_equity_weight=0.80,  # Structure cible par défaut si inconnue
-            target_debt_weight=0.20
-        )
-
-        return financials, params
+        except ValidationError as ve:
+            logger.critical(f"[Param Build] Erreur de validation Pydantic : {ve}")
+            # En cas d'erreur critique de validation, on relance une erreur claire
+            raise ExternalServiceError(
+                provider="Parameters Engine",
+                error_detail=f"Données incohérentes détectées : {ve}"
+            )

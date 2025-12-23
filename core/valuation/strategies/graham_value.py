@@ -2,13 +2,7 @@
 core/valuation/strategies/graham_value.py
 
 Méthode : Graham Intrinsic Value (1974 Revised)
-Version : V1.1 — Chapitre 4 conforme (Glass Box)
-
-Référence académique :
-- Graham, B. – The Intelligent Investor (1974, revised)
-
-⚠️ Méthode heuristique (non DCF)
-⚠️ Usage comparatif uniquement
+Version : V1.3 — Pydantic Fix (Arguments nommés stricts)
 """
 
 import logging
@@ -157,20 +151,25 @@ class GrahamNumberStrategy(ValuationStrategy):
         # 4. COMPOSANTS DU MULTIPLICATEUR
         # ====================================================
 
-        growth_multiplier = 8.5 + 2.0 * (growth_rate * 100.0)
-        rate_adjustment = 4.4 / (aaa_yield * 100.0)
+        # NOTE : On multiplie par 100 ICI uniquement pour l'affichage de la trace.
+        # Le calcul réel est délégué à financial_math.py qui gère sa propre conversion.
+        g_for_display = growth_rate * 100.0
+        y_for_display = aaa_yield * 100.0
+
+        growth_multiplier = 8.5 + 2.0 * g_for_display
+        rate_adjustment = 4.4 / y_for_display
 
         self.add_step(
             label="Multiplicateur de croissance",
             theoretical_formula="8.5 + 2g",
             hypotheses=[
                 TraceHypothesis(
-                    name="Growth rate",
-                    value=growth_rate,
-                    unit="%"
+                    name="Growth rate (scaled)",
+                    value=g_for_display,
+                    unit="number"
                 )
             ],
-            numerical_substitution=f"8.5 + 2×{growth_rate * 100:.2f}",
+            numerical_substitution=f"8.5 + 2×{g_for_display:.2f}",
             result=growth_multiplier,
             unit="x",
             interpretation=(
@@ -184,12 +183,12 @@ class GrahamNumberStrategy(ValuationStrategy):
             theoretical_formula="4.4 / Y_AAA",
             hypotheses=[
                 TraceHypothesis(
-                    name="AAA yield",
-                    value=aaa_yield,
-                    unit="%"
+                    name="AAA yield (scaled)",
+                    value=y_for_display,
+                    unit="number"
                 )
             ],
-            numerical_substitution=f"4.4 / {aaa_yield * 100:.2f}",
+            numerical_substitution=f"4.4 / {y_for_display:.2f}",
             result=rate_adjustment,
             unit="factor",
             interpretation=(
@@ -203,23 +202,25 @@ class GrahamNumberStrategy(ValuationStrategy):
         # ====================================================
 
         try:
+            # Appel au moteur mathématique nettoyé (qui attend des décimales)
             intrinsic_value = calculate_graham_1974_value(
                 eps=eps,
-                growth_rate=growth_rate,
-                aaa_yield=aaa_yield
+                growth_rate=growth_rate, # ex: 0.05
+                aaa_yield=aaa_yield      # ex: 0.045
             )
         except Exception as e:
             raise CalculationError(
                 f"Erreur dans la formule Graham : {e}"
             )
 
+        # [CORRECTIF V1.3] Utilisation stricte des arguments nommés (name=, value=)
         self.add_step(
             label="Valeur intrinsèque (Graham 1974)",
             theoretical_formula="EPS × (8.5 + 2g) × (4.4 / Y)",
             hypotheses=[
-                TraceHypothesis("EPS", eps, financials.currency),
-                TraceHypothesis("Growth multiplier", growth_multiplier, "x"),
-                TraceHypothesis("Rate adjustment", rate_adjustment, "factor")
+                TraceHypothesis(name="EPS", value=eps, unit=financials.currency),
+                TraceHypothesis(name="Growth multiplier", value=growth_multiplier, unit="x"),
+                TraceHypothesis(name="Rate adjustment", value=rate_adjustment, unit="factor")
             ],
             numerical_substitution=(
                 f"{eps:.2f} × {growth_multiplier:.2f} × {rate_adjustment:.2f}"
@@ -240,5 +241,6 @@ class GrahamNumberStrategy(ValuationStrategy):
             market_price=financials.current_price,
             eps_used=eps,
             growth_rate_used=growth_rate,
-            aaa_yield_used=aaa_yield
+            aaa_yield_used=aaa_yield,
+            calculation_trace=self.calculation_trace
         )

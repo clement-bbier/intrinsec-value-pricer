@@ -1,31 +1,18 @@
 """
 app/main.py
 
-POINT D’ENTRÉE — RAPPORT D’ANALYSTE INTERACTIF
-Version : V2.0 — Chapitres 1 → 8 conformes
-
-Rôle :
-- Orchestration complète du rapport
-- Séparation claire : Inputs → Calcul → Audit → Restitution
-- Alignement strict UI ↔ moteur
-- UX institutionnelle (lecture top-down, drill-down)
-
-Ce fichier NE contient :
-- aucune logique financière
-- aucune logique d’audit
-- aucune hypothèse métier
+POINT D'ENTRÉE DE L'APPLICATION (V3 - STANDARD)
+Responsabilité : Interface de saisie & Délégation au Workflow.
+Enrichi avec un Guide Utilisateur complet (Onboarding).
 """
 
-from __future__ import annotations
-
 import sys
-import logging
 from pathlib import Path
-
+import logging
 import streamlit as st
 
 # ==============================================================================
-# 0. SETUP ENVIRONNEMENT
+# 0. SETUP ENVIRONNEMENT & PATHS
 # ==============================================================================
 
 FILE_PATH = Path(__file__).resolve()
@@ -37,245 +24,220 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# 1. CONFIG STREAMLIT — SOBRE & INSTITUTIONNEL
-# ==============================================================================
-
-st.set_page_config(
-    page_title="Intrinsic Value Pricer",
-    page_icon="📊",
-    layout="wide"
-)
-
-# ==============================================================================
-# 2. IMPORTS CORE / INFRA
+# 1. IMPORTS
 # ==============================================================================
 
 from core.models import (
     ValuationRequest,
     ValuationMode,
-    InputSource
+    InputSource,
+    DCFParameters
 )
-from core.valuation.engines import run_valuation
 
-from infra.data_providers.yahoo_provider import YahooFinanceProvider
-from infra.macro.yahoo_macro_provider import YahooMacroProvider
-from infra.auditing.audit_engine import AuditEngine
-
-# ==============================================================================
-# 3. IMPORTS UI — RAPPORT D’ANALYSTE
-# ==============================================================================
-
-from app.ui_components.ui_inputs_auto import display_auto_inputs
+# C'est lui le chef d'orchestre maintenant :
+from app.workflow import run_workflow_and_display
+# Import du formulaire Expert
 from app.ui_components.ui_inputs_expert import display_expert_request
 
-from app.ui_components.ui_kpis import (
-    display_main_kpis,
-    display_valuation_details
-)
 
-from app.ui_components.ui_charts import (
-    display_price_chart,
-    display_simulation_chart,
-    display_sensitivity_heatmap
-)
+# ==============================================================================
+# 2. CONFIGURATION UI
+# ==============================================================================
 
-from app.ui_components.ui_methodology import (
-    display_audit_methodology
-)
+def setup_page():
+    st.set_page_config(
+        page_title="Intrinsic Value Pricer V3",
+        page_icon="📊",
+        layout="wide"
+    )
+    st.title("📊 Intrinsic Value Pricer")
+    st.markdown(
+        """
+        <style>
+        .block-container {padding-top: 2rem;}
+        .stAlert {margin-top: 1rem;}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    st.caption("Architecture V3 • Glass Box • Audit Normatif • Gestion d'Erreurs Intelligente")
+    st.markdown("---")
+
+
+# ==============================================================================
+# 3. COMPOSANT : GUIDE DE DÉMARRAGE (ONBOARDING)
+# ==============================================================================
+
+def display_onboarding_guide():
+    """Affiche le guide utilisateur lorsque l'application est en attente."""
+
+    st.info("👋 Bienvenue ! Configurez votre analyse dans la barre latérale pour commencer.")
+
+    st.subheader("📘 Guide de Démarrage")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### 1. Comment utiliser l'outil ?")
+        st.markdown("""
+        1. **Ticker** : Entrez le symbole Yahoo Finance (ex: `AAPL`, `AIR.PA`).
+        2. **Méthode** : Choisissez le modèle adapté au secteur :
+            - *Standard* : Entreprises matures.
+            - *Growth* : Tech & forte croissance.
+            - *Fundamental* : Industries cycliques.
+            - *RIM* : Banques & Assurances.
+            - *Graham* : Approche "Value" stricte.
+        3. **Options** : Ajustez l'horizon de projection ou activez **Monte Carlo** pour mesurer le risque.
+        """)
+
+    with col2:
+        st.markdown("### 2. Comprendre les Résultats")
+        st.markdown("""
+        - **Glass Box** 🧮 : Pas de boîte noire. Cliquez sur l'onglet "Calcul" pour voir chaque formule appliquée.
+        - **Audit Score** 🛡️ : Un score de fiabilité sur 100.
+            - 🟢 **> 75** : Analyse robuste.
+            - 🔴 **< 50** : Données insuffisantes ou incohérentes.
+        """)
+
+    st.divider()
+
+    st.markdown("### 3. Système de Diagnostic Intelligent (V3)")
+    st.markdown("L'application ne plante plus. Elle **dialogue** avec vous via des codes couleur :")
+
+    c_err, c_warn, c_info = st.columns(3)
+
+    with c_err:
+        st.error("**⛔ ROUGE : Bloquant**")
+        st.caption("Action impossible (ex: Ticker inconnu, Donnée manquante).")
+        st.caption("👉 *Action : Corrigez l'orthographe ou changez de modèle.*")
+
+    with c_warn:
+        st.warning("**⚠️ ORANGE : Avertissement**")
+        st.caption("Calcul possible mais risqué (ex: Croissance > WACC).")
+        st.caption("👉 *Action : Vérifiez vos hypothèses manuelles.*")
+
+    with c_info:
+        st.info("**ℹ️ BLEU : Information**")
+        st.caption("Détail contextuel ou substitution mineure.")
+        st.caption("👉 *Action : Aucune, pour information seulement.*")
+
 
 # ==============================================================================
 # 4. APPLICATION PRINCIPALE
 # ==============================================================================
 
-def main() -> None:
-    """
-    Orchestration du rapport d’analyste interactif.
-    """
+def main():
+    setup_page()
 
-    # ------------------------------------------------------------------
-    # PAGE DE GARDE
-    # ------------------------------------------------------------------
-    st.title("Intrinsic Value Pricer")
-    st.caption(
-        "Rapport d’analyste interactif • "
-        "Standards CFA / Damodaran • "
-        "Architecture Glass Box • "
-        "Audit comme méthode"
-    )
+    # --- A. SIDEBAR : PARAMÈTRES DE LA REQUÊTE ---
+    with st.sidebar:
+        st.header("1. Cible & Méthode")
 
-    # ------------------------------------------------------------------
-    # A. MODE D’UTILISATION (SIDEBAR)
-    # ------------------------------------------------------------------
-    st.sidebar.header("Mode d’utilisation")
+        # 1. Ticker
+        ticker = st.text_input(
+            "Ticker (Yahoo Finance)",
+            value="AAPL",
+            help="Ex: AAPL, AIR.PA, MC.PA, TSLA"
+        ).strip().upper()
 
-    mode_choice = st.sidebar.radio(
-        "Source des données et des hypothèses",
-        options=[InputSource.AUTO.value, InputSource.MANUAL.value],
-        format_func=lambda x: (
-            "AUTO — Hypothèses normatives"
-            if x == InputSource.AUTO.value
-            else "EXPERT — Hypothèses manuelles"
-        )
-    )
+        # 2. Mode de Valorisation
+        mode_options = [m.value for m in ValuationMode]
+        mode_label = st.selectbox("Méthode de Valorisation", options=mode_options)
+        selected_mode = next(m for m in ValuationMode if m.value == mode_label)
 
-    input_source = InputSource(mode_choice)
+        st.markdown("---")
 
-    # ------------------------------------------------------------------
-    # B. SAISIE DES INPUTS
-    # ------------------------------------------------------------------
-    request: ValuationRequest | None = None
-
-    if input_source == InputSource.AUTO:
-        request = display_auto_inputs(
-            default_ticker="AAPL",
-            default_years=5
-        )
-    else:
-        request = display_expert_request(
-            default_ticker="AAPL",
-            default_years=5
+        # 3. SÉLECTEUR DE MODE (NOUVEAUTÉ)
+        st.header("2. Source des Données")
+        input_mode = st.radio(
+            "Mode de pilotage",
+            ["Automatique (Yahoo)", "Expert (Manuel)"],
+            help="Auto: Données financières et macro live.\nExpert: Vous saisissez tous les taux."
         )
 
-    if request is None:
-        st.info("👈 Configurez les paramètres et lancez l’analyse.")
-        return
+        is_expert = input_mode == "Expert (Manuel)"
 
-    # ------------------------------------------------------------------
-    # C. PIPELINE DE CALCUL (TRANSACTIONNEL)
-    # ------------------------------------------------------------------
-    try:
-        with st.spinner(f"Analyse en cours pour {request.ticker}…"):
+        # CONTENU DYNAMIQUE SELON LE MODE
+        launch_analysis = False
+        years = 5
+        enable_mc = False
+        mc_sims = 2000
 
-            # ----------------------------------------------------------
-            # 1. PROVIDERS
-            # ----------------------------------------------------------
-            macro_provider = YahooMacroProvider()
-            data_provider = YahooFinanceProvider(
-                macro_provider=macro_provider
-            )
+        if not is_expert:
+            # --- MODE AUTO : Options simples ---
+            st.header("2. Horizon & Options")
+            years = st.slider("Années de projection explicite", 3, 15, 5)
 
-            # ----------------------------------------------------------
-            # 2. DONNÉES & PARAMÈTRES
-            # ----------------------------------------------------------
-            if request.input_source == InputSource.AUTO:
-                financials, params = (
-                    data_provider.get_company_financials_and_parameters(
-                        ticker=request.ticker,
-                        projection_years=request.projection_years
+            # 4. Monte Carlo (Optionnel)
+            show_mc_options = selected_mode in [
+                ValuationMode.FCFF_TWO_STAGE,
+                ValuationMode.FCFF_NORMALIZED,
+                ValuationMode.FCFF_REVENUE_DRIVEN,
+                ValuationMode.RESIDUAL_INCOME_MODEL,
+                ValuationMode.GRAHAM_1974_REVISED
+            ]
+
+            if show_mc_options:
+                st.caption("Analyse Probabiliste")
+                enable_mc = st.toggle("Activer Monte Carlo", value=False)
+                if enable_mc:
+                    mc_sims = st.number_input(
+                        "Nombre de simulations",
+                        min_value=500, max_value=10000, value=2000, step=500
                     )
-                )
 
-                if request.options.get("num_simulations"):
-                    params.num_simulations = request.options["num_simulations"]
-
-            else:
-                financials = data_provider.get_company_financials(
-                    request.ticker
-                )
-                params = request.manual_params
-
-                if request.manual_beta is not None:
-                    financials.beta = request.manual_beta
-
-            # ----------------------------------------------------------
-            # 3. MOTEUR DE VALORISATION
-            # ----------------------------------------------------------
-            result = run_valuation(request, financials, params)
-
-            # ----------------------------------------------------------
-            # 4. AUDIT — CHAPITRE 6
-            # ----------------------------------------------------------
-            result.audit_report = AuditEngine.compute_audit(result)
-
-        # ------------------------------------------------------------------
-        # D. RESTITUTION — RAPPORT STRUCTURÉ
-        # ------------------------------------------------------------------
-
-        # === PAGE 1 : SYNTHÈSE EXÉCUTIVE ===
-        display_main_kpis(result)
-
-        st.markdown("---")
-
-        # === CONTEXTE DE MARCHÉ & INCERTITUDE ===
-        st.subheader("Contexte de marché & incertitude")
-
-        c_left, c_right = st.columns([2, 1])
-
-        with c_left:
-            try:
-                history = data_provider.get_price_history(request.ticker)
-                display_price_chart(request.ticker, history)
-            except Exception:
-                st.warning("Historique de prix indisponible.")
-
-            if result.simulation_results:
-                display_simulation_chart(
-                    result.simulation_results,
-                    result.market_price,
-                    result.financials.currency
-                )
-
-        with c_right:
-            # Sensibilité uniquement si DCF compatible
-            if (
-                request.mode
-                in {
-                    ValuationMode.FCFF_TWO_STAGE,
-                    ValuationMode.FCFF_NORMALIZED,
-                    ValuationMode.FCFF_REVENUE_DRIVEN,
-                }
-                and hasattr(result, "projected_fcfs")
-            ):
-                from core.computation.financial_math import (
-                    calculate_terminal_value_gordon
-                )
-
-                last_fcf = (
-                    result.projected_fcfs[-1]
-                    if result.projected_fcfs else 0.0
-                )
-
-                base_pv = getattr(result, "sum_discounted_fcf", 0.0)
-                net_debt = (
-                    result.financials.total_debt
-                    - result.financials.cash_and_equivalents
-                )
-                shares = result.financials.shares_outstanding
-                years = params.projection_years
-
-                def quick_sensitivity_calc(wacc: float, g: float):
-                    if wacc <= g:
-                        return None
-                    tv = calculate_terminal_value_gordon(last_fcf, wacc, g)
-                    tv_disc = tv / ((1 + wacc) ** years)
-                    return (base_pv + tv_disc - net_debt) / shares
-
-                display_sensitivity_heatmap(
-                    base_wacc=result.wacc,
-                    base_growth=params.perpetual_growth_rate,
-                    calculator_func=quick_sensitivity_calc,
-                    currency=result.financials.currency
-                )
-
-        st.markdown("---")
-
-        # === DÉTAIL COMPLET : GLASS BOX & AUDIT ===
-        display_valuation_details(result)
-
-        st.markdown("---")
-
-        # === MÉTHODOLOGIE & GOUVERNANCE ===
-        display_audit_methodology()
-
-    except Exception as exc:
-        logger.error("Erreur critique lors de l’analyse", exc_info=True)
-        st.error("❌ Une erreur est survenue lors de l’analyse.")
-        st.exception(exc)
+            st.markdown("---")
+            launch_analysis = st.button("Lancer l'Analyse", type="primary", use_container_width=True)
 
 
-# ==============================================================================
-# ENTRY POINT
-# ==============================================================================
+    # --- B. EXÉCUTION (DÉLÉGATION AU WORKFLOW) ---
+
+    if is_expert:
+        # --- MODE EXPERT : Affiche le grand formulaire ---
+        # Si l'utilisateur clique sur le bouton DANS le formulaire, une Request est retournée
+        expert_request = display_expert_request(default_ticker=ticker, selected_mode=selected_mode)
+
+        if expert_request:
+            run_workflow_and_display(expert_request)
+        elif not ticker:
+             st.info("Veuillez entrer un ticker dans la barre latérale.")
+        else:
+             st.info("👈 Configurez vos hypothèses manuelles ci-dessus et cliquez sur **Lancer l'analyse (EXPERT)**.")
+
+    elif launch_analysis:
+        # --- MODE AUTO : Exécution directe via Sidebar ---
+        if not ticker:
+            st.warning("Veuillez saisir un ticker valide.")
+            return
+
+        # 1. Construction des paramètres manuels (Configuration)
+        config_params = DCFParameters(
+            risk_free_rate=0.0,
+            market_risk_premium=0.0,
+            corporate_aaa_yield=0.0,
+            cost_of_debt=0.0,
+            tax_rate=0.0,
+            fcf_growth_rate=0.0,
+            projection_years=years,
+            enable_monte_carlo=enable_mc,
+            num_simulations=mc_sims
+        )
+
+        # 2. Création de la requête normalisée
+        request = ValuationRequest(
+            ticker=ticker,
+            projection_years=years,
+            mode=selected_mode,
+            input_source=InputSource.AUTO,
+            manual_params=config_params
+        )
+
+        # 3. APPEL DU WORKFLOW
+        run_workflow_and_display(request)
+
+    elif not is_expert:
+        # AFFICHER LE GUIDE D'ACCUEIL SI RIEN N'EST LANCÉ
+        display_onboarding_guide()
 
 if __name__ == "__main__":
     main()
