@@ -46,7 +46,7 @@ from app.ui_components.ui_inputs_expert import display_expert_request
 
 def setup_page():
     st.set_page_config(
-        page_title="Intrinsic Value Pricer V3",
+        page_title="Intrinsic Value Pricer",
         page_icon="📊",
         layout="wide"
     )
@@ -71,7 +71,7 @@ def setup_page():
 def display_onboarding_guide():
     """Affiche le guide utilisateur lorsque l'application est en attente."""
 
-    st.info("👋 Bienvenue ! Configurez votre analyse dans la barre latérale pour commencer.")
+    st.info("**Saisissez un ticker et configurez votre méthode dans la barre latérale pour évaluer une entreprise.**")
 
     st.subheader("📘 Guide de Démarrage")
 

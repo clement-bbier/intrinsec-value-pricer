@@ -2,7 +2,7 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V2.3 — Hedge Fund Quality (Pydantic Secured)
+Version : V3.0 — Souveraineté Analyste Intégrale (Pydantic Secured)
 
 Principes non négociables :
 - Validation stricte des types et échelles (Décimales vs Pourcentages)
@@ -167,6 +167,13 @@ class DCFParameters(BaseModel):
     manual_fcf_base: Optional[float] = None
     manual_cost_of_equity: Optional[float] = None
     wacc_override: Optional[float] = None
+    manual_beta: Optional[float] = None
+
+    # --- NOUVEAUX LEVIERS : SOUVERAINETÉ ANALYSTE ---
+    manual_total_debt: Optional[float] = None
+    manual_cash: Optional[float] = None
+    manual_shares_outstanding: Optional[float] = None
+    manual_book_value: Optional[float] = None
 
     # Monte Carlo
     enable_monte_carlo: bool = False
@@ -190,20 +197,9 @@ class DCFParameters(BaseModel):
         Détecte et corrige les taux exprimés en pourcentage (ex: 5.0) au lieu de décimale (ex: 0.05).
         """
         if v > 1.0:
-            # Cas critique : Taux > 100% (ex: 4.2 pour 4.2%).
-            # Seuil de tolérance : 50% (0.50). Au-delà, on considère que c'est une erreur d'unité.
-            # Exception : Pays en hyperinflation, mais pour l'usage standard US/EU, c'est suspect.
-
-            # Si c'est énorme (ex: 104.0), c'est clairement un %
             if v > 1.0 and v <= 100.0:
-                # Warning silencieux : on convertit
                 return v / 100.0
-
-            # Si c'est > 100 (ex: 500%), c'est probablement une erreur de données grave
-            # On laisse passer pour ne pas crasher, mais c'est suspect.
-            # Optionnel : raise ValueError(f"Taux aberrant détecté : {v}")
             return v / 100.0
-
         return v
 
     def normalize_weights(self) -> None:
@@ -354,7 +350,7 @@ class DCFValuationResult(ValuationResult):
         return ValuationOutputContract(
             has_params=True,
             has_projection=bool(self.projected_fcfs),
-            has_terminal_value=self.terminal_value is not None,  # Vérifie non-None
+            has_terminal_value=self.terminal_value is not None,
             has_equity_bridge=True,
             has_intrinsic_value=True,
             has_calculation_trace=len(self.calculation_trace) > 0

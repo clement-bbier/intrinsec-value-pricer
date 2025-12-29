@@ -3,7 +3,7 @@ core/valuation/strategies/abstract.py
 
 Socle abstrait pour toutes les stratégies de valorisation (Glass Box Pattern).
 Gère la traçabilité (Audit), le contrat de sortie et les mathématiques communes.
-Version : V2.2 — Pydantic Compatibility Fix (Keyword Arguments)
+Version : V3.0 — Souveraineté Analyste Intégrale (Bridge Manuel)
 """
 
 import logging
@@ -55,7 +55,6 @@ class ValuationStrategy(ABC):
         if not self.glass_box_enabled:
             return
 
-        # [CORRECTIF PYDANTIC] : Arguments nommés obligatoires
         self.calculation_trace.append(CalculationStep(
             step_id=len(self.calculation_trace) + 1,
             label=label,
@@ -109,16 +108,16 @@ class ValuationStrategy(ABC):
                 interpretation="Surcharge manuelle."
             )
         else:
+            # calculate_wacc gère déjà les priorités manuelles en interne (Kd, Beta, Weights)
             wacc_ctx = calculate_wacc(financials, params)
             wacc = wacc_ctx.wacc
 
-            # [CORRECTIF PYDANTIC] : Arguments nommés pour TraceHypothesis
             self.add_step(
                 label="Calcul du WACC",
                 theoretical_formula="Ke*We + Kd*(1-t)*Wd",
                 hypotheses=[
                     TraceHypothesis(name="Risk-free", value=params.risk_free_rate, unit="%"),
-                    TraceHypothesis(name="Beta", value=financials.beta, unit="")
+                    TraceHypothesis(name="Beta", value=params.manual_beta or financials.beta, unit="")
                 ],
                 numerical_substitution=f"Ke: {wacc_ctx.cost_of_equity:.2%} | Kd_net: {wacc_ctx.cost_of_debt_after_tax:.2%}",
                 result=wacc,
@@ -130,7 +129,6 @@ class ValuationStrategy(ABC):
         flows = project_flows(base_flow, params.projection_years, params.fcf_growth_rate,
                               params.perpetual_growth_rate, params.high_growth_years)
 
-        # [CORRECTIF PYDANTIC]
         self.add_step(
             label="Projections FCF",
             theoretical_formula="FCF(t-1) * (1+g)",
@@ -151,8 +149,8 @@ class ValuationStrategy(ABC):
             tv = calculate_terminal_value_gordon(flows[-1], wacc, params.perpetual_growth_rate)
             formula_tv = "FCF_n * (1+g) / (WACC - g)"
         else:
-            tv = calculate_terminal_value_exit_multiple(flows[-1], 12.0)
-            formula_tv = "Metric_n * Multiple (12x)"
+            tv = calculate_terminal_value_exit_multiple(flows[-1], params.exit_multiple_value or 12.0)
+            formula_tv = f"Metric_n * Multiple ({params.exit_multiple_value}x)"
 
         self.add_step(
             label="Valeur Terminale",
@@ -164,14 +162,13 @@ class ValuationStrategy(ABC):
             interpretation="Valeur à l'infini."
         )
 
-        # --- D. Actualisation & Bridge ---
+        # --- D. Actualisation & Bridge (Priorité Souveraine) ---
         factors = calculate_discount_factors(wacc, params.projection_years)
         sum_pv = sum(f * d for f, d in zip(flows, factors))
 
         pv_tv = tv * factors[-1]
         ev = sum_pv + pv_tv
 
-        # [CORRECTIF PYDANTIC]
         self.add_step(
             label="Actualisation (NPV)",
             theoretical_formula="Sum(FCF * Factors) + TV * Factor_n",
@@ -185,30 +182,61 @@ class ValuationStrategy(ABC):
             interpretation="Valeur d'Entreprise (EV)."
         )
 
-        bridge_res = calculate_equity_value_bridge(ev, financials.total_debt, financials.cash_and_equivalents)
+        # PRIORITÉ MANUELLE POUR LE BRIDGE [NOUVEAU V3.0]
+        debt_to_use = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
+        cash_to_use = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
+        shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
+
+        bridge_res = calculate_equity_value_bridge(ev, debt_to_use, cash_to_use)
+
         if isinstance(bridge_res, dict):
             equity_val = bridge_res.get("equity_value", 0.0)
         else:
             equity_val = bridge_res
 
         # --- E. Résultat par action ---
-        if financials.shares_outstanding <= 0:
+        if shares_to_use <= 0:
             raise CalculationError("Nombre d'actions invalide.")
 
-        iv_share = equity_val / financials.shares_outstanding
+        iv_share = equity_val / shares_to_use
 
-        # [CORRECTIF PYDANTIC]
+        # AJOUTER CETTE ÉTAPE DE TRACE VISUELLE
+        self.add_step(
+            label="Equity Bridge (Passage à l'Actionnaire)",
+            theoretical_formula="EV - Debt + Cash",
+            hypotheses=[
+                TraceHypothesis(name="Dette utilisée", value=debt_to_use, unit=financials.currency,
+                                source="Expert" if params.manual_total_debt else "Yahoo"),
+                TraceHypothesis(name="Cash utilisé", value=cash_to_use, unit=financials.currency,
+                                source="Expert" if params.manual_cash else "Yahoo")
+            ],
+            numerical_substitution=f"{ev:,.0f} - {debt_to_use:,.0f} + {cash_to_use:,.0f}",
+            result=equity_val,
+            unit=financials.currency,
+            interpretation="Valeur résiduelle revenant aux actionnaires."
+        )
+
+        # Trace Glass Box avec les bonnes hypothèses de structure
         self.add_step(
             label="Valeur par action",
             theoretical_formula="Equity / Shares",
             hypotheses=[
-                TraceHypothesis(name="Equity", value=equity_val, unit="M"),
-                TraceHypothesis(name="Shares", value=financials.shares_outstanding, unit="#")
+                TraceHypothesis(
+                    name="Equity",
+                    value=equity_val,
+                    unit=financials.currency
+                ),
+                TraceHypothesis(
+                    name="Shares outstanding",
+                    value=shares_to_use,
+                    unit="#",
+                    source="Manual override" if params.manual_shares_outstanding is not None else "Financial statements"
+                )
             ],
-            numerical_substitution=f"{equity_val:,.0f} / {financials.shares_outstanding:,.0f}",
+            numerical_substitution=f"{equity_val:,.0f} / {shares_to_use:,.0f}",
             result=iv_share,
             unit=financials.currency,
-            interpretation="Valeur Intrinsèque."
+            interpretation="Valeur Intrinsèque estimée par action."
         )
 
         return DCFValuationResult(

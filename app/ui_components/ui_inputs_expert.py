@@ -155,6 +155,25 @@ def display_expert_request(
             manual_base_label = "FCF de base (Override)"
 
         # ==============================================================================
+        # 4.5. STRUCTURE DE BILAN & CAPITAL (SOUVERAINETÉ ANALYSTE)
+        # ==============================================================================
+        with st.expander("📊 Bilan & Capital structure", expanded=False):
+            st.caption("Surchargez les données comptables pour s'affranchir de Yahoo Finance.")
+            cb1, cb2 = st.columns(2)
+
+            m_debt = cb1.number_input("Dette Totale Manuelle", value=0.0, step=1000000.0,
+                                      help="Dette brute (LT + ST)")
+            m_cash = cb2.number_input("Trésorerie Manuelle", value=0.0, step=1000000.0, help="Cash & Equivalents")
+
+            m_shares = cb1.number_input("Nombre d'actions (Total)", value=0.0, step=1000.0,
+                                        help="Shares Outstanding")
+
+            m_bv = None
+            if is_rim:
+                m_bv = cb2.number_input("Book Value Totale Manuelle", value=0.0, step=1000000.0,
+                                        help="Base pour le modèle RIM")
+
+        # ==============================================================================
         # 5. SURCHARGES & MONTE CARLO
         # ==============================================================================
         with st.expander("⚙️ Surcharges & Analyse de Risque (Monte Carlo)", expanded=False):
@@ -207,6 +226,12 @@ def display_expert_request(
                     target_fcf_margin=target_margin,
                     manual_fcf_base=final_manual_base,
                     wacc_override=final_wacc_ov,
+
+                    manual_beta=manual_beta,
+                    manual_total_debt=m_debt if m_debt != 0.0 else None,
+                    manual_cash=m_cash if m_cash != 0.0 else None,
+                    manual_shares_outstanding=m_shares if m_shares != 0.0 else None,
+                    manual_book_value=m_bv if m_bv is not None and m_bv != 0.0 else None,
 
                     enable_monte_carlo=use_mc,
                     num_simulations=sims,

@@ -2,7 +2,7 @@
 core/valuation/strategies/dcf_growth.py
 
 Méthode : Revenue-Driven FCFF (High Growth DCF)
-Version : V1.2 — Pydantic Fix (Arguments nommés)
+Version : V3.1 — Souveraineté Analyste Intégrale (Full Override)
 """
 
 import logging
@@ -51,10 +51,16 @@ class RevenueBasedStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 1. BASE DE REVENUE (GLASS BOX)
+        # 1. BASE DE REVENUE (GLASS BOX) — PRIORITÉ MANUELLE
         # ====================================================
 
-        revenue_base = financials.revenue_ttm
+        if params.manual_fcf_base is not None:
+            revenue_base = params.manual_fcf_base
+            revenue_source = "Analyst Override"
+        else:
+            revenue_base = financials.revenue_ttm
+            revenue_source = "Financial statements"
+
         if revenue_base is None or revenue_base <= 0:
             raise CalculationError(
                 "Revenue TTM requis pour la stratégie Revenue-Driven."
@@ -68,7 +74,7 @@ class RevenueBasedStrategy(ValuationStrategy):
                     name="Revenue TTM",
                     value=revenue_base,
                     unit=financials.currency,
-                    source="Financial statements"
+                    source=revenue_source
                 )
             ],
             numerical_substitution=f"Revenue₀ = {revenue_base:,.2f}",
@@ -207,13 +213,14 @@ class RevenueBasedStrategy(ValuationStrategy):
         wacc_ctx = calculate_wacc(financials, params)
         wacc = wacc_ctx.wacc
 
+        # Souveraineté : On trace le Beta réellement utilisé (Expert vs Marché)
+        beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
+
         discounted_sum = calculate_npv(projected_fcfs, wacc)
         discount_factors = calculate_discount_factors(
             wacc, len(projected_fcfs)
         )
 
-        # Gordon Shapiro sur le FCF final normalisé
-        # Note : On s'assure que g_perp < WACC
         g_perp = params.perpetual_growth_rate
         if wacc <= g_perp:
             g_perp = wacc - 0.005 # Sécurité
@@ -230,6 +237,7 @@ class RevenueBasedStrategy(ValuationStrategy):
             theoretical_formula="FCFₙ × (1+g) / (WACC − g)",
             hypotheses=[
                 TraceHypothesis(name="Final FCF", value=projected_fcfs[-1], unit=financials.currency),
+                TraceHypothesis(name="Beta used", value=beta_used, unit="", source="Manual" if params.manual_beta else "Market"),
                 TraceHypothesis(name="WACC", value=wacc, unit="%"),
                 TraceHypothesis(name="Perpetual growth", value=g_perp, unit="%")
             ],
@@ -238,20 +246,24 @@ class RevenueBasedStrategy(ValuationStrategy):
             ),
             result=discounted_tv,
             unit=financials.currency,
-            interpretation="Valeur de continuation disciplinée."
+            interpretation="Valeur de continuation disciplinée basée sur le taux d'actualisation souverain."
         )
 
         # ====================================================
-        # 6. PASSAGE À LA VALEUR PAR ACTION
+        # 6. PASSAGE À LA VALEUR PAR ACTION (SOVERAINETÉ BRIDGE)
         # ====================================================
 
         enterprise_value = discounted_sum + discounted_tv
 
-        # Correction Pydantic : calculate_equity_value_bridge retourne un dict ou un float
+        # Détermination des leviers bilanciels prioritaires
+        debt_to_use = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
+        cash_to_use = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
+        shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
+
         bridge = calculate_equity_value_bridge(
             enterprise_value,
-            financials.total_debt,
-            financials.cash_and_equivalents
+            debt_to_use,
+            cash_to_use
         )
 
         if isinstance(bridge, dict):
@@ -259,10 +271,10 @@ class RevenueBasedStrategy(ValuationStrategy):
         else:
             equity_value = bridge
 
-        if financials.shares_outstanding <= 0:
+        if shares_to_use <= 0:
             raise CalculationError("Nombre d’actions invalide.")
 
-        intrinsic_value = equity_value / financials.shares_outstanding
+        intrinsic_value = equity_value / shares_to_use
 
         self.add_step(
             label="Valeur intrinsèque par action",
@@ -271,16 +283,17 @@ class RevenueBasedStrategy(ValuationStrategy):
                 TraceHypothesis(name="Equity value", value=equity_value, unit=financials.currency),
                 TraceHypothesis(
                     name="Shares outstanding",
-                    value=financials.shares_outstanding,
-                    unit="#"
+                    value=shares_to_use,
+                    unit="#",
+                    source="Manual Override" if params.manual_shares_outstanding else "Market"
                 )
             ],
             numerical_substitution=(
-                f"{equity_value:,.2f} / {financials.shares_outstanding:,.0f}"
+                f"{equity_value:,.2f} / {shares_to_use:,.0f}"
             ),
             result=intrinsic_value,
             unit=financials.currency,
-            interpretation="Valeur intrinsèque estimée par action."
+            interpretation="Valeur intrinsèque finale estimée sur la base de la structure de capital choisie."
         )
 
         return DCFValuationResult(

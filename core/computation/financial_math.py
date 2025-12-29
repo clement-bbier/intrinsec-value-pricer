@@ -2,12 +2,13 @@
 core/computation/financial_math.py
 
 MOTEUR MATHÉMATIQUE FINANCIER
-Version : V2.1 — Hedge Fund Quality (Decimal Standard)
+Version : V3.0 — Souveraineté Analyste (Decimal Standard)
 
 Standardisation :
 - Toutes les fonctions attendent STRICTEMENT des décimales pour les taux (ex: 0.05).
 - Suppression des multiplications "magiques" par 100.
 - Lève des CalculationError explicites en cas d'aberration.
+- Intégration des surcharges (overrides) pour une autonomie 100% manuelle.
 """
 
 import logging
@@ -101,7 +102,6 @@ def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, ca
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     """Modèle CAPM : Ke = Rf + Beta * MRP"""
-    # Validation implicite : On attend des décimales (ex: 0.04, 0.05)
     return rf + (beta * mrp)
 
 
@@ -129,14 +129,21 @@ def calculate_synthetic_cost_of_debt(
 
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """Calcul centralisé du WACC."""
+    """Calcul centralisé du WACC avec support des surcharges analyste."""
+
+    # Détermination des valeurs à utiliser (Priorité Manuel > financials)
+    debt_to_use = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
+    shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
+
     # A. Cost of Equity
     if params.manual_cost_of_equity is not None:
         ke = params.manual_cost_of_equity
     else:
+        beta_to_use = params.manual_beta if params.manual_beta is not None else financials.beta
+
         ke = calculate_cost_of_equity_capm(
             params.risk_free_rate,
-            financials.beta,
+            beta_to_use,
             params.market_risk_premium
         )
 
@@ -144,21 +151,21 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     kd_gross = params.cost_of_debt
     kd_net = kd_gross * (1.0 - params.tax_rate)
 
-    # C. Poids
-    market_equity = financials.current_price * financials.shares_outstanding
+    # C. Poids (Calculés sur la structure souveraine ou cible)
+    market_equity = financials.current_price * shares_to_use
 
     if params.target_equity_weight > 0 and params.target_debt_weight > 0:
         we = params.target_equity_weight
         wd = params.target_debt_weight
         method = "TARGET"
     else:
-        total_cap = market_equity + financials.total_debt
+        total_cap = market_equity + debt_to_use
         if total_cap <= 0:
             we, wd = 1.0, 0.0
             method = "FALLBACK_EQUITY"
         else:
             we = market_equity / total_cap
-            wd = financials.total_debt / total_cap
+            wd = debt_to_use / total_cap
             method = "MARKET"
 
     wacc_raw = (we * ke) + (wd * kd_net)
@@ -180,6 +187,7 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     )
 
 
+
 # ==============================================================================
 # 3. MODÈLES SPÉCIFIQUES — NETTOYÉS
 # ==============================================================================
@@ -188,19 +196,9 @@ def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float
     """
     Formule Révisée de Benjamin Graham (1974).
     Standardisée pour inputs décimaux.
-
-    Args:
-        eps: Bénéfice par action.
-        growth_rate: Taux (ex: 0.05 pour 5%).
-        aaa_yield: Taux (ex: 0.045 pour 4.5%).
     """
     if aaa_yield <= 0:
         raise CalculationError("AAA Yield doit être strictement positif.")
-
-    # --- NETTOYAGE CRITIQUE ---
-    # La formule originale utilise des entiers pour la croissance (2*g_entier).
-    # Comme on travaille en décimales (0.05), on convertit juste pour le facteur.
-    # MAIS on s'assure que growth_rate est bien < 1.0 avant.
 
     # Conversion explicite pour la formule "8.5 + 2g"
     g_scaled = growth_rate * 100.0
