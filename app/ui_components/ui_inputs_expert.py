@@ -1,18 +1,11 @@
 """
 app/ui_components/ui_inputs_expert.py
-
-INTERFACE — MODE EXPERT (CONTEXT-AWARE V3.3)
-Version : V3.3 — Correctif Constantes & Polymorphisme
-
-Rôle :
-- Interface de saisie manuelle complète.
-- S'adapte au contexte (Banque vs Tech vs Industrie).
-- Intègre les définitions de toutes les constantes par défaut.
+ARCHITECTURE SEGMENTÉE — TERMINAL PROFESSIONNEL RÉACTIF (V6.3)
+Souveraineté totale : Formules LaTeX, Réactivité Monte Carlo et Clarté Décimale.
 """
 
 from __future__ import annotations
-from typing import Optional
-
+from typing import Optional, Dict, Any
 import streamlit as st
 
 from core.models import (
@@ -23,238 +16,226 @@ from core.models import (
     TerminalValueMethod
 )
 
-# Gestion robuste des tooltips
-try:
-    from core.methodology.texts import TOOLTIPS
-except ImportError:
-    TOOLTIPS = {}
+# ==============================================================================
+# 0. RÉFÉRENTIEL DES NOMS UNIFIÉS
+# ==============================================================================
+
+VALUATION_DISPLAY_NAMES = {
+    ValuationMode.FCFF_TWO_STAGE: "FCFF Standard",
+    ValuationMode.FCFF_NORMALIZED: "FCFF Fundamental",
+    ValuationMode.FCFF_REVENUE_DRIVEN: "FCFF Growth",
+    ValuationMode.RESIDUAL_INCOME_MODEL: "RIM",
+    ValuationMode.GRAHAM_1974_REVISED: "Graham"
+}
 
 # ==============================================================================
-# CONSTANTES PAR DÉFAUT (CRITIQUE : NE PAS SUPPRIMER)
+# 1. LES ATOMES PROFESSIONNELS (STANDARD DÉCIMAL CLAIR)
 # ==============================================================================
-DEFAULT_RF = 0.042        # 4.2% (Taux sans risque)
-DEFAULT_MRP = 0.055       # 5.5% (Prime de risque)
-DEFAULT_TAX = 0.25        # 25% (Impôt société)
-DEFAULT_COST_DEBT = 0.05  # 5% (Coût dette brut)
-DEFAULT_GROWTH = 0.03     # 3% (Croissance phase 1) - C'ÉTAIT CELUI-LA QUI MANQUAIT
-DEFAULT_PERP = 0.02       # 2% (Croissance perpétuelle / Inflation)
 
+def atom_macro_rates_pro():
+    c1, c2 = st.columns(2)
+    rf = c1.number_input("Taux sans risque $R_f$ (décimal, ex: 0.042 pour 4.2%)", 0.0, 0.20, 0.042, 0.001, format="%.3f")
+    mrp = c2.number_input("Prime de risque marché $MRP$ (décimal, ex: 0.055 pour 5.5%)", 0.0, 0.20, 0.055, 0.001, format="%.3f")
+    return {"risk_free_rate": rf, "market_risk_premium": mrp}
 
-def display_expert_request(
-    default_ticker: str = "AAPL",
-    selected_mode: ValuationMode = ValuationMode.FCFF_TWO_STAGE
-) -> Optional[ValuationRequest]:
-    """
-    Formulaire Expert Polymorphe.
-    S'adapte intelligemment selon le modèle de valorisation choisi.
-    """
+def atom_beta_control_pro():
+    beta = st.number_input("Coefficient Beta $\\beta$ (ex: 1.10)", 0.0, 5.0, 1.0, 0.05,
+                           help="Mesure de volatilité relative. Saisir 0.0 pour utiliser le calcul automatique.")
+    return {"manual_beta": beta}
 
-    st.markdown(f"### 🛠️ Paramétrage Expert : {selected_label(selected_mode)}")
+def atom_tax_and_debt_pro(mode: ValuationMode):
+    c1, c2 = st.columns(2)
+    tax = c1.number_input("Taux d'imposition effectif (décimal, ex: 0.25 pour 25%)", 0.0, 0.60, 0.25, 0.01, format="%.2f")
+    if mode == ValuationMode.GRAHAM_1974_REVISED:
+        yield_aaa = c2.number_input("Rendement Obligations AAA $Y$ (décimal, ex: 0.045 pour 4.5%)", 0.0, 0.20, 0.045, 0.001, format="%.3f")
+        return {"tax_rate": tax, "corporate_aaa_yield": yield_aaa}
+    else:
+        kd = c2.number_input("Coût de la dette brut $K_d$ (décimal, ex: 0.05 pour 5%)", 0.0, 0.20, 0.05, 0.001, format="%.3f")
+        return {"tax_rate": tax, "cost_of_debt": kd}
 
-    # Indicateurs de contexte
-    is_rim = selected_mode == ValuationMode.RESIDUAL_INCOME_MODEL
-    is_growth = selected_mode == ValuationMode.FCFF_REVENUE_DRIVEN
-    is_graham = selected_mode == ValuationMode.GRAHAM_1974_REVISED
-    # is_standard = not (is_rim or is_growth or is_graham)
+def atom_terminal_strategy_pro():
+    method = st.radio(
+        "Stratégie de sortie",
+        options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
+        format_func=lambda x: "Croissance Perpétuelle (Gordon)" if x == TerminalValueMethod.GORDON_GROWTH else "Multiple de Sortie",
+        horizontal=True
+    )
+    c1, _ = st.columns(2)
+    if method == TerminalValueMethod.GORDON_GROWTH:
+        gn = c1.number_input("Taux de croissance à l'infini $g_n$ (décimal, ex: 0.02 pour 2%)", 0.0, 0.05, 0.02, 0.001, format="%.3f")
+        return {"terminal_method": method, "perpetual_growth_rate": gn, "exit_multiple_value": 12.0}
+    else:
+        exit_m = c1.number_input("Multiple de sortie (EV/FCF ou EV/EBITDA, ex: 12.5)", 1.0, 50.0, 12.0, 0.5)
+        return {"terminal_method": method, "perpetual_growth_rate": 0.02, "exit_multiple_value": exit_m}
 
-    with st.form("expert_form"):
+def atom_equity_bridge_pro():
+    st.caption("Ajustements Bilanciels (Unités monétaires en $, 0 = Auto)")
+    c1, c2, c3 = st.columns(3)
+    debt = c1.number_input("Dette Totale ($)", value=0.0, step=1e6, format="%.0f")
+    cash = c2.number_input("Trésorerie ($)", value=0.0, step=1e6, format="%.0f")
+    shares = c3.number_input("Actions (#)", value=0.0, step=1e5, format="%.0f")
+    return {"manual_total_debt": debt, "manual_cash": cash, "manual_shares_outstanding": shares}
 
-        # ==============================================================================
-        # 1. RISQUE & TAUX (Adaptatif)
-        # ==============================================================================
-        st.markdown("#### 1. Environnement de Taux & Risque")
+def atom_monte_carlo_pro():
+    """Phase 6 : Simulation Probabiliste réactive (Positionnée en fin de flux)."""
+    st.markdown("#### 6. Simulation Probabiliste (Analyse d'Incertitude)")
+    enable = st.toggle("Activer Monte Carlo", value=False)
+    if enable:
+        with st.container(border=True):
+            c1, c2 = st.columns(2)
+            sims = c1.select_slider("Itérations", options=[1000, 5000, 10000, 20000], value=5000)
+            st.caption("Calibration des Volatilités (Décimales, ex: 0.02 pour 2%) :")
+            v1, v2, v3 = st.columns(3)
+            vb = v1.number_input("Vol. Beta", 0.0, 1.0, 0.10, 0.01, format="%.3f")
+            vg = v2.number_input("Vol. Croissance $g$", 0.0, 0.20, 0.02, 0.005, format="%.3f")
+            vgn = v3.number_input("Vol. $g_n$", 0.0, 0.05, 0.005, 0.001, format="%.3f")
+            return {"enable_monte_carlo": True, "num_simulations": sims, "beta_volatility": vb, "growth_volatility": vg, "terminal_growth_volatility": vgn}
+    return {"enable_monte_carlo": False}
 
-        c1, c2, c3 = st.columns(3)
+# ==============================================================================
+# 2. FACTORY
+# ==============================================================================
 
-        rf = c1.number_input(
-            "Taux sans risque (Rf)",
-            0.0, 0.20, DEFAULT_RF, 0.001, format="%.3f",
-            help="Obligations d'État 10 ans"
-        )
-        mrp = c2.number_input(
-            "Prime de risque (MRP)",
-            0.0, 0.20, DEFAULT_MRP, 0.001, format="%.3f",
-            help="Prime de risque marché actions"
-        )
+def factory_pydantic_params(raw_data: Dict[str, Any]) -> DCFParameters:
+    processed = raw_data.copy()
+    sovereign_fields = ["manual_total_debt", "manual_cash", "manual_shares_outstanding", "manual_fcf_base", "manual_book_value", "manual_beta"]
+    for field in sovereign_fields:
+        if processed.get(field) == 0:
+            processed[field] = None
+    return DCFParameters(**processed)
 
-        # Le 3ème champ change selon le modèle
-        manual_beta = 1.0 # Valeur par défaut
-        rate_val = 0.0
+# ==============================================================================
+# 3. TERMINAUX EXPERTS (VUES RÉACTIVES)
+# ==============================================================================
 
-        if is_graham:
-            rate_val = c3.number_input("Taux AAA (Corporate)", 0.0, 0.15, 0.045, 0.001, help="Référence obligataire privée")
-        elif is_rim:
-            # Pour les banques, le coût de la dette est opérationnel, on se focus sur le Beta
-            manual_beta = c3.number_input("Beta (Risque Bancaire)", 0.0, 3.0, 1.0, 0.05, help="Volatilité systématique")
-            rate_val = 0.0 # Pas utilisé comme input direct Kd
-        else:
-            rate_val = c3.number_input("Coût de la dette (Kd brut)", 0.0, 0.20, DEFAULT_COST_DEBT, 0.001, help="Taux d'emprunt de l'entreprise")
-            manual_beta = 1.0 # Sera géré plus bas ou via surcharge
+def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
+    name = VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_TWO_STAGE]
+    st.subheader(f"Terminal Expert : {name}")
+    st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
 
-        # ==============================================================================
-        # 2. STRUCTURE DU CAPITAL (Caché pour RIM/Graham)
-        # ==============================================================================
-        we, wd, tax = 1.0, 0.0, DEFAULT_TAX
+    st.markdown("#### 1. Détermination du flux de base ($FCF_0$)")
+    fcf_base = st.number_input("Flux de trésorerie disponible (TTM) (en $)", value=0.0, format="%.0f")
+    st.divider()
 
-        if not (is_rim or is_graham):
-            with st.expander("⚖️ Structure du Capital (WACC)", expanded=True):
-                w1, w2, w3, w4 = st.columns(4)
-                manual_beta = w1.number_input("Beta", 0.0, 5.0, 1.0, 0.05)
-                tax = w2.number_input("Taux IS (Tax)", 0.0, 0.50, DEFAULT_TAX, 0.01)
+    st.markdown("#### 2. Phase de croissance explicite : $FCF_t = FCF_{t-1} \\times (1 + g)$")
+    c1, c2 = st.columns(2)
+    n_years = c1.slider("Années de projection", 3, 15, 5)
+    g_rate = c2.number_input("Croissance annuelle $g$ (décimal, ex: 0.05 pour 5%)", -0.50, 1.0, 0.05, 0.005, format="%.3f")
+    st.divider()
 
-                # Saisie intelligente des poids
-                we_input = w3.number_input("Poids Equity (%)", 0.0, 100.0, 80.0, 5.0)
-                wd_input = w4.number_input("Poids Dette (%)", 0.0, 100.0, 100.0 - we_input, 5.0)
+    st.markdown("#### 3. Coût Moyen Pondéré du Capital (WACC)")
+    wacc_data = atom_macro_rates_pro(); beta_data = atom_beta_control_pro(); tax_debt_data = atom_tax_and_debt_pro(ValuationMode.FCFF_TWO_STAGE)
+    st.divider()
 
-                # Normalisation immédiate pour le calcul
-                total_w = we_input + wd_input
-                if total_w > 0:
-                    we = we_input / total_w
-                    wd = wd_input / total_w
+    st.markdown("#### 4. Valeur de continuation (Sortie)")
+    terminal_data = atom_terminal_strategy_pro(); st.divider()
 
-        # ==============================================================================
-        # 3. CROISSANCE & PERFORMANCES (Le cœur du polymorphisme)
-        # ==============================================================================
-        st.markdown("#### 2. Hypothèses de Croissance")
+    st.markdown("#### 5. Passage à la Valeur Actionnaire (Bridge)")
+    bridge_data = atom_equity_bridge_pro(); st.divider()
 
-        # LABEL DYNAMIQUE
-        if is_growth:
-            growth_label = "Croissance du Chiffre d'Affaires (CAGR)"
-            growth_help = "Taux de croissance annuel des ventes sur la période explicite."
-        elif is_rim:
-            growth_label = "Croissance du Bénéfice (EPS)"
-            growth_help = "Croissance du Net Income / EPS pour projeter les profits futurs."
-        else:
-            growth_label = "Croissance du FCF"
-            growth_help = "Taux de croissance du Cash Flow Libre."
+    mc_data = atom_monte_carlo_pro()
 
-        cg1, cg2, cg3 = st.columns(3)
-        years = cg1.slider("Horizon de projection (ans)", 3, 15, 5)
-
-        # --- C'EST ICI QUE CA PLANTAIT AVANT (DEFAULT_GROWTH manquant) ---
-        g_growth = cg2.number_input(growth_label, -0.50, 1.0, DEFAULT_GROWTH, 0.005, format="%.3f", help=growth_help)
-        g_perp = cg3.number_input("Croissance Terminale (g)", 0.0, 0.05, DEFAULT_PERP, 0.001, help="Ne doit pas dépasser le Rf.")
-
-        # ==============================================================================
-        # 4. PARAMÈTRES SPÉCIFIQUES AU MODÈLE
-        # ==============================================================================
-        target_margin = None
-        high_growth_years = 0 # Par défaut
-
-        if is_growth:
-            st.info("💎 **Mode Revenue-Driven** : La valeur dépend de la convergence des marges.")
-            cm1, cm2 = st.columns(2)
-            target_margin = cm1.number_input("Marge FCF Cible (Long Terme)", 0.01, 0.60, 0.20, 0.01, help="Marge normative à l'équilibre")
-            manual_base_label = "Chiffre d'Affaires TTM (Override)"
-
-        elif is_rim:
-            st.info("🏦 **Mode Banques (RIM)** : La valeur dépend de la Book Value et du ROE.")
-            manual_base_label = "EPS de base (Override)"
-
-        else:
-            manual_base_label = "FCF de base (Override)"
-
-        # ==============================================================================
-        # 4.5. STRUCTURE DE BILAN & CAPITAL (SOUVERAINETÉ ANALYSTE)
-        # ==============================================================================
-        with st.expander("📊 Bilan & Capital structure", expanded=False):
-            st.caption("Surchargez les données comptables pour s'affranchir de Yahoo Finance.")
-            cb1, cb2 = st.columns(2)
-
-            m_debt = cb1.number_input("Dette Totale Manuelle", value=0.0, step=1000000.0,
-                                      help="Dette brute (LT + ST)")
-            m_cash = cb2.number_input("Trésorerie Manuelle", value=0.0, step=1000000.0, help="Cash & Equivalents")
-
-            m_shares = cb1.number_input("Nombre d'actions (Total)", value=0.0, step=1000.0,
-                                        help="Shares Outstanding")
-
-            m_bv = None
-            if is_rim:
-                m_bv = cb2.number_input("Book Value Totale Manuelle", value=0.0, step=1000000.0,
-                                        help="Base pour le modèle RIM")
-
-        # ==============================================================================
-        # 5. SURCHARGES & MONTE CARLO
-        # ==============================================================================
-        with st.expander("⚙️ Surcharges & Analyse de Risque (Monte Carlo)", expanded=False):
-            c_ov1, c_ov2 = st.columns(2)
-            manual_base = c_ov1.number_input(f"Forcer {manual_base_label}", value=0.0, step=100.0, help="Laisser 0 pour utiliser Yahoo Finance")
-            wacc_ov = c_ov2.number_input("Forcer WACC / Ke Global", 0.0, 0.30, 0.0, 0.001, help="Surcharge le calcul automatique du taux d'actualisation")
-
-            st.divider()
-            st.markdown("**🎲 Configuration Monte Carlo**")
-            use_mc = st.toggle("Activer la simulation", value=False)
-
-            mc1, mc2, mc3 = st.columns(3)
-            sims = mc1.selectbox("Simulations", [1000, 2000, 5000, 10000], index=1)
-            beta_vol = mc2.number_input("Incertitude Beta (Vol)", 0.05, 0.50, 0.10, 0.01, help="Écart-type sur le risque")
-            growth_vol = mc3.number_input("Incertitude Croissance (Vol)", 0.005, 0.10, 0.015, 0.001, help="Écart-type sur la croissance")
-
-            # Ajout variable manquante pour éviter tout NameError futur
-            term_vol = 0.005
-
-        st.markdown("---")
-
-        # ==============================================================================
-        # 6. SOUMISSION (Le bouton est bien là !)
-        # ==============================================================================
-        submitted = st.form_submit_button("Lancer l'Analyse Expert", type="primary", use_container_width=True)
-
-        if submitted:
-            # Mapping logique
-            aaa_val = rate_val if is_graham else 0.0
-            kd_val = rate_val if not (is_graham or is_rim) else 0.0
-
-            final_manual_base = manual_base if manual_base != 0.0 else None
-            final_wacc_ov = wacc_ov if wacc_ov != 0.0 else None
-
-            try:
-                params = DCFParameters(
-                    risk_free_rate=rf,
-                    market_risk_premium=mrp,
-                    corporate_aaa_yield=aaa_val,
-                    cost_of_debt=kd_val,
-                    tax_rate=tax,
-                    fcf_growth_rate=g_growth,
-                    perpetual_growth_rate=g_perp,
-                    projection_years=int(years),
-                    high_growth_years=high_growth_years,
-
-                    target_equity_weight=we,
-                    target_debt_weight=wd,
-
-                    target_fcf_margin=target_margin,
-                    manual_fcf_base=final_manual_base,
-                    wacc_override=final_wacc_ov,
-
-                    manual_beta=manual_beta,
-                    manual_total_debt=m_debt if m_debt != 0.0 else None,
-                    manual_cash=m_cash if m_cash != 0.0 else None,
-                    manual_shares_outstanding=m_shares if m_shares != 0.0 else None,
-                    manual_book_value=m_bv if m_bv is not None and m_bv != 0.0 else None,
-
-                    enable_monte_carlo=use_mc,
-                    num_simulations=sims,
-                    beta_volatility=beta_vol,
-                    growth_volatility=growth_vol,
-                    terminal_growth_volatility=term_vol
-                )
-
-                return ValuationRequest(
-                    ticker=default_ticker,
-                    projection_years=int(years),
-                    mode=selected_mode,
-                    input_source=InputSource.MANUAL,
-                    manual_params=params,
-                    manual_beta=manual_beta
-                )
-
-            except Exception as e:
-                st.error(f"Erreur de paramètres : {e}")
-                return None
-
+    if st.button(f"Établir la valorisation intrinsèque ({ticker})", type="primary", use_container_width=True):
+        all_data = {"manual_fcf_base": fcf_base, "projection_years": n_years, "fcf_growth_rate": g_rate, **wacc_data, **beta_data, **tax_debt_data, **terminal_data, **bridge_data, **mc_data}
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=factory_pydantic_params(all_data))
     return None
 
-def selected_label(mode: ValuationMode) -> str:
-    """Helper pour afficher un nom joli dans le titre."""
-    return mode.value
+def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
+    name = VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_NORMALIZED]
+    st.subheader(f"Terminal Expert : {name}")
+    st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_{normalisé} \times (1+g)^t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
+
+    st.markdown("#### 1. Flux normalisé ($FCF_0$)")
+    fcf_base = st.number_input("Flux lissé de cycle (en $)", value=0.0, format="%.0f")
+    st.divider()
+
+    st.markdown("#### 2. Croissance de cycle : $FCF_t = FCF_0 \\times (1+g)^t$")
+    c1, c2 = st.columns(2)
+    n_years = c1.slider("Années cycle", 3, 15, 5)
+    g_rate = c2.number_input("Croissance moyenne (décimal, ex: 0.03 pour 3%)", -0.20, 0.30, 0.03, 0.005, format="%.3f")
+    st.divider()
+
+    st.markdown("#### 3. WACC"); wacc_data = atom_macro_rates_pro(); beta_data = atom_beta_control_pro(); tax_debt_data = atom_tax_and_debt_pro(ValuationMode.FCFF_NORMALIZED)
+    st.divider(); st.markdown("#### 4. Sortie"); terminal_data = atom_terminal_strategy_pro()
+    st.divider(); st.markdown("#### 5. Bridge"); bridge_data = atom_equity_bridge_pro(); st.divider()
+
+    mc_data = atom_monte_carlo_pro()
+
+    if st.button(f"Lancer la valorisation Fondamentale ({ticker})", type="primary", use_container_width=True):
+        all_data = {"manual_fcf_base": fcf_base, "projection_years": n_years, "fcf_growth_rate": g_rate, **wacc_data, **beta_data, **tax_debt_data, **terminal_data, **bridge_data, **mc_data}
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED, input_source=InputSource.MANUAL, manual_params=factory_pydantic_params(all_data))
+    return None
+
+def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
+    name = VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_REVENUE_DRIVEN]
+    st.subheader(f"Terminal Expert : {name}")
+    st.latex(r"V_0 = \sum_{t=1}^{n} \frac{Rev_0(1+g_{rev})^t \times Margin_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
+
+    st.markdown("#### 1. Chiffre d'Affaires ($Rev_0$)")
+    rev_base = st.number_input("Chiffre d'affaires TTM (en $)", value=0.0, format="%.0f")
+    st.divider()
+
+    st.markdown("#### 2. Convergence des Marges")
+    c1, c2, c3 = st.columns(3)
+    n_years = c1.slider("Années de projection", 3, 15, 5)
+    g_rev = c2.number_input("Croissance CA (décimal, ex: 0.15 pour 15%)", 0.0, 1.0, 0.15, 0.005, format="%.3f")
+    m_target = c3.number_input("Marge FCF cible (décimal, ex: 0.20 pour 20%)", 0.0, 0.80, 0.20, 0.01, format="%.2f")
+    st.divider()
+
+    st.markdown("#### 3. WACC"); wacc_data = atom_macro_rates_pro(); beta_data = atom_beta_control_pro(); tax_debt_data = atom_tax_and_debt_pro(ValuationMode.FCFF_REVENUE_DRIVEN)
+    st.divider(); st.markdown("#### 4. Sortie"); terminal_data = atom_terminal_strategy_pro()
+    st.divider(); st.markdown("#### 5. Bridge"); bridge_data = atom_equity_bridge_pro(); st.divider()
+
+    mc_data = atom_monte_carlo_pro()
+
+    if st.button(f"Lancer la valorisation Growth ({ticker})", type="primary", use_container_width=True):
+        all_data = {"manual_fcf_base": rev_base, "projection_years": n_years, "fcf_growth_rate": g_rev, "target_fcf_margin": m_target, **wacc_data, **beta_data, **tax_debt_data, **terminal_data, **bridge_data, **mc_data}
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN, input_source=InputSource.MANUAL, manual_params=factory_pydantic_params(all_data))
+    return None
+
+def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
+    name = VALUATION_DISPLAY_NAMES[ValuationMode.RESIDUAL_INCOME_MODEL]
+    st.subheader(f"Terminal Expert : {name}")
+    st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{NetIncome_t - (k_e \times BV_{t-1})}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
+
+    st.markdown("#### 1. Valeur Comptable & Profits")
+    c1, c2 = st.columns(2)
+    bv = c1.number_input("Book Value (Equity) (en $)", value=0.0, format="%.0f")
+    ni = c2.number_input("Résultat Net TTM (en $)", value=0.0, format="%.0f")
+    st.divider()
+
+    st.markdown("#### 2. Horizon & Croissance")
+    c1, c2 = st.columns(2)
+    n_years = c1.slider("Années de projection", 3, 15, 5)
+    g_ni = c2.number_input("Croissance attendue RN (décimal, ex: 0.05 pour 5%)", 0.0, 0.50, 0.05, 0.005, format="%.3f")
+    st.divider()
+
+    st.markdown("#### 3. Coût des Fonds Propres"); wacc_data = atom_macro_rates_pro(); beta_data = atom_beta_control_pro(); tax_debt_data = atom_tax_and_debt_pro(ValuationMode.RESIDUAL_INCOME_MODEL)
+    st.divider(); st.markdown("#### 4. Sortie"); terminal_data = atom_terminal_strategy_pro()
+    st.divider(); st.markdown("#### 5. Bridge"); bridge_data = atom_equity_bridge_pro(); st.divider()
+
+    mc_data = atom_monte_carlo_pro()
+
+    if st.button(f"Lancer la valorisation RIM ({ticker})", type="primary", use_container_width=True):
+        all_data = {"manual_book_value": bv, "manual_fcf_base": ni, "projection_years": n_years, "fcf_growth_rate": g_ni, **wacc_data, **beta_data, **tax_debt_data, **terminal_data, **bridge_data, **mc_data}
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RESIDUAL_INCOME_MODEL, input_source=InputSource.MANUAL, manual_params=factory_pydantic_params(all_data))
+    return None
+
+def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
+    name = VALUATION_DISPLAY_NAMES[ValuationMode.GRAHAM_1974_REVISED]
+    st.subheader(f"Terminal Expert : {name}")
+    st.latex(r"V_0 = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}")
+
+    st.markdown("#### 1. Capacité Bénéficiaire")
+    c1, c2 = st.columns(2)
+    eps = c1.number_input("EPS normalisé (en $)", value=0.0, format="%.2f")
+    g_lt = c2.number_input("Croissance attendue $g$ (décimal, ex: 0.05 pour 5%)", 0.0, 0.20, 0.05, 0.005, format="%.3f")
+    st.divider()
+
+    st.markdown("#### 2. Conditions de Marché AAA")
+    tax_debt_data = atom_tax_and_debt_pro(ValuationMode.GRAHAM_1974_REVISED)
+
+    if st.button(f"Calculer la valeur Graham ({ticker})", type="primary", use_container_width=True):
+        all_data = {"manual_fcf_base": eps, "fcf_growth_rate": g_lt, **tax_debt_data, "projection_years": 1, "perpetual_growth_rate": 0.0, "risk_free_rate": 0.0, "market_risk_premium": 0.0, "enable_monte_carlo": False}
+        return ValuationRequest(ticker=ticker, projection_years=1, mode=ValuationMode.GRAHAM_1974_REVISED, input_source=InputSource.MANUAL, manual_params=factory_pydantic_params(all_data))
+    return None
