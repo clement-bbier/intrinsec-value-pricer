@@ -59,8 +59,8 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         # Alignement miroir avec la formule théorique du registre
         sub_wacc = (
-            f"{wacc_ctx.weight_equity:.2f} \\times [{params.risk_free_rate:.4f} + {beta_used:.2f} \\times ({params.market_risk_premium:.4f})] + "
-            f"{wacc_ctx.weight_debt:.2f} \\times [{params.cost_of_debt:.4f} \\times (1 - {params.tax_rate:.2f})]"
+            f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate:.4f} + {beta_used:.2f} × ({params.market_risk_premium:.4f})] + "
+            f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt:.4f} × (1 - {params.tax_rate:.2f})]"
         )
 
         self.add_step(step_key="WACC_CALC", result=wacc, numerical_substitution=sub_wacc)
@@ -85,7 +85,7 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         # Preuve arithmétique de Gordon
         sub_tv = (
-            f"({projected_fcfs[-1]:,.0f} \\times {1 + params.perpetual_growth_rate:.3f}) / "
+            f"({projected_fcfs[-1]:,.0f} × {1 + params.perpetual_growth_rate:.3f}) / "
             f"({wacc:.4f} - {params.perpetual_growth_rate:.3f})"
         )
 
@@ -101,7 +101,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         self.add_step(
             step_key="NPV_CALC",
             result=ev,
-            numerical_substitution=f"{discounted_sum:,.0f} + ({tv:,.0f} \\times {factors[-1]:.4f})"
+            numerical_substitution=f"{discounted_sum:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})"
         )
 
         # ======================================================================

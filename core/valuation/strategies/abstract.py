@@ -77,8 +77,8 @@ class ValuationStrategy(ABC):
             beta_used = params.manual_beta or financials.beta
             # Substitution détaillée pour correspondre à la formule du registre
             sub_wacc = (
-                f"{wacc_ctx.weight_equity:.2f} \\times [{params.risk_free_rate:.4f} + {beta_used:.2f} \\times ({params.market_risk_premium:.4f})] + "
-                f"{wacc_ctx.weight_debt:.2f} \\times [{params.cost_of_debt:.4f} \\times (1 - {params.tax_rate:.2f})]"
+                f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate:.4f} + {beta_used:.2f} × ({params.market_risk_premium:.4f})] + "
+                f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt:.4f} × (1 - {params.tax_rate:.2f})]"
             )
 
         self.add_step(
@@ -94,18 +94,18 @@ class ValuationStrategy(ABC):
         self.add_step(
             step_key="FCF_PROJ",
             result=sum(flows),
-            numerical_substitution=f"{base_flow:,.0f} \\times (1 + {params.fcf_growth_rate:.3f})^{params.projection_years}"
+            numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate:.3f})^{params.projection_years}"
         )
 
         # --- C. VALEUR TERMINALE (Alignement : (FCFn * (1+gn)) / (r - gn)) ---
         if params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             tv = calculate_terminal_value_gordon(flows[-1], wacc, params.perpetual_growth_rate)
             key_tv = "TV_GORDON"
-            sub_tv = f"({flows[-1]:,.0f} \\times {1 + params.perpetual_growth_rate:.3f}) / ({wacc:.4f} - {params.perpetual_growth_rate:.3f})"
+            sub_tv = f"({flows[-1]:,.0f} × {1 + params.perpetual_growth_rate:.3f}) / ({wacc:.4f} - {params.perpetual_growth_rate:.3f})"
         else:
             tv = calculate_terminal_value_exit_multiple(flows[-1], params.exit_multiple_value or 12.0)
             key_tv = "TV_MULTIPLE"
-            sub_tv = f"{flows[-1]:,.0f} \\times {params.exit_multiple_value:.1f}"
+            sub_tv = f"{flows[-1]:,.0f} × {params.exit_multiple_value:.1f}"
 
         self.add_step(step_key=key_tv, result=tv, numerical_substitution=sub_tv)
 
@@ -118,7 +118,7 @@ class ValuationStrategy(ABC):
         self.add_step(
             step_key="NPV_CALC",
             result=ev,
-            numerical_substitution=f"{sum_pv:,.0f} + ({tv:,.0f} \\times {factors[-1]:.4f})"
+            numerical_substitution=f"{sum_pv:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})"
         )
 
         # --- E. BRIDGE (Alignement : EV - Dette + Cash) ---

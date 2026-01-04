@@ -53,7 +53,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         self.add_step(
             step_key="GRAHAM_MULTIPLIER",
             result=growth_multiplier,
-            numerical_substitution=f"8.5 + 2 \\times {g_display:.2f}"
+            numerical_substitution=f"8.5 + 2 × {g_display:.2f}"
         )
 
         # ======================================================================
@@ -69,7 +69,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         intrinsic_value = (eps * growth_multiplier * 4.4) / y_display
 
         # Substitution miroir de la formule LaTeX : \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}
-        sub_final = f"({eps:.2f} \\times {growth_multiplier:.2f} \\times 4.4) / {y_display:.2f}"
+        sub_final = f"({eps:.2f} × {growth_multiplier:.2f} × 4.4) / {y_display:.2f}"
 
         self.add_step(
             step_key="GRAHAM_FINAL",
