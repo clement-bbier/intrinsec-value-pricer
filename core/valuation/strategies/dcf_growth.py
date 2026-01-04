@@ -1,7 +1,8 @@
 """
 core/valuation/strategies/dcf_growth.py
-MÉTHODE : REVENUE-DRIVEN FCFF — VERSION V5.1 (Audit-Ready)
+MÉTHODE : REVENUE-DRIVEN FCFF — VERSION V6.0 (Audit-Grade)
 Rôle : Valorisation par revenus avec convergence des marges et preuve mathématique.
+Audit-Grade : Alignement intégral sur le registre Glass Box et substitution numérique.
 """
 
 import logging
@@ -34,8 +35,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="GROWTH_REV_BASE",
+            label="Ancrage des Revenus (Rev_0)",
+            theoretical_formula=r"Rev_0",
             result=rev_base,
-            numerical_substitution=f"Rev_0 = {rev_base:,.0f}"
+            numerical_substitution=f"Rev_0 = {rev_base:,.0f}",
+            interpretation="Point de départ du modèle basé sur le chiffre d'affaires TTM."
         )
 
         # ======================================================================
@@ -46,8 +50,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="GROWTH_MARGIN_CONV",
+            label="Convergence des Marges",
+            theoretical_formula=r"Margin_t \to Margin_{target}",
             result=target_margin,
-            numerical_substitution=f"{curr_margin:.2%} \\to {target_margin:.2%} (sur {params.projection_years} ans)"
+            numerical_substitution=f"{curr_margin:.2%} \\to {target_margin:.2%} (sur {params.projection_years} ans)",
+            interpretation="Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
         )
 
         # ======================================================================
@@ -59,11 +66,18 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         # Alignement miroir avec la formule théorique du registre
         sub_wacc = (
-            f"{wacc_ctx.weight_equity:.2f} \\times [{params.risk_free_rate:.4f} + {beta_used:.2f} \\times ({params.market_risk_premium:.4f})] + "
-            f"{wacc_ctx.weight_debt:.2f} \\times [{params.cost_of_debt:.4f} \\times (1 - {params.tax_rate:.2f})]"
+            f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate:.4f} + {beta_used:.2f} × ({params.market_risk_premium:.4f})] + "
+            f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt:.4f} × (1 - {params.tax_rate:.2f})]"
         )
 
-        self.add_step(step_key="WACC_CALC", result=wacc, numerical_substitution=sub_wacc)
+        self.add_step(
+            step_key="WACC_CALC",
+            label="Calcul du WACC",
+            theoretical_formula=r"WACC = w_e \cdot [R_f + \beta \cdot (ERP)] + w_d \cdot [K_d \cdot (1 - \tau)]",
+            result=wacc,
+            numerical_substitution=sub_wacc,
+            interpretation="Taux d'actualisation cible pour l'entreprise."
+        )
 
         # ======================================================================
         # --- CALCUL DES FLUX PROJETÉS (LOGIQUE MÉTIER) ---
@@ -79,17 +93,31 @@ class RevenueBasedStrategy(ValuationStrategy):
         # ======================================================================
         # 4. VALEUR TERMINALE (ID: TV_GORDON)
         # ======================================================================
+        # GARDE-FOU AUDIT : g doit être < WACC pour éviter une valeur infinie
+        if params.perpetual_growth_rate >= wacc:
+             raise CalculationError(
+                f"Divergence financière : g ({params.perpetual_growth_rate:.2%}) "
+                f"est supérieur ou égal au WACC ({wacc:.2%})."
+            )
+
         factors = calculate_discount_factors(wacc, params.projection_years)
         tv = calculate_terminal_value_gordon(projected_fcfs[-1], wacc, params.perpetual_growth_rate)
         discounted_tv = tv * factors[-1]
 
         # Preuve arithmétique de Gordon
         sub_tv = (
-            f"({projected_fcfs[-1]:,.0f} \\times {1 + params.perpetual_growth_rate:.3f}) / "
+            f"({projected_fcfs[-1]:,.0f} × {1 + params.perpetual_growth_rate:.3f}) / "
             f"({wacc:.4f} - {params.perpetual_growth_rate:.3f})"
         )
 
-        self.add_step(step_key="TV_GORDON", result=tv, numerical_substitution=sub_tv)
+        self.add_step(
+            step_key="TV_GORDON",
+            label="Valeur Terminale (Gordon)",
+            theoretical_formula=r"TV = \frac{FCF_n \cdot (1 + g)}{WACC - g}",
+            result=tv,
+            numerical_substitution=sub_tv,
+            interpretation="Valeur de l'entreprise à l'infini basée sur la dernière marge convergée."
+        )
 
         # ======================================================================
         # 5. VALEUR ACTUELLE NETTE (ID: NPV_CALC)
@@ -100,8 +128,11 @@ class RevenueBasedStrategy(ValuationStrategy):
         # Preuve de la somme actualisée + TV actualisée
         self.add_step(
             step_key="NPV_CALC",
+            label="Valeur d'Entreprise (Enterprise Value)",
+            theoretical_formula=r"EV = \sum \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^n}",
             result=ev,
-            numerical_substitution=f"{discounted_sum:,.0f} + ({tv:,.0f} \\times {factors[-1]:.4f})"
+            numerical_substitution=f"{discounted_sum:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})",
+            interpretation="Somme actualisée des flux et de la valeur terminale."
         )
 
         # ======================================================================
@@ -115,8 +146,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="EQUITY_BRIDGE",
+            label="Valeur des Fonds Propres (Equity Value)",
+            theoretical_formula=r"Equity = EV - Debt + Cash",
             result=equity_val,
-            numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f}"
+            numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f}",
+            interpretation="Ajustement de la structure financière pour isoler la valeur actionnariale."
         )
 
         # ======================================================================
@@ -127,8 +161,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="VALUE_PER_SHARE",
+            label="Valeur Intrinsèque par Action",
+            theoretical_formula=r"Price = \frac{Equity\_Value}{Shares\_Outstanding}",
             result=intrinsic_value,
-            numerical_substitution=f"{equity_val:,.0f} / {shares:,.0f}"
+            numerical_substitution=f"{equity_val:,.0f} / {shares:,.0f}",
+            interpretation="Estimation finale du prix théorique par titre."
         )
 
         return DCFValuationResult(

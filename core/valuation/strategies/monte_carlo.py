@@ -1,15 +1,23 @@
 """
 core/valuation/strategies/monte_carlo.py
-EXTENSION PROBABILISTE — VERSION V5.0 (Registry-Driven)
+VERSION SIMPLIFIÉE — ALIGNÉE UI
 """
 
 import logging
 import numpy as np
 from typing import List, Type
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, ValuationResult, TraceHypothesis
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    ValuationResult,
+    TraceHypothesis
+)
 from core.valuation.strategies.abstract import ValuationStrategy
-from core.computation.statistics import generate_multivariate_samples, generate_independent_samples
+from core.computation.statistics import (
+    generate_multivariate_samples,
+    generate_independent_samples
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,27 +37,37 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         # 1. CONFIG (ID: MC_CONFIG)
         self.add_step(
             step_key="MC_CONFIG",
+            label="Configuration des Incertitudes",
+            theoretical_formula=r"\sigma, \rho",
             result=1.0,
-            numerical_substitution=f"Itérations: {num_simulations} | Modèle: {self.strategy_cls.__name__}",
-            hypotheses=[TraceHypothesis(name="Beta Vol", value=params.beta_volatility or 0.10)]
+            numerical_substitution=f"Itérations : {num_simulations} × Modèle : {self.strategy_cls.__name__}",
+            interpretation="Initialisation des paramètres stochastiques pour l'analyse de sensibilité."
         )
 
         # --- GÉNÉRATION ---
         betas, growths = generate_multivariate_samples(
-            mu_beta=financials.beta, sigma_beta=params.beta_volatility or 0.10,
-            mu_growth=params.fcf_growth_rate, sigma_growth=params.growth_volatility or 0.015,
-            rho=-0.30, num_simulations=num_simulations
+            mu_beta=financials.beta,
+            sigma_beta=params.beta_volatility or 0.10,
+            mu_growth=params.fcf_growth_rate,
+            sigma_growth=params.growth_volatility or 0.015,
+            rho=-0.30,
+            num_simulations=num_simulations
         )
         terminal_growths = generate_independent_samples(
-            mean=params.perpetual_growth_rate, sigma=params.terminal_growth_volatility or 0.005,
-            num_simulations=num_simulations, clip_min=0.0, clip_max=0.04
+            mean=params.perpetual_growth_rate,
+            sigma=params.terminal_growth_volatility or 0.005,
+            num_simulations=num_simulations,
+            clip_min=0.0, clip_max=0.04
         )
 
         # 2. SAMPLING (ID: MC_SAMPLING)
         self.add_step(
             step_key="MC_SAMPLING",
+            label="Génération des Scénarios",
+            theoretical_formula=r"Runs_{stochastiques}",
             result=float(num_simulations),
-            numerical_substitution="Génération des vecteurs stochastiques"
+            numerical_substitution=f"Tirage de {num_simulations} vecteurs de probabilités.",
+            interpretation="Création de scénarios basés sur la volatilité historique et les corrélations."
         )
 
         # --- BOUCLE DE SIMULATION ---
@@ -64,21 +82,26 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                 })
                 res = worker.execute(s_fin, s_par)
                 iv = res.intrinsic_value_per_share
-                if -500.0 < iv < 50_000.0: simulated_values.append(iv)
-            except: continue
+                if -500.0 < iv < 50_000.0:
+                    simulated_values.append(iv)
+            except:
+                continue
 
         # 3. FILTERING (ID: MC_FILTERING)
         valid_ratio = len(simulated_values) / num_simulations
         self.add_step(
             step_key="MC_FILTERING",
+            label="Filtrage et Validation",
+            theoretical_formula=r"N_{valid} / N_{total}",
             result=valid_ratio,
-            numerical_substitution=f"{len(simulated_values)} / {num_simulations} valides"
+            numerical_substitution=f"{len(simulated_values)} / {num_simulations} valides",
+            interpretation="Élimination des scénarios mathématiquement instables."
         )
 
         if valid_ratio < self.MIN_VALID_RATIO:
             raise CalculationError(f"Instabilité critique : {valid_ratio:.1%} valides.")
 
-        # 4. PIVOT & SYNTHÈSE (ID: MC_MEDIAN)
+        # 4. SYNTHÈSE & CALCUL RÉFÉRENCE
         ref_strategy = self.strategy_cls(glass_box_enabled=True)
         final_result = ref_strategy.execute(financials, params)
 
@@ -95,9 +118,13 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="MC_MEDIAN",
+            label="Synthèse de la Distribution",
+            theoretical_formula=r"Median(simulations)",
             result=p50,
-            numerical_substitution=f"Médiane retenue sur {len(simulated_values)} scénarios"
+            numerical_substitution=f"Médiane retenue sur {len(simulated_values)} scénarios valides.",
+            interpretation="Valeur intrinsèque stabilisée par la loi des grands nombres."
         )
 
+        # On garde la fusion des traces : l'UI se chargera de les séparer par filtre
         final_result.calculation_trace = self.calculation_trace + final_result.calculation_trace
         return final_result

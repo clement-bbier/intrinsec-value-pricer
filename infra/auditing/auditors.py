@@ -1,7 +1,8 @@
 """
 infra/auditing/auditors.py
-AUDITEUR INSTITUTIONNEL V6.0 — LOGIQUE DE DÉTECTION AVANCÉE
-Rôle : Mesurer les piliers d’incertitude sans altérer les calculs financiers.
+AUDITEUR INSTITUTIONNEL V6.6 — LOGIQUE DE DÉTECTION AVANCÉE
+Rôle : Mesurer les piliers d’incertitude via le DiagnosticRegistry et Invariants Macro.
+Audit-Grade : Ajout du test de corrélation g vs Rf (Divergence Macro).
 """
 
 import logging
@@ -18,6 +19,7 @@ from core.models import (
     AuditPillarScore,
     InputSource
 )
+from core.diagnostics import DiagnosticRegistry, DiagnosticEvent, SeverityLevel
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,15 @@ class IValuationAuditor(ABC):
 
         return pillars
 
+    def _event_to_log(self, event: DiagnosticEvent, category: str, penalty: float) -> AuditLog:
+        """Helper pour convertir un événement de diagnostic en log d'audit compatible."""
+        return AuditLog(
+            category=category,
+            severity=event.severity.value,
+            message=f"{event.message} (Code: {event.code})",
+            penalty=penalty
+        )
+
     # ------------------------------------------------------------------
     # 1. DATA CONFIDENCE (Qualité des données sources)
     # ------------------------------------------------------------------
@@ -45,25 +56,23 @@ class IValuationAuditor(ABC):
         logs, score, f = [], 100.0, result.financials
         is_expert = result.request.input_source == InputSource.MANUAL if result.request else False
 
-        # --- Tests de cohérence existants ---
-        if f.total_debt == 0 and f.interest_expense > 0:
-            logs.append(AuditLog(category="Data", severity="WARN", message="Dette nulle mais intérêts déclarés.", penalty=-10))
-            if not is_expert: score -= 10
-
+        # --- Test Beta (Via Registry) ---
         if f.beta < 0.4 or f.beta > 3.0:
-            logs.append(AuditLog(category="Data", severity="WARN", message=f"Beta atypique ({f.beta:.2f}).", penalty=-10))
+            event = DiagnosticRegistry.DATA_NEGATIVE_BETA(f.beta)
+            logs.append(self._event_to_log(event, "Data", -10))
             if not is_expert: score -= 10
 
-        # --- NOUVEAU : Test de Solvabilité (ICR) ---
+        # --- Test de Solvabilité (ICR) ---
         if f.ebit_ttm and f.interest_expense and f.interest_expense > 0:
             icr = f.ebit_ttm / f.interest_expense
             if icr < 1.5:
-                logs.append(AuditLog(category="Data", severity="CRITICAL", message=f"Solvabilité critique (ICR: {icr:.2f}).", penalty=-20))
+                event = DiagnosticRegistry.DATA_MISSING_CORE_METRIC(f"Solvabilité (ICR: {icr:.2f} < 1.5)")
+                logs.append(self._event_to_log(event, "Data", -20))
                 if not is_expert: score -= 20
 
-        # --- NOUVEAU : Test Cash vs MarketCap ---
+        # --- Test Cash vs MarketCap ---
         if f.cash_and_equivalents > f.market_cap and f.market_cap > 0:
-            logs.append(AuditLog(category="Data", severity="CRITICAL", message="Absurdité : Cash > Capitalisation. Vérifiez les actions.", penalty=-30))
+            logs.append(AuditLog(category="Data", severity="CRITICAL", message="Absurdité : Cash > Capitalisation.", penalty=-30))
             score -= 30
 
         score = max(0.0, min(100.0, score))
@@ -75,21 +84,27 @@ class IValuationAuditor(ABC):
     def _audit_assumption_risk(self, result: ValuationResult) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs, score, p = [], 100.0, result.params
 
-        # Croissance agressive
+        # --- Croissance agressive (Via Registry) ---
         if p.fcf_growth_rate > 0.20:
-            logs.append(AuditLog(category="Assumptions", severity="HIGH", message=f"Croissance élevée ({p.fcf_growth_rate:.1%}).", penalty=-20))
+            event = DiagnosticRegistry.RISK_EXCESSIVE_GROWTH(p.fcf_growth_rate)
+            logs.append(self._event_to_log(event, "Assumptions", -20))
+            score -= 20
+
+        # --- NOUVEAU : Test Croissance Terminale vs Taux Sans Risque (Rigueur Institutionnelle) ---
+        if p.perpetual_growth_rate > p.risk_free_rate:
+            logs.append(AuditLog(
+                category="Assumptions",
+                severity="HIGH",
+                message=f"Divergence macro : g ({p.perpetual_growth_rate:.2%}) > Rf ({p.risk_free_rate:.2%}).",
+                penalty=-20
+            ))
             score -= 20
 
         if isinstance(result, DCFValuationResult):
             spread = result.wacc - p.perpetual_growth_rate
             if spread < 0.015:
-                logs.append(AuditLog(category="Assumptions", severity="HIGH", message=f"Spread WACC-g très faible ({spread:.2%}).", penalty=-25))
+                logs.append(AuditLog(category="Assumptions", severity="HIGH", message=f"Spread WACC-g faible ({spread:.2%}).", penalty=-25))
                 score -= 25
-
-            # --- NOUVEAU : Test Croissance vs GDP ---
-            if p.perpetual_growth_rate > 0.04:
-                logs.append(AuditLog(category="Assumptions", severity="WARN", message="Croissance terminale > 4% (optimisme macro).", penalty=-15))
-                score -= 15
 
         score = max(0.0, min(100.0, score))
         return AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=score, weight=0.0, contribution=0.0, diagnostics=[l.message for l in logs]), logs
@@ -106,9 +121,11 @@ class IValuationAuditor(ABC):
                 logs.append(AuditLog(category="Model", severity="HIGH", message=f"Dépendance excessive à la TV ({tv_weight:.1%}).", penalty=-30))
                 score -= 30
 
-        if isinstance(result, GrahamValuationResult):
-            logs.append(AuditLog(category="Model", severity="INFO", message="Modèle Graham : absence de flux actualisés.", penalty=-20))
-            score -= 20
+            # --- Check Divergence (Sync avec abstract.py) ---
+            if result.params.perpetual_growth_rate >= result.wacc:
+                event = DiagnosticRegistry.MODEL_G_DIVERGENCE(result.params.perpetual_growth_rate, result.wacc)
+                logs.append(self._event_to_log(event, "Model", -100))
+                score = 0.0
 
         score = max(0.0, min(100.0, score))
         return AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=score, weight=0.0, contribution=0.0, diagnostics=[l.message for l in logs]), logs
@@ -119,17 +136,12 @@ class IValuationAuditor(ABC):
     def _audit_method_fit(self, result: ValuationResult) -> Tuple[AuditPillarScore, List[AuditLog]]:
         logs, score, f = [], 100.0, result.financials
 
-        # --- NOUVEAU : Test ROE vs Ke pour RIM (Banques) ---
         if isinstance(result, RIMValuationResult):
             if f.eps_ttm and f.book_value_per_share and f.book_value_per_share > 0:
                 roe = f.eps_ttm / f.book_value_per_share
                 if roe < result.cost_of_equity:
-                    logs.append(AuditLog(category="Fit", severity="WARN", message=f"ROE ({roe:.1%}) < Coût Capital ({result.cost_of_equity:.1%}).", penalty=-10))
+                    logs.append(AuditLog(category="Fit", severity="WARN", message=f"ROE ({roe:.1%}) < Ke.", penalty=-10))
                     score -= 10
-
-        # Graham sur non-rentable
-        if isinstance(result, GrahamValuationResult) and result.eps_used <= 0:
-            raise ValueError("Graham inapplicable : EPS négatif.")
 
         score = max(0.0, min(100.0, score))
         return AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=score, weight=0.0, contribution=0.0, diagnostics=[l.message for l in logs]), logs

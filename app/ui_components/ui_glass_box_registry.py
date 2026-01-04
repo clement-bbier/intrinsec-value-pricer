@@ -1,9 +1,3 @@
-"""
-app/ui_components/ui_glass_box_registry.py
-REGISTRE D'AUDIT TECHNIQUE — VERSION INTÉGRALE V6.1
-Rôle : Correspondance exacte entre Terminaux Experts et Audit Glass Box.
-"""
-
 from typing import Dict, Any
 
 STEP_METADATA: Dict[str, Dict[str, Any]] = {
@@ -12,8 +6,8 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     "FCF_NORM_SELECTION": {"label": "Ancrage FCF_normalisé", "formula": r"FCF_{norm}", "unit": "currency"},
     "WACC_CALC": {"label": "Coût Moyen Pondéré du Capital", "formula": r"w_e[R_f + \beta(MRP)] + w_d[k_d(1-\tau)]", "unit": "%"},
     "FCF_PROJ": {"label": "Projection des Flux", "formula": r"FCF_t = FCF_{t-1} \times (1+g)", "unit": "currency"},
-    "TV_GORDON": {"label": "Valeur Terminale (Gordon)", "formula": r"\frac{FCF_n \times (1+g_n)}{r - g_n}", "unit": "currency"},
-    "TV_MULTIPLE": {"label": "Valeur Terminale (Multiple)", "formula": r"FCF_n \times Multiple", "unit": "currency"},
+    "TV_GORDON": {"label": "Valeur Terminale (Gordon)", "formula": r"\frac{FCF_n \times (1+g_n)}{WACC - g_n}", "unit": "currency"},
+    "TV_MULTIPLE": {"label": "Valeur Terminale (Multiple)", "formula": r"EBITDA_n \times Multiple", "unit": "currency"},
     "NPV_CALC": {"label": "Valeur Actuelle Nette (NPV)", "formula": r"\sum \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^n}", "unit": "currency"},
     "EQUITY_BRIDGE": {"label": "Ajustement Structure Financière", "formula": r"EV - Dette + Cash", "unit": "currency"},
     "VALUE_PER_SHARE": {"label": "Valeur Intrinsèque par action", "formula": r"\frac{Equity\ Value}{Actions}", "unit": "currency"},

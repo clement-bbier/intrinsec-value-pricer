@@ -1,6 +1,6 @@
 """
 core/valuation/strategies/graham_value.py
-MÉTHODE : GRAHAM INTRINSIC VALUE — VERSION V5.1 (Audit-Ready)
+MÉTHODE : GRAHAM INTRINSIC VALUE — VERSION V6.0 (Audit-Grade)
 Rôle : Estimation "Value" (1974 Revised) avec transparence totale sur l'ajustement AAA.
 """
 
@@ -26,55 +26,60 @@ class GrahamNumberStrategy(ValuationStrategy):
         # 1. ANCRAGE CAPACITÉ BÉNÉFICIAIRE (ID: GRAHAM_EPS_BASE)
         # ======================================================================
         eps = financials.eps_ttm
-        # Fallback si EPS TTM absent
+        source_eps = "Yahoo Finance (TTM)"
+
         if (eps is None or eps <= 0) and financials.net_income_ttm:
             eps = financials.net_income_ttm / financials.shares_outstanding if financials.shares_outstanding > 0 else 0
+            source_eps = "Calculated (Net Income / Shares)"
 
-        # Priorité à la surcharge analyste
         if params.manual_fcf_base is not None:
             eps = params.manual_fcf_base
+            source_eps = "Manual override (Expert)"
 
         if eps is None or eps <= 0:
             raise CalculationError("EPS strictement positif requis pour le modèle de Graham.")
 
         self.add_step(
             step_key="GRAHAM_EPS_BASE",
+            label="BPA Normalisé (EPS)",
+            theoretical_formula=r"EPS",
             result=eps,
-            numerical_substitution=f"EPS = {eps:.2f}"
+            numerical_substitution=f"EPS = {eps:.2f} ({source_eps})",
+            interpretation="Bénéfice par action utilisé comme socle de rentabilité."
         )
 
         # ======================================================================
         # 2. MULTIPLICATEUR DE CROISSANCE (ID: GRAHAM_MULTIPLIER)
         # ======================================================================
-        # La formule de Graham utilise g en pourcentage (ex: 5.0 pour 5%)
         g_display = params.fcf_growth_rate * 100.0
         growth_multiplier = 8.5 + 2.0 * g_display
 
         self.add_step(
             step_key="GRAHAM_MULTIPLIER",
+            label="Multiplicateur de croissance",
+            theoretical_formula=r"8.5 + 2g",
             result=growth_multiplier,
-            numerical_substitution=f"8.5 + 2 \\times {g_display:.2f}"
+            numerical_substitution=f"8.5 + 2 × {g_display:.2f}",
+            interpretation="Prime de croissance appliquée selon le barème révisé de Graham."
         )
 
         # ======================================================================
         # 3. VALEUR INTRINSÈQUE FINALE (ID: GRAHAM_FINAL)
         # ======================================================================
-        # Y est le rendement AAA actuel en pourcentage (ex: 4.5 pour 4.5%)
         y_display = params.corporate_aaa_yield * 100.0
 
         if y_display <= 0:
             raise CalculationError("Le rendement obligataire AAA (Y) doit être > 0.")
 
-        # Formule : (EPS * (8.5 + 2g) * 4.4) / Y
         intrinsic_value = (eps * growth_multiplier * 4.4) / y_display
-
-        # Substitution miroir de la formule LaTeX : \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}
-        sub_final = f"({eps:.2f} \\times {growth_multiplier:.2f} \\times 4.4) / {y_display:.2f}"
 
         self.add_step(
             step_key="GRAHAM_FINAL",
+            label="Valeur Graham 1974",
+            theoretical_formula=r"\frac{EPS \times (8.5 + 2g) \times 4.4}{Y}",
             result=intrinsic_value,
-            numerical_substitution=sub_final
+            numerical_substitution=f"({eps:.2f} × {growth_multiplier:.2f} × 4.4) / {y_display:.2f}",
+            interpretation="Estimation de la valeur intrinsèque ajustée par le rendement des obligations AAA."
         )
 
         return GrahamValuationResult(

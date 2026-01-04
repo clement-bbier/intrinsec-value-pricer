@@ -128,9 +128,14 @@ def atom_bridge_smart(formula_latex: str) -> Dict[str, Any]:
     c1, c2, c3 = st.columns(3)
     debt = c1.number_input("Dette Totale (0 = Auto Yahoo)", value=0.0, step=1e6, format="%.0f")
     cash = c2.number_input("Trésorerie (0 = Auto Yahoo)", value=0.0, step=1e6, format="%.0f")
+
+    minorities = c1.number_input("Intérêts Minoritaires (0 = Auto Yahoo)", value=0.0, step=1e5, format="%.0f")
+    pensions = c2.number_input("Provisions Pensions (0 = Auto Yahoo)", value=0.0, step=1e5, format="%.0f")
+
     shares = c3.number_input("Actions en circulation (0 = Auto Yahoo)", value=0.0, step=1e5, format="%.0f")
     st.divider()
-    return {"manual_total_debt": debt, "manual_cash": cash, "manual_shares_outstanding": shares}
+    return {"manual_total_debt": debt, "manual_cash": cash, "manual_minority_interests": minorities,
+            "manual_pension_provisions": pensions, "manual_shares_outstanding": shares}
 
 def atom_monte_carlo_smart() -> Dict[str, Any]:
     """Simulation Probabiliste standardisée."""
@@ -156,7 +161,7 @@ def atom_monte_carlo_smart() -> Dict[str, Any]:
 # ==============================================================================
 
 def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
-    st.subheader(f"⚙️ Terminal Expert : FCFF Standard")
+    st.subheader(f"×Terminal Expert : FCFF Standard")
     st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
 
     # --- 1. FLUX DE BASE ---
@@ -184,7 +189,7 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     return None
 
 def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
-    st.subheader(f"⚙️ Terminal Expert : FCFF Fundamental")
+    st.subheader(f"×Terminal Expert : FCFF Fundamental")
     st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_{norm} \times (1+g)^t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
 
     # --- 1. FLUX NORMALISÉ ---
@@ -212,7 +217,7 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     return None
 
 def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
-    st.subheader(f"⚙️ Terminal Expert : FCFF Growth")
+    st.subheader(f"×Terminal Expert : FCFF Growth")
     st.latex(r"V_0 = \sum_{t=1}^{n} \frac{Rev_0(1+g_{rev})^t \times Margin_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
 
     # --- 1. REVENUS ---
@@ -241,7 +246,7 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     return None
 
 def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
-    st.subheader(f"⚙️ Terminal Expert : RIM")
+    st.subheader(f"×Terminal Expert : RIM")
     st.latex(r"P = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
 
     # --- 1. VALEUR COMPTABLE & PROFITS ---
@@ -271,7 +276,7 @@ def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
     return None
 
 def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
-    st.subheader(f"⚙️ Terminal Expert : Graham")
+    st.subheader(f"Terminal Expert : Graham")
     st.latex(r"P = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}")
 
     # --- 1. CAPACITÉ BÉNÉFICIAIRE ---

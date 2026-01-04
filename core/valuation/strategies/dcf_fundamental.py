@@ -1,7 +1,8 @@
 """
 core/valuation/strategies/dcf_fundamental.py
-MÉTHODE : FCFF NORMALIZED — VERSION V5.0 (Registry-Driven)
+MÉTHODE : FCFF NORMALIZED — VERSION V6.0 (Audit-Grade)
 Rôle : Normalisation des flux cycliques et délégation au moteur mathématique.
+Audit-Grade : Alignement intégral sur le registre Glass Box et substitution numérique.
 """
 
 import logging
@@ -38,7 +39,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> DCFValuationResult:
         """
-        Exécute la stratégie en normalisant le flux de départ.
+        Exécute la stratégie en identifiant et validant le flux normalisé de départ.
         """
 
         logger.info(
@@ -52,7 +53,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
-            source = "Manual override"
+            source = "Manual override (Expert)"
         else:
             fcf_base = financials.fcf_fundamental_smoothed
             source = "Fundamental smoothed FCF (Yahoo/Analyst)"
@@ -62,11 +63,17 @@ class FundamentalFCFFStrategy(ValuationStrategy):
                 "FCF normalisé indisponible (fcf_fundamental_smoothed manquant)."
             )
 
-        # --- Trace Glass Box (Découplage UI via ID) ---
+        # --- Trace Glass Box (Audit-Grade : Alignement Registre V6.1) ---
         self.add_step(
             step_key="FCF_NORM_SELECTION",
+            label="Ancrage du Flux Normalisé (FCF_norm)",
+            theoretical_formula=r"FCF_{norm} = Initial\_Smoothed\_Flow",
             result=fcf_base,
-            numerical_substitution=f"FCF_norm = {fcf_base:,.2f}",
+            numerical_substitution=f"FCF_norm = {fcf_base:,.2f} ({source})",
+            interpretation=(
+                "Le modèle utilise un flux lissé sur un cycle complet pour "
+                "neutraliser la volatilité des bénéfices industriels ou cycliques."
+            ),
             hypotheses=[
                 TraceHypothesis(
                     name="Normalized FCF",
@@ -78,23 +85,32 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 2. CONTRÔLE DE COHÉRENCE (ID: FCF_STABILITY_CHECK)
+        # 2. CONTRÔLE DE VIABILITÉ DU MODÈLE (ID: FCF_STABILITY_CHECK)
         # ====================================================
+
+        if fcf_base <= 0:
+            # Pour un auditeur, un FCF normalisé négatif invalide l'usage d'un DCF standard
+            raise CalculationError(
+                "Flux normalisé négatif : l'entreprise ne génère pas de valeur sur son cycle. "
+                "La méthode DCF est mathématiquement inapplicable ici."
+            )
 
         self.add_step(
             step_key="FCF_STABILITY_CHECK",
-            result=1.0 if fcf_base > 0 else 0.0,
-            numerical_substitution=f"FCF_norm = {fcf_base:,.2f}"
+            label="Contrôle de Viabilité Financière",
+            theoretical_formula=r"FCF_{norm} > 0",
+            result=1.0,
+            numerical_substitution=f"{fcf_base:,.2f} > 0",
+            interpretation="Validation de la capacité de l'entreprise à générer des flux de trésorerie positifs sur un cycle."
         )
-
-        if fcf_base <= 0:
-            raise CalculationError(
-                "FCF normalisé négatif : méthode inadaptée sans ajustement manuel."
-            )
 
         # ====================================================
         # 3. EXÉCUTION DU DCF DÉTERMINISTE (DÉLÉGATION)
         # ====================================================
+        # On délègue au moteur commun 'abstract.py' qui gère désormais :
+        # - La triangulation Gordon vs Multiple.
+        # - Le garde-fou Model Risk (g < WACC).
+        # - La substitution numérique LaTeX pour le WACC et la NPV.
         return self._run_dcf_math(
             base_flow=fcf_base,
             financials=financials,

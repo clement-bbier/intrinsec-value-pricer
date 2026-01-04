@@ -50,7 +50,7 @@ class RIMBankingStrategy(ValuationStrategy):
             sub_ke = f"k_e = {ke:.4f} (Surcharge Analyste)"
         else:
             ke = calculate_cost_of_equity_capm(params.risk_free_rate, beta_used, params.market_risk_premium)
-            sub_ke = f"{params.risk_free_rate:.4f} + ({beta_used:.2f} \\times {params.market_risk_premium:.4f})"
+            sub_ke = f"{params.risk_free_rate:.4f} + ({beta_used:.2f} × {params.market_risk_premium:.4f})"
 
         self.add_step(step_key="RIM_KE_CALC", result=ke, numerical_substitution=sub_ke)
 
@@ -76,14 +76,14 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_EPS_PROJ",
             result=projected_eps[-1],
-            numerical_substitution=f"{eps_base:,.2f} \\times (1 + {params.fcf_growth_rate:.3f})^{years}"
+            numerical_substitution=f"{eps_base:,.2f} × (1 + {params.fcf_growth_rate:.3f})^{years}"
         )
 
         # 5. PROFITS RÉSIDUELS (ID: RIM_RI_CALC)
         # Alignement : NI_t - (ke * BV_{t-1})
         residual_incomes, projected_bvs = calculate_rim_vectors(bv_per_share, ke, projected_eps, payout_ratio)
         # On montre le calcul du premier RI pour la preuve
-        sub_ri = f"{projected_eps[0]:,.2f} - ({ke:.4f} \\times {bv_per_share:,.2f})"
+        sub_ri = f"{projected_eps[0]:,.2f} - ({ke:.4f} × {bv_per_share:,.2f})"
 
         self.add_step(
             step_key="RIM_RI_CALC",
@@ -105,14 +105,14 @@ class RIMBankingStrategy(ValuationStrategy):
         terminal_ri = residual_incomes[-1]
         if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
             tv_ri = terminal_ri * params.exit_multiple_value
-            key_tv, sub_tv = "TV_MULTIPLE", f"{terminal_ri:,.2f} \\times {params.exit_multiple_value:.1f}"
+            key_tv, sub_tv = "TV_MULTIPLE", f"{terminal_ri:,.2f} × {params.exit_multiple_value:.1f}"
         else:
             tv_ri = calculate_terminal_value_gordon(terminal_ri, ke, params.perpetual_growth_rate)
             key_tv = "TV_GORDON"
-            sub_tv = f"({terminal_ri:,.2f} \\times {1+params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
+            sub_tv = f"({terminal_ri:,.2f} × {1+params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
 
         discounted_tv = tv_ri * discount_factors[-1]
-        self.add_step(step_key=key_tv, result=discounted_tv, numerical_substitution=f"{sub_tv} \\times {discount_factors[-1]:.4f}")
+        self.add_step(step_key=key_tv, result=discounted_tv, numerical_substitution=f"{sub_tv} × {discount_factors[-1]:.4f}")
 
         # 8. VALEUR FINALE (ID: RIM_FINAL_VALUE)
         # Alignement : BV_0 + Sum PV(RI)
