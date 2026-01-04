@@ -1,7 +1,7 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" — STANDARD INSTITUTIONNEL V6.5 (Certifié)
-Rôle : Affichage technique neutre. Lookup dynamique dans le registre.
+RESTITUTION "GLASS BOX" — STANDARD INSTITUTIONNEL V6.6 (Certified)
+Rôle : Affichage technique neutre. Support multi-unités et isolation MC.
 """
 
 from typing import Optional, List, Any, Dict
@@ -17,10 +17,10 @@ def atom_kpi_metric(label: str, value: str, delta: Optional[str] = None, delta_c
     """Affiche une métrique standardisée dans le bandeau supérieur."""
     st.metric(label, value, delta=delta, delta_color=delta_color, help=help_text)
 
-def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: float):
-    """Dessine une carte d'audit mathématique sans fioritures."""
+def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: float, unit: str = ""):
+    """Dessine une carte d'audit mathématique avec support d'unité."""
     with st.container(border=True):
-        st.markdown(f"**Etape {index} : {label}**")
+        st.markdown(f"**Étape {index} : {label}**")
         c1, c2, c3 = st.columns([2.5, 4, 1.5])
 
         with c1:
@@ -33,24 +33,29 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
         with c2:
             st.caption("Application Numérique")
             if substitution:
-                # Bloc de code pour une lecture brute (Protection contre formatage HTML)
                 st.code(substitution, language="text")
             else:
                 st.markdown("---")
 
         with c3:
             st.caption("Valeur Calculée")
-            # Précision fixe à 2 décimales avec séparateur de milliers
-            st.markdown(f"### {result:,.2f}")
+            # Gestion intelligente de l'unité (Currency, %, x)
+            unit_display = ""
+            if unit == "currency": unit_display = "" # Géré par le formatage global ou laissé brut
+            elif unit == "%": unit_display = " %" if result < 2 else "" # Sécurité taux
+            elif unit == "x": unit_display = " x"
+
+            st.markdown(f"### {result:,.2f}{unit_display}")
 
 # ==============================================================================
-# 2. NAVIGATION ET TRI (ISOLATION STATISTIQUE)
+# 2. NAVIGATION ET TRI (ISOLATION CHIRURGICALE)
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, provider: Any = None) -> None:
-    """Structure en onglets avec isolation chirurgicale par préfixe."""
+    """Structure en onglets professionnels avec isolation MC par préfixe."""
     st.divider()
 
+    # Isolation par préfixe technique : Vital pour la clarté de l'onglet 1
     core_steps = [s for s in result.calculation_trace if not s.label.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.label.startswith("MC_")]
 
@@ -71,25 +76,26 @@ def display_valuation_details(result: ValuationResult, provider: Any = None) -> 
             display_simulation_chart(result.simulation_results, result.market_price, result.financials.currency)
 
             with st.expander("Traitement statistique de l'incertitude", expanded=True):
-                # Affichage des étapes MC (Configuration, Filtrage, Pivot, Médiane)
                 for idx, step in enumerate(mc_steps, start=1):
                     _render_smart_step(idx, step)
+        else:
+            st.info("Simulation Monte Carlo non activée.")
 
 # ==============================================================================
 # 3. MOTEUR DE RÉSOLUTION (LOOKUP DIRECT)
 # ==============================================================================
 
 def _render_smart_step(index: int, step: CalculationStep):
-    """Injection directe depuis le registre pour une maintenance simplifiée."""
-    # Lookup dynamique via la clé d'étape envoyée par la stratégie
+    """Injection directe depuis le registre avec support d'unité."""
     meta = STEP_METADATA.get(step.label, {})
 
     atom_calculation_card(
         index=index,
-        label=meta.get("label", step.label), # Fallback sur label brut si clé absente
+        label=meta.get("label", step.label),
         formula=meta.get("formula", step.theoretical_formula),
         substitution=step.numerical_substitution,
-        result=step.result
+        result=step.result,
+        unit=meta.get("unit", "")
     )
 
 # ==============================================================================
@@ -109,7 +115,7 @@ def render_executive_summary(result: ValuationResult) -> None:
             atom_kpi_metric("Valeur Intrinsèque", f"{result.intrinsic_value_per_share:,.2f} {f.currency}")
 
 def _render_reliability_report(report: AuditReport) -> None:
-    """Rendu institutionnel du score de confiance."""
+    """Rendu institutionnel du score de confiance avec journal de diagnostics."""
     st.markdown(f"### Audit de Fiabilité : {report.rating}")
     st.latex(r"Score = \sum (Score_{pilier} \times Poids)")
 
@@ -125,12 +131,17 @@ def _render_reliability_report(report: AuditReport) -> None:
             })
         st.table(breakdown_data)
 
-    if report.logs:
-        with st.expander("Journal des Diagnostics Techniques"):
-            for log in report.logs:
-                # Identification de la sévérité sans émojis
-                sev = "ATTENTION" if log.severity in ["CRITICAL", "WARNING", "HIGH"] else "INFO"
-                st.markdown(f"**[{sev}]** {log.message}")
+    if report.logs or report.pillar_breakdown:
+        st.divider()
+        st.markdown("#### Journal des Diagnostics Techniques")
+
+        # Diagnostics par section pour une lecture structurée
+        for pillar_key, ps in report.pillar_breakdown.pillars.items():
+            if ps.diagnostics:
+                with st.expander(f"Section : {ps.pillar.value.upper()}", expanded=True):
+                    for d in ps.diagnostics:
+                        sev = "ATTENTION" if any(x in d.upper() for x in ["ALERTE", "CRITIQUE", "INCOHÉRENCE"]) else "INFO"
+                        st.markdown(f"**[{sev}]** {d}")
 
     if report.critical_warning:
         st.error("AVERTISSEMENT : Des incohérences majeures détectées peuvent invalider ce modèle.")

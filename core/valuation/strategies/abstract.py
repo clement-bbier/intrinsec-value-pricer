@@ -1,7 +1,7 @@
 """
 core/valuation/strategies/abstract.py
-SOCLE ABSTRAIT V5.1 — ALIGNEMENT GLASS BOX INTÉGRAL
-Rôle : Injection des valeurs numériques miroirs des formules théoriques.
+SOCLE ABSTRAIT V5.2 — RÉFÉRENTIEL D'AUDIT INSTITUTIONNEL
+Rôle : Rigueur mathématique et traçabilité granulaire des flux (Standard CFA).
 """
 
 import logging
@@ -61,12 +61,12 @@ class ValuationStrategy(ABC):
         pass
 
     # ==========================================================================
-    # LOGIQUE MATHÉMATIQUE (ALIGNEMENT NUMÉRIQUE V6.1)
+    # LOGIQUE MATHÉMATIQUE (AUDIT CFA READY)
     # ==========================================================================
     def _run_dcf_math(self, base_flow: float, financials: CompanyFinancials,
                       params: DCFParameters, wacc_override: Optional[float] = None) -> DCFValuationResult:
 
-        # --- A. WACC (Alignement : we[Rf + beta(MRP)] + wd[kd(1-tau)]) ---
+        # --- A. WACC (Structure de capital et CAPM) ---
         if wacc_override is not None:
             wacc = wacc_override
             wacc_ctx = None
@@ -75,29 +75,25 @@ class ValuationStrategy(ABC):
             wacc_ctx = calculate_wacc(financials, params)
             wacc = wacc_ctx.wacc
             beta_used = params.manual_beta or financials.beta
-            # Substitution détaillée pour correspondre à la formule du registre
             sub_wacc = (
                 f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate:.4f} + {beta_used:.2f} × ({params.market_risk_premium:.4f})] + "
                 f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt:.4f} × (1 - {params.tax_rate:.2f})]"
             )
 
-        self.add_step(
-            step_key="WACC_CALC",
-            result=wacc,
-            numerical_substitution=sub_wacc
-        )
+        self.add_step(step_key="WACC_CALC", result=wacc, numerical_substitution=sub_wacc)
 
-        # --- B. PROJECTIONS (Alignement : FCF_t = FCF_{t-1} * (1+g)) ---
+        # --- B. PROJECTIONS (Flux Final FCF_n) ---
+        # Correction Audit : On montre le flux de l'année n, pas la somme cumulée.
         flows = project_flows(base_flow, params.projection_years, params.fcf_growth_rate,
                               params.perpetual_growth_rate, params.high_growth_years)
 
         self.add_step(
             step_key="FCF_PROJ",
-            result=sum(flows),
+            result=flows[-1], # On affiche FCF_5 (ex: 114 Md), pas la somme
             numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate:.3f})^{params.projection_years}"
         )
 
-        # --- C. VALEUR TERMINALE (Alignement : (FCFn * (1+gn)) / (r - gn)) ---
+        # --- C. VALEUR TERMINALE (TV) ---
         if params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             tv = calculate_terminal_value_gordon(flows[-1], wacc, params.perpetual_growth_rate)
             key_tv = "TV_GORDON"
@@ -109,19 +105,27 @@ class ValuationStrategy(ABC):
 
         self.add_step(step_key=key_tv, result=tv, numerical_substitution=sub_tv)
 
-        # --- D. NPV (Alignement : Sum FCF/(1+r)^t + TV/(1+r)^n) ---
+        # --- D. ACTUALISATION (Somme PV des flux + PV de la TV) ---
+        # Correction Audit : Séparation pour garantir la cohérence temporelle.
         factors = calculate_discount_factors(wacc, params.projection_years)
-        sum_pv = sum(f * d for f, d in zip(flows, factors))
+        sum_pv_flows = sum(f * d for f, d in zip(flows, factors))
         pv_tv = tv * factors[-1]
-        ev = sum_pv + pv_tv
+        ev = sum_pv_flows + pv_tv
+
+        # Nouvelle étape pour la somme des flux actualisés (Audit Requirement)
+        self.add_step(
+            step_key="NPV_SUM_FLOWS",
+            result=sum_pv_flows,
+            numerical_substitution=" + ".join([f"({f:,.0f} × {d:.4f})" for f, d in zip(flows[:2], factors[:2])]) + " + ..."
+        )
 
         self.add_step(
             step_key="NPV_CALC",
             result=ev,
-            numerical_substitution=f"{sum_pv:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})"
+            numerical_substitution=f"{sum_pv_flows:,.0f} (Sum PV Flows) + ({tv:,.0f} × {factors[-1]:.4f}) (PV TV)"
         )
 
-        # --- E. BRIDGE (Alignement : EV - Dette + Cash) ---
+        # --- E. BRIDGE (EV -> Equity Value) ---
         debt = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
         shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
@@ -135,7 +139,7 @@ class ValuationStrategy(ABC):
             numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f}"
         )
 
-        # --- F. VALEUR FINALE (Alignement : Equity / Actions) ---
+        # --- F. VALEUR FINALE (Prix par action) ---
         if shares <= 0: raise CalculationError("Actions invalides.")
         iv_share = equity_val / shares
 
@@ -151,6 +155,6 @@ class ValuationStrategy(ABC):
             wacc=wacc, cost_of_equity=wacc_ctx.cost_of_equity if wacc_ctx else 0.0,
             cost_of_debt_after_tax=wacc_ctx.cost_of_debt_after_tax if wacc_ctx else 0.0,
             projected_fcfs=flows, discount_factors=factors,
-            sum_discounted_fcf=sum_pv, terminal_value=tv, discounted_terminal_value=pv_tv,
+            sum_discounted_fcf=sum_pv_flows, terminal_value=tv, discounted_terminal_value=pv_tv,
             enterprise_value=ev, equity_value=equity_val, calculation_trace=self.calculation_trace
         )
