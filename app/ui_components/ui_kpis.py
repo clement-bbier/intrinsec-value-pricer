@@ -48,10 +48,9 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, provider: Any = None) -> None:
-    """Structure en onglets professionnels sans émojis."""
+    """Structure en onglets avec isolation chirurgicale par préfixe."""
     st.divider()
 
-    # Tri chirurgical par préfixe technique (Standard Monte Carlo)
     core_steps = [s for s in result.calculation_trace if not s.label.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.label.startswith("MC_")]
 
@@ -69,14 +68,12 @@ def display_valuation_details(result: ValuationResult, provider: Any = None) -> 
     with tabs[2]:
         if result.simulation_results:
             from app.ui_components.ui_charts import display_simulation_chart
-            # Rendu du graphique (Standard V3.2)
             display_simulation_chart(result.simulation_results, result.market_price, result.financials.currency)
 
-            with st.expander("Traitement statistique des scénarios", expanded=True):
+            with st.expander("Traitement statistique de l'incertitude", expanded=True):
+                # Affichage des étapes MC (Configuration, Filtrage, Pivot, Médiane)
                 for idx, step in enumerate(mc_steps, start=1):
                     _render_smart_step(idx, step)
-        else:
-            st.info("Simulation Monte Carlo non activée.")
 
 # ==============================================================================
 # 3. MOTEUR DE RÉSOLUTION (LOOKUP DIRECT)

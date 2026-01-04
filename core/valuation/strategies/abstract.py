@@ -50,6 +50,12 @@ class ValuationStrategy(ABC):
             result=result
         ))
 
+    def verify_output_contract(self, result: ValuationResult) -> bool:
+        """Indispensable pour la validation par le moteur d'audit."""
+        if result is None: return False
+        contract = result.build_output_contract()
+        return contract.is_valid()
+
     @abstractmethod
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
         pass
