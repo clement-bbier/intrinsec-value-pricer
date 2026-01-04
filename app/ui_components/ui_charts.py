@@ -58,90 +58,43 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 # ============================================================================
 
 def display_simulation_chart(simulation_results: List[float], market_price: float, currency: str) -> None:
-    """
-    Affiche l'histogramme de distribution Monte Carlo avec légende pédagogique.
-    """
+    """Affiche l'histogramme Monte Carlo et une synthèse technique factuelle."""
     if not simulation_results:
         st.warning("Pas de données de simulation disponibles.")
         return
 
-    # Nettoyage des données
     values = np.array([v for v in simulation_results if v is not None and not np.isnan(v)])
-    if len(values) == 0:
-        return
+    if len(values) == 0: return
 
-    # Calculs statistiques
     p50 = np.median(values)
     p10 = np.percentile(values, 10)
     p90 = np.percentile(values, 90)
 
     df_sim = pd.DataFrame({"Valeur": values})
 
-    # --- Construction du Graphique ---
-
-    # 1. Histogramme (Barres)
+    # --- Graphique ---
     hist = alt.Chart(df_sim).mark_bar(color="#546E7A", opacity=0.7).encode(
         x=alt.X("Valeur:Q", bin=alt.Bin(maxbins=50), title=f"Valeur Intrinsèque ({currency})"),
-        y=alt.Y("count()", title="Fréquence"),
-        tooltip=[alt.Tooltip("count()", title="Nombre de scénarios")]
+        y=alt.Y("count()", title="Fréquence")
     )
-
-    # 2. Ligne P50 (Médiane)
-    rule_p50 = alt.Chart(pd.DataFrame({'x': [p50]})).mark_rule(color="#2E7D32", strokeWidth=3).encode(
-        x='x',
-        tooltip=[alt.Tooltip('x', title='Médiane (P50)', format=',.2f')]
-    )
-
-    # 3. Lignes Quantiles (P10/P90) - Intervalle de confiance
+    rule_p50 = alt.Chart(pd.DataFrame({'x': [p50]})).mark_rule(color="#2E7D32", strokeWidth=3).encode(x='x')
     rule_quantiles = alt.Chart(pd.DataFrame({'x': [p10, p90]})).mark_rule(color="#90A4AE", strokeDash=[4, 4]).encode(
-        x='x'
-    )
+        x='x')
 
     layers = [hist, rule_p50, rule_quantiles]
+    if market_price > 0:
+        layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2,
+                                                                               strokeDash=[5, 2]).encode(x='x'))
 
-    # 4. Ligne Prix de Marché (si dispo)
-    if market_price and market_price > 0:
-        rule_market = alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(
-            color="#D32F2F", strokeWidth=2, strokeDash=[5, 2]
-        ).encode(
-            x='x',
-            tooltip=[alt.Tooltip('x', title='Prix Actuel', format=',.2f')]
-        )
-        layers.append(rule_market)
-
-    # Affichage du Chart
     st.altair_chart(alt.layer(*layers).properties(height=320), use_container_width=True)
 
-    # --- LÉGENDE PÉDAGOGIQUE (Hedge Fund Style) ---
-    # C'est ici qu'on aide l'utilisateur à comprendre
-
-    with st.container():
-        st.markdown("#### 📖 Comment lire ce graphique ?")
-
-        col_legend, col_stat = st.columns([2, 1])
-
-        with col_legend:
-            st.info(
-                f"""
-                Ce graphique montre la distribution des **{len(values)} scénarios simulés**.
-                
-                * 🟢 **Ligne Verte (P50)** : Valeur centrale estimée (**{p50:,.2f} {currency}**). C'est votre "cible".
-                * 🔴 **Ligne Rouge** : Prix actuel du marché (**{market_price:,.2f} {currency}**).
-                * ⬜ **Barres Grises** : Plus la barre est haute, plus ce niveau de prix est probable.
-                * **Zone P10-P90** : Il y a 80% de chances que la "vraie" valeur soit entre **{p10:,.2f}** et **{p90:,.2f}**.
-                """
-            )
-
-        with col_stat:
-            # Petit verdict rapide
-            if market_price > 0:
-                if p50 > market_price:
-                    diff = (p50 / market_price) - 1
-                    st.success(f"💎 **SOUS-ÉVALUÉ**\n\nLe marché est {diff:.1%} moins cher que la valeur centrale.")
-                else:
-                    diff = 1 - (p50 / market_price)
-                    st.error(f"⚠️ **SUR-ÉVALUÉ**\n\nLe marché est {diff:.1%} plus cher que la valeur centrale.")
-
+    # --- Synthèse Technique (Sans Emojis) ---
+    st.markdown(f"""
+    **Synthèse de la distribution ({len(values)} scénarios) :**
+    * Valeur centrale (P50) : {p50:,.2f} {currency}
+    * Prix de marché : {market_price:,.2f} {currency}
+    * Intervalle de confiance (P10-P90) : {p10:,.2f} à {p90:,.2f} (80% de probabilité)
+    """)
 
 # ============================================================================
 # 3. SENSIBILITÉ (HEATMAP)

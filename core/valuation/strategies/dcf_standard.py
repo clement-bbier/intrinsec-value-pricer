@@ -1,8 +1,7 @@
 """
 core/valuation/strategies/dcf_standard.py
-
-Méthode : FCFF Two-Stage Discounted Cash Flow
-Version : V1.1 — Chapitre 4 conforme (Glass Box)
+MÉTHODE : FCFF TWO-STAGE — VERSION V5.0 (Registry-Driven)
+Rôle : Sélection du flux de départ et délégation au moteur mathématique commun.
 """
 
 import logging
@@ -37,6 +36,9 @@ class StandardFCFFStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> DCFValuationResult:
+        """
+        Exécute la stratégie en identifiant le flux de départ.
+        """
 
         logger.info(
             "[Strategy] FCFF Two-Stage | ticker=%s",
@@ -44,7 +46,7 @@ class StandardFCFFStrategy(ValuationStrategy):
         )
 
         # ====================================================
-        # 1. SÉLECTION DU FCF DE BASE (GLASS BOX)
+        # 1. SÉLECTION DU FCF DE BASE (ID: FCF_BASE_SELECTION)
         # ====================================================
 
         if params.manual_fcf_base is not None:
@@ -59,31 +61,18 @@ class StandardFCFFStrategy(ValuationStrategy):
                 "FCF de base indisponible (fcf_last manquant)."
             )
 
-        # --- Trace Glass Box ---
+        # --- Trace Glass Box (Découplage UI via ID) ---
         self.add_step(
-            label="Sélection du flux de trésorerie de base",
-            theoretical_formula="FCF₀",
-            hypotheses=[
-                TraceHypothesis(
-                    name="FCF base",
-                    value=fcf_base,
-                    unit=financials.currency,
-                    source=source
-                )
-            ],
-            numerical_substitution=f"FCF₀ = {fcf_base:,.2f}",
+            step_key="FCF_BASE_SELECTION",
             result=fcf_base,
-            unit=financials.currency,
-            interpretation=(
-                "Flux de trésorerie libre utilisé comme point de départ "
-                "des projections explicites."
-            )
+            numerical_substitution=f"FCF_0 = {fcf_base:,.2f}"
         )
 
         # ====================================================
-        # 2. EXÉCUTION DU DCF DÉTERMINISTE
+        # 2. EXÉCUTION DU DCF DÉTERMINISTE (DÉLÉGATION)
         # ====================================================
-
+        # On délègue à _run_dcf_math (dans abstract.py) qui gère
+        # déjà les IDs WACC_CALC, FCF_PROJ, NPV_CALC, etc.
         return self._run_dcf_math(
             base_flow=fcf_base,
             financials=financials,

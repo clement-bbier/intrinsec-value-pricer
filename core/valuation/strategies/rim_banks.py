@@ -1,18 +1,17 @@
 """
 core/valuation/strategies/rim_banks.py
-
-Méthode : Residual Income Model (RIM)
-Version : V3.1 — Souveraineté Analyste Intégrale & Cohérence Glass Box
+MÉTHODE : RESIDUAL INCOME MODEL (RIM) — VERSION V5.1
+Architecture : Registry-Driven (Alignement Numérique Intégral).
 """
 
 import logging
-
 from core.exceptions import CalculationError
 from core.models import (
     CompanyFinancials,
     DCFParameters,
     RIMValuationResult,
-    TraceHypothesis
+    TraceHypothesis,
+    TerminalValueMethod
 )
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.computation.financial_math import (
@@ -25,290 +24,113 @@ from core.computation.financial_math import (
 
 logger = logging.getLogger(__name__)
 
-
 class RIMBankingStrategy(ValuationStrategy):
-    """
-    Residual Income Model (Penman).
-    Valorise l'entreprise par sa valeur comptable actuelle augmentée de la
-    valeur actuelle de ses profits résiduels futurs.
-    """
+    """Residual Income Model (Penman/Ohlson) pour institutions financières."""
 
-    academic_reference = "Penman (2001) / Ohlson Model"
-    economic_domain = "Banks / Insurance / Financial Institutions"
-    financial_invariants = [
-        "book_value > 0",
-        "cost_of_equity > 0",
-        "clean_surplus_relationship"
-    ]
+    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> RIMValuationResult:
+        logger.info("[Strategy] Residual Income Model | ticker=%s", financials.ticker)
 
-    def execute(
-        self,
-        financials: CompanyFinancials,
-        params: DCFParameters
-    ) -> RIMValuationResult:
-
-        logger.info(
-            "[Strategy] Residual Income Model | ticker=%s",
-            financials.ticker
-        )
-
-        # ====================================================
-        # 1. ANCRAGE COMPTABLE — BOOK VALUE (SOVERAINETÉ)
-        # ====================================================
-
-        # Priorité à la surcharge manuelle si définie par l'expert
-        if params.manual_book_value is not None:
-            bv_per_share = params.manual_book_value
-            bv_source = "Expert Override"
-        else:
-            bv_per_share = financials.book_value_per_share
-            bv_source = "Balance sheet (Yahoo)"
-
-        eps_base = financials.eps_ttm
+        # 1. ANCRAGE COMPTABLE (ID: RIM_BV_INITIAL)
+        bv_per_share = params.manual_book_value if params.manual_book_value is not None else financials.book_value_per_share
 
         if bv_per_share is None or bv_per_share <= 0:
-            raise CalculationError(
-                "Book Value par action requise et strictement positive pour le RIM."
-            )
-
-        if eps_base is None:
-            if financials.net_income_ttm and financials.shares_outstanding > 0:
-                eps_base = financials.net_income_ttm / financials.shares_outstanding
-            else:
-                raise CalculationError(
-                    "Bénéfice par action (EPS) requis pour projeter les profits résiduels."
-                )
+            raise CalculationError("Book Value par action requise et > 0.")
 
         self.add_step(
-            label="Ancrage comptable initial (Book Value)",
-            theoretical_formula="BV₀",
-            hypotheses=[
-                TraceHypothesis(
-                    name="Book value per share",
-                    value=bv_per_share,
-                    unit=financials.currency,
-                    source=bv_source
-                )
-            ],
-            numerical_substitution=f"BV₀ = {bv_per_share:,.2f}",
+            step_key="RIM_BV_INITIAL",
             result=bv_per_share,
-            unit=financials.currency,
-            interpretation=(
-                "Valeur nette comptable servant d’ancrage à la valorisation "
-                "avant prise en compte de la création de valeur future."
-            )
+            numerical_substitution=f"BV_0 = {bv_per_share:,.2f}"
         )
 
-        # ====================================================
-        # 2. COÛT DES FONDS PROPRES (Ke) (SOVERAINETÉ)
-        # ====================================================
-
+        # 2. COÛT DES FONDS PROPRES (ID: RIM_KE_CALC)
+        # Alignement : Rf + beta * MRP
+        beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
         if params.manual_cost_of_equity is not None:
             ke = params.manual_cost_of_equity
-            ke_source = "Expert Ke Override"
-            beta_used = 0.0 # Non utilisé pour le calcul final
+            sub_ke = f"k_e = {ke:.4f} (Surcharge Analyste)"
         else:
-            # Gestion cohérente du Beta (Expert > Market)
-            beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
-            ke = calculate_cost_of_equity_capm(
-                params.risk_free_rate,
-                beta_used,
-                params.market_risk_premium
-            )
-            ke_source = "Manual Beta" if params.manual_beta is not None else "CAPM (Yahoo Beta)"
+            ke = calculate_cost_of_equity_capm(params.risk_free_rate, beta_used, params.market_risk_premium)
+            sub_ke = f"{params.risk_free_rate:.4f} + ({beta_used:.2f} \\times {params.market_risk_premium:.4f})"
 
-        if ke <= 0:
-            raise CalculationError("Cost of Equity invalide (doit être > 0).")
+        self.add_step(step_key="RIM_KE_CALC", result=ke, numerical_substitution=sub_ke)
 
-        self.add_step(
-            label="Coût des fonds propres (Ke)",
-            theoretical_formula="Rf + β × MRP",
-            hypotheses=[
-                TraceHypothesis(name="Risk-free rate", value=params.risk_free_rate, unit="%"),
-                TraceHypothesis(name="Beta used", value=beta_used, unit="", source=ke_source),
-                TraceHypothesis(name="Market risk premium", value=params.market_risk_premium, unit="%")
-            ],
-            numerical_substitution=f"Ke = {ke:.2%}",
-            result=ke,
-            unit="%",
-            interpretation=(
-                "Taux d’actualisation exigé par les actionnaires pour "
-                "le niveau de risque systématique estimé."
-            )
-        )
-
-        # ====================================================
-        # 3. POLITIQUE DE DISTRIBUTION (PAYOUT)
-        # ====================================================
+        # 3. DISTRIBUTION (ID: RIM_PAYOUT)
+        # Alignement : Div / EPS
+        eps_base = financials.eps_ttm or (financials.net_income_ttm / financials.shares_outstanding if financials.shares_outstanding > 0 else 0)
+        if eps_base <= 0: raise CalculationError("EPS requis pour projeter les profits résiduels.")
 
         dividend = financials.last_dividend or 0.0
-        payout_ratio = 0.50 # Default si EPS négatif ou nul
-
-        if eps_base > 0:
-            payout_ratio = max(0.0, min(0.90, dividend / eps_base))
+        payout_ratio = max(0.0, min(0.90, dividend / eps_base))
 
         self.add_step(
-            label="Politique de distribution",
-            theoretical_formula="Dividend / EPS",
-            hypotheses=[
-                TraceHypothesis(name="Dividend", value=dividend, unit=financials.currency),
-                TraceHypothesis(name="EPS base", value=eps_base, unit=financials.currency)
-            ],
-            numerical_substitution=f"Payout = {dividend:,.2f} / {eps_base:,.2f}",
+            step_key="RIM_PAYOUT",
             result=payout_ratio,
-            unit="%",
-            interpretation=(
-                "Part des bénéfices distribuée, influençant la "
-                "recapitalisation interne de la Book Value."
-            )
+            numerical_substitution=f"{dividend:,.2f} / {eps_base:,.2f}"
         )
 
-        # ====================================================
-        # 4. PROJECTION DES RÉSULTATS
-        # ====================================================
-
+        # 4. PROJECTION BÉNÉFICES (ID: RIM_EPS_PROJ)
+        # Alignement : EPS_t = EPS_{t-1} * (1+g)
         years = params.projection_years
-        projected_eps = []
-        current_eps = eps_base
-
-        for _ in range(years):
-            current_eps *= (1.0 + params.fcf_growth_rate)
-            projected_eps.append(current_eps)
+        projected_eps = [eps_base * ((1.0 + params.fcf_growth_rate) ** (t + 1)) for t in range(years)]
 
         self.add_step(
-            label="Projection des bénéfices par action",
-            theoretical_formula="EPSₜ = EPSₜ₋₁ × (1 + g)",
-            hypotheses=[
-                TraceHypothesis(name="EPS base", value=eps_base, unit=financials.currency),
-                TraceHypothesis(name="Growth rate (g)", value=params.fcf_growth_rate, unit="%")
-            ],
-            numerical_substitution=f"Projection sur {years} ans",
-            result=sum(projected_eps),
-            unit=financials.currency,
-            interpretation="Trajectoire de rentabilité estimée pour la période explicite."
+            step_key="RIM_EPS_PROJ",
+            result=projected_eps[-1],
+            numerical_substitution=f"{eps_base:,.2f} \\times (1 + {params.fcf_growth_rate:.3f})^{years}"
         )
 
-        # ====================================================
-        # 5. PROFITS RÉSIDUELS (CLEAN SURPLUS RELATIONSHIP)
-        # ====================================================
-
-        residual_incomes, projected_bvs = calculate_rim_vectors(
-            current_book_value=bv_per_share,
-            cost_of_equity=ke,
-            projected_earnings=projected_eps,
-            payout_ratio=payout_ratio
-        )
+        # 5. PROFITS RÉSIDUELS (ID: RIM_RI_CALC)
+        # Alignement : NI_t - (ke * BV_{t-1})
+        residual_incomes, projected_bvs = calculate_rim_vectors(bv_per_share, ke, projected_eps, payout_ratio)
+        # On montre le calcul du premier RI pour la preuve
+        sub_ri = f"{projected_eps[0]:,.2f} - ({ke:.4f} \\times {bv_per_share:,.2f})"
 
         self.add_step(
-            label="Calcul des profits résiduels",
-            theoretical_formula="RIₜ = EPSₜ − (Ke × BVₜ₋₁)",
-            hypotheses=[
-                TraceHypothesis(name="Cost of equity", value=ke, unit="%"),
-                TraceHypothesis(name="Payout ratio", value=payout_ratio, unit="%")
-            ],
-            numerical_substitution="Application itérative de la richesse créée",
+            step_key="RIM_RI_CALC",
             result=sum(residual_incomes),
-            unit=financials.currency,
-            interpretation=(
-                "Surprofits générés par l'entreprise au-delà du coût "
-                "d'opportunité de ses fonds propres."
-            )
+            numerical_substitution=sub_ri
         )
 
-        # ====================================================
-        # 6. ACTUALISATION DES PROFITS RÉSIDUELS
-        # ====================================================
-
+        # 6. ACTUALISATION (ID: NPV_CALC)
         discount_factors = calculate_discount_factors(ke, years)
         discounted_ri_sum = calculate_npv(residual_incomes, ke)
 
         self.add_step(
-            label="Valeur actuelle des profits résiduels",
-            theoretical_formula="∑ RIₜ / (1+Ke)ᵗ",
-            hypotheses=[
-                TraceHypothesis(name="Sum Residual Incomes", value=sum(residual_incomes), unit=financials.currency),
-                TraceHypothesis(name="Ke", value=ke, unit="%")
-            ],
-            numerical_substitution=f"NPV(RI, {ke:.2%})",
+            step_key="NPV_CALC",
             result=discounted_ri_sum,
-            unit=financials.currency,
-            interpretation="Contribution des surprofits explicites à la valeur intrinsèque."
+            numerical_substitution=f"NPV(Residual Incomes, r={ke:.4f})"
         )
 
-        # ====================================================
-        # 7. VALEUR TERMINALE DES PROFITS RÉSIDUELS
-        # ====================================================
-
+        # 7. VALEUR TERMINALE (ID: TV_GORDON / TV_MULTIPLE)
         terminal_ri = residual_incomes[-1]
-        terminal_value_ri = calculate_terminal_value_gordon(
-            terminal_ri,
-            ke,
-            params.perpetual_growth_rate
-        )
-        discounted_terminal_ri = terminal_value_ri * discount_factors[-1]
+        if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
+            tv_ri = terminal_ri * params.exit_multiple_value
+            key_tv, sub_tv = "TV_MULTIPLE", f"{terminal_ri:,.2f} \\times {params.exit_multiple_value:.1f}"
+        else:
+            tv_ri = calculate_terminal_value_gordon(terminal_ri, ke, params.perpetual_growth_rate)
+            key_tv = "TV_GORDON"
+            sub_tv = f"({terminal_ri:,.2f} \\times {1+params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
+
+        discounted_tv = tv_ri * discount_factors[-1]
+        self.add_step(step_key=key_tv, result=discounted_tv, numerical_substitution=f"{sub_tv} \\times {discount_factors[-1]:.4f}")
+
+        # 8. VALEUR FINALE (ID: RIM_FINAL_VALUE)
+        # Alignement : BV_0 + Sum PV(RI)
+        intrinsic_value = bv_per_share + discounted_ri_sum + discounted_tv
+        shares_to_use = params.manual_shares_outstanding or financials.shares_outstanding
 
         self.add_step(
-            label="Valeur terminale des profits résiduels",
-            theoretical_formula="RIₙ × (1+g)/(Ke−g)",
-            hypotheses=[
-                TraceHypothesis(name="Terminal RI", value=terminal_ri, unit=financials.currency),
-                TraceHypothesis(name="Perpetual growth", value=params.perpetual_growth_rate, unit="%")
-            ],
-            numerical_substitution=f"TV × DFₙ = {terminal_value_ri:,.2f} × {discount_factors[-1]:.4f}",
-            result=discounted_terminal_ri,
-            unit=financials.currency,
-            interpretation="Estimation de la création de valeur résiduelle à perpétuité."
-        )
-
-        # ====================================================
-        # 8. VALEUR INTRINSÈQUE FINALE (SOUVERAINETÉ BRIDGE)
-        # ====================================================
-
-        intrinsic_value = (
-            bv_per_share
-            + discounted_ri_sum
-            + discounted_terminal_ri
-        )
-
-        # Priorité au nombre d'actions manuel pour le prix par action
-        shares_to_use = (
-            params.manual_shares_outstanding
-            if params.manual_shares_outstanding is not None
-            else financials.shares_outstanding
-        )
-
-        if shares_to_use <= 0:
-            raise CalculationError("Nombre d'actions nul ou invalide.")
-
-        total_equity_value = intrinsic_value * shares_to_use
-
-        self.add_step(
-            label="Valeur intrinsèque par action (RIM)",
-            theoretical_formula="BV₀ + PV(RI) + PV(TV_RI)",
-            hypotheses=[
-                TraceHypothesis(name="Initial Book Value", value=bv_per_share, unit=financials.currency),
-                TraceHypothesis(name="Shares used", value=shares_to_use, unit="#", source="Manual" if params.manual_shares_outstanding else "Yahoo")
-            ],
-            numerical_substitution=f"IV = {intrinsic_value:,.2f}",
+            step_key="RIM_FINAL_VALUE",
             result=intrinsic_value,
-            unit=financials.currency,
-            interpretation="Valeur fondamentale estimée par action selon le modèle de Penman."
+            numerical_substitution=f"{bv_per_share:,.2f} + {discounted_ri_sum:,.2f} + {discounted_tv:,.2f}"
         )
 
         return RIMValuationResult(
-            request=None,
-            financials=financials,
-            params=params,
-            intrinsic_value_per_share=intrinsic_value,
-            market_price=financials.current_price,
-            cost_of_equity=ke,
-            current_book_value=bv_per_share,
-            projected_residual_incomes=residual_incomes,
-            projected_book_values=projected_bvs,
-            discount_factors=discount_factors,
-            sum_discounted_ri=discounted_ri_sum,
-            terminal_value_ri=terminal_value_ri,
-            discounted_terminal_value=discounted_terminal_ri,
-            total_equity_value=total_equity_value,
-            calculation_trace=self.calculation_trace
+            request=None, financials=financials, params=params,
+            intrinsic_value_per_share=intrinsic_value, market_price=financials.current_price,
+            cost_of_equity=ke, current_book_value=bv_per_share,
+            projected_residual_incomes=residual_incomes, projected_book_values=projected_bvs,
+            discount_factors=discount_factors, sum_discounted_ri=discounted_ri_sum,
+            terminal_value_ri=tv_ri, discounted_terminal_value=discounted_tv,
+            total_equity_value=intrinsic_value * shares_to_use, calculation_trace=self.calculation_trace
         )
