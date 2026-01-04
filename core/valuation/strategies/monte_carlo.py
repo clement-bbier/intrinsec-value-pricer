@@ -1,16 +1,24 @@
 """
 core/valuation/strategies/monte_carlo.py
-EXTENSION PROBABILISTE — VERSION V5.1 (Registry-Driven)
-Rôle : Analyse de risque stochastique avec isolation de la trace d'audit.
+EXTENSION PROBABILISTE — VERSION V5.2 (Audit-Grade)
+Rôle : Analyse de risque stochastique avec isolation et pivot déterministe.
 """
 
 import logging
 import numpy as np
 from typing import List, Type
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, ValuationResult, TraceHypothesis
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    ValuationResult,
+    TraceHypothesis
+)
 from core.valuation.strategies.abstract import ValuationStrategy
-from core.computation.statistics import generate_multivariate_samples, generate_independent_samples
+from core.computation.statistics import (
+    generate_multivariate_samples,
+    generate_independent_samples
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +26,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     """
     Wrapper Monte Carlo standardisé.
     Gère la simulation de scénarios et l'agrégation statistique des résultats.
+    Aligné sur le registre technique V6.2.
     """
 
     DEFAULT_SIMULATIONS = 5000
@@ -28,29 +37,32 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.strategy_cls = strategy_cls
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
-        """Exécution de la simulation avec traçabilité complète."""
+        """Exécution de la simulation avec traçabilité complète et point pivot."""
         num_simulations = params.num_simulations or self.DEFAULT_SIMULATIONS
 
         # ======================================================================
         # 1. CONFIGURATION (ID: MC_CONFIG)
         # ======================================================================
-        # On enregistre les paramètres d'entrée de la simulation
+        # On enregistre les paramètres d'incertitude injectés
         self.add_step(
             step_key="MC_CONFIG",
             result=float(num_simulations),
-            numerical_substitution=f"N = {num_simulations} itérations | Modèle: {self.strategy_cls.__name__}"
+            numerical_substitution=(
+                f"N = {num_simulations} itérations | "
+                f"Beta_vol = {params.beta_volatility or 0.10:.2f} | "
+                f"Growth_vol = {params.growth_volatility or 0.015:.2f}"
+            )
         )
 
         # ======================================================================
         # 2. GÉNÉRATION DES VARIABLES (ID: MC_SAMPLING)
         # ======================================================================
-        # Création des vecteurs stochastiques pour Beta et Croissance
         betas, growths = generate_multivariate_samples(
             mu_beta=financials.beta,
             sigma_beta=params.beta_volatility or 0.10,
             mu_growth=params.fcf_growth_rate,
             sigma_growth=params.growth_volatility or 0.015,
-            rho=-0.30, # Corrélation négative standard
+            rho=-0.30, # Corrélation négative structurelle
             num_simulations=num_simulations
         )
         terminal_growths = generate_independent_samples(
@@ -64,16 +76,12 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.add_step(
             step_key="MC_SAMPLING",
             result=float(num_simulations),
-            numerical_substitution=(
-                f"Beta (vol={params.beta_volatility or 0.10:.2f}) | "
-                f"Growth (vol={params.growth_volatility or 0.015:.2f})"
-            )
+            numerical_substitution=f"Génération de {num_simulations} vecteurs stochastiques"
         )
 
         # ======================================================================
         # --- BOUCLE DE SIMULATION (MOTEUR SILENCIEUX) ---
         # ======================================================================
-        # On utilise une instance "silencieuse" pour ne pas polluer la trace MC
         worker = self.strategy_cls(glass_box_enabled=False)
         simulated_values = []
 
@@ -86,7 +94,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                 })
                 res = worker.execute(s_fin, s_par)
                 iv = res.intrinsic_value_per_share
-                # Filtrage des valeurs aberrantes (outliers extrêmes)
+
+                # Filtrage technique des outliers extrêmes
                 if -500.0 < iv < 50_000.0:
                     simulated_values.append(iv)
             except Exception:
@@ -99,22 +108,31 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.add_step(
             step_key="MC_FILTERING",
             result=valid_ratio,
-            numerical_substitution=f"{len(simulated_values)} / {num_simulations} scénarios valides"
+            numerical_substitution=f"{len(simulated_values)} / {num_simulations} scénarios convergents"
         )
 
         if valid_ratio < self.MIN_VALID_RATIO:
-            raise CalculationError(f"Instabilité critique du modèle : {valid_ratio:.1%} valides.")
+            raise CalculationError(f"Instabilité critique : {valid_ratio:.1%} de réussite.")
 
         # ======================================================================
-        # 4. SCÉNARIO PIVOT ET MÉDIANE (ID: MC_MEDIAN)
+        # 4. SCÉNARIO PIVOT (ID: MC_PIVOT) - RÉFÉRENCE DÉTERMINISTE
         # ======================================================================
-        # On exécute une fois avec la Glass Box pour obtenir la trace centrale
+        # On exécute le modèle central (sans hasard) pour l'audit calcul
         ref_strategy = self.strategy_cls(glass_box_enabled=True)
         final_result = ref_strategy.execute(financials, params)
 
+        self.add_step(
+            step_key="MC_PIVOT",
+            result=final_result.intrinsic_value_per_share,
+            numerical_substitution="Valeur centrale calculée sans incertitude"
+        )
+
+        # ======================================================================
+        # 5. SYNTHÈSE DE LA DISTRIBUTION (ID: MC_MEDIAN)
+        # ======================================================================
         p50 = float(np.percentile(simulated_values, 50))
 
-        # Mise à jour des statistiques dans le résultat final
+        # Injection des statistiques dans l'objet de résultat final
         final_result.intrinsic_value_per_share = p50
         final_result.simulation_results = simulated_values
         final_result.quantiles = {
@@ -128,11 +146,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.add_step(
             step_key="MC_MEDIAN",
             result=p50,
-            numerical_substitution=f"Médiane de la distribution ({len(simulated_values)} points)"
+            numerical_substitution=f"Médiane retenue sur {len(simulated_values)} points"
         )
 
-        # Fusion des traces : On place les étapes MC après la logique métier
-        # pour un indexage plus naturel dans l'UI (D'abord le calcul, ensuite le risque)
+        # FUSION DES TRACES : Core Logic (1-6) + Monte Carlo (7-11)
+        # Indispensable pour l'isolation dans ui_kpis.py
         final_result.calculation_trace = final_result.calculation_trace + self.calculation_trace
 
         return final_result
