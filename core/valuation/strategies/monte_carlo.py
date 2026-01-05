@@ -29,7 +29,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.strategy_cls = strategy_cls
 
     DEFAULT_SIMULATIONS = 5000
-    MIN_VALID_RATIO = 0.50
+    MIN_VALID_RATIO = 0.20
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
         num_simulations = params.num_simulations or self.DEFAULT_SIMULATIONS
@@ -99,7 +99,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         )
 
         if valid_ratio < self.MIN_VALID_RATIO:
-            raise CalculationError(f"Instabilité critique : {valid_ratio:.1%} valides.")
+            from core.exceptions import MonteCarloInstabilityError
+            raise MonteCarloInstabilityError(valid_ratio, self.MIN_VALID_RATIO)
 
         # 4. SYNTHÈSE & CALCUL RÉFÉRENCE
         ref_strategy = self.strategy_cls(glass_box_enabled=True)

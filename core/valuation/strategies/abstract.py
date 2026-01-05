@@ -1,6 +1,6 @@
 """
 core/valuation/strategies/abstract.py
-SOCLE ABSTRAIT V6.0 — AUDIT-GRADE & MODEL RISK CONTROL
+SOCLE ABSTRAIT V6.7 — AUDIT-GRADE & MODEL RISK CONTROL
 Rôle : Moteur de calcul DCF avec détection de divergence et transparence totale.
 """
 
@@ -8,7 +8,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from core.exceptions import CalculationError
+from core.exceptions import CalculationError, ModelDivergenceError
 from core.models import (
     CompanyFinancials,
     DCFParameters,
@@ -45,7 +45,7 @@ class ValuationStrategy(ABC):
 
         self.calculation_trace.append(CalculationStep(
             step_id=len(self.calculation_trace) + 1,
-            step_key=step_key,  # <--- ON SAUVEGARDE LA CLÉ ICI
+            step_key=step_key,
             label=label or step_key,
             theoretical_formula=theoretical_formula,
             hypotheses=hypotheses or [],
@@ -70,7 +70,7 @@ class ValuationStrategy(ABC):
         pass
 
     # ==========================================================================
-    # LOGIQUE MATHÉMATIQUE (AUDIT-GRADE V6.5)
+    # LOGIQUE MATHÉMATIQUE (AUDIT-GRADE V6.7)
     # ==========================================================================
     def _run_dcf_math(self, base_flow: float, financials: CompanyFinancials,
                       params: DCFParameters, wacc_override: Optional[float] = None) -> DCFValuationResult:
@@ -115,10 +115,8 @@ class ValuationStrategy(ABC):
         if params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             # GARDE-FOU AUDIT : g doit être < WACC pour éviter une valeur infinie
             if params.perpetual_growth_rate >= wacc:
-                raise CalculationError(
-                    f"Divergence financière : g ({params.perpetual_growth_rate:.2%}) "
-                    f"est supérieur ou égal au WACC ({wacc:.2%})."
-                )
+                # Utilisation de l'exception typée pour un message enrichi et pro
+                raise ModelDivergenceError(params.perpetual_growth_rate, wacc)
 
             tv = calculate_terminal_value_gordon(flows[-1], wacc, params.perpetual_growth_rate)
             key_tv = "TV_GORDON"
@@ -159,7 +157,6 @@ class ValuationStrategy(ABC):
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
         shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
 
-        # Déduction des passifs hors-dette financière
         minorities = params.manual_minority_interests if params.manual_minority_interests is not None else financials.minority_interests
         pensions = params.manual_pension_provisions if params.manual_pension_provisions is not None else financials.pension_provisions
 

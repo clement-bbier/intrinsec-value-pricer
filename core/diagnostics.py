@@ -63,13 +63,36 @@ class DiagnosticRegistry:
 
     @staticmethod
     def MODEL_G_DIVERGENCE(g: float, wacc: float) -> DiagnosticEvent:
-        """Détecté lorsque la croissance perpétuelle invalide le modèle de Gordon."""
+        """Erreur de convergence Gordon Shapiro."""
         return DiagnosticEvent(
             code="MODEL_G_DIVERGENCE",
             severity=SeverityLevel.CRITICAL,
             domain=DiagnosticDomain.MODEL,
-            message=f"Divergence mathématique : g ({g:.2%}) >= WACC ({wacc:.2%}).",
-            remediation_hint="Réduisez le taux de croissance perpétuelle ou revoyez le WACC."
+            message=(
+                f"ERREUR DE CONVERGENCE : Le taux de croissance g ({g:.2%}) "
+                f"est supérieur ou égal au WACC ({wacc:.2%})."
+            ),
+            remediation_hint=(
+                "Mathématiquement, une entreprise ne peut pas croître plus vite que son coût "
+                "du capital à l'infini. Réduisez 'gn' dans le Terminal Expert ou révisez le WACC."
+            )
+        )
+
+    @staticmethod
+    def MODEL_MC_INSTABILITY(valid_ratio: float, threshold: float) -> DiagnosticEvent:
+        """Instabilité statistique lors des simulations Monte Carlo."""
+        return DiagnosticEvent(
+            code="MODEL_MC_INSTABILITY",
+            severity=SeverityLevel.ERROR,
+            domain=DiagnosticDomain.MODEL,
+            message=(
+                f"INSTABILITÉ CRITIQUE : Seuls {valid_ratio:.1%} des scénarios sont valides "
+                f"(Seuil minimum requis : {threshold:.0%})."
+            ),
+            remediation_hint=(
+                "Le modèle est trop sensible à vos volatilités actuelles (g >= WACC trop fréquent). "
+                "Diminuez la 'Vol. gn' ou augmentez la marge entre gn et le WACC."
+            )
         )
 
     @staticmethod
