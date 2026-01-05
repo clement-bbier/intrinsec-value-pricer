@@ -2,6 +2,7 @@
 core/valuation/strategies/dcf_standard.py
 MÉTHODE : FCFF TWO-STAGE — VERSION V5.0 (Registry-Driven)
 Rôle : Sélection du flux de départ et délégation au moteur mathématique commun.
+Audit-Grade : Ajout de la substitution numérique explicite et labels normalisés.
 """
 
 import logging
@@ -51,28 +52,33 @@ class StandardFCFFStrategy(ValuationStrategy):
 
         if params.manual_fcf_base is not None:
             fcf_base = params.manual_fcf_base
-            source = "Manual override"
+            source = "Manual override (Expert)"
         else:
             fcf_base = financials.fcf_last
-            source = "Last reported FCF (TTM)"
+            source = "Last reported FCF (TTM) - Yahoo Deep Fetch"
 
         if fcf_base is None:
             raise CalculationError(
-                "FCF de base indisponible (fcf_last manquant)."
+                "FCF de base indisponible (fcf_last manquant ou nul)."
             )
 
-        # --- Trace Glass Box (Découplage UI via ID) ---
+        # --- Trace Glass Box (Audit-Grade : Substitution Numérique) ---
+        # On affiche clairement l'origine de la donnée pour l'auditeur
         self.add_step(
             step_key="FCF_BASE_SELECTION",
+            label="Sélection du Flux de Trésorerie de Base (FCF_0)",
+            theoretical_formula="FCF_0 = Initial_Cash_Flow",
             result=fcf_base,
-            numerical_substitution=f"FCF_0 = {fcf_base:,.2f}"
+            numerical_substitution=f"FCF_0 = {fcf_base:,.2f} ({source})",
+            interpretation=f"Le modèle démarre avec un flux de {fcf_base:,.2f} {financials.currency}."
         )
 
         # ====================================================
         # 2. EXÉCUTION DU DCF DÉTERMINISTE (DÉLÉGATION)
         # ====================================================
-        # On délègue à _run_dcf_math (dans abstract.py) qui gère
-        # déjà les IDs WACC_CALC, FCF_PROJ, NPV_CALC, etc.
+        # L'intelligence des Multiples et de l'Audit de corrélation
+        # est gérée par le moteur mathématique commun pour garantir
+        # l'uniformité entre toutes les stratégies FCFF.
         return self._run_dcf_math(
             base_flow=fcf_base,
             financials=financials,

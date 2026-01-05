@@ -119,7 +119,20 @@ class AuditEngine:
                 total_score += contribution
 
             # --------------------------------------------------------
-            # 3. CONSTRUCTION DU RAPPORT FINAL
+            # 3. SÉCURITÉ DE CALCUL (BLOCAGE DES FONCTIONS INSTABLES)
+            # --------------------------------------------------------
+            # On extrait les scores spécifiques pour la gestion des risques
+            model_risk_score = weighted_pillars.get(AuditPillar.MODEL_RISK).score if AuditPillar.MODEL_RISK in weighted_pillars else 100.0
+            data_conf_score = weighted_pillars.get(AuditPillar.DATA_CONFIDENCE).score if AuditPillar.DATA_CONFIDENCE in weighted_pillars else 100.0
+
+            # --- LOGIQUE DE SÉCURITÉ ---
+            # Si le modèle diverge (g >= WACC), l'auditeur met le MODEL_RISK à 0.
+            # On bloque alors les simulations de Monte Carlo qui seraient fausses.
+            block_mc = model_risk_score <= 0.0
+            block_hist = data_conf_score < 40.0
+
+            # --------------------------------------------------------
+            # 4. CONSTRUCTION DU RAPPORT FINAL
             # --------------------------------------------------------
             rating = AuditEngine._compute_rating(total_score)
 
@@ -135,8 +148,11 @@ class AuditEngine:
                 breakdown={p.value: ps.score for p, ps in weighted_pillars.items()},
                 pillar_breakdown=AuditScoreBreakdown(
                     pillars=weighted_pillars,
-                    aggregation_formula="Sum(Score * Weight)"
+                    aggregation_formula="Sum(Score * Weight)",
+                    total_score=total_score
                 ),
+                block_monte_carlo=block_mc,
+                block_history=block_hist,
                 critical_warning=any(l.severity == "CRITICAL" for l in all_logs)
             )
 
@@ -206,5 +222,7 @@ class AuditEngine:
             ],
             breakdown={},
             pillar_breakdown=None,
-            critical_warning=True
+            critical_warning=True,
+            block_monte_carlo=True,
+            block_history=True
         )

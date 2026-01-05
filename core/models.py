@@ -69,6 +69,7 @@ class CalculationStep(BaseModel):
     Étape atomique, normative et auditée du raisonnement financier.
     """
     step_id: int = 0
+    step_key: str = ""
     label: str = ""
     theoretical_formula: str = ""
     hypotheses: List[TraceHypothesis] = Field(default_factory=list)
@@ -99,6 +100,9 @@ class CompanyFinancials(BaseModel):
     total_debt: float
     cash_and_equivalents: float
     interest_expense: float
+
+    minority_interests: float = 0.0
+    pension_provisions: float = 0.0
 
     # Métadonnées
     name: str = "Unknown"
@@ -172,6 +176,8 @@ class DCFParameters(BaseModel):
     # --- NOUVEAUX LEVIERS : SOUVERAINETÉ ANALYSTE ---
     manual_total_debt: Optional[float] = None
     manual_cash: Optional[float] = None
+    manual_minority_interests: Optional[float] = None
+    manual_pension_provisions: Optional[float] = None
     manual_shares_outstanding: Optional[float] = None
     manual_book_value: Optional[float] = None
 

@@ -132,6 +132,24 @@ class YahooFinanceProvider(DataProvider):
 
             total_cash = float(total_cash) if total_cash else 0.0
 
+            minority_interests = 0.0
+            pension_provisions = 0.0
+
+            if balance_sheet is not None:
+                # Recherche des intérêts minoritaires (Non-controlling interests)
+                minority_interests = extract_most_recent_value(balance_sheet, [
+                    "Minority Interest",
+                    "Non Controlling Interest",
+                    "Total Equity Gross Minority Interest"
+                ]) or 0.0
+
+                # Recherche des provisions pour pensions et risques long terme
+                pension_provisions = extract_most_recent_value(balance_sheet, [
+                    "Pension And Other Postretirement Benefit Plans",
+                    "Long Term Provisions",
+                    "Other Provisions"
+                ]) or 0.0
+
             # 5. Interest Expense
             interest_expense = 0.0
             if income_stmt is not None:
@@ -175,6 +193,8 @@ class YahooFinanceProvider(DataProvider):
 
                 total_debt=total_debt,
                 cash_and_equivalents=total_cash,
+                minority_interests=float(minority_interests),
+                pension_provisions=float(pension_provisions),
                 interest_expense=interest_expense,
                 book_value_per_share=book_value_per_share,
 
