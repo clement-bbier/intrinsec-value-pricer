@@ -42,31 +42,23 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
         # --- ÉTAPE 2 : CONCILIATION DES PARAMÈTRES (SMART MERGE) ---
         status.write("Conciliation des hypothèses (Smart Merge)...")
 
-        # 1. Préparation du socle (Manuel vs Auto)
         if request.input_source == InputSource.MANUAL:
-            # On part du dictionnaire complet des données automatiques (Proxy Yahoo)
+            # SOUVERAINETÉ EXPERT : On fusionne les chiffres, mais on garde les options MC du terminal
             merged_data = auto_params.model_dump()
-
-            # On extrait les données saisies par l'expert
-            # exclude_unset=True permet de ne récupérer que ce que l'analyste a touché
             expert_data = request.manual_params.model_dump(exclude_unset=True)
-
-            # FUSION STRATEGIQUE :
-            # Si la valeur expert est None -> On garde la valeur Auto.
-            # Si la valeur expert est 0.0 -> On écrase la valeur Auto par 0.0 (Souveraineté).
             merged_data.update({k: v for k, v in expert_data.items() if v is not None})
 
             final_params = DCFParameters(**merged_data)
+
+            # On force le respect des flags Monte Carlo saisis dans le terminal expert
+            final_params.enable_monte_carlo = request.manual_params.enable_monte_carlo
+            final_params.num_simulations = request.manual_params.num_simulations
         else:
+            # MODE AUTO : On utilise les options de la sidebar
             final_params = auto_params.model_copy()
-
-        # 2. Synchronisation forcée des options UI (Monte Carlo)
-        # On utilise le dictionnaire 'options' de la requête comme vérité absolue pour l'UI
-        ui_options = request.options or {}
-
-        final_params.enable_monte_carlo = ui_options.get("enable_monte_carlo", False)
-        if "num_simulations" in ui_options:
-            final_params.num_simulations = ui_options["num_simulations"]
+            ui_options = request.options or {}
+            final_params.enable_monte_carlo = ui_options.get("enable_monte_carlo", False)
+            final_params.num_simulations = ui_options.get("num_simulations", 2000)
 
         # Log de certification pour l'audit console
         logger.info(

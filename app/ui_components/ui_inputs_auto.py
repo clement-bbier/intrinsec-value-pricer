@@ -1,8 +1,6 @@
 """
-app/ui_components/ui_inputs_auto.py
-MODE AUTO — ESTIMATION STANDARDISÉE ET PRUDENTE (V7.1)
-Rôle : Configuration assistée avec hypothèses normatives et audit strict.
-Version : Épurée (Zéro Émoji).
+app/ui_components/ui_inputs_auto.py — VERSION FINALE V7.6
+Rôle : Masquage strict et dynamique de la section Risque pour Graham.
 """
 
 from __future__ import annotations
@@ -12,120 +10,65 @@ import streamlit as st
 from core.models import InputSource, ValuationMode, ValuationRequest
 from core.methodology.texts import TOOLTIPS
 
-
-def display_auto_inputs(
-        default_ticker: str,
-        default_years: int,
-) -> Optional[ValuationRequest]:
-    """
-    Rendu du terminal de saisie pour le mode automatique.
-    Principes : Hypothèses déduites, audit complet, responsabilité système.
-    """
-
+def display_auto_inputs(default_ticker: str, default_years: int) -> Optional[ValuationRequest]:
     st.sidebar.subheader("Configuration : Mode AUTO")
 
-    # ------------------------------------------------------------------
-    # NOTE MÉTHODOLOGIQUE
-    # ------------------------------------------------------------------
-    with st.sidebar.expander("Note méthodologique", expanded=True):
-        st.markdown(
-            """
-            **Estimation standardisée et prudente**
-
-            - Hypothèses financières déduites automatiquement.
-            - Utilisation de proxies normatifs et sécurisés.
-            - Audit de fiabilité strict et pénalisant.
-            - Résultats fournis à titre indicatif uniquement.
-
-            Note : Pour un contrôle total des variables (Rf, Beta, MRP), utilisez le **mode EXPERT**.
-            """
-        )
+    with st.sidebar.expander("Note méthodologique", expanded=False):
+        st.markdown("- Hypothèses déduites automatiquement.\n- Audit de fiabilité strict.")
 
     st.sidebar.divider()
 
-    # ------------------------------------------------------------------
-    # 1. IDENTIFICATION DU TITRE
-    # ------------------------------------------------------------------
-    ticker = st.sidebar.text_input(
-        "Symbole boursier (Ticker)",
-        value=default_ticker,
-        help=TOOLTIPS.get("ticker")
-    ).upper().strip()
+    # 1. IDENTIFICATION
+    ticker = st.sidebar.text_input("Ticker", value=default_ticker, help=TOOLTIPS.get("ticker")).upper().strip()
 
-    # ------------------------------------------------------------------
-    # 2. HORIZON TEMPOREL
-    # ------------------------------------------------------------------
-    years = st.sidebar.number_input(
-        "Horizon de projection (années)",
-        min_value=3,
-        max_value=15,
-        value=int(default_years),
-        help=TOOLTIPS.get("years")
-    )
+    # 2. HORIZON
+    years = st.sidebar.number_input("Horizon (années)", min_value=3, max_value=15, value=int(default_years))
 
-    # ------------------------------------------------------------------
-    # 3. MÉTHODE DE VALORISATION (MAPPING ENUM)
-    # ------------------------------------------------------------------
-    # On retire "Monte Carlo" de la liste pour en faire une option transverse
+    # 3. MÉTHODE DE VALORISATION
     strategies_map = {
-        "Standard : DCF FCFF (Two-Stage)": ValuationMode.FCFF_TWO_STAGE,
-        "Fondamental : FCFF normalisé": ValuationMode.FCFF_NORMALIZED,
-        "Croissance : FCFF revenu (Growth)": ValuationMode.FCFF_REVENUE_DRIVEN,
-        "Value : Modèle de Graham (1974)": ValuationMode.GRAHAM_1974_REVISED,
-        "Banques : Residual Income Model (RIM)": ValuationMode.RESIDUAL_INCOME_MODEL,
+        "Standard : DCF FCFF": ValuationMode.FCFF_TWO_STAGE,
+        "Fondamental : FCFF lissé": ValuationMode.FCFF_NORMALIZED,
+        "Croissance : FCFF Growth": ValuationMode.FCFF_REVENUE_DRIVEN,
+        "Value : Modèle de Graham": ValuationMode.GRAHAM_1974_REVISED,
+        "Banques : Modèle RIM": ValuationMode.RESIDUAL_INCOME_MODEL,
     }
 
-    selected_label = st.sidebar.selectbox(
-        "Méthode de valorisation",
-        options=list(strategies_map.keys()),
-        index=0,
-        help="Sélectionnez une méthode adaptée au profil de l'entreprise."
-    )
-
+    selected_label = st.sidebar.selectbox("Méthode de valorisation", options=list(strategies_map.keys()), index=0)
     mode = strategies_map[selected_label]
 
     # ------------------------------------------------------------------
-    # 4. ANALYSE DE RISQUE (SÉPARÉE & CUMULABLE)
+    # 4. ANALYSE DE RISQUE (BLOC DYNAMIQUE)
     # ------------------------------------------------------------------
-    options: Dict[str, Any] = {}
+    options: Dict[str, Any] = {"enable_monte_carlo": False}
+
+    # Utilisation de la propriété centralisée pour le masquage
+    if mode.supports_monte_carlo:
+        st.sidebar.divider()
+        st.sidebar.markdown("#### 5. Analyse de Risque")
+        enable_mc = st.sidebar.toggle("Activer Monte Carlo", value=False)
+
+        if enable_mc:
+            sims = st.sidebar.select_slider(
+                "Itérations de la simulation",
+                options=[1000, 2000, 5000, 10000],
+                value=2000
+            )
+            options = {"enable_monte_carlo": True, "num_simulations": sims}
 
     st.sidebar.divider()
-    # Utilisation d'un toggle pour une activation explicite
-    enable_mc = st.sidebar.toggle("Activer l'Analyse de Risque (Monte Carlo)", value=False)
 
-    if enable_mc:
-        st.sidebar.caption("Note : Extension probabiliste")
-        sims = st.sidebar.select_slider(
-            "Itérations de la simulation",
-            options=[1000, 2000, 5000, 10000],
-            value=2000
+    # 5. BOUTON DE LANCEMENT
+    if st.sidebar.button("Lancer l'estimation", type="primary", width="stretch"):
+        if not ticker:
+            st.sidebar.error("Le ticker est requis.")
+            return None
+
+        return ValuationRequest(
+            ticker=ticker,
+            projection_years=int(years),
+            mode=mode,
+            input_source=InputSource.AUTO,
+            manual_params=None,
+            options=options
         )
-        options["enable_monte_carlo"] = True
-        options["num_simulations"] = sims
-
-    st.sidebar.divider()
-
-    # ------------------------------------------------------------------
-    # 5. VALIDATION DE LA REQUÊTE (CONFORME STREAMLIT 2026)
-    # ------------------------------------------------------------------
-    submitted = st.sidebar.button(
-        "Lancer l'estimation",
-        type="primary",
-        width="stretch"  # Remplacement de use_container_width=True pour 2026
-    )
-
-    if not submitted:
-        return None
-
-    if not ticker:
-        st.sidebar.error("Le ticker est requis.")
-        return None
-
-    return ValuationRequest(
-        ticker=ticker,
-        projection_years=int(years),
-        mode=mode,
-        input_source=InputSource.AUTO,
-        manual_params=None,
-        options=options
-    )
+    return None

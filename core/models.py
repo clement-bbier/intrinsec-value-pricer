@@ -34,6 +34,11 @@ class ValuationMode(str, Enum):
     RESIDUAL_INCOME_MODEL = "Residual Income Model (Penman)"
     GRAHAM_1974_REVISED = "Graham Intrinsic Value (1974 Revised)"
 
+    @property
+    def supports_monte_carlo(self) -> bool:
+        """Définit structurellement la compatibilité stochastique du modèle."""
+        return self != ValuationMode.GRAHAM_1974_REVISED
+
 
 class InputSource(str, Enum):
     """

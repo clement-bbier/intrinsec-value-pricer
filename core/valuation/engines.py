@@ -105,11 +105,10 @@ def run_valuation(
             ValuationMode.FCFF_NORMALIZED,
             ValuationMode.FCFF_REVENUE_DRIVEN,
             ValuationMode.RESIDUAL_INCOME_MODEL,
-            ValuationMode.GRAHAM_1974_REVISED
         ]
 
         if request.mode in SUPPORTED_MC_MODES:
-            logger.info("⚡ Activation Monte Carlo pour %s", request.mode.value)
+            logger.info("Activation Monte Carlo pour %s", request.mode.value)
             # On injecte la classe cible dans le wrapper générique
             # Monte Carlo devient la stratégie principale, elle pilotera les calculs sous-jacents
             strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)

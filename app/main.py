@@ -162,14 +162,19 @@ def main():
             st.header("4. Horizon")
             years = st.slider("Années de projection", 3, 15, 5)
             st.divider()
-            st.header("5. Analyse de Risque Probabiliste")
-            enable_mc = st.toggle("Activer Monte Carlo", value=False)
-            if enable_mc:
-                mc_sims = st.number_input("Simulations", 500, 10000, 2000, 500)
-            st.divider()
+
+            # --- FIX 1 : VISIBILITÉ GRAHAM ---
+            # On n'affiche le point 5 que si le modèle le supporte (Pas Graham)
+            if selected_mode.supports_monte_carlo:
+                st.header("5. Analyse de Risque")
+                enable_mc = st.toggle("Activer Monte Carlo", value=False)
+                if enable_mc:
+                    mc_sims = st.number_input("Simulations", 500, 10000, 2000, 500)
+                st.divider()
+
             launch_analysis = st.button("Lancer le calcul", type="primary", use_container_width=True)
 
-        # Footer Crédits original
+        # Footer Crédits original (INCHANGÉ)
         st.markdown(
             """
             <div style="margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; border-top: 0.5px solid #334155; padding-top: 1rem;">
@@ -195,9 +200,9 @@ def main():
             if render_func:
                 request = render_func(ticker)
                 if request:
-                    request = request.model_copy(update={
-                        "options": {"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}
-                    })
+                    # --- FIX 2 : SIGNAL MONTE CARLO EXPERT ---
+                    # On supprime le model_copy qui écrasait tout par False !
+                    # La request vient du terminal expert avec ses propres choix MC.
                     run_workflow_and_display(request)
 
     elif launch_analysis:
@@ -215,7 +220,7 @@ def main():
             ticker=ticker, projection_years=years, mode=selected_mode,
             input_source=InputSource.AUTO,
             manual_params=config_params,
-            options={"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}  # FIX : Ajout des options
+            options={"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}
         )
         run_workflow_and_display(request)
     else:

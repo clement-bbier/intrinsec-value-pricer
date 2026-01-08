@@ -58,37 +58,45 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, provider: Any = None) -> None:
-    """Structure de restitution organisée en trois piliers : Preuve, Fiabilité, Risque."""
     st.divider()
 
-    # Séparation des traces pour la Glass Box
+    # 1. On sépare les traces
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
 
-    tabs = st.tabs(["Preuve de Calcul", "Audit de Fiabilité", "Analyse de Risque (MC)"])
+    # 2. On définit les onglets dynamiquement selon la compatibilité du modèle
+    tab_labels = ["Preuve de Calcul", "Audit de Fiabilité"]
+
+    # L'onglet MC n'est ajouté QUE si le modèle le supporte ET que l'option était active
+    show_mc_tab = result.request.mode.supports_monte_carlo and result.params.enable_monte_carlo
+    if show_mc_tab:
+        tab_labels.append("Analyse de Risque (MC)")
+
+    tabs = st.tabs(tab_labels)
 
     with tabs[0]:
-        st.markdown("#### Démonstration mathématique du calcul")
         for idx, step in enumerate(core_steps, start=1):
             _render_smart_step(idx, step)
 
     with tabs[1]:
-        if result.audit_report:
-            _render_reliability_report(result.audit_report)
-        else:
-            st.info("Rapport d'audit non disponible.")
+        _render_reliability_report(result.audit_report)
 
-    with tabs[2]:
-        _render_monte_carlo_tab(result, mc_steps)
+    if show_mc_tab:
+        with tabs[2]:
+            _render_monte_carlo_tab(result, mc_steps)
 
 # ==============================================================================
 # 3. COMPOSANTS DE L'ONGLET RISQUE (MONTE CARLO)
 # ==============================================================================
 
 def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]):
-    """Rendu expert de l'analyse Monte Carlo incluant robustesse et stress tests."""
-    if result.simulation_results is None or len(result.simulation_results) == 0:
-        st.info("Analyse de risque probabiliste non activée ou données insuffisantes.")
+    """Rendu expert de l'analyse Monte Carlo."""
+    if result.params.enable_monte_carlo and (result.simulation_results is None or len(result.simulation_results) == 0):
+        st.warning("La simulation de Monte Carlo n'a pas pu converger (Paramètres instables ou autre).")
+        return
+
+    if not result.params.enable_monte_carlo:
+        st.info("Analyse de risque probabiliste non activée pour cette valorisation.")
         return
 
     from app.ui_components.ui_charts import (
