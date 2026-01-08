@@ -95,7 +95,7 @@ class ValuationStrategy(ABC):
             theoretical_formula=r"WACC = w_e \cdot [R_f + \beta \cdot (ERP)] + w_d \cdot [K_d \cdot (1 - \tau)]",
             result=wacc,
             numerical_substitution=sub_wacc,
-            interpretation="Taux d'actualisation cible basé sur la structure de capital actuelle."
+            interpretation=f"Taux d'actualisation cible (WACC) de {wacc:.2%}, basé sur la structure de capital actuelle."
         )
 
         # --- B. PROJECTIONS : Flux de Trésorerie Disponibles ---
@@ -108,7 +108,7 @@ class ValuationStrategy(ABC):
             theoretical_formula=r"\sum FCF_t",
             result=sum(flows),
             numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate:.3f})^{params.projection_years}",
-            interpretation=f"Projection sur {params.projection_years} ans à un taux de {params.fcf_growth_rate:.2%}"
+            interpretation=f"Projection sur {params.projection_years} ans à un taux de croissance annuel moyen (CAGR) de {params.fcf_growth_rate:.2%}"
         )
 
         # --- C. VALEUR TERMINALE : Contrôle de Risque de Modèle ---
@@ -152,7 +152,7 @@ class ValuationStrategy(ABC):
             interpretation="Valeur totale de l'outil de production actualisée."
         )
 
-        # --- E. BRIDGE : Passage à la Valeur des Fonds Propres (Version Institutionnelle) ---
+        # --- E. BRIDGE : Passage à la Valeur des Fonds Propres (Version Institutionnelle 5 Termes) ---
         debt = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
         shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
@@ -160,7 +160,7 @@ class ValuationStrategy(ABC):
         minorities = params.manual_minority_interests if params.manual_minority_interests is not None else financials.minority_interests
         pensions = params.manual_pension_provisions if params.manual_pension_provisions is not None else financials.pension_provisions
 
-        # Formule complète : EV - Dette + Cash - Minoritaires - Provisions
+        # Formule unifiée pour toutes les stratégies DCF
         equity_val = ev - debt + cash - minorities - pensions
 
         self.add_step(

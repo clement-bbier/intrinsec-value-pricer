@@ -1,52 +1,51 @@
 """
 core/methodology/texts.py
-
 SOURCE DE VÉRITÉ — DOCUMENTATION MÉTHODOLOGIQUE CANONIQUE
-Version : V3.0 — Chapitre 9 conforme
-
-Rôle :
-- Centraliser les textes méthodologiques courts
-- Assurer la cohérence stricte UI ↔ moteur ↔ documentation
-- Référencer TOUTES les stratégies réellement implémentées
-
-Règles :
-- Aucun texte sans stratégie existante
-- Aucun doublon avec docs/methodology/*.md
-- Textes courts, stables, auditables
+Version : V3.1 — Hedge Fund Standard (Typed & Standardized)
 """
+
+from typing import Dict, List, TypedDict, Optional
+
+# ==============================================================================
+# TYPES NORMATIFS
+# ==============================================================================
+
+class MethodologySection(TypedDict):
+    """Structure de données pour une section de documentation."""
+    subtitle: str
+    markdown_blocks: List[str]
+    latex_blocks: Optional[List[str]]  # Optionnel pour la flexibilité
 
 # ==============================================================================
 # TOOLTIPS — AIDES CONTEXTUELLES UI
 # ==============================================================================
 
-TOOLTIPS = {
-    "ticker": "Symbole boursier de l’entreprise cotée (ex: AAPL, MSFT, LVMH.PA).",
-    "years": "Horizon explicite de projection des flux (DCF / RIM).",
+# Alignement strict avec la convention (0 = Auto Yahoo) validée au Jalon 1
+TOOLTIPS: Dict[str, str] = {
+    "ticker": "Symbole boursier (ex: AAPL, LVMH.PA). Saisissez 0 pour laisser le système chercher. ",
+    "years": "Horizon explicite de projection des flux (DCF / RIM). ",
 
     # Croissance
     "growth_g": (
-        "Taux de croissance annuel appliqué aux flux ou résultats "
-        "pendant la période explicite."
+        "Taux de croissance annuel (décimal). Saisissez 0 pour activer l'Auto Yahoo. "
     ),
     "growth_perp": (
-        "Taux de croissance de long terme utilisé pour la valeur terminale. "
-        "Doit rester inférieur à la croissance nominale de l’économie."
+        "Taux de croissance à l'infini (gn). Saisissez 0 pour activer l'Auto Yahoo. "
     ),
 
     # Risque / taux
-    "rf": "Taux sans risque (obligations souveraines long terme).",
-    "mrp": "Prime de risque actions exigée par le marché.",
-    "beta": "Mesure du risque systématique par rapport au marché.",
+    "rf": "Taux sans risque (Rf). Saisissez 0 pour activer l'Auto Yahoo. ",
+    "mrp": "Prime de risque marché (MRP). Saisissez 0 pour activer l'Auto Yahoo. ",
+    "beta": "Coefficient Beta (β). Saisissez 0 pour activer l'Auto Yahoo. ",
 
     # Structure financière
-    "cost_debt": "Coût de la dette avant impôt.",
-    "tax_rate": "Taux d’impôt utilisé pour le coût de la dette après impôt.",
-    "target_weights": "Structure cible Dette / Fonds propres.",
+    "cost_debt": "Coût de la dette (kd). Saisissez 0 pour activer l'Auto Yahoo. ",
+    "tax_rate": "Taux d'imposition (τ). Saisissez 0 pour activer l'Auto Yahoo. ",
+    "target_weights": "Structure cible Dette / Fonds propres. ",
 
     # Monte Carlo
     "volatility": (
-        "Écart-type appliqué à une hypothèse dans une analyse Monte Carlo. "
-        "Utilisé uniquement pour mesurer l’incertitude."
+        "Écart-type pour Monte Carlo. Saisissez 0 pour activer l'Auto Yahoo. "
     ),
 }
 
@@ -58,19 +57,19 @@ TOOLTIPS = {
 # DCF STANDARD — FCFF TWO-STAGE
 # ------------------------------------------------------------------------------
 
-DCF_STANDARD_TITLE = "### DCF Standard — FCFF Two-Stage"
+DCF_STANDARD_TITLE: str = "### DCF Standard — FCFF Two-Stage "
 
-DCF_STANDARD_SECTIONS = [
+DCF_STANDARD_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Concept",
         "markdown_blocks": [
             (
                 "Méthode DCF reposant sur la projection directe du "
                 "Free Cash Flow to the Firm (FCFF) sur un horizon explicite, "
-                "suivie d’une valeur terminale."
+                "suivie d’une valeur terminale. "
             ),
             (
-                "> Adaptée aux entreprises matures avec flux stables."
+                "> Adaptée aux entreprises matures avec flux stables. "
             ),
         ],
     },
@@ -86,8 +85,8 @@ DCF_STANDARD_SECTIONS = [
     {
         "subtitle": "#### Invariants",
         "markdown_blocks": [
-            "WACC strictement supérieur à la croissance terminale.",
-            "Flux de trésorerie économiquement cohérents.",
+            "WACC strictement supérieur à la croissance terminale. ",
+            "Flux de trésorerie économiquement cohérents. ",
         ],
     },
 ]
@@ -96,18 +95,18 @@ DCF_STANDARD_SECTIONS = [
 # DCF FONDAMENTAL — FCFF NORMALISÉ
 # ------------------------------------------------------------------------------
 
-DCF_FUNDAMENTAL_TITLE = "### DCF Fondamental — FCFF Normalisé"
+DCF_FUNDAMENTAL_TITLE: str = "### DCF Fondamental — FCFF Normalisé "
 
-DCF_FUNDAMENTAL_SECTIONS = [
+DCF_FUNDAMENTAL_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Concept",
         "markdown_blocks": [
             (
                 "Méthode DCF reposant sur un flux de trésorerie "
-                "normalisé, représentatif d’un cycle économique moyen."
+                "normalisé, représentatif d’un cycle économique moyen. "
             ),
             (
-                "> Approche privilégiée pour les entreprises cycliques."
+                "> Approche privilégiée pour les entreprises cycliques. "
             ),
         ],
     },
@@ -125,8 +124,8 @@ DCF_FUNDAMENTAL_SECTIONS = [
     {
         "subtitle": "#### Invariants",
         "markdown_blocks": [
-            "FCFF normalisé strictement positif.",
-            "Normalisation économiquement justifiée.",
+            "FCFF normalisé strictement positif. ",
+            "Normalisation économiquement justifiée. ",
         ],
     },
 ]
@@ -135,19 +134,19 @@ DCF_FUNDAMENTAL_SECTIONS = [
 # DCF CROISSANCE — REVENUE-DRIVEN
 # ------------------------------------------------------------------------------
 
-DCF_GROWTH_TITLE = "### DCF Croissance — Revenue-Driven FCFF"
+DCF_GROWTH_TITLE: str = "### DCF Croissance — Revenue-Driven FCFF "
 
-DCF_GROWTH_SECTIONS = [
+DCF_GROWTH_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Concept",
         "markdown_blocks": [
             (
                 "Méthode DCF adaptée aux entreprises en forte croissance, "
                 "reposant sur la projection du chiffre d’affaires "
-                "et la convergence progressive des marges."
+                "et la convergence progressive des marges. "
             ),
             (
-                "> Typiquement utilisée pour les sociétés tech / scale-up."
+                "> Typiquement utilisée pour les sociétés tech / scale-up. "
             ),
         ],
     },
@@ -162,8 +161,8 @@ DCF_GROWTH_SECTIONS = [
     {
         "subtitle": "#### Invariants",
         "markdown_blocks": [
-            "Convergence des marges vers un niveau soutenable.",
-            "Croissance long terme inférieure à la croissance économique.",
+            "Convergence des marges vers un niveau soutenable. ",
+            "Croissance long terme inférieure à la croissance économique. ",
         ],
     },
 ]
@@ -176,18 +175,18 @@ DCF_GROWTH_SECTIONS = [
 # RIM — RESIDUAL INCOME MODEL (BANQUES)
 # ------------------------------------------------------------------------------
 
-RIM_TITLE = "### Residual Income Model (RIM) — Institutions financières"
+RIM_TITLE: str = "### Residual Income Model (RIM) — Institutions financières "
 
-RIM_SECTIONS = [
+RIM_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Concept",
         "markdown_blocks": [
             (
                 "Méthode de valorisation fondée sur les profits résiduels, "
-                "particulièrement adaptée aux banques et assurances."
+                "particulièrement adaptée aux banques et assurances. "
             ),
             (
-                "> Basée sur le clean surplus accounting."
+                "> Basée sur le clean surplus accounting. "
             ),
         ],
     },
@@ -202,8 +201,8 @@ RIM_SECTIONS = [
     {
         "subtitle": "#### Invariants",
         "markdown_blocks": [
-            "Book Value strictement positif.",
-            "Coût des fonds propres pertinent.",
+            "Book Value strictement positif. ",
+            "Coût des fonds propres pertinent. ",
         ],
     },
 ]
@@ -212,18 +211,18 @@ RIM_SECTIONS = [
 # GRAHAM — MÉTHODE HEURISTIQUE
 # ------------------------------------------------------------------------------
 
-GRAHAM_TITLE = "### Graham Intrinsic Value — Formule révisée (1974)"
+GRAHAM_TITLE: str = "### Graham Intrinsic Value — Formule révisée (1974) "
 
-GRAHAM_SECTIONS = [
+GRAHAM_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Concept",
         "markdown_blocks": [
             (
                 "Méthode heuristique proposée par Benjamin Graham "
-                "pour estimer une valeur intrinsèque à partir du bénéfice."
+                "pour estimer une valeur intrinsèque à partir du bénéfice. "
             ),
             (
-                "> Usage comparatif uniquement, non DCF."
+                "> Usage comparatif uniquement, non DCF. "
             ),
         ],
     },
@@ -238,8 +237,8 @@ GRAHAM_SECTIONS = [
     {
         "subtitle": "#### Limites",
         "markdown_blocks": [
-            "Méthode sensible aux hypothèses.",
-            "Non adaptée à une décision d’investissement isolée.",
+            "Méthode sensible aux hypothèses. ",
+            "Non adaptée à une décision d’investissement isolée. ",
         ],
     },
 ]
@@ -252,34 +251,34 @@ GRAHAM_SECTIONS = [
 # MONTE CARLO — EXTENSION PROBABILISTE
 # ------------------------------------------------------------------------------
 
-MONTE_CARLO_TITLE = "### Extension Monte Carlo — Analyse d’incertitude"
+MONTE_CARLO_TITLE: str = "### Extension Monte Carlo — Analyse d’incertitude "
 
-MONTE_CARLO_SECTIONS = [
+MONTE_CARLO_SECTIONS: List[MethodologySection] = [
     {
         "subtitle": "#### Principe",
         "markdown_blocks": [
             (
                 "Monte Carlo est une extension probabiliste appliquée "
-                "uniquement aux hypothèses d’entrée."
+                "uniquement aux hypothèses d’entrée. "
             ),
             (
-                "> Ce n’est PAS une méthode de valorisation autonome."
+                "> Ce n’est PAS une méthode de valorisation autonome. "
             ),
         ],
     },
     {
         "subtitle": "#### Variables stochastiques",
         "markdown_blocks": [
-            "Croissance.",
-            "Paramètres de risque (beta, composantes du WACC).",
+            "Croissance. ",
+            "Paramètres de risque (beta, composantes du WACC). ",
         ],
     },
     {
         "subtitle": "#### Sorties",
         "markdown_blocks": [
-            "Distribution des valeurs intrinsèques.",
-            "Quantiles (P10, P50, P90).",
-            "Mesure de la dispersion et de l’incertitude.",
+            "Distribution des valeurs intrinsèques. ",
+            "Quantiles (P10, P50, P90). ",
+            "Mesure de la dispersion et de l’incertitude. ",
         ],
     },
 ]
@@ -288,10 +287,10 @@ MONTE_CARLO_SECTIONS = [
 # AUDIT & CONFIDENCE SCORE
 # ==============================================================================
 
-AUDIT_TITLE = "### Audit & Confidence Score — Méthode normalisée"
+AUDIT_TITLE: str = "### Audit & Confidence Score — Méthode normalisée "
 
-AUDIT_INTRO = (
+AUDIT_INTRO: str = (
     "Le Confidence Score mesure la robustesse et le niveau d’incertitude "
     "d’une valorisation financière. Il ne modifie jamais la valeur intrinsèque, "
-    "mais en qualifie la fiabilité selon des critères normalisés."
+    "mais en qualifie la fiabilité selon des critères normalisés. "
 )

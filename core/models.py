@@ -145,35 +145,37 @@ class CompanyFinancials(BaseModel):
 
 class DCFParameters(BaseModel):
     """
-    Paramètres du modèle avec validation 'Border Patrol' stricte.
-    Empêche les taux aberrants (> 100%) d'entrer dans le moteur de calcul.
+    Paramètres du modèle avec validation 'Border Patrol' et support du mode hybride.
+    Standard Hedge Fund : Autorise explicitement None pour la délégation Auto Yahoo.
     """
-    risk_free_rate: float
-    market_risk_premium: float
-    corporate_aaa_yield: float
+    # --- TAUX ET RISQUE ---
+    risk_free_rate: Optional[float] = None
+    market_risk_premium: Optional[float] = None
+    corporate_aaa_yield: Optional[float] = None
+    cost_of_debt: Optional[float] = None
+    tax_rate: Optional[float] = None
 
-    cost_of_debt: float
-    tax_rate: float
-
-    fcf_growth_rate: float
-    projection_years: int
+    # --- CROISSANCE ET HORIZON ---
+    fcf_growth_rate: Optional[float] = None  # Changé en Optional
+    projection_years: int = 5
     high_growth_years: int = 0
 
+    # --- VALEUR TERMINALE ---
     terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
-    perpetual_growth_rate: float = 0.02
-    exit_multiple_value: float = 12.0
+    perpetual_growth_rate: Optional[float] = None  # Changé en Optional
+    exit_multiple_value: Optional[float] = None  # Changé en Optional
 
+    # --- PONDÉRATIONS CIBLES ---
     target_equity_weight: float = 0.0
     target_debt_weight: float = 0.0
-
     target_fcf_margin: Optional[float] = None
 
+    # --- SURCHARGES ANALYSTE (SOUVERAINETÉ) ---
     manual_fcf_base: Optional[float] = None
     manual_cost_of_equity: Optional[float] = None
     wacc_override: Optional[float] = None
     manual_beta: Optional[float] = None
-
-    # --- NOUVEAUX LEVIERS : SOUVERAINETÉ ANALYSTE ---
+    manual_stock_price: Optional[float] = None
     manual_total_debt: Optional[float] = None
     manual_cash: Optional[float] = None
     manual_minority_interests: Optional[float] = None
@@ -181,39 +183,42 @@ class DCFParameters(BaseModel):
     manual_shares_outstanding: Optional[float] = None
     manual_book_value: Optional[float] = None
 
-    # Monte Carlo
+    # --- CONFIGURATION MONTE CARLO ---
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
-    beta_volatility: float = 0.0
-    growth_volatility: float = 0.0
-    terminal_growth_volatility: float = 0.0
+    beta_volatility: float = 0.10
+    growth_volatility: float = 0.02
+    terminal_growth_volatility: float = 0.005
+    correlation_beta_growth: float = -0.30
 
     @field_validator(
-        'risk_free_rate',
-        'market_risk_premium',
-        'corporate_aaa_yield',
-        'cost_of_debt',
-        'fcf_growth_rate',
-        'perpetual_growth_rate'
+        'risk_free_rate', 'market_risk_premium', 'corporate_aaa_yield',
+        'cost_of_debt', 'tax_rate', 'fcf_growth_rate', 'perpetual_growth_rate',
+        mode='before'
     )
     @classmethod
-    def enforce_decimal_format(cls, v: float, info: ValidationInfo) -> float:
+    def enforce_decimal_format(cls, v: Any) -> Any:
         """
-        GARDE-FOU HEDGE FUND QUALITY :
-        Détecte et corrige les taux exprimés en pourcentage (ex: 5.0) au lieu de décimale (ex: 0.05).
+        GARDE-FOU : Convertit les pourcentages (ex: 5.0) en décimales (0.05).
+        Traite correctement les None envoyés par safe_factory_params.
         """
-        if v > 1.0:
-            if v > 1.0 and v <= 100.0:
-                return v / 100.0
-            return v / 100.0
-        return v
+        if v is None:
+            return None
+
+        try:
+            val = float(v)
+            if 1.0 < val <= 100.0:
+                return val / 100.0
+            return val
+        except (ValueError, TypeError):
+            return 0.0
 
     def normalize_weights(self) -> None:
+        """Ajuste les poids pour qu'ils somment à 1.0."""
         total = self.target_equity_weight + self.target_debt_weight
         if total > 0:
             self.target_equity_weight /= total
             self.target_debt_weight /= total
-
 
 # ============================================================
 # 5. CONTRAT DE SORTIE — CHAPITRE 3
@@ -318,6 +323,9 @@ class ValuationResult(BaseModel, ABC):
 
     simulation_results: Optional[List[float]] = None
     quantiles: Optional[Dict[str, float]] = None
+
+    rho_sensitivity: Dict[str, float] = Field(default_factory=dict)
+    stress_test_value: Optional[float] = None
 
     def model_post_init(self, __context: Any) -> None:
         """

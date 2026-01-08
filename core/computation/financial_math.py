@@ -91,9 +91,9 @@ def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float)
     return final_metric * multiple
 
 
-def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float) -> float:
+def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float,minorities: float = 0.0,pensions: float = 0.0) -> float:
     """Passage de l'Enterprise Value (EV) à l'Equity Value."""
-    return enterprise_value - total_debt + cash
+    return enterprise_value - total_debt + cash - minorities - pensions
 
 
 # ==============================================================================

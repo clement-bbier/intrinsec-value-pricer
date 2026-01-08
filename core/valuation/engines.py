@@ -94,6 +94,11 @@ def run_valuation(
     strategy = None
 
     if params.enable_monte_carlo:
+        logger.info(
+            "[Engine] Monte Carlo flag = %s | mode=%s",
+            params.enable_monte_carlo,
+            request.mode.value
+        )
         # Liste blanche des modes compatibles Monte Carlo
         SUPPORTED_MC_MODES = [
             ValuationMode.FCFF_TWO_STAGE,
@@ -107,7 +112,7 @@ def run_valuation(
             logger.info("⚡ Activation Monte Carlo pour %s", request.mode.value)
             # On injecte la classe cible dans le wrapper générique
             # Monte Carlo devient la stratégie principale, elle pilotera les calculs sous-jacents
-            strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls)
+            strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
         else:
             logger.warning(f"Monte Carlo ignoré pour le mode {request.mode} (non supporté)")
             strategy = strategy_cls()

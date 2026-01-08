@@ -21,9 +21,13 @@ Principes :
 from __future__ import annotations
 
 import streamlit as st
-from typing import Iterable
+from typing import Iterable, Optional
 
-from core.models import CompanyFinancials, DCFParameters
+from core.models import CompanyFinancials, DCFParameters, ValuationResult
+from app.ui_components.ui_charts import (
+    display_simulation_chart,
+    display_correlation_heatmap
+)
 from core.methodology.texts import (
     DCF_STANDARD_TITLE,
     DCF_STANDARD_SECTIONS,
@@ -201,37 +205,16 @@ def display_fundamental_dcf_formula(
     _render_sections(DCF_FUNDAMENTAL_SECTIONS)
     _render_live_wacc_check(financials, params)
 
-
-def display_monte_carlo_formula(
-    financials: CompanyFinancials,
-    params: DCFParameters
-) -> None:
-    """
-    Extension Monte Carlo
-    """
-
+def display_monte_carlo_formula(financials: CompanyFinancials, params: DCFParameters) -> None:
+    """Explique la théorie pure du Monte Carlo sans afficher les résultats live."""
     _render_method_context(
         title="Extension Monte Carlo — Analyse probabiliste",
-        description="""
-        Le Monte Carlo **n’est pas une méthode de valorisation**.
-        Il s’agit d’une **extension probabiliste** appliquée aux hypothèses
-        (croissance, WACC, volatilité) afin d’analyser la distribution
-        des valeurs intrinsèques possibles.
-        """,
-        use_cases=[
-            "Analyse du risque",
-            "Comparaison prix / distribution",
-            "Aide à la décision",
-        ],
-        limits=[
-            "Dépend fortement des distributions choisies",
-            "Ne corrige pas un modèle mal spécifié",
-        ],
+        description="Le Monte Carlo est une extension probabiliste appliquée aux hypothèses...",
+        use_cases=["Analyse du risque", "Intervalle de confiance"],
+        limits=["Sensibilité aux lois", "Ne corrige pas un mauvais modèle"]
     )
-
     st.markdown(MONTE_CARLO_TITLE)
     _render_sections(MONTE_CARLO_SECTIONS)
-    _render_live_wacc_check(financials, params)
 
 # ==============================================================================
 # AUDIT & CONFIDENCE SCORE — UX INSTITUTIONNELLE

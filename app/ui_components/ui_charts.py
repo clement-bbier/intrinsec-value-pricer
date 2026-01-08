@@ -1,11 +1,8 @@
 """
 app/ui_components/ui_charts.py
-VISUALISATIONS — VALEUR, RISQUE & INCERTITUDE
-Version : V3.2 — Légendes Explicites & Pédagogie
-
-Changements :
-- Ajout d'une légende textuelle claire pour Monte Carlo.
-- Amélioration de la lisibilité des graphiques.
+VISUALISATIONS — VERSION V3.3 (Hedge Fund Standard)
+Rôle : Rendu graphique haute précision, alignement responsif et pédagogie.
+Changements : Alignement de la matrice de corrélation et conformité Streamlit 2026.
 """
 
 from __future__ import annotations
@@ -54,7 +51,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 
 
 # ============================================================================
-# 2. MONTE CARLO (AVEC LÉGENDE EXPLICITE)
+# 2. MONTE CARLO (DISTRIBUTION DES VALEURS)
 # ============================================================================
 
 def display_simulation_chart(simulation_results: List[float], market_price: float, currency: str) -> None:
@@ -88,7 +85,7 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 
     st.altair_chart(alt.layer(*layers).properties(height=320), use_container_width=True)
 
-    # --- Synthèse Technique (Sans Emojis) ---
+    # --- Synthèse Technique ---
     st.markdown(f"""
     **Synthèse de la distribution ({len(values)} scénarios) :**
     * Valeur centrale (P50) : {p50:,.2f} {currency}
@@ -97,10 +94,11 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
     """)
 
 # ============================================================================
-# 3. SENSIBILITÉ (HEATMAP)
+# 3. SENSIBILITÉ & CORRÉLATION
 # ============================================================================
 
 def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator_func: Callable, currency: str = "EUR") -> None:
+    """Affiche une matrice de sensibilité bidimensionnelle (WACC vs g)."""
     st.subheader("Sensibilité (WACC / Croissance)")
 
     wacc_steps = [-0.010, -0.005, 0.0, 0.005, 0.010]
@@ -124,7 +122,6 @@ def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator
 
     df = pd.DataFrame(data)
 
-    # Heatmap interactif
     base = alt.Chart(df).encode(
         x=alt.X('Growth:O', title="Croissance (g)", axis=alt.Axis(format='.2%')),
         y=alt.Y('WACC:O', title="WACC / Ke", axis=alt.Axis(format='.2%'))
@@ -149,3 +146,36 @@ def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator
     )
 
     st.altair_chart((heatmap + text).properties(height=350), use_container_width=True)
+
+
+def display_correlation_heatmap(rho: float = -0.30) -> None:
+    """Rendu de la matrice de corrélation. Fix : Alignement responsif."""
+    corr_data = pd.DataFrame([
+        {"X": "Beta (β)", "Y": "Beta (β)", "Val": 1.0},
+        {"X": "Growth (g)", "Y": "Growth (g)", "Val": 1.0},
+        {"X": "Beta (β)", "Y": "Growth (g)", "Val": rho},
+        {"X": "Growth (g)", "Y": "Beta (β)", "Val": rho},
+    ])
+
+    base = alt.Chart(corr_data).encode(
+        x=alt.X('X:N', title=None, axis=alt.Axis(labelAngle=0)), # Alignement horizontal
+        y=alt.Y('Y:N', title=None)
+    )
+
+    heatmap = base.mark_rect().encode(
+        color=alt.Color('Val:Q', scale=alt.Scale(scheme='redblue', domain=[-1, 1]), legend=None),
+        tooltip=['X', 'Y', 'Val']
+    )
+
+    text = base.mark_text().encode(
+        text=alt.Text('Val:Q', format='.2f'),
+        color=alt.condition(
+            (alt.datum.Val > 0.5) | (alt.datum.Val < -0.5),
+            alt.value('white'),
+            alt.value('black')
+        )
+    )
+
+    # Propriétés de taille fixe pour le carré, mais responsive en largeur
+    st.altair_chart((heatmap + text).properties(height=180), use_container_width=True)
+    st.caption("Matrice de Corrélation des Inputs (Stochastique)")

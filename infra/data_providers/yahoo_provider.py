@@ -1,13 +1,14 @@
 """
 infra/data_providers/yahoo_provider.py
 
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE (ULTIMATE V3.7)
-Version : V3.7 — Pydantic Integration & Validation Safety
+FOURNISSEUR DE DONNÉES — YAHOO FINANCE (ULTIMATE V3.8)
+Version : V3.8 — Audit-Grade Inputs & Dynamic Assumptions
 
 Changelog :
-- Intégration Pydantic : Gestion des ValidationErrors lors de la création des paramètres.
-- Sécurisation des inputs (float vs None).
-- Maintien du Deep Fetch et de la robustesse existante.
+- Amélioration : Croissance g calculée dynamiquement via CAGR historique.
+- Amélioration : Taux d'imposition (tax_rate) extrait du contexte pays/macro.
+- Nettoyage : Suppression des imports inutilisés.
+- Maintien du Deep Fetch et de la robustesse Pydantic.
 """
 
 import logging
@@ -23,7 +24,6 @@ from pydantic import ValidationError
 from core.computation.financial_math import calculate_synthetic_cost_of_debt
 from core.exceptions import (
     TickerNotFoundError,
-    DataMissingError,
     ExternalServiceError
 )
 from core.models import CompanyFinancials, DCFParameters
@@ -180,7 +180,6 @@ class YahooFinanceProvider(DataProvider):
             beta = float(beta) if beta is not None else 1.0
 
             # Instanciation Pydantic (CompanyFinancials)
-            # Pydantic va convertir et valider les types automatiquement
             return CompanyFinancials(
                 ticker=ticker,
                 name=str(info.get("shortName", ticker)),
@@ -215,7 +214,6 @@ class YahooFinanceProvider(DataProvider):
         except TickerNotFoundError:
             raise
         except ValidationError as ve:
-            # Catch des erreurs Pydantic si les données sont trop pourries
             logger.error(f"[Yahoo] Validation Error for {ticker}: {ve}")
             raise ExternalServiceError(provider="Yahoo/Pydantic", error_detail=str(ve))
         except Exception as e:
@@ -248,7 +246,8 @@ class YahooFinanceProvider(DataProvider):
         # 1. Données Entreprise
         financials = self.get_company_financials(ticker)
 
-        # 2. Données Macro
+        # 2. Données Macro & Pays (Fallback)
+        country_data = COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)
         try:
             macro_ctx = self.macro_provider.get_macro_context(
                 date=datetime.now(),
@@ -256,10 +255,6 @@ class YahooFinanceProvider(DataProvider):
             )
         except Exception as e:
             logger.error(f"Macro failure: {e}. Switching to country fallback.")
-            country_data = COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)
-
-            # Reconstruction manuelle du contexte (Fallback)
-            # Attention : on s'assure que les valeurs par défaut sont bien des floats
             from infra.macro.yahoo_macro_provider import MacroContext
             macro_ctx = MacroContext(
                 date=datetime.now(),
@@ -270,15 +265,31 @@ class YahooFinanceProvider(DataProvider):
                 corporate_aaa_yield=float(country_data["risk_free_rate"] + 0.01)
             )
 
-        # 3. Calcul des paramètres implicites
+        # 3. Calcul des paramètres implicites dynamiques
+
+        # --- Fiscalité dynamique ---
+        # On privilégie le taux du contexte pays (Standard OCDE/Local)
+        effective_tax_rate = float(country_data.get("tax_rate", 0.25))
+
+        # --- Croissance dynamique (CAGR) ---
+        # On tente de justifier g par l'historique des flux (Deep Fetch)
+        try:
+            yt = yf.Ticker(ticker)
+            hist_cf = safe_api_call(lambda: yt.cash_flow, "Cash Flow History")
+            # Justification mathématique de la croissance attendue
+            growth_assumption = calculate_historical_cagr(hist_cf, "Free Cash Flow")
+
+            # Prudence : on borne la croissance automatique entre 1% et 10%
+            growth_assumption = max(0.01, min(growth_assumption, 0.10))
+        except Exception:
+            growth_assumption = 0.03 # Fallback standard 3% si historique corrompu
+
         kd_synthetic = calculate_synthetic_cost_of_debt(
             rf=macro_ctx.risk_free_rate,
             ebit=financials.fcf_last or 1.0,
             interest_expense=financials.interest_expense,
             market_cap=financials.current_price * financials.shares_outstanding
         )
-
-        growth_assumption = 0.03 # Hypothèse de base 3%
 
         # 4. Création SÉCURISÉE des paramètres
         try:
@@ -287,22 +298,26 @@ class YahooFinanceProvider(DataProvider):
                 market_risk_premium=macro_ctx.market_risk_premium,
                 corporate_aaa_yield=macro_ctx.corporate_aaa_yield,
                 cost_of_debt=kd_synthetic,
-                tax_rate=0.25,
+                tax_rate=effective_tax_rate,
                 fcf_growth_rate=growth_assumption,
                 perpetual_growth_rate=macro_ctx.perpetual_growth_rate,
                 projection_years=projection_years,
                 target_equity_weight=financials.market_cap,
-                target_debt_weight=financials.total_debt
+                target_debt_weight=financials.total_debt,
+
+                # --- AJOUT DES STANDARDS INSTITUTIONNELS (Prudence AUTO) ---
+                # On définit ici la "volatilité par défaut" pour le mode AUTO
+                beta_volatility=0.10,  # ± 10% sur le Beta
+                growth_volatility=0.015,  # ± 1.5% sur la croissance g
+                terminal_growth_volatility=0.005,  # ± 0.5% sur la croissance perpétuelle
+                correlation_beta_growth=-0.30  # Corrélation standard risque/croissance
             )
 
-            # Normalisation des poids (Méthode du modèle)
             params.normalize_weights()
-
             return financials, params
 
         except ValidationError as ve:
             logger.critical(f"[Param Build] Erreur de validation Pydantic : {ve}")
-            # En cas d'erreur critique de validation, on relance une erreur claire
             raise ExternalServiceError(
                 provider="Parameters Engine",
                 error_detail=f"Données incohérentes détectées : {ve}"

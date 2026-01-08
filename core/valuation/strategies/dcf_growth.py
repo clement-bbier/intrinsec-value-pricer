@@ -142,15 +142,19 @@ class RevenueBasedStrategy(ValuationStrategy):
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
         shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
 
-        equity_val = ev - debt + cash
+        # Ajout des termes manquants pour la parité avec abstract.py
+        minorities = params.manual_minority_interests if params.manual_minority_interests is not None else financials.minority_interests
+        pensions = params.manual_pension_provisions if params.manual_pension_provisions is not None else financials.pension_provisions
+
+        equity_val = ev - debt + cash - minorities - pensions
 
         self.add_step(
             step_key="EQUITY_BRIDGE",
             label="Valeur des Fonds Propres (Equity Value)",
-            theoretical_formula=r"Equity = EV - Debt + Cash",
+            theoretical_formula=r"Equity = EV - Debt + Cash - Minorities - Provisions",
             result=equity_val,
-            numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f}",
-            interpretation="Ajustement de la structure financière pour isoler la valeur actionnariale."
+            numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f} - {minorities:,.0f} - {pensions:,.0f}",
+            interpretation="Ajustement de la structure financière incluant Minoritaires et Provisions pour une parité totale entre modèles."
         )
 
         # ======================================================================

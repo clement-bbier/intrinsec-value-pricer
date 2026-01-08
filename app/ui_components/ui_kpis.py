@@ -1,13 +1,14 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" — STANDARD INSTITUTIONNEL V6.6 (Audit-Grade)
-Rôle : Affichage technique neutre. Isolation statistique et lookup dynamique.
+RESTITUTION "GLASS BOX" — VERSION V6.8 (STABILISÉE)
 """
 
 from typing import Optional, List, Any, Dict
+import numpy as np
 import streamlit as st
 from core.models import ValuationResult, CalculationStep, AuditReport
 from app.ui_components.ui_glass_box_registry import STEP_METADATA
+
 
 # ==============================================================================
 # 1. ATOMES DE RENDU (ARCHITECTURE BRUTE)
@@ -17,7 +18,7 @@ def atom_kpi_metric(label: str, value: str, help_text: str = ""):
     """Affichage d'une métrique clé dans le bandeau supérieur."""
     st.metric(label, value, help=help_text)
 
-def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: float, interpretation: str = ""):
+def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: float, unit: str = "", interpretation: str = ""):
     """Carte d'audit mathématique isolée pour la preuve de calcul."""
     with st.container(border=True):
         st.markdown(f"**Etape {index} : {label}**")
@@ -33,35 +34,36 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
         with c2:
             st.caption("Application Numérique")
             if substitution:
-                # Utilisation d'un bloc de code pour préserver les symboles mathématiques (ex: ×)
                 st.code(substitution, language="text")
             else:
                 st.markdown("---")
 
         with c3:
-            st.caption("Valeur Calculée")
-            st.markdown(f"### {result:,.2f}")
+            st.caption(f"Valeur ({unit})")
+            if result == 1.0 and "Initialisation" in label:
+                st.write("**Validée**")
+            else:
+                st.markdown(f"### {result:,.2f}")
 
         if interpretation:
             st.caption(f"Note d'analyse : {interpretation}")
 
 # ==============================================================================
-# 2. NAVIGATION ET TRI (ISOLATION STATISTIQUE)
+# 2. NAVIGATION ET TRI (ARCHITECTURE MODULAIRE)
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, provider: Any = None) -> None:
     """Structure de restitution organisée en trois piliers : Preuve, Fiabilité, Risque."""
     st.divider()
 
-    # TRI CHIRURGICAL : On sépare les étapes de calcul métier des étapes statistiques (MC_)
-    # On se base sur le label qui contient la clé technique (ex: MC_CONFIG)
+    # Séparation des traces pour la Glass Box
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
 
     tabs = st.tabs(["Preuve de Calcul", "Audit de Fiabilité", "Analyse de Risque (MC)"])
 
     with tabs[0]:
-        st.markdown("#### Démonstration mathématique du scénario central")
+        st.markdown("#### Démonstration mathématique du calcul")
         for idx, step in enumerate(core_steps, start=1):
             _render_smart_step(idx, step)
 
@@ -69,29 +71,102 @@ def display_valuation_details(result: ValuationResult, provider: Any = None) -> 
         if result.audit_report:
             _render_reliability_report(result.audit_report)
         else:
-            st.info("Rapport d'audit non disponible pour ce modèle.")
+            st.info("Rapport d'audit non disponible.")
 
     with tabs[2]:
-        if result.simulation_results:
-            from app.ui_components.ui_charts import display_simulation_chart
-
-            st.markdown("#### Simulation de Monte Carlo")
-            # Rendu du graphique de distribution
-            display_simulation_chart(result.simulation_results, result.market_price, result.financials.currency)
-
-            with st.expander("Détail du traitement statistique", expanded=False):
-                for idx, step in enumerate(mc_steps, start=1):
-                    _render_smart_step(idx, step)
-        else:
-            st.info("Analyse de risque probabiliste non activée pour cette requête.")
+        _render_monte_carlo_tab(result, mc_steps)
 
 # ==============================================================================
-# 3. MOTEUR DE RÉSOLUTION (LOOKUP REGISTRE)
+# 3. COMPOSANTS DE L'ONGLET RISQUE (MONTE CARLO)
+# ==============================================================================
+
+def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]):
+    """Rendu expert de l'analyse Monte Carlo incluant robustesse et stress tests."""
+    if result.simulation_results is None:
+        st.info("Analyse de risque probabiliste non activée ou données insuffisantes.")
+        return
+
+    from app.ui_components.ui_charts import (
+        display_simulation_chart,
+        display_correlation_heatmap
+    )
+
+    f = result.financials
+    p = result.params
+
+    # --- CALCULS STATISTIQUES RÉELS ---
+    sims = np.array(result.simulation_results)
+    prob_overvalued = (sims < result.market_price).mean()
+
+    st.markdown("#### Analyse de Conviction Probabiliste")
+
+    # Bandeau de métriques réelles
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Downside Risk (IV < Prix)", f"{prob_overvalued:.1%}")
+    with c2:
+        st.metric("Médiane (P50)", f"{result.quantiles['P50']:,.2f}")
+    with c3:
+        st.metric("Risque de Queue (P10)", f"{result.quantiles['P10']:,.2f}")
+
+    # 1. VISUALISATION DE LA DISTRIBUTION
+    display_simulation_chart(result.simulation_results, result.market_price, f.currency)
+
+    # 2. AUDIT DE ROBUSTESSE & STRESS TEST
+    st.divider()
+    col_sens, col_stress = st.columns([1.5, 2.5])
+
+    with col_sens:
+        st.markdown("**Sensibilité Corrélation (ρ)**")
+        if result.rho_sensitivity:
+            sens_data = [
+                {"Scénario": k, "IV (P50)": f"{v:,.2f}"}
+                for k, v in result.rho_sensitivity.items()
+            ]
+            st.table(sens_data)
+            st.caption("Analyse de stabilité : Impact de l'indépendance des variables.")
+        else:
+            st.caption("Données de sensibilité non disponibles.")
+
+    with col_stress:
+        st.markdown("**Scénario de Stress (Bear Case)**")
+        if result.stress_test_value is not None:
+            st.warning(f"**Valeur Plancher : {result.stress_test_value:,.2f} {f.currency}**")
+            st.markdown(
+                f"""
+                <div style="font-size: 0.85rem; color: #64748b; border-left: 2px solid #eab308; padding-left: 1rem;">
+                <b>Paramètres forcés :</b> Croissance nulle (g=0%), Risque élevé (β=1.5).<br>
+                Ce scénario simule une dégradation brutale des fondamentaux pour tester la résilience.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("Stress test non exécuté.")
+
+    # 3. ANALYSE DES CORRÉLATIONS
+    with st.expander("Audit des Hypothèses Statistiques", expanded=False):
+        col_matrice, col_info = st.columns([1.2, 2.8])
+        with col_matrice:
+            display_correlation_heatmap(rho=p.correlation_beta_growth)
+        with col_info:
+            st.write("**Calibration de la simulation :**")
+            st.caption(f"• Volatilité Beta : {p.beta_volatility:.1%}")
+            st.caption(f"• Volatilité Croissance (g) : {p.growth_volatility:.1%}")
+            st.caption(f"• Corrélation (ρ) : {p.correlation_beta_growth:.2f}")
+            st.info("La corrélation négative standard prévient les scénarios financiers incohérents.")
+
+    # 4. GLASS BOX STATISTIQUE
+    with st.expander("Détail du traitement statistique (Audit)", expanded=False):
+        for idx, step in enumerate(mc_steps, start=1):
+            _render_smart_step(idx, step)
+
+# ==============================================================================
+# 4. MOTEURS DE RÉSOLUTION ET RAPPORTS
 # ==============================================================================
 
 def _render_smart_step(index: int, step: CalculationStep):
     """Lookup corrigé utilisant la clé technique step_key."""
-    # Correction : On cherche la clé technique (ex: MC_CONFIG) et non le label long
     meta = STEP_METADATA.get(step.step_key, {})
 
     atom_calculation_card(
@@ -100,12 +175,9 @@ def _render_smart_step(index: int, step: CalculationStep):
         formula=meta.get("formula", step.theoretical_formula),
         substitution=step.numerical_substitution,
         result=step.result,
+        unit=meta.get("unit", ""),
         interpretation=step.interpretation
     )
-
-# ==============================================================================
-# 4. RAPPORTS EXÉCUTIFS
-# ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
     """Synthèse décisionnelle supérieure."""
@@ -119,7 +191,6 @@ def render_executive_summary(result: ValuationResult) -> None:
         with c2:
             atom_kpi_metric("Valeur Intrinsèque", f"{result.intrinsic_value_per_share:,.2f} {f.currency}")
         with c3:
-            # Affichage de la notation d'audit si disponible
             rating = result.audit_report.rating if result.audit_report else "N/A"
             atom_kpi_metric("Indice de Confiance", rating)
 
@@ -142,8 +213,8 @@ def _render_reliability_report(report: AuditReport) -> None:
     if report.logs:
         with st.expander("Registre des Diagnostics d'Audit", expanded=True):
             for log in report.logs:
-                sev = "ALERTE" if log.severity in ["CRITICAL", "WARNING", "HIGH"] else "INFO"
-                st.markdown(f"**[{sev}]** {log.message}")
+                sev_label = "ALERTE" if log.severity in ["CRITICAL", "WARNING", "HIGH"] else "INFO"
+                st.markdown(f"**[{sev_label}]** {log.message}")
 
     if report.critical_warning:
         st.error("ARRET CRITIQUE : Des failles méthodologiques majeures ont été identifiées.")

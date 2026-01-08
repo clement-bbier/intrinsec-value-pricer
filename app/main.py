@@ -195,6 +195,9 @@ def main():
             if render_func:
                 request = render_func(ticker)
                 if request:
+                    request = request.model_copy(update={
+                        "options": {"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}
+                    })
                     run_workflow_and_display(request)
 
     elif launch_analysis:
@@ -210,7 +213,9 @@ def main():
 
         request = ValuationRequest(
             ticker=ticker, projection_years=years, mode=selected_mode,
-            input_source=InputSource.AUTO, manual_params=config_params
+            input_source=InputSource.AUTO,
+            manual_params=config_params,
+            options={"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}  # FIX : Ajout des options
         )
         run_workflow_and_display(request)
     else:

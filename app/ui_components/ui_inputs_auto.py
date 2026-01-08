@@ -66,13 +66,13 @@ def display_auto_inputs(
     # ------------------------------------------------------------------
     # 3. MÉTHODE DE VALORISATION (MAPPING ENUM)
     # ------------------------------------------------------------------
+    # On retire "Monte Carlo" de la liste pour en faire une option transverse
     strategies_map = {
         "Standard : DCF FCFF (Two-Stage)": ValuationMode.FCFF_TWO_STAGE,
         "Fondamental : FCFF normalisé": ValuationMode.FCFF_NORMALIZED,
         "Croissance : FCFF revenu (Growth)": ValuationMode.FCFF_REVENUE_DRIVEN,
         "Value : Modèle de Graham (1974)": ValuationMode.GRAHAM_1974_REVISED,
         "Banques : Residual Income Model (RIM)": ValuationMode.RESIDUAL_INCOME_MODEL,
-        "Analyse de risque : Monte Carlo": ValuationMode.FCFF_TWO_STAGE,
     }
 
     selected_label = st.sidebar.selectbox(
@@ -85,39 +85,33 @@ def display_auto_inputs(
     mode = strategies_map[selected_label]
 
     # ------------------------------------------------------------------
-    # 4. ANALYSE DE RISQUE (STOCHASTIQUE)
+    # 4. ANALYSE DE RISQUE (SÉPARÉE & CUMULABLE)
     # ------------------------------------------------------------------
     options: Dict[str, Any] = {}
 
-    if "Monte Carlo" in selected_label:
-        st.sidebar.divider()
+    st.sidebar.divider()
+    # Utilisation d'un toggle pour une activation explicite
+    enable_mc = st.sidebar.toggle("Activer l'Analyse de Risque (Monte Carlo)", value=False)
+
+    if enable_mc:
         st.sidebar.caption("Note : Extension probabiliste")
-
-        st.sidebar.markdown(
-            """
-            La simulation Monte Carlo est un complément d'analyse permettant d'évaluer 
-            la dispersion des scénarios et la sensibilité du modèle aux variables clés.
-            """
-        )
-
         sims = st.sidebar.select_slider(
             "Itérations de la simulation",
             options=[1000, 2000, 5000, 10000],
             value=2000
         )
-
         options["enable_monte_carlo"] = True
         options["num_simulations"] = sims
 
     st.sidebar.divider()
 
     # ------------------------------------------------------------------
-    # 5. VALIDATION DE LA REQUÊTE
+    # 5. VALIDATION DE LA REQUÊTE (CONFORME STREAMLIT 2026)
     # ------------------------------------------------------------------
     submitted = st.sidebar.button(
         "Lancer l'estimation",
         type="primary",
-        use_container_width=True
+        width="stretch"  # Remplacement de use_container_width=True pour 2026
     )
 
     if not submitted:
