@@ -1,7 +1,8 @@
 """
 app/workflow.py
-ORCHESTRATEUR LOGIQUE — VERSION V3.7 (Hedge Fund Standard)
+ORCHESTRATEUR LOGIQUE — VERSION V3.8 (Hedge Fund Standard)
 Rôle : Pilotage de l'analyse avec fusion résiliente et gestion d'erreurs enrichie.
+Note : Implémente la logique "Empty=Auto" vs "0=Value".
 """
 
 import logging
@@ -43,9 +44,18 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
 
         # 1. Préparation du socle (Manuel vs Auto)
         if request.input_source == InputSource.MANUAL:
+            # On part du dictionnaire complet des données automatiques (Proxy Yahoo)
             merged_data = auto_params.model_dump()
+
+            # On extrait les données saisies par l'expert
+            # exclude_unset=True permet de ne récupérer que ce que l'analyste a touché
             expert_data = request.manual_params.model_dump(exclude_unset=True)
+
+            # FUSION STRATEGIQUE :
+            # Si la valeur expert est None -> On garde la valeur Auto.
+            # Si la valeur expert est 0.0 -> On écrase la valeur Auto par 0.0 (Souveraineté).
             merged_data.update({k: v for k, v in expert_data.items() if v is not None})
+
             final_params = DCFParameters(**merged_data)
         else:
             final_params = auto_params.model_copy()
@@ -55,10 +65,14 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
         ui_options = request.options or {}
 
         final_params.enable_monte_carlo = ui_options.get("enable_monte_carlo", False)
-        final_params.num_simulations = ui_options.get("num_simulations", 2000)
+        if "num_simulations" in ui_options:
+            final_params.num_simulations = ui_options["num_simulations"]
 
-        # Log pour certifier l'activation dans la console
-        logger.info(f"[Workflow] Dispatching calculation | MC: {final_params.enable_monte_carlo} | Mode: {request.input_source}")
+        # Log de certification pour l'audit console
+        logger.info(
+            f"[Workflow] Dispatching calculation | Ticker: {request.ticker} | "
+            f"Source: {request.input_source.value} | MC: {final_params.enable_monte_carlo}"
+        )
 
         # --- ÉTAPE 3 : EXÉCUTION DU MOTEUR DE VALORISATION ---
         status.write(f"Exécution du moteur de calcul : {request.mode.value}...")

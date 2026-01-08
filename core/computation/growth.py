@@ -1,5 +1,12 @@
+"""
+core/computation/growth.py
+MOTEUR DE PROJECTION DES FLUX
+Version : V3.1 — Résilience des Paramètres (None-Safe)
+Rôle : Calcul des trajectoires de croissance multi-phases.
+"""
+
 import logging
-from typing import List
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +16,7 @@ def project_flows(
         years: int,
         g_start: float,
         g_term: float,
-        high_growth_years: int = 0
+        high_growth_years: Optional[int] = 0
 ) -> List[float]:
     """
     Projette des flux financiers (FCF) sur 'years' années.
@@ -21,9 +28,9 @@ def project_flows(
     Args:
         base_flow: Le flux de l'année 0.
         years: Horizon de projection (ex: 5).
-        g_start: Croissance initiale (ex: 0.05).
-        g_term: Croissance terminale (ex: 0.02).
-        high_growth_years: Durée du plateau.
+        g_start: Croissance initiale (décimale).
+        g_term: Croissance terminale (décimale).
+        high_growth_years: Durée du plateau (Expert Option).
 
     Returns:
         List[float]: Flux projetés (Année 1 à N).
@@ -34,36 +41,36 @@ def project_flows(
     flows: List[float] = []
     current_flow = base_flow
 
-    # Le plateau ne peut pas dépasser la période totale moins 1 an (pour permettre la transition)
-    # ou alors on reste au taquet tout le long si high_growth >= years
-    n_high = max(0, min(high_growth_years, years))
+    # Sécurisation du paramètre optionnel pour éviter le crash sur comparaison
+    # Si None, on considère qu'il n'y a pas de plateau (0)
+    safe_high_growth = high_growth_years if high_growth_years is not None else 0
+    n_high = max(0, min(safe_high_growth, years))
+
+    # Sécurisation des taux pour éviter les erreurs de multiplication
+    gs = g_start if g_start is not None else 0.0
+    gt = g_term if g_term is not None else 0.0
 
     for t in range(1, years + 1):
 
         if t <= n_high:
-            # PHASE 1 : PLATEAU
-            current_g = g_start
+            # PHASE 1 : PLATEAU (Croissance constante)
+            current_g = gs
         else:
-            # PHASE 2 : FADE-DOWN (Interpolation Linéaire)
-            # On calcule combien d'années il reste après le plateau pour atteindre la fin
+            # PHASE 2 : FADE-DOWN (Interpolation Linéaire vers g_term)
             years_remaining = years - n_high
 
             if years_remaining > 0:
-                # Etape dans la transition (1 = première année de fade, etc.)
                 step_in_fade = t - n_high
 
-                # Progression linéaire de 0 (début fade) à 1 (fin période)
-                # Mais attention : à la fin de la période (année N), on veut être proche de g_term ?
-                # Standard : On interpole pour que la croissance diminue progressivement.
-
-                # Facteur de pondération :
-                # Si step_in_fade = 1, on s'éloigne un peu de g_start
-                # Si step_in_fade = years_remaining, on touche g_term
+                # Calcul du facteur d'interpolation (alpha)
+                # t=n_high+1 -> alpha petit (proche de g_start)
+                # t=years -> alpha = 1 (égal à g_term)
                 alpha = step_in_fade / years_remaining
-                current_g = g_start * (1 - alpha) + g_term * alpha
+                current_g = gs * (1 - alpha) + gt * alpha
             else:
-                current_g = g_term
+                current_g = gt
 
+        # Application de la croissance au flux
         current_flow = current_flow * (1.0 + current_g)
         flows.append(current_flow)
 

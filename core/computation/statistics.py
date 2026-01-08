@@ -2,28 +2,6 @@
 core/computation/statistics.py
 
 OUTILS STATISTIQUES — EXTENSION MONTE CARLO
-Version : V2.0 — Chapitre 7 conforme
-
-STATUT
-------
-Ce module fournit exclusivement des OUTILS STATISTIQUES GÉNÉRIQUES
-destinés à la génération de scénarios probabilistes.
-
-Principes non négociables :
-- AUCUNE logique financière ici
-- AUCUNE dépendance à un modèle de valorisation
-- Fonctions pures, déterministes à seed fixé
-- Monte Carlo agit uniquement sur les INPUTS
-
-Ce module est volontairement :
-- simple
-- testable
-- audit-friendly
-- réutilisable
-
-Références :
-- CFA Institute — Sensitivity & Scenario Analysis
-- Glasserman — Monte Carlo Methods in Financial Engineering
 """
 
 from __future__ import annotations
@@ -50,31 +28,7 @@ def generate_multivariate_samples(
     Génère des tirages corrélés pour deux variables continues
     (ex : Beta et Croissance).
 
-    Utilisation typique :
-    - corrélation négative risque ↔ croissance
-    - propagation cohérente de l’incertitude
-
-    Paramètres
-    ----------
-    mu_beta : float
-        Espérance du beta.
-    sigma_beta : float
-        Volatilité du beta (> 0).
-    mu_growth : float
-        Espérance de la croissance.
-    sigma_growth : float
-        Volatilité de la croissance (> 0).
-    rho : float
-        Coefficient de corrélation [-1 ; 1].
-    num_simulations : int
-        Nombre de scénarios Monte Carlo.
-    seed : int | None
-        Seed aléatoire pour reproductibilité.
-
-    Retour
-    ------
-    betas : np.ndarray
-    growths : np.ndarray
+    Supporte les volatilités à 0.0 (scénario déterministe).
     """
 
     if num_simulations <= 0:
@@ -86,9 +40,9 @@ def generate_multivariate_samples(
     if sigma_beta < 0 or sigma_growth < 0:
         raise ValueError("Les volatilités doivent être positives ou nulles.")
 
-    # Seed pour reproductibilité (audit / tests)
-    if seed is not None:
-        np.random.seed(seed)
+    # INITIALISATION DU GÉNÉRATEUR (MODERN NUMPY 2026)
+    # L'utilisation de default_rng évite de polluer l'état global np.random
+    rng = np.random.default_rng(seed)
 
     # ------------------------------------------------------------------
     # MATRICE DE COVARIANCE
@@ -106,10 +60,13 @@ def generate_multivariate_samples(
     # ------------------------------------------------------------------
     # TIRAGE MULTIVARIÉ
     # ------------------------------------------------------------------
-    draws = np.random.multivariate_normal(
+    # method='svd' est plus robuste pour les matrices semi-définies positives
+    # (cas où sigma_beta ou sigma_growth valent 0.0)
+    draws = rng.multivariate_normal(
         mean=mean_vector,
         cov=cov_matrix,
-        size=num_simulations
+        size=num_simulations,
+        method='svd'
     )
 
     betas = draws[:, 0]
@@ -134,30 +91,6 @@ def generate_independent_samples(
     """
     Génère des tirages indépendants suivant une loi normale,
     avec bornes optionnelles.
-
-    Cas d’usage typique :
-    - croissance terminale
-    - multiples
-    - paramètres faiblement corrélés
-
-    Paramètres
-    ----------
-    mean : float
-        Espérance de la distribution.
-    sigma : float
-        Volatilité (> 0).
-    num_simulations : int
-        Nombre de tirages.
-    clip_min : float | None
-        Borne inférieure optionnelle.
-    clip_max : float | None
-        Borne supérieure optionnelle.
-    seed : int | None
-        Seed aléatoire optionnelle.
-
-    Retour
-    ------
-    draws : np.ndarray
     """
 
     if num_simulations <= 0:
@@ -166,13 +99,13 @@ def generate_independent_samples(
     if sigma < 0:
         raise ValueError("sigma doit être positif ou nul.")
 
-    if seed is not None:
-        np.random.seed(seed)
+    # INITIALISATION DU GÉNÉRATEUR LOCAL
+    rng = np.random.default_rng(seed)
 
     # ------------------------------------------------------------------
     # TIRAGE NORMAL
     # ------------------------------------------------------------------
-    draws = np.random.normal(
+    draws = rng.normal(
         loc=mean,
         scale=sigma,
         size=num_simulations

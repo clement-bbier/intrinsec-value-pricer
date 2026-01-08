@@ -1,7 +1,8 @@
 """
 core/valuation/strategies/monte_carlo.py
-MOTEUR STOCHASTIQUE V6.9 — AVEC ÉCRÊTAGE ÉCONOMIQUE (Sanity Clamping)
+MOTEUR STOCHASTIQUE V7.0 — AVEC ÉCRÊTAGE ÉCONOMIQUE (Sanity Clamping)
 Rôle : Simulation multivariée avec garantie de convergence et transparence d'audit.
+Note : Correction du paradigme "None = Auto" pour les simulations de croissance.
 """
 
 import logging
@@ -19,7 +20,7 @@ from core.computation.statistics import (
     generate_multivariate_samples,
     generate_independent_samples
 )
-from core.computation.financial_math import calculate_wacc # Import pour le clamping
+from core.computation.financial_math import calculate_wacc
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     GROWTH_SAFETY_MARGIN = 0.015 # Marge de sécurité (1.5%) sous le WACC
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
-        num_simulations = params.num_simulations or self.DEFAULT_SIMULATIONS
+        num_simulations = params.num_simulations if params.num_simulations is not None else self.DEFAULT_SIMULATIONS
 
         # --- ÉTAPE 0 : SANITY CLAMPING (Écrêtage Économique) ---
         # On calcule le WACC de base pour vérifier la cohérence de la croissance
@@ -45,7 +46,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             base_wacc = 0.08 # Fallback de sécurité à 8% pour le clamping
 
         # Si g est trop proche ou supérieur au WACC, on l'écrête pour garantir la convergence
-        g_raw = params.fcf_growth_rate or 0.03
+        # Respect du 0.0 : On n'utilise plus 'or 0.03'
+        g_raw = params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03
         g_clamped = min(g_raw, base_wacc - self.GROWTH_SAFETY_MARGIN)
         clamping_note = ""
 
@@ -60,8 +62,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             result=1.0,
             numerical_substitution=(
                 f"Itérations : {num_simulations} | "
-                f"β: 𝒩({financials.beta:.2f}, {params.beta_volatility:.1%}) | "
-                f"g: 𝒩({params.fcf_growth_rate:.1%}, {params.growth_volatility:.1%}) | "
+                f"β: 𝒩({financials.beta:.2f}, {(params.beta_volatility or 0.10):.1%}) | "
+                f"g: 𝒩({(params.fcf_growth_rate or 0.03):.1%}, {(params.growth_volatility or 0.015):.1%}) | "
                 f"ρ(β,g): {params.correlation_beta_growth:.2f}"
             ),
             interpretation=f"Calibration des lois normales multivariées.{clamping_note}"
@@ -75,7 +77,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         betas, growths = generate_multivariate_samples(
             mu_beta=financials.beta,
             sigma_beta=sig_b,
-            mu_growth=params.fcf_growth_rate,
+            mu_growth=params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03,
             sigma_growth=sig_g,
             rho=params.correlation_beta_growth,
             num_simulations=num_simulations
@@ -85,7 +87,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             mean=params.perpetual_growth_rate if params.perpetual_growth_rate is not None else 0.02,
             sigma=sig_gn,
             num_simulations=num_simulations,
-            clip_min=0.0, clip_max=min(0.04, base_wacc - 0.01) # Clamping sur gn également
+            clip_min=0.0, clip_max=max(0.0, min(0.04, base_wacc - 0.01)) # Sécurité sur gn
         )
 
         # 2. SAMPLING (ID: MC_SAMPLING)
@@ -96,7 +98,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             interpretation="Application des corrélations pour garantir la cohérence économique des scénarios tirés."
         )
 
-        # --- 2. BOUCLE DE SIMULATION PRINCIPALE (PRÉSERVÉE) ---
+        # --- 2. BOUCLE DE SIMULATION PRINCIPALE ---
         worker = self.strategy_cls(glass_box_enabled=False)
         simulated_values = []
 
@@ -132,7 +134,6 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             raise MonteCarloInstabilityError(valid_ratio, self.MIN_VALID_RATIO)
 
         # --- 4. EXTRACTION DES QUANTILES (BASE) ---
-        # On exécute une fois le modèle de référence pour obtenir la structure du résultat
         ref_strategy = self.strategy_cls(glass_box_enabled=True)
         final_result = ref_strategy.execute(financials, params)
 
@@ -156,12 +157,13 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         )
 
         # --- 5. ANALYSE DE SENSIBILITÉ RÉELLE (RHO SENSITIVITY) ---
-        # On recalcule l'impact si la corrélation était nulle (Indépendance Risque/Croissance)
         try:
             b_neutral, g_neutral = generate_multivariate_samples(
-                mu_beta=financials.beta, sigma_beta=params.beta_volatility or 0.1,
-                mu_growth=params.fcf_growth_rate, sigma_growth=params.growth_volatility or 0.02,
-                rho=0.0, num_simulations=1000  # Échantillon optimisé pour la performance
+                mu_beta=financials.beta,
+                sigma_beta=params.beta_volatility if params.beta_volatility is not None else 0.1,
+                mu_growth=params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03,
+                sigma_growth=params.growth_volatility if params.growth_volatility is not None else 0.02,
+                rho=0.0, num_simulations=1000
             )
             sims_neutral = []
             for i in range(1000):
@@ -186,12 +188,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             logger.error(f"Erreur calcul sensibilité Rho: {e}")
 
         # --- 6. STRESS TEST (BEAR CASE DÉTERMINISTE) ---
-        # Évaluation de la 'Valeur de Rupture' (Inputs forcés aux limites)
         try:
             stress_params = params.model_copy(update={
-                "fcf_growth_rate": 0.0,  # Croissance nulle
-                "perpetual_growth_rate": 0.01,  # Croissance terminale plancher
-                "manual_beta": 1.50  # Risque systémique maximum
+                "fcf_growth_rate": 0.0,
+                "perpetual_growth_rate": 0.01,
+                "manual_beta": 1.50
             })
             stress_res = worker.execute(financials, stress_params)
             final_result.stress_test_value = stress_res.intrinsic_value_per_share
@@ -206,6 +207,5 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             logger.error(f"Erreur calcul Stress Test: {e}")
 
         # --- 7. FUSION ET RETOUR ---
-        # On place la trace Monte Carlo avant la trace déterministe pour le flux de lecture
         final_result.calculation_trace = self.calculation_trace + final_result.calculation_trace
         return final_result

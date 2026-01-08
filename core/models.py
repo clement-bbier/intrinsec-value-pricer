@@ -2,7 +2,7 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V3.0 — Souveraineté Analyste Intégrale (Pydantic Secured)
+Version : V3.1 — Souveraineté Analyste Intégrale (Pydantic Secured)
 
 Principes non négociables :
 - Validation stricte des types et échelles (Décimales vs Pourcentages)
@@ -146,7 +146,7 @@ class CompanyFinancials(BaseModel):
 class DCFParameters(BaseModel):
     """
     Paramètres du modèle avec validation 'Border Patrol' et support du mode hybride.
-    Standard Hedge Fund : Autorise explicitement None pour la délégation Auto Yahoo.
+    Standard Hedge Fund : Distingue None (Délégation Auto) du 0.0 (Saisie Volontaire).
     """
     # --- TAUX ET RISQUE ---
     risk_free_rate: Optional[float] = None
@@ -156,14 +156,14 @@ class DCFParameters(BaseModel):
     tax_rate: Optional[float] = None
 
     # --- CROISSANCE ET HORIZON ---
-    fcf_growth_rate: Optional[float] = None  # Changé en Optional
+    fcf_growth_rate: Optional[float] = None
     projection_years: int = 5
     high_growth_years: int = 0
 
     # --- VALEUR TERMINALE ---
     terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
-    perpetual_growth_rate: Optional[float] = None  # Changé en Optional
-    exit_multiple_value: Optional[float] = None  # Changé en Optional
+    perpetual_growth_rate: Optional[float] = None
+    exit_multiple_value: Optional[float] = None
 
     # --- PONDÉRATIONS CIBLES ---
     target_equity_weight: float = 0.0
@@ -186,32 +186,36 @@ class DCFParameters(BaseModel):
     # --- CONFIGURATION MONTE CARLO ---
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
-    beta_volatility: float = 0.10
-    growth_volatility: float = 0.02
-    terminal_growth_volatility: float = 0.005
+    beta_volatility: Optional[float] = None
+    growth_volatility: Optional[float] = None
+    terminal_growth_volatility: Optional[float] = None
     correlation_beta_growth: float = -0.30
 
     @field_validator(
         'risk_free_rate', 'market_risk_premium', 'corporate_aaa_yield',
         'cost_of_debt', 'tax_rate', 'fcf_growth_rate', 'perpetual_growth_rate',
+        'beta_volatility', 'growth_volatility', 'terminal_growth_volatility',
         mode='before'
     )
     @classmethod
     def enforce_decimal_format(cls, v: Any) -> Any:
         """
         GARDE-FOU : Convertit les pourcentages (ex: 5.0) en décimales (0.05).
-        Traite correctement les None envoyés par safe_factory_params.
+        Respecte le None (Délégation Auto) et le 0.0 (Souveraineté Analyste).
         """
-        if v is None:
+        if v is None or v == "":
             return None
 
         try:
             val = float(v)
+            # Normalisation : Si l'utilisateur saisit "5" pour 5%, on convertit en 0.05
+            # On ignore cette règle pour le Beta ou les multiples (traités ailleurs)
             if 1.0 < val <= 100.0:
                 return val / 100.0
             return val
         except (ValueError, TypeError):
-            return 0.0
+            # En cas de corruption de donnée, on préfère None pour laisser le moteur Auto décider
+            return None
 
     def normalize_weights(self) -> None:
         """Ajuste les poids pour qu'ils somment à 1.0."""
@@ -306,7 +310,6 @@ class ValuationRequest(BaseModel):
 # ============================================================
 
 class ValuationResult(BaseModel, ABC):
-    # Permet de valider même si certains champs optionnels manquent lors de l'init partielle
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     request: Optional[ValuationRequest] = None
@@ -328,9 +331,6 @@ class ValuationResult(BaseModel, ABC):
     stress_test_value: Optional[float] = None
 
     def model_post_init(self, __context: Any) -> None:
-        """
-        Remplace __post_init__ des dataclasses pour Pydantic V2.
-        """
         if self.market_price > 0 and self.upside_pct is None:
             self.upside_pct = (
                 self.intrinsic_value_per_share / self.market_price
@@ -413,9 +413,6 @@ class GrahamValuationResult(ValuationResult):
 
 
 class DDMValuationResult(ValuationResult):
-    """
-    Placeholder DDM.
-    """
     def build_output_contract(self) -> ValuationOutputContract:
         return ValuationOutputContract(
             has_params=True,

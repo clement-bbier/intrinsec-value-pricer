@@ -1,0 +1,16 @@
+[theme]
+primaryColor = "#EF4444"
+backgroundColor = "#ECF0F8"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1E293B"
+font = "sans serif"
+
+[server]
+headless = true
+# On aligne CORS et XSRF pour supprimer l'avertissement de sécurité
+enableCORS = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+# L'option toolbarMode est supprimée car obsolète

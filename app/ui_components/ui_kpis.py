@@ -1,6 +1,8 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" — VERSION V6.8 (STABILISÉE)
+RESTITUTION "GLASS BOX" — VERSION V7.0 (SÉCURISÉE)
+Rôle : Affichage haute fidélité des résultats et audit mathématique.
+Note : Respect du paradigme "None = N/A" vs "0.0 = Valeur".
 """
 
 from typing import Optional, List, Any, Dict
@@ -11,14 +13,14 @@ from app.ui_components.ui_glass_box_registry import STEP_METADATA
 
 
 # ==============================================================================
-# 1. ATOMES DE RENDU (ARCHITECTURE BRUTE)
+# 1. ATOMES DE RENDU (SÉCURISÉS)
 # ==============================================================================
 
 def atom_kpi_metric(label: str, value: str, help_text: str = ""):
     """Affichage d'une métrique clé dans le bandeau supérieur."""
     st.metric(label, value, help=help_text)
 
-def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: float, unit: str = "", interpretation: str = ""):
+def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: Optional[float], unit: str = "", interpretation: str = ""):
     """Carte d'audit mathématique isolée pour la preuve de calcul."""
     with st.container(border=True):
         st.markdown(f"**Etape {index} : {label}**")
@@ -40,9 +42,12 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
 
         with c3:
             st.caption(f"Valeur ({unit})")
-            if result == 1.0 and "Initialisation" in label:
+            if result is None:
+                st.markdown("### N/A")
+            elif result == 1.0 and "Initialisation" in label:
                 st.write("**Validée**")
             else:
+                # Sécurité : Formatage uniquement si numérique
                 st.markdown(f"### {result:,.2f}")
 
         if interpretation:
@@ -82,7 +87,7 @@ def display_valuation_details(result: ValuationResult, provider: Any = None) -> 
 
 def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]):
     """Rendu expert de l'analyse Monte Carlo incluant robustesse et stress tests."""
-    if result.simulation_results is None:
+    if result.simulation_results is None or len(result.simulation_results) == 0:
         st.info("Analyse de risque probabiliste non activée ou données insuffisantes.")
         return
 
@@ -94,9 +99,14 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     f = result.financials
     p = result.params
 
-    # --- CALCULS STATISTIQUES RÉELS ---
+    # --- CALCULS STATISTIQUES RÉELS (Sécurisés) ---
     sims = np.array(result.simulation_results)
-    prob_overvalued = (sims < result.market_price).mean()
+    prob_overvalued = (sims < result.market_price).mean() if result.market_price else 0.0
+
+    # Récupération sécurisée des quantiles
+    q = result.quantiles or {}
+    p50 = q.get('P50', 0.0)
+    p10 = q.get('P10', 0.0)
 
     st.markdown("#### Analyse de Conviction Probabiliste")
 
@@ -105,9 +115,9 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     with c1:
         st.metric("Downside Risk (IV < Prix)", f"{prob_overvalued:.1%}")
     with c2:
-        st.metric("Médiane (P50)", f"{result.quantiles['P50']:,.2f}")
+        st.metric("Médiane (P50)", f"{p50:,.2f}")
     with c3:
-        st.metric("Risque de Queue (P10)", f"{result.quantiles['P10']:,.2f}")
+        st.metric("Risque de Queue (P10)", f"{p10:,.2f}")
 
     # 1. VISUALISATION DE LA DISTRIBUTION
     display_simulation_chart(result.simulation_results, result.market_price, f.currency)
@@ -131,7 +141,9 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     with col_stress:
         st.markdown("**Scénario de Stress (Bear Case)**")
         if result.stress_test_value is not None:
-            st.warning(f"**Valeur Plancher : {result.stress_test_value:,.2f} {f.currency}**")
+            # Respect de la devise et du format
+            val_stress = result.stress_test_value
+            st.warning(f"**Valeur Plancher : {val_stress:,.2f} {f.currency}**")
             st.markdown(
                 f"""
                 <div style="font-size: 0.85rem; color: #64748b; border-left: 2px solid #eab308; padding-left: 1rem;">
@@ -148,12 +160,17 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     with st.expander("Audit des Hypothèses Statistiques", expanded=False):
         col_matrice, col_info = st.columns([1.2, 2.8])
         with col_matrice:
-            display_correlation_heatmap(rho=p.correlation_beta_growth)
+            # On passe la corrélation par défaut si nulle
+            rho_val = p.correlation_beta_growth if p.correlation_beta_growth is not None else -0.3
+            display_correlation_heatmap(rho=rho_val)
         with col_info:
             st.write("**Calibration de la simulation :**")
-            st.caption(f"• Volatilité Beta : {p.beta_volatility:.1%}")
-            st.caption(f"• Volatilité Croissance (g) : {p.growth_volatility:.1%}")
-            st.caption(f"• Corrélation (ρ) : {p.correlation_beta_growth:.2f}")
+            # Formatage safe des volatilités
+            v_beta = p.beta_volatility if p.beta_volatility is not None else 0.0
+            v_g = p.growth_volatility if p.growth_volatility is not None else 0.0
+            st.caption(f"• Volatilité Beta : {v_beta:.1%}")
+            st.caption(f"• Volatilité Croissance (g) : {v_g:.1%}")
+            st.caption(f"• Corrélation (ρ) : {rho_val:.2f}")
             st.info("La corrélation négative standard prévient les scénarios financiers incohérents.")
 
     # 4. GLASS BOX STATISTIQUE
@@ -184,12 +201,18 @@ def render_executive_summary(result: ValuationResult) -> None:
     f = result.financials
     st.subheader(f"Dossier de Valorisation : {f.name} ({f.ticker})")
 
+    # Calcul de l'affichage de la valeur intrinsèque (Sécurisé)
+    iv = result.intrinsic_value_per_share
+    iv_display = f"{iv:,.2f} {f.currency}" if iv is not None else "N/A"
+
+    price_display = f"{result.market_price:,.2f} {f.currency}" if result.market_price is not None else "N/A"
+
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
         with c1:
-            atom_kpi_metric("Cours Actuel", f"{result.market_price:,.2f} {f.currency}")
+            atom_kpi_metric("Cours Actuel", price_display)
         with c2:
-            atom_kpi_metric("Valeur Intrinsèque", f"{result.intrinsic_value_per_share:,.2f} {f.currency}")
+            atom_kpi_metric("Valeur Intrinsèque", iv_display)
         with c3:
             rating = result.audit_report.rating if result.audit_report else "N/A"
             atom_kpi_metric("Indice de Confiance", rating)
@@ -213,6 +236,7 @@ def _render_reliability_report(report: AuditReport) -> None:
     if report.logs:
         with st.expander("Registre des Diagnostics d'Audit", expanded=True):
             for log in report.logs:
+                # Sévérité dynamique
                 sev_label = "ALERTE" if log.severity in ["CRITICAL", "WARNING", "HIGH"] else "INFO"
                 st.markdown(f"**[{sev_label}]** {log.message}")
 

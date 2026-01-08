@@ -34,3 +34,17 @@ def test_wacc_calculation_coherence(sample_financials, sample_params):
     assert 0 <= ctx.weight_debt <= 1
     # La somme doit faire 1.0 (à epsilon près)
     assert abs((ctx.weight_equity + ctx.weight_debt) - 1.0) < 0.001
+
+
+def test_manual_zero_sovereignty(sample_financials, sample_params):
+    """
+    Vérifie que le 0.0 manuel écrase la valeur automatique (Yahoo).
+    """
+    sample_financials.total_debt = 5000  # Yahoo dit 5000
+    sample_params.manual_total_debt = 0.0  # L'expert dit 0
+
+    ctx = calculate_wacc(sample_financials, sample_params)
+
+    # Si le patch fonctionne, wd (weight of debt) doit être exactement 0
+    assert ctx.weight_debt == 0.0
+    assert ctx.method == "MARKET"  # Ou le mode de calcul utilisé

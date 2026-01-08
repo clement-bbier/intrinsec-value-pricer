@@ -62,7 +62,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         # ======================================================================
         wacc_ctx = calculate_wacc(financials, params)
         wacc = wacc_ctx.wacc
-        beta_used = params.manual_beta or financials.beta
+        beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
 
         # Alignement miroir avec la formule théorique du registre
         sub_wacc = (

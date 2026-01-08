@@ -117,7 +117,7 @@ class RIMBankingStrategy(ValuationStrategy):
         # 8. VALEUR FINALE (ID: RIM_FINAL_VALUE)
         # Alignement : BV_0 + Sum PV(RI)
         intrinsic_value = bv_per_share + discounted_ri_sum + discounted_tv
-        shares_to_use = params.manual_shares_outstanding or financials.shares_outstanding
+        shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
 
         self.add_step(
             step_key="RIM_FINAL_VALUE",

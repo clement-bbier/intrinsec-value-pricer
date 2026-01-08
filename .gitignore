@@ -1,34 +1,71 @@
-# Python
+# ==========================================
+# PYTHON ARTIFACTS
+# ==========================================
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.pkl
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual env
+# ==========================================
+# VIRTUAL ENVIRONMENTS
+# ==========================================
 .venv/
 venv/
+ENV/
+env/
+bin/
+include/
+share/
 
-# VSCode / IDE
-.vscode/
-.idea/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Pytest / coverage
+# ==========================================
+# DATA, CACHE & LOGS
+# ==========================================
+# Cache yfinance et librairies mathématiques
+.cache/
 .pytest_cache/
 .coverage
+htmlcov/
+*.pkl
+*.csv
+*.json
+app_logs.txt
 
-# Streamlit
-.streamlit/
+# ==========================================
+# ENVIRONMENT & SECRETS (CRITIQUE)
+# ==========================================
+.env
+.streamlit/secrets.toml
 
-# OS
+# ==========================================
+# IDE & OS SPECIFIC
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Perso documentation
+# ==========================================
+# PROJECT SPECIFIC
+# ==========================================
+# On ignore les docs persos si tu ne veux pas les publier
 .docs/
-
-# Logging
-app_logs.txt

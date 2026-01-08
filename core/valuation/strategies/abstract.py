@@ -1,7 +1,8 @@
 """
 core/valuation/strategies/abstract.py
-SOCLE ABSTRAIT V6.7 — AUDIT-GRADE & MODEL RISK CONTROL
+SOCLE ABSTRAIT V6.8 — AUDIT-GRADE & MODEL RISK CONTROL
 Rôle : Moteur de calcul DCF avec détection de divergence et transparence totale.
+Note : Correction syntaxique et respect de la souveraineté du zéro.
 """
 
 import logging
@@ -22,8 +23,7 @@ from core.computation.financial_math import (
     calculate_wacc,
     calculate_discount_factors,
     calculate_terminal_value_gordon,
-    calculate_terminal_value_exit_multiple,
-    calculate_equity_value_bridge
+    calculate_terminal_value_exit_multiple
 )
 from core.computation.growth import project_flows
 
@@ -55,10 +55,7 @@ class ValuationStrategy(ABC):
         ))
 
     def verify_output_contract(self, result: ValuationResult) -> None:
-        """
-        Vérifie que le résultat respecte le contrat de sortie attendu.
-        Action : Analyse la validité du contrat défini dans models.py.
-        """
+        """Vérifie que le résultat respecte le contrat de sortie attendu."""
         contract = result.build_output_contract()
         if not contract.is_valid():
             raise CalculationError(
@@ -70,7 +67,7 @@ class ValuationStrategy(ABC):
         pass
 
     # ==========================================================================
-    # LOGIQUE MATHÉMATIQUE (AUDIT-GRADE V6.7)
+    # LOGIQUE MATHÉMATIQUE (AUDIT-GRADE V6.8)
     # ==========================================================================
     def _run_dcf_math(self, base_flow: float, financials: CompanyFinancials,
                       params: DCFParameters, wacc_override: Optional[float] = None) -> DCFValuationResult:
@@ -83,10 +80,13 @@ class ValuationStrategy(ABC):
         else:
             wacc_ctx = calculate_wacc(financials, params)
             wacc = wacc_ctx.wacc
-            beta_used = params.manual_beta or financials.beta
+
+            # Respect de la souveraineté du 0.0 pour le Beta
+            beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
+
             sub_wacc = (
-                f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate:.4f} + {beta_used:.2f} × ({params.market_risk_premium:.4f})] + "
-                f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt:.4f} × (1 - {params.tax_rate:.2f})]"
+                f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate or 0:.4f} + {beta_used:.2f} × ({params.market_risk_premium or 0:.4f})] + "
+                f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt or 0:.4f} × (1 - {params.tax_rate or 0:.2f})]"
             )
 
         self.add_step(
@@ -107,25 +107,25 @@ class ValuationStrategy(ABC):
             label="Projections des Flux (Somme)",
             theoretical_formula=r"\sum FCF_t",
             result=sum(flows),
-            numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate:.3f})^{params.projection_years}",
-            interpretation=f"Projection sur {params.projection_years} ans à un taux de croissance annuel moyen (CAGR) de {params.fcf_growth_rate:.2%}"
+            numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate or 0:.3f})^{params.projection_years}",
+            interpretation=f"Projection sur {params.projection_years} ans à un taux de croissance annuel moyen de {params.fcf_growth_rate or 0:.2%}"
         )
 
         # --- C. VALEUR TERMINALE : Contrôle de Risque de Modèle ---
         if params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
-            # GARDE-FOU AUDIT : g doit être < WACC pour éviter une valeur infinie
-            if params.perpetual_growth_rate >= wacc:
-                # Utilisation de l'exception typée pour un message enrichi et pro
-                raise ModelDivergenceError(params.perpetual_growth_rate, wacc)
+            p_growth = params.perpetual_growth_rate or 0.0
+            if p_growth >= wacc:
+                raise ModelDivergenceError(p_growth, wacc)
 
-            tv = calculate_terminal_value_gordon(flows[-1], wacc, params.perpetual_growth_rate)
+            tv = calculate_terminal_value_gordon(flows[-1], wacc, p_growth)
             key_tv = "TV_GORDON"
-            sub_tv = f"({flows[-1]:,.0f} × {1 + params.perpetual_growth_rate:.3f}) / ({wacc:.4f} - {params.perpetual_growth_rate:.3f})"
+            sub_tv = f"({flows[-1]:,.0f} × {1 + p_growth:.3f}) / ({wacc:.4f} - {p_growth:.4f})"
             formula_tv = r"TV = \frac{FCF_n \cdot (1 + g)}{WACC - g}"
         else:
-            tv = calculate_terminal_value_exit_multiple(flows[-1], params.exit_multiple_value or 12.0)
+            exit_m = params.exit_multiple_value or 12.0
+            tv = calculate_terminal_value_exit_multiple(flows[-1], exit_m)
             key_tv = "TV_MULTIPLE"
-            sub_tv = f"{flows[-1]:,.0f} × {params.exit_multiple_value:.1f}"
+            sub_tv = f"{flows[-1]:,.0f} × {exit_m:.1f}"
             formula_tv = r"TV = EBITDA_n \cdot Exit\_Multiple"
 
         self.add_step(
@@ -152,15 +152,13 @@ class ValuationStrategy(ABC):
             interpretation="Valeur totale de l'outil de production actualisée."
         )
 
-        # --- E. BRIDGE : Passage à la Valeur des Fonds Propres (Version Institutionnelle 5 Termes) ---
+        # --- E. BRIDGE : Passage à la Valeur des Fonds Propres ---
         debt = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
         shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
-
         minorities = params.manual_minority_interests if params.manual_minority_interests is not None else financials.minority_interests
         pensions = params.manual_pension_provisions if params.manual_pension_provisions is not None else financials.pension_provisions
 
-        # Formule unifiée pour toutes les stratégies DCF
         equity_val = ev - debt + cash - minorities - pensions
 
         self.add_step(
@@ -169,11 +167,12 @@ class ValuationStrategy(ABC):
             theoretical_formula=r"Equity = EV - Debt + Cash - Minority\_Interests - Provisions",
             result=equity_val,
             numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f} - {minorities:,.0f} - {pensions:,.0f}",
-            interpretation="Ajustement de la structure financière incluant la dette, le cash, les intérêts minoritaires et les provisions."
+            interpretation="Ajustement de la structure financière."
         )
 
         # --- F. VALEUR FINALE PAR ACTION ---
-        if shares <= 0: raise CalculationError("Nombre d'actions en circulation invalide (<= 0).")
+        if shares <= 0:
+            raise CalculationError("Nombre d'actions en circulation invalide (<= 0).")
         iv_share = equity_val / shares
 
         self.add_step(
