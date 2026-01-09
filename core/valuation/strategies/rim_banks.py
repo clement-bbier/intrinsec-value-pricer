@@ -104,32 +104,24 @@ class RIMBankingStrategy(ValuationStrategy):
         # 7. VALEUR TERMINALE (ID: TV_GORDON / TV_MULTIPLE)
         terminal_ri = residual_incomes[-1]
 
-        if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
-            # Calcul académique de persistance (Ohlson Model)
-            omega = params.exit_multiple_value if params.exit_multiple_value is not None else 0.60
+        # 1. Utilisation d'une clé unique RIM_TV_OHLSON
+        omega = params.exit_multiple_value if params.exit_multiple_value is not None else 0.60
+        tv_ri = (terminal_ri * omega) / (1 + ke - omega)
 
-            # Formule : (RI_n * omega) / (1 + ke - omega)
-            tv_ri = (terminal_ri * omega) / (1 + ke - omega)
-
-            key_tv = "TV_PERSISTENCE"
-            sub_tv = f"({terminal_ri:,.2f} × {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
-            theory = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
-        else:
-            # Gordon Growth standard
-            tv_ri = calculate_terminal_value_gordon(terminal_ri, ke, params.perpetual_growth_rate)
-            key_tv = "TV_GORDON"
-            sub_tv = f"({terminal_ri:,.2f} × {1 + params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
-            theory = r"TV_{RI} = \frac{RI_n \times (1 + g_n)}{k_e - g_n}"
+        key_tv = "RIM_TV_OHLSON"
+        label_tv = "Valeur Terminale (Persistance ω)"
+        theory = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
+        sub_tv = f"({terminal_ri:,.2f} × {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
 
         discounted_tv = tv_ri * discount_factors[-1]
 
         self.add_step(
             step_key=key_tv,
-            label="Valeur Terminale RI",
+            label=label_tv,
             theoretical_formula=theory,
             result=discounted_tv,
             numerical_substitution=f"{sub_tv} × {discount_factors[-1]:.4f}",
-            interpretation="Estimation de la persistance ou croissance du profit résiduel à l'infini."
+            interpretation="Estimation de la persistance."
         )
 
         # 8. VALEUR FINALE (ID: RIM_FINAL_VALUE)
