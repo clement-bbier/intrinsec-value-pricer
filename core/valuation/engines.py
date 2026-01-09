@@ -2,24 +2,16 @@
 core/valuation/engines.py
 
 ROUTEUR CENTRAL DES MOTEURS DE VALORISATION
-Version : V2.5 — Monte Carlo Universel (DCF + RIM) & Fix Pydantic
-
-Responsabilités :
-- Orchestrer une valorisation déterministe ou stochastique
-- Appliquer strictement le contrat de sortie
-- Gérer les erreurs via le système de Diagnostic V3
-- Fournir le registre des stratégies pour l'historique
+Version : V3.0 — Clean Architecture & Centralized Logic
+Responsabilités : Orchestration, Routage et Sécurisation du contrat de sortie.
 """
 
 import logging
 import traceback
 from typing import Dict, Type, Optional
 
-# NOUVEAU SYSTÈME D'ERREUR (V3)
-from core.exceptions import ValuationException, DiagnosticEvent, SeverityLevel, DiagnosticDomain
-# ANCIEN SYSTÈME (Pour compatibilité interne si besoin, mais on va wrapper)
-from core.exceptions import CalculationError
-
+# SYSTÈME DE DIAGNOSTIC ET EXCEPTIONS
+from core.exceptions import ValuationException, DiagnosticEvent, SeverityLevel, DiagnosticDomain, CalculationError
 from core.models import (
     ValuationRequest,
     ValuationMode,
@@ -28,26 +20,20 @@ from core.models import (
     ValuationResult
 )
 
-# Import des stratégies concrètes
+# STRATÉGIES CONCRÈTES
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
 from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
 from core.valuation.strategies.rim_banks import RIMBankingStrategy
 from core.valuation.strategies.graham_value import GrahamNumberStrategy
-
-# Nouvelle stratégie générique
 from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
 
 logger = logging.getLogger(__name__)
 
-
 # ============================================================
-# 1. REGISTRE NORMATIF (CRITIQUE POUR HISTORICAL.PY)
+# 1. REGISTRE DES STRATÉGIES (FACTORY MAP)
 # ============================================================
-# Ce dictionnaire permet à d'autres modules (historical.py) de trouver
-# dynamiquement la classe à utiliser sans faire de if/else géant.
-
 STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
     ValuationMode.FCFF_TWO_STAGE: StandardFCFFStrategy,
     ValuationMode.FCFF_NORMALIZED: FundamentalFCFFStrategy,
@@ -56,9 +42,8 @@ STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
     ValuationMode.GRAHAM_1974_REVISED: GrahamNumberStrategy,
 }
 
-
 # ============================================================
-# 2. POINT D’ENTRÉE PRINCIPAL (COMPATIBLE V3)
+# 2. POINT D’ENTRÉE PRINCIPAL
 # ============================================================
 
 def run_valuation(
@@ -67,103 +52,88 @@ def run_valuation(
     params: DCFParameters
 ) -> ValuationResult:
     """
-    Exécute une valorisation en utilisant le registre et le nouveau système d'erreurs.
+    Exécute une valorisation via le registre des stratégies.
+    Gère dynamiquement l'encapsulation Monte Carlo.
     """
+    logger.info(f"[Engine] Starting {request.mode.value} for {request.ticker}")
 
-    logger.info(
-        "[Engine] Valuation requested | ticker=%s | mode=%s",
-        request.ticker,
-        request.mode.value
-    )
-
-    # A. Sélection de la Stratégie via le Registry (Plus robuste que if/elif)
+    # A. RÉCUPÉRATION DE LA STRATÉGIE DE BASE
     strategy_cls = STRATEGY_REGISTRY.get(request.mode)
-
     if not strategy_cls:
-        # Erreur riche (V3)
-        raise ValuationException(DiagnosticEvent(
-            code="UNKNOWN_STRATEGY",
-            severity=SeverityLevel.CRITICAL,
-            domain=DiagnosticDomain.SYSTEM,
-            message=f"Le mode de valorisation '{request.mode}' n'est pas enregistré dans le moteur.",
-            remediation_hint="Contactez le support, c'est une erreur de configuration interne."
-        ))
+        raise _raise_unknown_strategy(request.mode)
 
-    # B. Instanciation de la stratégie
-    # Gestion du Monte Carlo (Décorateur / Wrapper)
-    strategy = None
+    # B. DÉTERMINATION DU WRAPPER (MONTE CARLO VS STANDARD)
+    # On utilise la propriété supports_monte_carlo centralisée dans l'Enum
+    use_monte_carlo = params.enable_monte_carlo and request.mode.supports_monte_carlo
 
-    if params.enable_monte_carlo:
-        logger.info(
-            "[Engine] Monte Carlo flag = %s | mode=%s",
-            params.enable_monte_carlo,
-            request.mode.value
-        )
-        # Liste blanche des modes compatibles Monte Carlo
-        SUPPORTED_MC_MODES = [
-            ValuationMode.FCFF_TWO_STAGE,
-            ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.FCFF_REVENUE_DRIVEN,
-            ValuationMode.RESIDUAL_INCOME_MODEL,
-        ]
-
-        if request.mode in SUPPORTED_MC_MODES:
-            logger.info("Activation Monte Carlo pour %s", request.mode.value)
-            # On injecte la classe cible dans le wrapper générique
-            # Monte Carlo devient la stratégie principale, elle pilotera les calculs sous-jacents
-            strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
-        else:
-            logger.warning(f"Monte Carlo ignoré pour le mode {request.mode} (non supporté)")
-            strategy = strategy_cls()
+    if use_monte_carlo:
+        logger.info(f"Wrapper Monte Carlo activé pour {request.mode.value}")
+        strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
     else:
+        if params.enable_monte_carlo:
+            logger.warning(f"Monte Carlo ignoré : {request.mode.value} est déterministe par nature.")
         strategy = strategy_cls()
 
-    # C. Exécution avec Filet de Sécurité (Try/Catch V3)
+    # C. EXÉCUTION ET SÉCURISATION
     try:
         result = strategy.execute(financials, params)
 
-        # Injection requête (traçabilité)
-        # On utilise setattr pour contourner le frozen si nécessaire, ou l'attribut direct
-        if hasattr(result, "request"):
-            try:
-                result.request = request
-            except Exception:
-                # Si dataclass frozen, on utilise le hack standard
-                object.__setattr__(result, "request", request)
+        # Injection de la requête pour traçabilité (Gestion immuabilité)
+        _inject_request_safely(result, request)
 
-        # D. Vérification Contractuelle (V2.2)
+        # Validation contractuelle (Garantie de qualité V2.2)
         strategy.verify_output_contract(result)
 
         return result
 
     except ValuationException:
-        # On laisse passer les erreurs déjà formatées (Venant des Stratégies)
-        raise
-
+        raise # On laisse remonter les erreurs métier déjà formatées
     except CalculationError as ce:
-        # On convertit les vieilles erreurs CalculationError en DiagnosticEvent
-        raise ValuationException(DiagnosticEvent(
-            code="CALCULATION_ERROR",
-            severity=SeverityLevel.ERROR,
-            domain=DiagnosticDomain.MODEL,
-            message=str(ce),
-            remediation_hint="Vérifiez les données d'entrée financières."
-        ))
-
+        raise _handle_calculation_error(ce)
     except Exception as e:
-        # Catch-all pour les bugs imprévus
-        raise ValuationException(DiagnosticEvent(
-            code="STRATEGY_CRASH",
-            severity=SeverityLevel.CRITICAL,
-            domain=DiagnosticDomain.SYSTEM,
-            message=f"Crash inattendu du moteur : {str(e)}",
-            technical_detail=traceback.format_exc(),
-            remediation_hint="Erreur technique."
-        ))
-
+        raise _handle_system_crash(e)
 
 # ============================================================
-# 3. OUTIL AVANCÉ — REVERSE DCF (CONSERVÉ & CORRIGÉ)
+# 3. HELPERS DE MAINTENANCE (CLEAN CODE)
+# ============================================================
+
+def _inject_request_safely(result: ValuationResult, request: ValuationRequest):
+    """Gère l'injection de la requête même si l'objet est 'frozen'."""
+    try:
+        result.request = request
+    except Exception:
+        object.__setattr__(result, "request", request)
+
+def _raise_unknown_strategy(mode: ValuationMode) -> ValuationException:
+    return ValuationException(DiagnosticEvent(
+        code="UNKNOWN_STRATEGY",
+        severity=SeverityLevel.CRITICAL,
+        domain=DiagnosticDomain.SYSTEM,
+        message=f"La stratégie pour {mode} n'est pas enregistrée.",
+        remediation_hint="Vérifiez le dictionnaire STRATEGY_REGISTRY dans engines.py."
+    ))
+
+def _handle_calculation_error(ce: CalculationError) -> ValuationException:
+    return ValuationException(DiagnosticEvent(
+        code="CALCULATION_ERROR",
+        severity=SeverityLevel.ERROR,
+        domain=DiagnosticDomain.MODEL,
+        message=str(ce),
+        remediation_hint="Vérifiez la cohérence de vos inputs financiers."
+    ))
+
+def _handle_system_crash(e: Exception) -> ValuationException:
+    return ValuationException(DiagnosticEvent(
+        code="STRATEGY_CRASH",
+        severity=SeverityLevel.CRITICAL,
+        domain=DiagnosticDomain.SYSTEM,
+        message=f"Échec critique du moteur : {str(e)}",
+        technical_detail=traceback.format_exc(),
+        remediation_hint="Redémarrez l'analyse ou contactez le support technique."
+    ))
+
+# ============================================================
+# 4. REVERSE DCF (CONSERVÉ)
 # ============================================================
 
 def run_reverse_dcf(
@@ -172,44 +142,22 @@ def run_reverse_dcf(
     market_price: float,
     max_iterations: int = 50
 ) -> Optional[float]:
-    """
-    Analyse de marché (Reverse DCF).
-    Calcule le taux de croissance implicite pour justifier le prix actuel.
-
-    Conservé pour usages futurs (Dashboard avancé).
-    """
-
-    if market_price <= 0:
-        return None
+    """Calcul du taux de croissance implicite par dichotomie."""
+    if market_price <= 0: return None
 
     low, high = -0.20, 0.50
-
-    # On utilise la stratégie fondamentale par défaut pour le Reverse DCF
     strategy = FundamentalFCFFStrategy(glass_box_enabled=False)
-
-    # [CORRECTIF V2.5] : Suppression de dataclasses.replace
-    # Pydantic nécessite .model_copy(update={...})
 
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
-
-        # On clone les params pour ne pas modifier l'objet original (Version Pydantic)
         test_params = params.model_copy(update={"fcf_growth_rate": mid})
 
         try:
             result = strategy.execute(financials, test_params)
             iv = result.intrinsic_value_per_share
-
-            if abs(iv - market_price) < 0.5: # Convergence à 50 centimes près
-                return mid
-
-            if iv < market_price:
-                low = mid
-            else:
-                high = mid
-
+            if abs(iv - market_price) < 0.5: return mid
+            if iv < market_price: low = mid
+            else: high = mid
         except Exception:
-            # Si le calcul plante (ex: croissance infinie), on réduit la fourchette haute
             high = mid
-
     return None

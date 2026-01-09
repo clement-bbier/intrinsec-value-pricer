@@ -103,16 +103,34 @@ class RIMBankingStrategy(ValuationStrategy):
 
         # 7. VALEUR TERMINALE (ID: TV_GORDON / TV_MULTIPLE)
         terminal_ri = residual_incomes[-1]
+
         if params.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
-            tv_ri = terminal_ri * params.exit_multiple_value
-            key_tv, sub_tv = "TV_MULTIPLE", f"{terminal_ri:,.2f} × {params.exit_multiple_value:.1f}"
+            # Calcul académique de persistance (Ohlson Model)
+            omega = params.exit_multiple_value if params.exit_multiple_value is not None else 0.60
+
+            # Formule : (RI_n * omega) / (1 + ke - omega)
+            tv_ri = (terminal_ri * omega) / (1 + ke - omega)
+
+            key_tv = "TV_PERSISTENCE"
+            sub_tv = f"({terminal_ri:,.2f} × {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
+            theory = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
         else:
+            # Gordon Growth standard
             tv_ri = calculate_terminal_value_gordon(terminal_ri, ke, params.perpetual_growth_rate)
             key_tv = "TV_GORDON"
-            sub_tv = f"({terminal_ri:,.2f} × {1+params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
+            sub_tv = f"({terminal_ri:,.2f} × {1 + params.perpetual_growth_rate:.3f}) / ({ke:.4f} - {params.perpetual_growth_rate:.3f})"
+            theory = r"TV_{RI} = \frac{RI_n \times (1 + g_n)}{k_e - g_n}"
 
         discounted_tv = tv_ri * discount_factors[-1]
-        self.add_step(step_key=key_tv, result=discounted_tv, numerical_substitution=f"{sub_tv} × {discount_factors[-1]:.4f}")
+
+        self.add_step(
+            step_key=key_tv,
+            label="Valeur Terminale RI",
+            theoretical_formula=theory,
+            result=discounted_tv,
+            numerical_substitution=f"{sub_tv} × {discount_factors[-1]:.4f}",
+            interpretation="Estimation de la persistance ou croissance du profit résiduel à l'infini."
+        )
 
         # 8. VALEUR FINALE (ID: RIM_FINAL_VALUE)
         # Alignement : BV_0 + Sum PV(RI)

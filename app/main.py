@@ -42,6 +42,20 @@ VALUATION_DISPLAY_NAMES = {
     ValuationMode.GRAHAM_1974_REVISED: "Graham"
 }
 
+def initialize_state():
+    """Initialise ou réinitialise l'état de l'application."""
+    if "active_request" not in st.session_state:
+        st.session_state.active_request = None
+    if "last_config" not in st.session_state:
+        st.session_state.last_config = ""
+
+def check_state_drift(ticker, mode, is_expert):
+    """Réinitialise l'analyse si l'utilisateur change de configuration globale."""
+    current_config = f"{ticker}-{mode}-{is_expert}"
+    if current_config != st.session_state.last_config:
+        st.session_state.active_request = None
+        st.session_state.last_config = current_config
+
 def setup_page():
     """Configure la page en utilisant le module de style centralisé."""
     st.set_page_config(
