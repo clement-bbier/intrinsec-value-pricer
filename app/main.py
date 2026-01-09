@@ -42,20 +42,6 @@ VALUATION_DISPLAY_NAMES = {
     ValuationMode.GRAHAM_1974_REVISED: "Graham"
 }
 
-def initialize_state():
-    """Initialise ou réinitialise l'état de l'application."""
-    if "active_request" not in st.session_state:
-        st.session_state.active_request = None
-    if "last_config" not in st.session_state:
-        st.session_state.last_config = ""
-
-def check_state_drift(ticker, mode, is_expert):
-    """Réinitialise l'analyse si l'utilisateur change de configuration globale."""
-    current_config = f"{ticker}-{mode}-{is_expert}"
-    if current_config != st.session_state.last_config:
-        st.session_state.active_request = None
-        st.session_state.last_config = current_config
-
 def setup_page():
     """Configure la page en utilisant le module de style centralisé."""
     st.set_page_config(
@@ -152,6 +138,10 @@ def display_onboarding_guide():
 def main():
     setup_page()
 
+    # Initialisation de l'état pour la bascule
+    if "active_request" not in st.session_state:
+        st.session_state.active_request = None
+
     with st.sidebar:
         st.header("1. Choix de l'entreprise")
         ticker = st.text_input("Ticker (Yahoo Finance)", value="AAPL").strip().upper()
@@ -177,8 +167,6 @@ def main():
             years = st.slider("Années de projection", 3, 15, 5)
             st.divider()
 
-            # --- FIX 1 : VISIBILITÉ GRAHAM ---
-            # On n'affiche le point 5 que si le modèle le supporte (Pas Graham)
             if selected_mode.supports_monte_carlo:
                 st.header("5. Analyse de Risque")
                 enable_mc = st.toggle("Activer Monte Carlo", value=False)
@@ -188,7 +176,6 @@ def main():
 
             launch_analysis = st.button("Lancer le calcul", type="primary", use_container_width=True)
 
-        # Footer Crédits original (INCHANGÉ)
         st.markdown(
             """
             <div style="margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; border-top: 0.5px solid #334155; padding-top: 1rem;">
@@ -199,7 +186,14 @@ def main():
             unsafe_allow_html=True
         )
 
-    if is_expert:
+    # --- LOGIQUE DE BASCULE (SWITCH) ---
+    if st.session_state.active_request:
+        if st.button("Retour aux paramètres", type="secondary"):
+            st.session_state.active_request = None
+            st.rerun()
+        run_workflow_and_display(st.session_state.active_request)
+
+    elif is_expert:
         if not ticker:
             st.warning("Veuillez saisir un ticker dans la barre latérale.")
         else:
@@ -214,10 +208,8 @@ def main():
             if render_func:
                 request = render_func(ticker)
                 if request:
-                    # --- FIX 2 : SIGNAL MONTE CARLO EXPERT ---
-                    # On supprime le model_copy qui écrasait tout par False !
-                    # La request vient du terminal expert avec ses propres choix MC.
-                    run_workflow_and_display(request)
+                    st.session_state.active_request = request
+                    st.rerun()
 
     elif launch_analysis:
         if not ticker:
@@ -236,7 +228,8 @@ def main():
             manual_params=config_params,
             options={"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}
         )
-        run_workflow_and_display(request)
+        st.session_state.active_request = request
+        st.rerun()
     else:
         display_onboarding_guide()
 
