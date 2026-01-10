@@ -209,3 +209,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         # --- 7. FUSION ET RETOUR ---
         final_result.calculation_trace = self.calculation_trace + final_result.calculation_trace
         return final_result
+
+        # --- 8. INJECTION DES MÉTRIQUES STOCHASTIQUES POUR L'AUDIT ---
+        # On expose le ratio de validité et l'éventuel clamping
+        final_result.mc_valid_ratio = valid_ratio
+        final_result.mc_clamping_applied = (g_clamped < g_raw)

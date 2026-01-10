@@ -1,29 +1,50 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" — VERSION V7.0 (SÉCURISÉE)
+
+RESTITUTION "GLASS BOX" — VERSION V8.1 (SOLID & DYNAMIQUE)
 Rôle : Affichage haute fidélité des résultats et audit mathématique.
-Note : Respect du paradigme "None = N/A" vs "0.0 = Valeur".
+Architecture : Composants atomiques et routage dynamique des diagnostics.
 """
 
-from typing import Optional, List, Any, Dict
+from __future__ import annotations
+
+import logging
+from typing import Any, List, Optional
+
 import numpy as np
 import streamlit as st
-from core.models import ValuationResult, CalculationStep, AuditReport
+
+from core.models import (
+    AuditReport,
+    CalculationStep,
+    ValuationResult
+)
 from app.ui_components.ui_glass_box_registry import STEP_METADATA
 
+logger = logging.getLogger(__name__)
+
 
 # ==============================================================================
-# 1. ATOMES DE RENDU (SÉCURISÉS)
+# 1. COMPOSANTS ATOMIQUES (UI COMPONENTS)
 # ==============================================================================
 
-def atom_kpi_metric(label: str, value: str, help_text: str = ""):
-    """Affichage d'une métrique clé dans le bandeau supérieur."""
+def atom_kpi_metric(label: str, value: str, help_text: str = "") -> None:
+    """Affiche une métrique clé dans le bandeau supérieur."""
     st.metric(label, value, help=help_text)
 
-def atom_calculation_card(index: int, label: str, formula: str, substitution: str, result: Optional[float], unit: str = "", interpretation: str = ""):
-    """Carte d'audit mathématique isolée pour la preuve de calcul."""
+
+def atom_calculation_card(
+    index: int,
+    label: str,
+    formula: str,
+    substitution: str,
+    result:  Optional[float],
+    unit: str = "",
+    interpretation: str = ""
+) -> None:
+    """Carte des audit mathématiques pour la preuve de calcul."""
     with st.container(border=True):
-        st.markdown(f"**Etape {index} : {label}**")
+        st.markdown(f"**Étape {index} :  {label}**")
         c1, c2, c3 = st.columns([2.5, 4, 1.5])
 
         with c1:
@@ -47,28 +68,35 @@ def atom_calculation_card(index: int, label: str, formula: str, substitution: st
             elif result == 1.0 and "Initialisation" in label:
                 st.write("**Validée**")
             else:
-                # Sécurité : Formatage uniquement si numérique
-                st.markdown(f"### {result:,.2f}")
+                st.markdown(f"### {result: ,.2f}")
 
         if interpretation:
             st.caption(f"Note d'analyse : {interpretation}")
 
+
 # ==============================================================================
-# 2. NAVIGATION ET TRI (ARCHITECTURE MODULAIRE)
+# 2. NAVIGATION ET AGGREGATION (VALUATION DETAILS)
 # ==============================================================================
 
-def display_valuation_details(result: ValuationResult, provider: Any = None) -> None:
+def display_valuation_details(result: ValuationResult, _provider: Any = None) -> None:
+    """Orchestrateur des onglets de détails post-calcul."""
     st.divider()
 
-    # 1. On sépare les traces
+    # Séparation des traces (Core vs Monte Carlo)
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
-    mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
+    mc_steps = [s for s in result.calculation_trace if s. step_key.startswith("MC_")]
 
-    # 2. On définit les onglets dynamiquement selon la compatibilité du modèle
+    # Définition des onglets dynamiques
     tab_labels = ["Preuve de Calcul", "Audit de Fiabilité"]
 
-    # L'onglet MC n'est ajouté QUE si le modèle le supporte ET que l'option était active
-    show_mc_tab = result.request.mode.supports_monte_carlo and result.params.enable_monte_carlo
+    # Vérification sécurisée pour Monte Carlo
+    show_mc_tab = (
+        result.request is not None
+        and result.request.mode. supports_monte_carlo
+        and result.params.enable_monte_carlo
+        and mc_steps
+    )
+
     if show_mc_tab:
         tab_labels.append("Analyse de Risque (MC)")
 
@@ -79,140 +107,283 @@ def display_valuation_details(result: ValuationResult, provider: Any = None) -> 
             _render_smart_step(idx, step)
 
     with tabs[1]:
-        _render_reliability_report(result.audit_report)
+        _render_reliability_report(result. audit_report, result)
 
     if show_mc_tab:
         with tabs[2]:
             _render_monte_carlo_tab(result, mc_steps)
 
+
 # ==============================================================================
-# 3. COMPOSANTS DE L'ONGLET RISQUE (MONTE CARLO)
+# 3. ONGLET AUDIT (VERSION V8.1 DYNAMIQUE - GLASS BOX)
 # ==============================================================================
 
-def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]):
-    """Rendu expert de l'analyse Monte Carlo."""
-    if result.params.enable_monte_carlo and (result.simulation_results is None or len(result.simulation_results) == 0):
-        st.warning("La simulation de Monte Carlo n'a pas pu converger (Paramètres instables ou autre).")
+def _render_reliability_report(report: Optional[AuditReport], result:  ValuationResult) -> None:
+    """Rendu analytique dynamique basé sur les piliers d'audit réels."""
+    if not report:
+        st.info("Aucun rapport d'audit généré pour cette simulation.")
         return
 
-    if not result.params.enable_monte_carlo:
-        st.info("Analyse de risque probabiliste non activée pour cette valorisation.")
+    # =========================================================================
+    # 1. BANDEAU DE CERTITUDE
+    # =========================================================================
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
+        st.markdown(f"### Score d'Audit Global : {report.global_score:.1f} / 100")
+    with c2:
+        st. metric("Rating Score", report.rating)
+    with c3:
+        coverage = (report.audit_coverage or 0.0) * 100
+        st.metric("Couverture", f"{coverage:.0f}%")
+
+    st.divider()
+
+    # =========================================================================
+    # 2. TABLE DE VÉRIFICATION DYNAMIQUE
+    # =========================================================================
+    st.markdown("#### Table de Vérification des Invariants")
+
+    # En-têtes fixes
+    h1, h2, h3, h4 = st.columns([2.5, 2.5, 3, 1.5])
+    h1.caption("INDICATEUR")
+    h2.caption("RÈGLE NORMATIVE")
+    h3.caption("PREUVE NUMÉRIQUE")
+    h4.caption("VERDICT")
+
+    # Parcours des piliers d'audit fournis par l'auditeur
+    if report.pillar_breakdown and report.pillar_breakdown.pillars:
+        for pillar_type, score_obj in report.pillar_breakdown. pillars.items():
+            for diag_message in score_obj.diagnostics:
+
+                # Identification de la clé dans STEP_METADATA
+                test_key = _map_message_to_meta_key(diag_message)
+                meta = STEP_METADATA.get(test_key, {"label": "Test Spécifique", "formula": r"\text{N/A}"})
+
+                # Extraction de la preuve numérique
+                substitution = _format_numerical_evidence(test_key, result)
+
+                # Détermination du statut visuel
+                alert_keywords = ["ALERTE", "RISQUE", "DIVERGENCE", "FRAGILE", "HORS", "CRITIQUE", "DÉFICIT"]
+                is_alert = any(k in diag_message. upper() for k in alert_keywords)
+                status_text = "Alerte" if is_alert else "Conforme"
+                color = "red" if is_alert else "green"
+
+                with st.container():
+                    r1, r2, r3, r4 = st.columns([2.5, 2.5, 3, 1.5])
+                    r1.markdown(f"**{meta['label']}**", help=meta. get('description', ''))
+                    r2.latex(meta['formula'])
+                    r3.info(substitution)
+                    r4.markdown(f":{color}[**{status_text}**]")
+
+    # =========================================================================
+    # 3. REGISTRE DES DIAGNOSTICS DÉTAILLÉS
+    # =========================================================================
+    relevant_logs = [log for log in report.logs if "attribute" not in log.message. lower()]
+
+    if relevant_logs:
+        st.divider()
+        with st.expander("Consulter les notes d'audit détaillées", expanded=report.global_score < 40):
+            for log in relevant_logs:
+                if log.severity == "CRITICAL":
+                    st.error(f"**[{log.category}]** {log.message}")
+                elif log.severity == "WARNING":
+                    st.warning(f"**[{log.category}]** {log.message}")
+                else:
+                    st.info(f"**[{log.category}]** {log.message}")
+
+
+# ==============================================================================
+# 4. HELPERS DE MAPPING & EVIDENCE
+# ==============================================================================
+
+def _map_message_to_meta_key(message: str) -> str:
+    """
+    Fait le pont entre le diagnostic texte et le registre visuel.
+    Priorise les clés 'AUDIT_' pour bénéficier des descriptions enrichies.
+    """
+    m = message.upper()
+
+    # Mapping vers les clés d'Audit enrichies (Namespace AUDIT_)
+    if "ICR" in m or "SOLVABILITÉ" in m:
+        return "AUDIT_SOLVENCY_ICR"
+    if "CAPEX" in m or "RÉINVESTISSEMENT" in m:
+        return "AUDIT_CAPEX_DA"
+    if "TRÉSORERIE > CAPITALISATION" in m or "NET-NET" in m:
+        return "AUDIT_CASH_MCAP"
+    if "G >=" in m or "G PERPÉTUEL" in m:
+        return "AUDIT_G_WACC"
+    if "PAYOUT" in m:
+        return "AUDIT_PAYOUT_STABILITY"
+    if "P/B" in m:
+        return "AUDIT_PB_RATIO"
+
+    # Fallbacks vers les métriques de confiance (Namespace DATA CONFIDENCE)
+    if "BETA" in m:
+        return "beta"
+    if "LEVIER" in m:
+        return "leverage"
+    if "LIQUIDITÉ" in m:
+        return "liquidity"
+
+    # Fallbacks vers les risques d'hypothèses (Namespace ASSUMPTION RISK)
+    if "CONVERGENCE MACRO" in m:
+        return "g_rf"
+    if "WACC" in m:
+        return "wacc_min"
+    if "VALEUR TERMINALE" in m:
+        return "tv_weight"
+    if "SPREAD" in m:
+        return "roe_ke"
+
+    return "unknown"
+
+
+def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
+    """
+    Récupère les métriques injectées pour l'affichage numérique.
+    Supporte les clés AUDIT_ et les clés de confiance.
+    """
+    f = res.financials
+
+    try:
+        # =====================================================================
+        # Section Audit
+        # =====================================================================
+        if key == "AUDIT_SOLVENCY_ICR":
+            val = getattr(res, 'icr_observed', None)
+            return f"EBIT / Intérêts :  {val:. 2f}x" if val is not None else "Donnée N/A"
+
+        if key == "AUDIT_CAPEX_DA":
+            val = getattr(res, 'capex_to_da_ratio', None)
+            return f"Ratio CapEx/D&A : {val:.1%}" if val is not None else "Donnée N/A"
+
+        if key == "AUDIT_CASH_MCAP":
+            ratio = (f. cash_and_equivalents / f.market_cap) if f.market_cap else 0
+            return f"Cash/MCap : {ratio:.1%}"
+
+        if key == "AUDIT_PAYOUT_STABILITY":
+            val = getattr(res, 'payout_ratio_observed', None)
+            return f"Payout Ratio : {val:.1%}" if val is not None else "Donnée N/A"
+
+        if key == "AUDIT_G_WACC":
+            w = getattr(res, 'wacc', 0) or 0
+            g = res.params.perpetual_growth_rate or 0
+            return f"g:{g:.1%} vs WACC:{w:.1%}"
+
+        if key == "AUDIT_PB_RATIO":
+            val = getattr(res, 'pb_ratio_observed', None)
+            return f"P/B Observé : {val:.2f}x" if val is not None else "N/A"
+
+        # =====================================================================
+        # Section Data Confidence / Assumption Risk
+        # =====================================================================
+        if key == "beta":
+            return f"Beta extrait : {f.beta:.2f}"
+
+        if key == "leverage":
+            val = getattr(res, 'leverage_observed', None)
+            return f"Dette/EBIT : {val:.2f}x" if val is not None else "N/A"
+
+        if key == "tv_weight":
+            val = getattr(res, 'terminal_value_weight', None)
+            return f"Poids TV : {val:.1%}" if val is not None else "N/A"
+
+        if key == "wacc_min":
+            w = getattr(res, 'wacc', 0) or 0
+            return f"WACC Calculé : {w:.2%}"
+
+    except Exception as e:
+        logger.error(f"Erreur extraction preuve pour {key}: {e}")
+        return "Erreur source"
+
+    return "Vérification OK"
+
+
+# ==============================================================================
+# 5. ONGLET MONTE CARLO (PROBABILISTE)
+# ==============================================================================
+
+def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]) -> None:
+    """Rendu probabiliste de l'analyse Monte Carlo."""
+    from app.ui_components.ui_charts import display_simulation_chart, display_correlation_heatmap
+
+    if result.simulation_results is None or len(result.simulation_results) == 0:
+        st. warning("La simulation n'a pas pu converger (Paramètres instables).")
         return
 
-    from app.ui_components.ui_charts import (
-        display_simulation_chart,
-        display_correlation_heatmap
-    )
-
-    f = result.financials
-    p = result.params
-
-    # --- CALCULS STATISTIQUES RÉELS (Sécurisés) ---
+    f, p = result.financials, result.params
     sims = np.array(result.simulation_results)
     prob_overvalued = (sims < result.market_price).mean() if result.market_price else 0.0
-
-    # Récupération sécurisée des quantiles
     q = result.quantiles or {}
-    p50 = q.get('P50', 0.0)
-    p10 = q.get('P10', 0.0)
 
+    # =========================================================================
+    # Métriques principales
+    # =========================================================================
     st.markdown("#### Analyse de Conviction Probabiliste")
 
-    # Bandeau de métriques réelles
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Downside Risk (IV < Prix)", f"{prob_overvalued:.1%}")
-    with c2:
-        st.metric("Médiane (P50)", f"{p50:,.2f}")
-    with c3:
-        st.metric("Risque de Queue (P10)", f"{p10:,.2f}")
+    c1.metric("Downside Risk (IV < Prix)", f"{prob_overvalued:.1%}")
+    c2.metric("Médiane (P50)", f"{q.get('P50', 0.0):,.2f}")
+    c3.metric("Risque de Queue (P10)", f"{q.get('P10', 0.0):,.2f}")
 
-    # 1. VISUALISATION DE LA DISTRIBUTION
-    display_simulation_chart(result.simulation_results, result.market_price, f.currency)
+    display_simulation_chart(result. simulation_results, result.market_price, f. currency)
 
-    # 2. AUDIT DE ROBUSTESSE & STRESS TEST
     st.divider()
+
+    # =========================================================================
+    # Sensibilité et Stress Test
+    # =========================================================================
     col_sens, col_stress = st.columns([1.5, 2.5])
 
     with col_sens:
         st.markdown("**Sensibilité Corrélation (ρ)**")
         if result.rho_sensitivity:
-            sens_data = [
-                {"Scénario": k, "IV (P50)": f"{v:,.2f}"}
-                for k, v in result.rho_sensitivity.items()
-            ]
+            sens_data = [{"Scénario": k, "IV (P50)": f"{v: ,.2f}"} for k, v in result. rho_sensitivity.items()]
             st.table(sens_data)
-            st.caption("Analyse de stabilité : Impact de l'indépendance des variables.")
         else:
-            st.caption("Données de sensibilité non disponibles.")
+            st.caption("Données non disponibles.")
 
     with col_stress:
         st.markdown("**Scénario de Stress (Bear Case)**")
         if result.stress_test_value is not None:
-            # Respect de la devise et du format
-            val_stress = result.stress_test_value
-            st.warning(f"**Valeur Plancher : {val_stress:,.2f} {f.currency}**")
-            st.markdown(
-                f"""
-                <div style="font-size: 0.85rem; color: #64748b; border-left: 2px solid #eab308; padding-left: 1rem;">
-                <b>Paramètres forcés :</b> Croissance nulle (g=0%), Risque élevé (β=1.5).<br>
-                Ce scénario simule une dégradation brutale des fondamentaux pour tester la résilience.
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.info("Stress test non exécuté.")
+            st.warning(f"**Valeur Plancher : {result.stress_test_value: ,.2f} {f.currency}**")
+            st.caption("Paramètres :  g=0%, β=1.5. Simulation de rupture des fondamentaux.")
 
-    # 3. ANALYSE DES CORRÉLATIONS
+    # =========================================================================
+    # Audit des Hypothèses Statistiques
+    # =========================================================================
     with st.expander("Audit des Hypothèses Statistiques", expanded=False):
-        col_matrice, col_info = st.columns([1.2, 2.8])
-        with col_matrice:
-            # On passe la corrélation par défaut si nulle
-            rho_val = p.correlation_beta_growth if p.correlation_beta_growth is not None else -0.3
-            display_correlation_heatmap(rho=rho_val)
-        with col_info:
-            st.write("**Calibration de la simulation :**")
-            # Formatage safe des volatilités
-            v_beta = p.beta_volatility if p.beta_volatility is not None else 0.0
-            v_g = p.growth_volatility if p.growth_volatility is not None else 0.0
-            st.caption(f"• Volatilité Beta : {v_beta:.1%}")
-            st.caption(f"• Volatilité Croissance (g) : {v_g:.1%}")
-            st.caption(f"• Corrélation (ρ) : {rho_val:.2f}")
+        col_mat, col_inf = st.columns([1.2, 2.8])
+
+        with col_mat:
+            display_correlation_heatmap(rho=p.correlation_beta_growth or -0.3)
+
+        with col_inf:
+            beta_vol = p.beta_volatility or 0.0
+            growth_vol = p.growth_volatility or 0.0
+            st.caption(f"Volatilité Beta : {beta_vol:.1%}")
+            st.caption(f"Volatilité Croissance : {growth_vol:.1%}")
             st.info("La corrélation négative standard prévient les scénarios financiers incohérents.")
 
-    # 4. GLASS BOX STATISTIQUE
-    with st.expander("Détail du traitement statistique (Audit)", expanded=False):
+    # =========================================================================
+    # Détail du traitement stochastique
+    # =========================================================================
+    with st.expander("Détail du traitement stochastique (Audit)", expanded=False):
         for idx, step in enumerate(mc_steps, start=1):
             _render_smart_step(idx, step)
 
-# ==============================================================================
-# 4. MOTEURS DE RÉSOLUTION ET RAPPORTS
-# ==============================================================================
 
-def _render_smart_step(index: int, step: CalculationStep):
-    """Lookup corrigé utilisant la clé technique step_key."""
-    meta = STEP_METADATA.get(step.step_key, {})
-
-    atom_calculation_card(
-        index=index,
-        label=meta.get("label", step.label),
-        formula=meta.get("formula", step.theoretical_formula),
-        substitution=step.numerical_substitution,
-        result=step.result,
-        unit=meta.get("unit", ""),
-        interpretation=step.interpretation
-    )
+# ==============================================================================
+# 6. RÉSUMÉ EXÉCUTIF
+# ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
     """Synthèse décisionnelle supérieure."""
     f = result.financials
-    st.subheader(f"Dossier de Valorisation : {f.name} ({f.ticker})")
+    st.subheader(f"Dossier de Valorisation :  {f.name} ({f.ticker})")
 
-    # Calcul de l'affichage de la valeur intrinsèque (Sécurisé)
     iv = result.intrinsic_value_per_share
     iv_display = f"{iv:,.2f} {f.currency}" if iv is not None else "N/A"
-
     price_display = f"{result.market_price:,.2f} {f.currency}" if result.market_price is not None else "N/A"
 
     with st.container(border=True):
@@ -225,34 +396,40 @@ def render_executive_summary(result: ValuationResult) -> None:
             rating = result.audit_report.rating if result.audit_report else "N/A"
             atom_kpi_metric("Indice de Confiance", rating)
 
-def _render_reliability_report(report: AuditReport) -> None:
-    """Décomposition du score d'audit par piliers normatifs."""
-    st.markdown(f"### Score Global : {report.global_score:.1f}/100")
-    st.latex(r"Confidence = \sum (Score_{pillar} \times Weight)")
 
-    if report.pillar_breakdown:
-        breakdown_data = []
-        for ps in report.pillar_breakdown.pillars.values():
-            breakdown_data.append({
-                "Domaine d'Audit": ps.pillar.value,
-                "Score": f"{ps.score:.1f}",
-                "Pondération": f"{ps.weight:.1%}",
-                "Impact final": f"{ps.contribution:.1f}"
-            })
-        st.table(breakdown_data)
+def _render_smart_step(index: int, step: CalculationStep) -> None:
+    """Lookup dynamique dans STEP_METADATA."""
+    meta = STEP_METADATA.get(step.step_key, {})
+    atom_calculation_card(
+        index=index,
+        label=meta.get("label", step.label),
+        formula=meta.get("formula", step.theoretical_formula),
+        substitution=step.numerical_substitution,
+        result=step.result,
+        unit=meta.get("unit", ""),
+        interpretation=step.interpretation
+    )
 
-    if report.logs:
-        with st.expander("Registre des Diagnostics d'Audit", expanded=True):
-            for log in report.logs:
-                # Sévérité dynamique
-                sev_label = "ALERTE" if log.severity in ["CRITICAL", "WARNING", "HIGH"] else "INFO"
-                st.markdown(f"**[{sev_label}]** {log.message}")
 
-    if report.critical_warning:
-        st.error("ARRET CRITIQUE : Des failles méthodologiques majeures ont été identifiées.")
+# ==============================================================================
+# 7. ALIASES DE COMPATIBILITÉ
+# ==============================================================================
 
-# ALIASES POUR COMPATIBILITÉ RÉTROACTIVE
-def display_main_kpis(result): render_executive_summary(result)
-def display_dcf_summary(result, provider): display_valuation_details(result, provider)
-def display_rim_summary(result, provider): display_valuation_details(result, provider)
-def display_graham_summary(result, provider): display_valuation_details(result, provider)
+def display_main_kpis(res: ValuationResult) -> None:
+    """Alias pour render_executive_summary."""
+    render_executive_summary(res)
+
+
+def display_dcf_summary(res: ValuationResult, _prov: Any) -> None:
+    """Alias pour display_valuation_details."""
+    display_valuation_details(res, _prov)
+
+
+def display_rim_summary(res: ValuationResult, _prov: Any) -> None:
+    """Alias pour display_valuation_details."""
+    display_valuation_details(res, _prov)
+
+
+def display_graham_summary(res: ValuationResult, _prov: Any) -> None:
+    """Alias pour display_valuation_details."""
+    display_valuation_details(res, _prov)

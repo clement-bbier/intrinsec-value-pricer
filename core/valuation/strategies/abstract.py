@@ -184,6 +184,22 @@ class ValuationStrategy(ABC):
             interpretation=f"Estimation de la valeur réelle d'une action pour {financials.ticker}."
         )
 
+        # --- G. CALCUL DES MÉTRIQUES D'AUDIT (INJECTION) ---
+        icr = financials.ebit_ttm / financials.interest_expense if financials.interest_expense > 0 else None
+
+        capex_ratio = None
+        if financials.capex and financials.depreciation_and_amortization:
+            capex_ratio = abs(financials.capex) / financials.depreciation_and_amortization
+
+        tv_weight = pv_tv / ev if ev > 0 else None
+
+        # Utilisation de la nouvelle propriété calculée dans models.py
+        payout = financials.dividends_total_calculated / financials.net_income_ttm if (
+                    financials.net_income_ttm and financials.net_income_ttm > 0) else None
+
+        leverage = financials.total_debt / financials.ebit_ttm if (
+                    financials.ebit_ttm and financials.ebit_ttm > 0) else None
+
         return DCFValuationResult(
             request=None, financials=financials, params=params,
             intrinsic_value_per_share=iv_share, market_price=financials.current_price,
@@ -191,5 +207,7 @@ class ValuationStrategy(ABC):
             cost_of_debt_after_tax=wacc_ctx.cost_of_debt_after_tax if wacc_ctx else 0.0,
             projected_fcfs=flows, discount_factors=factors,
             sum_discounted_fcf=sum_pv, terminal_value=tv, discounted_terminal_value=pv_tv,
-            enterprise_value=ev, equity_value=equity_val, calculation_trace=self.calculation_trace
+            enterprise_value=ev, equity_value=equity_val, calculation_trace=self.calculation_trace,
+            icr_observed=icr, capex_to_da_ratio=capex_ratio, terminal_value_weight=tv_weight,
+            payout_ratio_observed=payout, leverage_observed=leverage
         )

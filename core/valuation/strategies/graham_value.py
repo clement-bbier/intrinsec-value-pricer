@@ -82,10 +82,17 @@ class GrahamNumberStrategy(ValuationStrategy):
             interpretation="Estimation de la valeur intrinsèque ajustée par le rendement des obligations AAA."
         )
 
+        # --- 4. CALCUL DES MÉTRIQUES D'AUDIT (INJECTION) ---
+        pe_obs = financials.current_price / eps if eps > 0 else None
+
+        # Payout ratio basé sur la propriété calculée dans models.py
+        payout = (financials.dividends_total_calculated / financials.net_income_ttm
+                  if (financials.net_income_ttm and financials.net_income_ttm > 0) else None)
+
         return GrahamValuationResult(
             request=None, financials=financials, params=params,
             intrinsic_value_per_share=intrinsic_value, market_price=financials.current_price,
             eps_used=eps, growth_rate_used=params.fcf_growth_rate,
-            aaa_yield_used=params.corporate_aaa_yield,
-            calculation_trace=self.calculation_trace
+            aaa_yield_used=params.corporate_aaa_yield, calculation_trace=self.calculation_trace,
+            pe_observed=pe_obs, graham_multiplier=growth_multiplier, payout_ratio_observed=payout
         )

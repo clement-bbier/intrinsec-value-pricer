@@ -1,228 +1,200 @@
 """
 infra/auditing/audit_engine.py
-
-Audit Engine — Chapitre 6
-Audit comme méthode normalisée et auditable.
-
-Responsabilités :
-- Router vers l’auditeur métier
-- Agréger les piliers d’incertitude
-- Appliquer les pondérations (mode × modèle)
-- Produire un AuditReport entièrement explicable
+Audit Engine — Chapitre 6 (Version V8.1)
+Rôle : Routage dynamique et calcul de la couverture d'audit institutionnelle.
+Correction :  Garde défensive pour ValuationResult sans request.
 """
 
 from __future__ import annotations
-
 import logging
-from typing import Dict, Optional, List
-
-# --- STREAMLIT OPTIMIZATION (Optionnel) ---
-# Décommenter la ligne suivante pour activer le cache d'audit
-# import streamlit as st
+from typing import Dict, Any, List
 
 from core.models import (
-    ValuationResult,
-    ValuationMode,
-    AuditReport,
-    AuditLog,
-    AuditPillar,
-    AuditPillarScore,
-    AuditScoreBreakdown,
-    InputSource
+    ValuationResult, ValuationMode, AuditReport, AuditLog,
+    AuditPillar, AuditPillarScore, AuditScoreBreakdown, InputSource
 )
-
-from infra.auditing.auditors import IValuationAuditor, StandardValuationAuditor
 
 logger = logging.getLogger(__name__)
 
+# ==============================================================================
+# 1. FABRIQUE D'AUDITEURS (SOLID: Dependency Injection & Factory)
+# ==============================================================================
+
+class AuditorFactory:
+    """Fabrique gérant l'instanciation des auditeurs spécialisés selon le mode de valorisation."""
+
+    @staticmethod
+    def get_auditor(mode: ValuationMode):
+        # Imports locaux pour prévenir les dépendances circulaires
+        from infra. auditing.auditors import (
+            DCFAuditor, RIMAuditor, GrahamAuditor, StandardValuationAuditor
+        )
+        mapping = {
+            ValuationMode.FCFF_TWO_STAGE: DCFAuditor,
+            ValuationMode.FCFF_NORMALIZED:  DCFAuditor,
+            ValuationMode.FCFF_REVENUE_DRIVEN: DCFAuditor,
+            ValuationMode.RESIDUAL_INCOME_MODEL: RIMAuditor,
+            ValuationMode.GRAHAM_1974_REVISED: GrahamAuditor,
+        }
+        # Retourne une instance de l'auditeur mappé ou l'auditeur standard par défaut
+        auditor_class = mapping. get(mode, StandardValuationAuditor)
+        return auditor_class()
 
 # ==============================================================================
-# PONDÉRATIONS NORMATIVES — MODE × MÉTHODE
+# 2. MOTEUR D'AUDIT CENTRAL (Action C : Couverture Dynamique)
 # ==============================================================================
 
-# Invariants par MODE
+class AuditEngine:
+    """Moteur d'orchestration pour le calcul des scores de fiabilité et de conformité."""
+
+    @staticmethod
+    def compute_audit(result: ValuationResult, auditor: Any = None) -> AuditReport:
+        """
+        Pilote le processus d'audit complet.
+        Architecture V8.1 : Garde défensive + Pipeline deux passes.
+        """
+        try:
+            # ============================================================
+            # PASSE 0 :  GARDES DÉFENSIVES
+            # ============================================================
+            if result.request is None:
+                logger.warning("[AuditEngine] ValuationResult sans request, utilisation du fallback.")
+                return AuditEngine._fallback_report("ValuationResult. request is None")
+
+            # ============================================================
+            # PASSE 1 : ACQUISITION DES SCORES BRUTS
+            # ============================================================
+            if auditor is None:
+                auditor = AuditorFactory.get_auditor(result.request. mode)
+
+            raw_pillars = auditor.audit_pillars(result)
+            max_potential_checks = auditor.get_max_potential_checks()
+
+            source_mode = result.request.input_source if result.request else InputSource.AUTO
+
+            # ============================================================
+            # PASSE 2 :  CALCUL DES CONTRIBUTIONS PONDÉRÉES
+            # ============================================================
+            weights_profile = MODE_WEIGHTS. get(source_mode, MODE_WEIGHTS[InputSource.AUTO])
+
+            weighted_pillars: Dict[AuditPillar, AuditPillarScore] = {}
+            total_weighted_score = 0.0
+            total_checks_executed = 0
+
+            for pillar, raw_score_obj in raw_pillars.items():
+                weight = weights_profile.get(pillar, 0.0)
+                contribution = raw_score_obj.score * weight
+                total_checks_executed += raw_score_obj.check_count
+
+                # Construction de l'objet final avec contribution calculée
+                weighted_pillars[pillar] = AuditPillarScore(
+                    pillar=pillar,
+                    score=raw_score_obj. score,
+                    weight=weight,
+                    contribution=contribution,
+                    diagnostics=raw_score_obj.diagnostics,
+                    check_count=raw_score_obj.check_count
+                )
+                total_weighted_score += contribution
+
+            # ============================================================
+            # PASSE 3 : MÉTRIQUES DE SYNTHÈSE
+            # ============================================================
+            coverage = AuditEngine._calculate_coverage(total_checks_executed, max_potential_checks)
+            final_global_score = total_weighted_score * coverage
+            rating = AuditEngine._compute_rating(final_global_score)
+
+            all_logs = AuditEngine._collect_logs(weighted_pillars)
+
+            return AuditReport(
+                global_score=final_global_score,
+                rating=rating,
+                audit_depth=total_checks_executed,
+                audit_mode=source_mode.value,
+                audit_coverage=coverage,
+                logs=all_logs,
+                breakdown={p.value: ps.score for p, ps in weighted_pillars.items()},
+                pillar_breakdown=AuditScoreBreakdown(
+                    pillars=weighted_pillars,
+                    aggregation_formula="Sum(Score * Weight) * Coverage",
+                    total_score=final_global_score
+                ),
+                block_monte_carlo=final_global_score <= 0 or any("Divergence" in l.message for l in all_logs),
+                block_history=final_global_score < 30,
+                critical_warning=any(l.severity == "CRITICAL" for l in all_logs)
+            )
+
+        except Exception as e:
+            logger.error(f"AuditEngine Crash: {str(e)}", exc_info=True)
+            return AuditEngine._fallback_report(str(e))
+
+    @staticmethod
+    def _calculate_coverage(executed: int, max_potential: int) -> float:
+        """
+        Calcule le taux de complétude de l'audit.
+        """
+        if max_potential <= 0:
+            return 0.0
+        return min(1.0, (executed / max_potential))
+
+    @staticmethod
+    def _compute_rating(score:  float) -> str:
+        """Grille de notation buy-side standard."""
+        if score >= 90: return "AAA"
+        if score >= 75: return "AA"
+        if score >= 60: return "BBB"
+        if score >= 40: return "BB"
+        return "C"
+
+    @staticmethod
+    def _collect_logs(pillars: Dict[AuditPillar, AuditPillarScore]) -> List[AuditLog]:
+        """Centralise les anomalies détectées par les piliers d'audit."""
+        logs = []
+        for ps in pillars.values():
+            for msg in ps.diagnostics:
+                msg_upper = msg.upper()
+                severity = "INFO"
+                if any(k in msg_upper for k in ["CRITICAL", "ERREUR", "ANOMALIE"]):
+                    severity = "CRITICAL"
+                elif any(k in msg_upper for k in ["WARN", "ALERTE", "FRAGILE", "RISQUE"]):
+                    severity = "WARNING"
+
+                logs.append(AuditLog(category=ps.pillar.value, severity=severity, message=msg, penalty=0))
+        return logs
+
+    @staticmethod
+    def _fallback_report(error: str) -> AuditReport:
+        """Rapport de sécurité en cas de défaillance du moteur."""
+        return AuditReport(
+            global_score=0.0,
+            rating="Error",
+            audit_depth=0,
+            audit_mode="System",
+            audit_coverage=0.0,
+            logs=[
+                AuditLog(category="System", severity="CRITICAL", message=f"Audit Engine Failure: {error}", penalty=0)
+            ],
+            breakdown={},
+            pillar_breakdown=None,
+            block_monte_carlo=True,
+            critical_warning=True
+        )
+
+# ==============================================================================
+# 3. RÉFÉRENTIEL DES PONDÉRATIONS
+# ==============================================================================
+
 MODE_WEIGHTS = {
-    InputSource.AUTO: {
+    InputSource.AUTO:  {
         AuditPillar.DATA_CONFIDENCE: 0.30,
         AuditPillar.ASSUMPTION_RISK: 0.30,
         AuditPillar.MODEL_RISK: 0.25,
         AuditPillar.METHOD_FIT: 0.15,
     },
-    InputSource.MANUAL: {  # EXPERT
-        AuditPillar.DATA_CONFIDENCE: 0.10,  # Faible impact (l'expert sait)
-        AuditPillar.ASSUMPTION_RISK: 0.50,  # Fort impact (responsabilité utilisateur)
+    InputSource.MANUAL: {
+        AuditPillar.DATA_CONFIDENCE:  0.10,
+        AuditPillar.ASSUMPTION_RISK: 0.50,
         AuditPillar.MODEL_RISK: 0.20,
         AuditPillar.METHOD_FIT: 0.20,
     }
 }
-
-
-class AuditEngine:
-    """
-    Moteur d'Audit (Static Service).
-    Orchestre la vérification de conformité et le scoring.
-    """
-
-    # Pour activer le cache, décommenter : @st.cache_data(ttl=3600)
-    @staticmethod
-    def compute_audit(
-        result: ValuationResult,
-        auditor: Optional[IValuationAuditor] = None
-    ) -> AuditReport:
-        """
-        Point d'entrée unique de l'audit.
-
-        Args:
-            result: Le résultat de valorisation à auditer.
-            auditor: (Optionnel) L'implémentation de l'auditeur.
-                     Si None, utilise StandardValuationAuditor par défaut.
-        """
-        try:
-            # --------------------------------------------------------
-            # 0. INJECTION DE DÉPENDANCE (FIX CRITIQUE)
-            # --------------------------------------------------------
-            # Si main.py n'envoie pas d'auditeur, on prend celui par défaut.
-            if auditor is None:
-                auditor = StandardValuationAuditor()
-
-            # --------------------------------------------------------
-            # 1. ANALYSE PAR PILIER (Délégation)
-            # --------------------------------------------------------
-            # L'auditeur spécialisé scanne les piliers un par un
-            raw_pillars = auditor.audit_pillars(result)
-
-            # --------------------------------------------------------
-            # 2. APPLICATION DES PONDÉRATIONS (Business Logic)
-            # --------------------------------------------------------
-            # Sélection du profil de pondération selon la source (AUTO/MANUAL)
-            source_mode = result.request.input_source if result.request else InputSource.AUTO
-            weights_profile = MODE_WEIGHTS.get(source_mode, MODE_WEIGHTS[InputSource.AUTO])
-
-            weighted_pillars: Dict[AuditPillar, AuditPillarScore] = {}
-            total_score = 0.0
-
-            for pillar, raw_score_obj in raw_pillars.items():
-                weight = weights_profile.get(pillar, 0.0)
-
-                # Calcul de la contribution pondérée
-                contribution = raw_score_obj.score * weight
-
-                # Mise à jour de l'objet Score
-                weighted_pillars[pillar] = AuditPillarScore(
-                    pillar=pillar,
-                    score=raw_score_obj.score,
-                    weight=weight,
-                    contribution=contribution,
-                    diagnostics=raw_score_obj.diagnostics
-                )
-
-                total_score += contribution
-
-            # --------------------------------------------------------
-            # 3. SÉCURITÉ DE CALCUL (BLOCAGE DES FONCTIONS INSTABLES)
-            # --------------------------------------------------------
-            # On extrait les scores spécifiques pour la gestion des risques
-            model_risk_score = weighted_pillars.get(AuditPillar.MODEL_RISK).score if AuditPillar.MODEL_RISK in weighted_pillars else 100.0
-            data_conf_score = weighted_pillars.get(AuditPillar.DATA_CONFIDENCE).score if AuditPillar.DATA_CONFIDENCE in weighted_pillars else 100.0
-
-            # --- LOGIQUE DE SÉCURITÉ ---
-            # Si le modèle diverge (g >= WACC), l'auditeur met le MODEL_RISK à 0.
-            # On bloque alors les simulations de Monte Carlo qui seraient fausses.
-            block_mc = model_risk_score <= 0.0
-            block_hist = data_conf_score < 40.0
-
-            # --------------------------------------------------------
-            # 4. CONSTRUCTION DU RAPPORT FINAL
-            # --------------------------------------------------------
-            rating = AuditEngine._compute_rating(total_score)
-
-            # Agrégation des logs pour affichage linéaire
-            all_logs = AuditEngine._collect_logs(weighted_pillars)
-
-            # Contrat de sortie : Rapport immuable
-            report = AuditReport(
-                global_score=total_score,
-                rating=rating,
-                audit_mode=source_mode.value,
-                logs=all_logs,
-                breakdown={p.value: ps.score for p, ps in weighted_pillars.items()},
-                pillar_breakdown=AuditScoreBreakdown(
-                    pillars=weighted_pillars,
-                    aggregation_formula="Sum(Score * Weight)",
-                    total_score=total_score
-                ),
-                block_monte_carlo=block_mc,
-                block_history=block_hist,
-                critical_warning=any(l.severity == "CRITICAL" for l in all_logs)
-            )
-
-            logger.info(
-                f"[Audit] Completed | Score={total_score:.1f}/100 | Rating={rating}"
-            )
-            return report
-
-        except Exception as e:
-            logger.error(f"[Audit] Critical Failure: {e}", exc_info=True)
-            return AuditEngine._fallback_report(str(e))
-
-    # ------------------------------------------------------------------
-    # HELPERS INTERNES
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _compute_rating(score: float) -> str:
-        """Échelle de notation standardisée."""
-        if score >= 90:
-            return "AAA (High Confidence)"
-        if score >= 75:
-            return "AA (Good)"
-        if score >= 60:
-            return "BBB (Moderate)"
-        if score >= 40:
-            return "BB (Speculative)"
-        return "C (Low Confidence)"
-
-    @staticmethod
-    def _collect_logs(
-        pillars: Dict[AuditPillar, AuditPillarScore]
-    ) -> List[AuditLog]:
-        """Aplatit la structure hiérarchique pour l'affichage des logs."""
-        logs: List[AuditLog] = []
-        for ps in pillars.values():
-            for msg in ps.diagnostics:
-                # On détermine la sévérité implicite selon le message
-                severity = "CRITICAL" if "CRITICAL" in msg.upper() else "INFO"
-                if "WARN" in msg.upper():
-                    severity = "WARNING"
-
-                logs.append(
-                    AuditLog(
-                        category=ps.pillar.value,
-                        severity=severity,
-                        message=msg,
-                        penalty=0 # La pénalité est déjà dans le score
-                    )
-                )
-        return logs
-
-    @staticmethod
-    def _fallback_report(error: str) -> AuditReport:
-        """Circuit Breaker en cas de panne de l'auditeur."""
-        return AuditReport(
-            global_score=0.0,
-            rating="Error",
-            audit_mode="SystemFailure",
-            logs=[
-                AuditLog(
-                    category="System",
-                    severity="CRITICAL",
-                    message=f"Audit failure: {error}",
-                    penalty=-100
-                )
-            ],
-            breakdown={},
-            pillar_breakdown=None,
-            critical_warning=True,
-            block_monte_carlo=True,
-            block_history=True
-        )

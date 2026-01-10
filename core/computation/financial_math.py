@@ -100,25 +100,38 @@ def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
 
 def calculate_synthetic_cost_of_debt(
         rf: float,
-        ebit: float,
-        interest_expense: float,
+        ebit: Optional[float],
+        interest_expense: Optional[float],
         market_cap: float
 ) -> float:
-    """Estime le coût de la dette (Rf + Spread) basé sur l'ICR."""
-    if interest_expense <= 0 or ebit <= 0:
-        return rf + 0.0107  # Spread moyen prudent (A-rated proxy)
+    """
+    Estime le coût de la dette (Rf + Spread) basé sur l'ICR.
+    Sécurisé pour gérer les données manquantes (None-Safe).
+    """
+    # 1. Normalisation des entrées (None -> 0.0 pour les tests logiques)
+    safe_ebit = ebit if ebit is not None else 0.0
+    safe_interest = interest_expense if interest_expense is not None else 0.0
 
-    icr = ebit / interest_expense
+    # 2. Cas de défaut : Pas d'intérêt ou pas d'EBIT (Incapacité de calcul ICR)
+    if safe_interest <= 0 or safe_ebit <= 0:
+        # On applique un spread prudent (A-rated proxy)
+        return rf + 0.0107
+
+    # 3. Calcul de l'Interest Coverage Ratio (ICR)
+    icr = safe_ebit / safe_interest
+
+    # 4. Sélection de la table de spread selon la capitalisation
     is_large = market_cap >= 5_000_000_000
     table = SPREADS_LARGE_CAP if is_large else SPREADS_SMALL_MID_CAP
 
-    spread = 0.20  # Défaut Junk
-    for threshold, val in table:
+    # 5. Recherche du spread par paliers (Waterfall lookup)
+    selected_spread = 0.20  # Défaut Junk/Caa
+    for threshold, spread_value in table:
         if icr >= threshold:
-            spread = val
+            selected_spread = spread_value
             break
 
-    return rf + spread
+    return rf + selected_spread
 
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:

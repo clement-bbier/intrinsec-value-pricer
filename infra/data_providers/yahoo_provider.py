@@ -1,19 +1,19 @@
 """
 infra/data_providers/yahoo_provider.py
 
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE (ULTIMATE V4.0)
-Version : V4.0 — Refactored Modular Architecture (Clean Code)
+FOURNISSEUR DE DONNÉES — YAHOO FINANCE (ULTIMATE V5.0)
+Version : V5.0 — Waterfall Deep Fetch & None-Safe Integration
 
 Changelog :
-- Refactoring : Décomposition du 'Deep Fetch' en segments logiques (Dette, Action, Profits).
-- Stabilité : Centralisation de la logique de normalisation des prix et devises.
-- Maintenance : Isolation de la logique de calcul CAGR et Fiscalité.
-- Maintien intégral des fonctionnalités V3.8 et du cache Streamlit.
+- Action B3 : Implémentation du Waterfall (TTM Quarterly Sum -> Annual -> Info).
+- Action B4 : Suppression des fallbacks "0.0" pour préserver l'intégrité de l'audit (None-Propagation).
+- Action B5 : Agrégation intelligente D&A (Somme des composantes si séparées).
+- Maintenance : Respect total de l'architecture SOLID et du cache Streamlit.
 """
 
 import logging
 from datetime import datetime
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 
 import pandas as pd
 import yfinance as yf
@@ -29,7 +29,9 @@ from infra.data_providers.yahoo_helpers import (
     get_simple_annual_fcf,
     normalize_currency_and_price,
     extract_most_recent_value,
-    calculate_historical_cagr
+    calculate_historical_cagr,
+    CAPEX_KEYS,
+    DA_KEYS
 )
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
 from infra.ref_data.country_matrix import COUNTRY_CONTEXT, DEFAULT_COUNTRY
@@ -38,8 +40,8 @@ logger = logging.getLogger(__name__)
 
 class YahooFinanceProvider(DataProvider):
     """
-    Fournisseur de données haute performance utilisant yfinance.
-    Architecture modulaire pour faciliter l'audit des données extraites.
+    Fournisseur de données haute performance avec intelligence de cascade.
+    Garantit la récupération des métriques les plus récentes pour l'audit.
     """
 
     def __init__(self, macro_provider: YahooMacroProvider):
@@ -51,30 +53,35 @@ class YahooFinanceProvider(DataProvider):
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_company_financials(_self, ticker: str) -> CompanyFinancials:
-        """Récupère et normalise les états financiers via la stratégie Deep Fetch."""
+        """Récupère et normalise les états financiers via la cascade TTM/Annual."""
         ticker = ticker.upper().strip()
-        logger.info(f"[Yahoo] Deep Fetch initiation for {ticker}...")
+        logger.info(f"[Yahoo] Waterfall Fetch initiation for {ticker}...")
 
         try:
             yt = yf.Ticker(ticker)
             info = safe_api_call(lambda: yt.info, "Info")
 
-            # Validation du Ticker (Gestion des suffixes boursiers)
             if not info or ("currentPrice" not in info and "regularMarketPrice" not in info):
                 return _self._handle_missing_ticker(ticker)
 
-            # 1. Extraction des fondations (Prix & Devise)
             currency, current_price = normalize_currency_and_price(info)
 
-            # 2. Acquisition des trois états financiers
-            bs = safe_api_call(lambda: yt.balance_sheet, "Balance Sheet")
-            is_ = safe_api_call(lambda: yt.income_stmt, "Income Stmt")
-            cf = safe_api_call(lambda: yt.cash_flow, "Cash Flow")
+            # --- RÉCUPÉRATION MULTI-SOURCES POUR CASCADE ---
+            # États Annuels (Standard)
+            bs = safe_api_call(lambda: yt.balance_sheet, "Annual BS")
+            is_ = safe_api_call(lambda: yt.income_stmt, "Annual IS")
+            cf = safe_api_call(lambda: yt.cash_flow, "Annual CF")
 
-            # 3. Reconstruction modulaire (Clean Code)
+            # États Trimestriels (Pour calcul TTM)
+            q_is = safe_api_call(lambda: yt.quarterly_income_stmt, "Quarterly IS")
+            q_cf = safe_api_call(lambda: yt.quarterly_cash_flow, "Quarterly CF")
+
+            # --- RECONSTRUCTION MODULAIRE ---
             shares = _self._reconstruct_shares(info, bs, current_price)
             debt_data = _self._reconstruct_capital_structure(info, bs, is_)
-            profit_data = _self._reconstruct_profitability(info, is_, cf)
+
+            # Profitability utilise q_is et q_cf pour tenter le TTM
+            profit_data = _self._reconstruct_profitability(info, is_, cf, q_is, q_cf)
 
             return CompanyFinancials(
                 ticker=ticker,
@@ -95,140 +102,149 @@ class YahooFinanceProvider(DataProvider):
         except Exception as e:
             raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e))
 
+    @st.cache_data(ttl=3600 * 4)
+    def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
+        """
+        Récupère l'historique des prix pour les graphiques.
+        Cette méthode est requise par le contrat DataProvider.
+        """
+        try:
+            yt = yf.Ticker(ticker)
+            hist = yt.history(period=period)
+            if hist.empty:
+                logger.warning(f"Aucun historique trouvé pour {ticker}")
+            return hist
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération de l'historique pour {ticker}: {e}")
+            return pd.DataFrame()
+
     # ==========================================================================
-    # 2. SEGMENTS LOGIQUES DU DEEP FETCH (PRIVATE HELPERS)
+    # 2. SEGMENTS LOGIQUES (WATERFALL LOGIC)
     # ==========================================================================
 
     def _reconstruct_shares(self, info: Dict, bs: pd.DataFrame, price: float) -> float:
-        """Reconstruit le nombre d'actions en circulation."""
+        """Reconstruit le nombre d'actions avec fallback intelligent."""
         shares = info.get("sharesOutstanding")
         if not shares and bs is not None:
             shares = extract_most_recent_value(bs, ["Ordinary Shares Number", "Share Issued"])
 
-        if not shares: # Fallback par Market Cap
+        if not shares:
             mcap = info.get("marketCap", 0.0)
             if mcap > 0 and price > 0: shares = mcap / price
 
         return float(shares) if shares else 1.0
 
     def _reconstruct_capital_structure(self, info: Dict, bs: pd.DataFrame, is_: pd.DataFrame) -> Dict[str, Any]:
-        """Analyse la structure de la dette et du cash."""
-        # Dette
+        """Analyse la structure de la dette (None-Safe)."""
         debt = info.get("totalDebt")
-        if (not debt or debt == 0) and bs is not None:
+        if (not debt) and bs is not None:
             debt = extract_most_recent_value(bs, ["Total Debt", "Net Debt"])
             if not debt:
                 std = extract_most_recent_value(bs, ["Current Debt", "Current Debt And Lease Obligation"]) or 0
                 ltd = extract_most_recent_value(bs, ["Long Term Debt", "Long Term Debt And Lease Obligation"]) or 0
-                debt = std + ltd
+                debt = (std + ltd) if (std + ltd) > 0 else None
 
-        # Cash & Provisions
         cash = info.get("totalCash")
-        if (not cash or cash == 0) and bs is not None:
+        if (not cash) and bs is not None:
             cash = extract_most_recent_value(bs, ["Cash And Cash Equivalents", "Cash Financial"])
 
-        minority = 0.0
-        pensions = 0.0
-        if bs is not None:
-            minority = extract_most_recent_value(bs, ["Minority Interest", "Non Controlling Interest"]) or 0.0
-            pensions = extract_most_recent_value(bs, ["Pension And Other Postretirement Benefit Plans", "Long Term Provisions"]) or 0.0
+        minority = extract_most_recent_value(bs, ["Minority Interest", "Non Controlling Interest"]) if bs is not None else 0.0
+        pensions = extract_most_recent_value(bs, ["Long Term Provisions", "Pension And Other Postretirement Benefit Plans"]) if bs is not None else 0.0
 
-        # Intérêts
-        interest = 0.0
-        if is_ is not None:
-            val = extract_most_recent_value(is_, ["Interest Expense", "Interest Expense Non Operating"])
-            interest = float(abs(val)) if val else 0.0
+        interest = extract_most_recent_value(is_, ["Interest Expense", "Interest Expense Non Operating"]) if is_ is not None else None
 
         return {
-            "total_debt": float(debt or 0.0),
-            "cash_and_equivalents": float(cash or 0.0),
-            "minority_interests": float(minority),
-            "pension_provisions": float(pensions),
-            "interest_expense": interest
+            "total_debt": float(debt) if debt is not None else 0.0,
+            "cash_and_equivalents": float(cash) if cash is not None else 0.0,
+            "minority_interests": float(minority or 0.0),
+            "pension_provisions": float(pensions or 0.0),
+            "interest_expense": float(abs(interest)) if interest is not None else 0.0
         }
 
-    def _reconstruct_profitability(self, info: Dict, is_: pd.DataFrame, cf: pd.DataFrame) -> Dict[str, Any]:
-        """Extrait les métriques de rentabilité et de flux."""
-        fcf = get_simple_annual_fcf(cf) or 0.0
+    def _reconstruct_profitability(self, info: Dict, is_a: pd.DataFrame, cf_a: pd.DataFrame,
+                                   is_q: pd.DataFrame, cf_q: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Action B3 & B5 : Extraction TTM via somme trimestrielle avec agrégation D&A.
+        """
+        # 1. Tentative TTM (Somme des 4 derniers trimestres)
+        rev_ttm = _sum_last_4_quarters(is_q, ["Total Revenue", "Revenue"])
+        ebit_ttm = _sum_last_4_quarters(is_q, ["EBIT", "Operating Income"])
+        ni_ttm = _sum_last_4_quarters(is_q, ["Net Income Common Stockholders", "Net Income"])
 
-        # Dividendes
-        div_rate = info.get("dividendRate")
-        if div_rate is None:
-            dy = info.get("dividendYield", 0.0)
-            div_rate = dy * info.get("currentPrice", 0.0) if dy else 0.0
+        # 2. Fallbacks sur l'annuel ou l'info si TTM échoue
+        rev_ttm = rev_ttm or info.get("totalRevenue") or extract_most_recent_value(is_a, ["Total Revenue"])
+        ebit_ttm = ebit_ttm or info.get("operatingCashflow") or extract_most_recent_value(is_a, ["EBIT", "Operating Income"])
+        ni_ttm = ni_ttm or info.get("netIncomeToCommon") or extract_most_recent_value(is_a, ["Net Income"])
+
+        # 3. Capex & D&A (Action B4 : None si non trouvé pour l'audit)
+        fcf = get_simple_annual_fcf(cf_a)
+        capex = extract_most_recent_value(cf_a, CAPEX_KEYS)
+
+        # Action B5 : Agrégation D&A
+        da = extract_most_recent_value(cf_a, DA_KEYS)
+        if da is None and cf_a is not None:
+            # Si pas de ligne agrégée, on tente de sommer manuellement
+            dep = extract_most_recent_value(cf_a, ["Depreciation"]) or 0
+            amo = extract_most_recent_value(cf_a, ["Amortization"]) or 0
+            da = (dep + amo) if (dep + amo) > 0 else None
+
+        div_rate = info.get("dividendRate") or (info.get("dividendYield", 0) * info.get("currentPrice", 0))
 
         return {
-            "revenue_ttm": float(info.get("totalRevenue") or 0.0),
+            "revenue_ttm": float(rev_ttm) if rev_ttm is not None else None,
             "ebitda_ttm": float(info.get("ebitda") or 0.0),
-            "net_income_ttm": float(info.get("netIncomeToCommon") or 0.0),
+            "ebit_ttm": float(ebit_ttm) if ebit_ttm is not None else None,
+            "net_income_ttm": float(ni_ttm) if ni_ttm is not None else None,
             "eps_ttm": float(info.get("trailingEps") or 0.0),
-            "dividend_share": float(div_rate),
-            "book_value_per_share": float(info.get("bookValue", 0.0)),
-            "beta": float(info.get("beta", 1.0) or 1.0),
-            "fcf_last": float(fcf),
-            "fcf_fundamental_smoothed": float(fcf)
+            "dividend_share": float(div_rate or 0.0),
+            "book_value_per_share": float(info.get("bookValue") or 0.0),
+            "beta": float(info.get("beta") or 1.0),
+            "fcf_last": float(fcf) if fcf is not None else None,
+            "fcf_fundamental_smoothed": float(fcf) if fcf is not None else None,
+            "capex": float(capex) if capex is not None else None,
+            "depreciation_and_amortization": float(da) if da is not None else None
         }
 
-    def _handle_missing_ticker(self, ticker: str):
-        """Gestion intelligente des suffixes boursiers manquants."""
-        suffixes = [".PA", ".US", ".L", ".DE"]
-        if not any(ticker.endswith(s) for s in suffixes):
-            return self.get_company_financials(f"{ticker}.PA")
-        raise TickerNotFoundError(ticker=ticker)
-
     # ==========================================================================
-    # 3. WORKFLOW AUTO MODE (PARAM BUILDING)
+    # 3. HELPERS DE CALCULS DYNAMIQUES
     # ==========================================================================
 
-    def get_company_financials_and_parameters(
-            self, ticker: str, projection_years: int
-    ) -> Tuple[CompanyFinancials, DCFParameters]:
-        """Orchestrateur pour le mode AUTOMATIQUE."""
-        financials = self.get_company_financials(ticker)
+    def get_company_financials_and_parameters(self, ticker: str, projection_years: int) -> Tuple[CompanyFinancials, DCFParameters]:
+        """Workflow Auto-Mode."""
+        f = self.get_company_financials(ticker)
+        m = self._fetch_macro_context(f)
 
-        # 1. Contexte Macro
-        macro_ctx = self._fetch_macro_context(financials)
+        g_estimated = self._estimate_dynamic_growth(ticker)
+        tax = float(COUNTRY_CONTEXT.get(f.country, DEFAULT_COUNTRY)["tax_rate"])
 
-        # 2. Calculs Dynamiques (g et kd)
-        growth_assumption = self._estimate_dynamic_growth(ticker)
-        effective_tax_rate = float(COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)["tax_rate"])
-
-        kd_synthetic = calculate_synthetic_cost_of_debt(
-            rf=macro_ctx.risk_free_rate,
-            ebit=financials.fcf_last or 1.0,
-            interest_expense=financials.interest_expense,
-            market_cap=financials.market_cap
+        kd = calculate_synthetic_cost_of_debt(
+            rf=m.risk_free_rate, ebit=f.ebit_ttm or 1.0,
+            interest_expense=f.interest_expense, market_cap=f.market_cap
         )
 
-        # 3. Construction des Paramètres
-        params = DCFParameters(
-            risk_free_rate=macro_ctx.risk_free_rate,
-            market_risk_premium=macro_ctx.market_risk_premium,
-            corporate_aaa_yield=macro_ctx.corporate_aaa_yield,
-            cost_of_debt=kd_synthetic,
-            tax_rate=effective_tax_rate,
-            fcf_growth_rate=growth_assumption,
-            perpetual_growth_rate=macro_ctx.perpetual_growth_rate,
+        p = DCFParameters(
+            risk_free_rate=m.risk_free_rate,
+            market_risk_premium=m.market_risk_premium,
+            corporate_aaa_yield=m.corporate_aaa_yield,
+            cost_of_debt=kd, tax_rate=tax,
+            fcf_growth_rate=g_estimated,
+            perpetual_growth_rate=m.perpetual_growth_rate,
             projection_years=projection_years,
-            target_equity_weight=financials.market_cap,
-            target_debt_weight=financials.total_debt,
-            beta_volatility=0.10,
-            growth_volatility=0.015,
-            terminal_growth_volatility=0.005,
-            correlation_beta_growth=-0.30
+            target_equity_weight=f.market_cap,
+            target_debt_weight=f.total_debt
         )
-        params.normalize_weights()
-        return financials, params
+        p.normalize_weights()
+        return f, p
 
-    def _fetch_macro_context(self, financials: CompanyFinancials):
-        """Récupère le contexte macro avec sécurité fallback pays."""
+    def _fetch_macro_context(self, f: CompanyFinancials):
+        """Sécurité fallback macro."""
         try:
-            return self.macro_provider.get_macro_context(date=datetime.now(), currency=financials.currency)
-        except Exception:
+            return self.macro_provider.get_macro_context(date=datetime.now(), currency=f.currency)
+        except:
             from infra.macro.yahoo_macro_provider import MacroContext
-            c = COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)
+            c = COUNTRY_CONTEXT.get(f.country, DEFAULT_COUNTRY)
             return MacroContext(
-                date=datetime.now(), currency=financials.currency,
+                date=datetime.now(), currency=f.currency,
                 risk_free_rate=float(c["risk_free_rate"]),
                 market_risk_premium=float(c["market_risk_premium"]),
                 perpetual_growth_rate=float(c["inflation_rate"]),
@@ -236,19 +252,31 @@ class YahooFinanceProvider(DataProvider):
             )
 
     def _estimate_dynamic_growth(self, ticker: str) -> float:
-        """Estime g via le CAGR historique filtré."""
+        """CAGR historique filtré."""
         try:
             yt = yf.Ticker(ticker)
-            hist_cf = safe_api_call(lambda: yt.cash_flow, "Growth History")
+            hist_cf = safe_api_call(lambda: yt.cash_flow, "Hist Growth")
             g = calculate_historical_cagr(hist_cf, "Free Cash Flow")
-            return max(0.01, min(g, 0.10))
-        except Exception:
-            return 0.03
+            return max(0.01, min(g or 0.03, 0.10))
+        except: return 0.03
 
-    @st.cache_data(ttl=3600 * 4)
-    def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """Récupère l'historique de prix pour les graphiques."""
-        try:
-            return yf.Ticker(ticker).history(period=period)
-        except Exception:
-            return pd.DataFrame()
+    def _handle_missing_ticker(self, ticker: str):
+        suffixes = [".PA", ".US", ".L", ".DE"]
+        if not any(ticker.endswith(s) for s in suffixes):
+            return self.get_company_financials(f"{ticker}.PA")
+        raise TickerNotFoundError(ticker=ticker)
+
+# ==============================================================================
+# 4. FONCTION UTILITAIRE TTM (Somme glissante)
+# ==============================================================================
+
+def _sum_last_4_quarters(df: pd.DataFrame, keys: List[str]) -> Optional[float]:
+    """Calcule la somme des 4 derniers trimestres pour simuler le TTM."""
+    if df is None or df.empty:
+        return None
+    for key in keys:
+        if key in df.index:
+            last_4 = df.loc[key].iloc[:4]
+            if len(last_4) == 4 and not last_4.isnull().any():
+                return float(last_4.sum())
+    return None

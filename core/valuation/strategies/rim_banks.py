@@ -135,6 +135,11 @@ class RIMBankingStrategy(ValuationStrategy):
             numerical_substitution=f"{bv_per_share:,.2f} + {discounted_ri_sum:,.2f} + {discounted_tv:,.2f}"
         )
 
+        # --- 9. CALCUL DES MÉTRIQUES D'AUDIT (INJECTION) ---
+        roe = eps_base / bv_per_share if bv_per_share > 0 else 0.0
+        pb_ratio = financials.current_price / bv_per_share if bv_per_share > 0 else 0.0
+        spread = roe - ke
+
         return RIMValuationResult(
             request=None, financials=financials, params=params,
             intrinsic_value_per_share=intrinsic_value, market_price=financials.current_price,
@@ -142,5 +147,6 @@ class RIMBankingStrategy(ValuationStrategy):
             projected_residual_incomes=residual_incomes, projected_book_values=projected_bvs,
             discount_factors=discount_factors, sum_discounted_ri=discounted_ri_sum,
             terminal_value_ri=tv_ri, discounted_terminal_value=discounted_tv,
-            total_equity_value=intrinsic_value * shares_to_use, calculation_trace=self.calculation_trace
+            total_equity_value=intrinsic_value * shares_to_use, calculation_trace=self.calculation_trace,
+            roe_observed=roe, payout_ratio_observed=payout_ratio, spread_roe_ke=spread, pb_ratio_observed=pb_ratio
         )

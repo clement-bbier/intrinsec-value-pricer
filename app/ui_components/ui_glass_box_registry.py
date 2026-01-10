@@ -35,5 +35,34 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     "MC_FILTERING": {"label": "Contrôle de Convergence & Rejet", "formula": r"N_{valid} / N_{total}", "unit": "ratio"},
     "MC_MEDIAN": {"label": "Valeur Probabiliste Centrale (P50)", "formula": r"Median(IV_i)", "unit": "currency"},
     "MC_SENSITIVITY": {"label": "Sensibilité à la Corrélation (ρ)", "formula": r"\frac{\partial P50}{\partial \rho}", "unit": "currency"},
-    "MC_STRESS_TEST": {"label": "Stress Test : Scénario de Rupture", "formula": r"f(g \to 0, \beta \to 1.5)", "unit": "currency"}
+    "MC_STRESS_TEST": {"label": "Stress Test : Scénario de Rupture", "formula": r"f(g \to 0, \beta \to 1.5)", "unit": "currency"},
+
+    # --- Registre des Contrôles d'Audit (Reliability & Risk) ---
+    "AUDIT_CASH_MCAP": {"label": "Exposition Relative de la Trésorerie", "formula": r"\frac{\text{Trésorerie}}{\text{Market Cap}} < 1.0", "unit": "%", "description": "Vérifie si la valeur liquide excède la valorisation boursière (Situation Net-Net)."},
+    "AUDIT_CAPEX_DA": {"label": "Taux de Renouvellement Industriel", "formula": r"\frac{|\text{Capex}|}{\text{D\&A}} > 0.8", "unit": "%", "description": "Mesure la capacité de l'entreprise à maintenir son outil de production."},
+    "AUDIT_G_WACC": {"label": "Stabilité de la Convergence Gordon", "formula": r"g_{n} < WACC", "unit": "ratio", "description": "Assure la convergence mathématique du modèle de croissance perpétuelle."},
+    "AUDIT_SOLVENCY_ICR": {"label": "Couverture des Charges Financières", "formula": r"\frac{\text{EBIT}}{\text{Intérêts}} > 1.5", "unit": "x", "description": "Évalue la capacité à honorer la charge de la dette via le résultat opérationnel."},
+    "AUDIT_PAYOUT_STABILITY": {"label": "Soutenabilité de la Distribution", "formula": r"\frac{\text{Dividendes}}{\text{Résultat Net}} < 1.0", "unit": "%", "description": "Vérifie que la politique de dividende ne décapitalise pas l'entreprise."},
+    "AUDIT_PB_RATIO": {"label": "Ancrage sur l'Actif Net (P/B)", "formula": r"\frac{\text{Prix}}{\text{Book Value}}", "unit": "x", "description": "Indicateur de pertinence pour le modèle Residual Income (RIM)."},
+
+    # --- DATA CONFIDENCE ---
+    "beta": {"label": "Cohérence du Beta", "formula": r"0.4 < \beta < 3.0"},
+    "icr": {"label": "Solvabilité (ICR)", "formula": r"\frac{EBIT}{Intérêts} > 1.5"},
+    "cash_mcap": {"label": "Position Net-Net", "formula": r"Trésorerie < MCap"},
+    "liquidity": {"label": "Taille de Marché", "formula": r"MCap > 250M"},
+    "leverage": {"label": "Levier Financier", "formula": r"\frac{Dette}{EBIT} < 4x"},
+
+    # --- ASSUMPTION RISK ---
+    "g_rf": {"label": "Convergence Macro", "formula": r"g_{perp} < R_f"},
+    "rf_min": {"label": "Plancher de Risque", "formula": r"R_f > 1\%"},
+    "capex_da": {"label": "Taux de Renouvellement", "formula": r"\frac{Capex}{D\&A} > 0.8"},
+    "growth_limit": {"label": "Borne de Croissance", "formula": r"g < 20\%"},
+    "payout": {"label": "Soutenabilité Dividende", "formula": r"Payout < 100\%"},
+
+    # --- MODEL & METHOD ---
+    "wacc_min": {"label": "Actualisation (WACC)", "formula": r"WACC > 6\%"},
+    "tv_weight": {"label": "Poids Valeur Terminale", "formula": r"\frac{TV}{EV} < 90\%"},
+    "gordon_instability": {"label": "Stabilité Gordon", "formula": r"g < WACC"},
+    "roe_ke": {"label": "Spread de Création", "formula": r"ROE - K_e \neq 0"},
+    "pb_ratio": {"label": "Pertinence RIM", "formula": r"P/B < 8x"}
 }
