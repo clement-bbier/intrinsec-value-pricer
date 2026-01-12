@@ -89,7 +89,7 @@ def display_auto_inputs(default_ticker: str, default_years: int) -> Optional[Val
     st.sidebar.divider()
 
     # 4. BOUTON DE LANCEMENT
-    if st.sidebar.button("Lancer l'estimation", type="primary", width="stretch"):
+    if st.sidebar.button("Lancer l'estimation", type="primary",use_container_width=True):
         if not ticker:
             st.sidebar.error("Le ticker est requis.")
             return None
