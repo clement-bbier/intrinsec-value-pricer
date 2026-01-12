@@ -1,6 +1,6 @@
 """
 infra/auditing/auditors.py
-AUDITEUR INSTITUTIONNEL — VERSION V8. 1 (SOLID & CLEAN CODE)
+AUDITEUR INSTITUTIONNEL — VERSION V8.1 (SOLID & CLEAN CODE)
 Rôle : Analyse multidimensionnelle de la fiabilité des valorisations.
 Architecture : Interface Segregation + Liskov Substitution.
 """
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
-# 1. INTERFACE & BASE ABSTRAITE (SOLID :  Interface Segregation)
+# 1.INTERFACE & BASE ABSTRAITE (SOLID :  Interface Segregation)
 # ==============================================================================
 
 class IValuationAuditor(ABC):
@@ -78,7 +78,7 @@ class BaseAuditor(IValuationAuditor):
                 score -= self.PENALTY_MEDIUM
         elif not (0.4 <= f.beta <= 3.0):
             logs.append(self._create_log("Data", "WARNING", f"Beta atypique ({f.beta:.2f})", -self.PENALTY_LOW))
-            score -= self. PENALTY_LOW
+            score -= self.PENALTY_LOW
 
         # --- Test 2 : Solvabilité (ICR) ---
         checks += 1
@@ -87,11 +87,11 @@ class BaseAuditor(IValuationAuditor):
             icr = ebit / f.interest_expense
             if icr < 1.5:
                 logs.append(self._create_log("Data", "WARNING", f"Solvabilité fragile (ICR:  {icr:.2f} < 1.5)", -self.PENALTY_MEDIUM))
-                score -= self. PENALTY_MEDIUM
+                score -= self.PENALTY_MEDIUM
 
         # --- Test 3 : Cash vs MCap (Net-Net) ---
         checks += 1
-        if f.market_cap > 0 and f. cash_and_equivalents > f.market_cap:
+        if f.market_cap > 0 and f.cash_and_equivalents > f.market_cap:
             logs.append(self._create_log("Data", "CRITICAL", "Anomalie : Trésorerie > Capitalisation (Situation Net-Net)", -self.PENALTY_CRITICAL))
             score -= self.PENALTY_CRITICAL
 
@@ -99,7 +99,7 @@ class BaseAuditor(IValuationAuditor):
         checks += 1
         if f.market_cap < 250_000_000:
             logs.append(self._create_log("Data", "WARNING", "Segment Small-Cap :  Risque de liquidité et volatilité.", -self.PENALTY_LOW))
-            score -= self. PENALTY_LOW
+            score -= self.PENALTY_LOW
 
         return max(0.0, score), logs, checks
 
@@ -121,7 +121,7 @@ class BaseAuditor(IValuationAuditor):
         g_perp = params.perpetual_growth_rate or 0.0
         rf = params.risk_free_rate or 0.0
         if g_perp > rf:
-            logs.append(f"Divergence macro :  g perpétuel ({g_perp:. 1%}) > Taux sans risque ({rf:.1%}).")
+            logs.append(f"Divergence macro :  g perpétuel ({g_perp:.1%}) > Taux sans risque ({rf:.1%}).")
             score_adj -= self.PENALTY_MEDIUM
 
         # --- Test 6 : Plancher du Taux Sans Risque ---
@@ -203,13 +203,13 @@ class DCFAuditor(BaseAuditor):
         # Test 10 :  WACC minimum
         model_checks += 1
         if result.wacc < 0.06:
-            model_logs.append(f"Taux d'actualisation WACC ({result.wacc:. 1%}) excessivement bas.")
+            model_logs.append(f"Taux d'actualisation WACC ({result.wacc:.1%}) excessivement bas.")
             model_score -= self.PENALTY_MEDIUM
 
         # Test 11 : Concentration TV
         model_checks += 1
         if result.enterprise_value > 0 and result.discounted_terminal_value:
-            tv_weight = result.discounted_terminal_value / result. enterprise_value
+            tv_weight = result.discounted_terminal_value / result.enterprise_value
             if tv_weight > 0.90:
                 model_logs.append(f"Concentration de valeur critique :  {tv_weight:.1%} repose sur la TV.")
                 model_score -= self.PENALTY_HIGH
@@ -218,7 +218,7 @@ class DCFAuditor(BaseAuditor):
         model_checks += 1
         if (p.perpetual_growth_rate or 0.0) >= result.wacc:
             model_score = 0.0
-            model_logs. append("Instabilité mathématique : Taux g >= WACC.")
+            model_logs.append("Instabilité mathématique : Taux g >= WACC.")
 
         pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(
             pillar=AuditPillar.MODEL_RISK,
@@ -258,7 +258,7 @@ class RIMAuditor(BaseAuditor):
         for log in raw_logs:
             if "Trésorerie > Capitalisation" in log.message:
                 # Neutralisation sectorielle pour les banques
-                data_score += self. PENALTY_CRITICAL
+                data_score += self.PENALTY_CRITICAL
                 refined_logs.append(self._create_log("Data", "INFO", "Note sectorielle : Trésorerie élevée (Standard Bancaire).", 0))
             else:
                 refined_logs.append(log)
@@ -292,7 +292,7 @@ class RIMAuditor(BaseAuditor):
             a_score -= self.PENALTY_MEDIUM
 
         pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(
-            pillar=AuditPillar. ASSUMPTION_RISK,
+            pillar=AuditPillar.ASSUMPTION_RISK,
             score=max(0.0, a_score),
             diagnostics=a_logs,
             check_count=a_checks
@@ -331,7 +331,7 @@ class RIMAuditor(BaseAuditor):
         # =====================================================================
         # PILIER 4 : MODEL RISK (Neutre pour RIM)
         # =====================================================================
-        pillars[AuditPillar. MODEL_RISK] = AuditPillarScore(
+        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(
             pillar=AuditPillar.MODEL_RISK,
             score=100.0,
             check_count=1

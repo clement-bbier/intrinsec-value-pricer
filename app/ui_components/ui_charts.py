@@ -47,7 +47,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
         tooltip=[alt.Tooltip('Date:T', format='%d %b %Y'), alt.Tooltip('Prix:Q', format=',.2f')]
     ).properties(height=300, title=f"Historique de marché : {ticker}").interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
 
 # ============================================================================
@@ -83,7 +83,7 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
         layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2,
                                                                                strokeDash=[5, 2]).encode(x='x'))
 
-    st.altair_chart(alt.layer(*layers).properties(height=320), use_container_width=True)
+    st.altair_chart(alt.layer(*layers).properties(height=320), width="stretch")
 
     # --- Synthèse Technique ---
     st.markdown(f"""
@@ -145,7 +145,7 @@ def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator
         )
     )
 
-    st.altair_chart((heatmap + text).properties(height=350), use_container_width=True)
+    st.altair_chart((heatmap + text).properties(height=350), width="stretch")
 
 
 def display_correlation_heatmap(rho: float = -0.30) -> None:
@@ -177,5 +177,5 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
     )
 
     # Propriétés de taille fixe pour le carré, mais responsive en largeur
-    st.altair_chart((heatmap + text).properties(height=180), use_container_width=True)
+    st.altair_chart((heatmap + text).properties(height=180), width="stretch")
     st.caption("Matrice de Corrélation des Inputs (Stochastique)")

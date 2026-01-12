@@ -1,5 +1,5 @@
 """
-infra/data_providers/yahoo_helpers.py
+infra/data_providers/extraction_utils.py
 
 OUTILS D'EXTRACTION & SÉCURITÉ API — VERSION V8.1
 Rôle :  Normalisation et extraction robuste des données yfinance.

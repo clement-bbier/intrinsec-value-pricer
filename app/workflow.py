@@ -92,6 +92,7 @@ def run_workflow_and_display(request:  ValuationRequest) -> None:
     except ValuationException as e:
         status.update(label="Analyse interrompue", state="error", expanded=True)
         _display_diagnostic_message(e.diagnostic)
+        st.session_state.active_request = None
 
     except Exception as e:
         status.update(label="Erreur système critique", state="error", expanded=True)
