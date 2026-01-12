@@ -1,7 +1,7 @@
 """
 app/main.py
 POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Refonte Jalon 1.1 : Standardisation technique sans perte de contenu.
+Refonte V8.3 :  Suppression du bouton "Retour aux paramètres".
 """
 
 import sys
@@ -9,17 +9,15 @@ import logging
 from pathlib import Path
 import streamlit as st
 
-# --- INITIALISATION ENVIRONNEMENT ---
 FILE_PATH = Path(__file__).resolve()
-ROOT_PATH = FILE_PATH.parent.parent
+ROOT_PATH = FILE_PATH.parent. parent
 if str(ROOT_PATH) not in sys.path:
-    sys.path.insert(0, str(ROOT_PATH))
+    sys. path.insert(0, str(ROOT_PATH))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Jalon 1.1 : Import du style centralisé
-from app.assets.style_system import inject_institutional_design, render_terminal_header
+from app.assets. style_system import inject_institutional_design, render_terminal_header
 
 from core.models import ValuationRequest, ValuationMode, InputSource, DCFParameters
 from app.workflow import run_workflow_and_display
@@ -31,16 +29,14 @@ from app.ui_components.ui_inputs_expert import (
     render_expert_graham
 )
 
-# ==============================================================================
-# CONFIGURATION DES LABELS
-# ==============================================================================
 VALUATION_DISPLAY_NAMES = {
     ValuationMode.FCFF_TWO_STAGE: "FCFF Standard",
-    ValuationMode.FCFF_NORMALIZED: "FCFF Fundamental",
-    ValuationMode.FCFF_REVENUE_DRIVEN: "FCFF Growth",
+    ValuationMode. FCFF_NORMALIZED: "FCFF Fundamental",
+    ValuationMode. FCFF_REVENUE_DRIVEN: "FCFF Growth",
     ValuationMode.RESIDUAL_INCOME_MODEL: "RIM",
     ValuationMode.GRAHAM_1974_REVISED: "Graham"
 }
+
 
 def setup_page():
     """Configure la page en utilisant le module de style centralisé."""
@@ -49,24 +45,21 @@ def setup_page():
         page_icon="📊",
         layout="wide"
     )
-    inject_institutional_design() # CSS exact
-    render_terminal_header()      # HTML Header exact
+    inject_institutional_design()
+    render_terminal_header()
 
-# ==============================================================================
-# 2. COMPOSANTS D'AFFICHAGE (GUIDE INTÉGRAL)
-# ==============================================================================
 
 def display_onboarding_guide():
     """Guide d'onboarding - Version mot pour mot de votre original."""
-    st.info("Estimez la valeur intrinsèque d’une entreprise et comparez-la à son prix de marché.")
+    st.info("Estimez la valeur intrinsèque d'une entreprise et comparez-la à son prix de marché.")
     st.divider()
 
-    st.subheader("A. Sélection de la Méthodologie")
+    st.subheader("A.  Sélection de la Méthodologie")
     st.markdown(
         "Chaque méthodologie vise à modéliser la réalité économique d'une entreprise à un instant donné, "
         "conditionnellement à un ensemble d'hypothèses financières, "
         "selon les principes de "
-        "[l’évaluation intrinsèque](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/home.htm) :"
+        "[l'évaluation intrinsèque](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/home.htm) :"
     )
 
     m1, m2, m3 = st.columns(3)
@@ -76,9 +69,9 @@ def display_onboarding_guide():
         st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
         st.markdown("""
                     <small style="color: #64748b;">
-                    • <b>Standard</b> : Approche de Damodaran pour entreprises matures aux flux de trésorerie prévisibles.<br>
+                    • <b>Standard</b> : Approche de Damodaran pour entreprises matures aux flux de trésorerie prévisibles. <br>
                     • <b>Fundamental</b> : Adapté aux cycliques ; utilise des flux normalisés pour gommer la volatilité d'un cycle économique complet.<br>
-                    • <b>Growth</b> : Modèle "Revenue-Driven" pour la Tech ; simule la convergence des marges vers un profil normatif à l'équilibre.
+                    • <b>Growth</b> :  Modèle "Revenue-Driven" pour la Tech ; simule la convergence des marges vers un profil normatif à l'équilibre. 
                     </small>
                     """, unsafe_allow_html=True)
 
@@ -87,14 +80,14 @@ def display_onboarding_guide():
         st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
         st.markdown("""
                     <small style="color: #64748b;">
-                    Standard académique (Penman/Ohlson) pour les <b>Banques et Assurances</b> dont la valeur repose sur l'actif net.<br>
-                    Additionne la valeur comptable actuelle et la valeur actuelle de la richesse créée au-delà du coût d'opportunité des fonds propres.
+                    Standard académique (Penman/Ohlson) pour les <b>Banques et Assurances</b> dont la valeur repose sur l'actif net. <br>
+                    Additionne la valeur comptable actuelle et la valeur actuelle de la richesse créée au-delà du coût d'opportunité des fonds propres. 
                     </small>
                     """, unsafe_allow_html=True)
 
     with m3:
         st.markdown("**Modèle de Graham**")
-        st.latex(r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
+        st.latex(r"V_0 = EPS \times (8. 5 + 2g) \times \frac{4. 4}{Y}")
         st.markdown("""
                     <small style="color: #64748b;">
                     Estimation "Value" (1974 Revised) liant la capacité bénéficiaire actuelle aux conditions de crédit de haute qualité (AAA).<br>
@@ -104,19 +97,19 @@ def display_onboarding_guide():
 
     st.divider()
 
-    st.subheader("B. Pilotage & Gestion du Risque")
-    c1, c2 = st.columns(2)
+    st.subheader("B.  Pilotage & Gestion du Risque")
+    c1, c2 = st. columns(2)
     with c1:
         st.markdown("**Pilotage des Données (Auto vs Expert)**")
-        st.caption("Le mode **Auto** extrait les données de Yahoo Finance... Le mode **Expert** offre une autonomie totale...")
+        st.caption("Le mode **Auto** extrait les données de Yahoo Finance...  Le mode **Expert** offre une autonomie totale...")
     with c2:
-        st.markdown("**Analyse Probabiliste (Monte Carlo)**")
-        st.caption("La valeur intrinsèque est présentée comme une distribution... simule des variations sur la croissance et le risque...")
+        st. markdown("**Analyse Probabiliste (Monte Carlo)**")
+        st.caption("La valeur intrinsèque est présentée comme une distribution...  simule des variations sur la croissance et le risque...")
 
     st.divider()
 
     st.subheader("C. Gouvernance & Transparence")
-    g1, g2 = st.columns([2, 3])
+    g1, g2 = st. columns([2, 3])
     with g1:
         st.markdown("**Audit Reliability Score**")
         st.caption("Indicateur mesurant la cohérence des inputs...")
@@ -131,19 +124,15 @@ def display_onboarding_guide():
     d2.warning("**Avertissement** : Hypothèse divergente (ex: g > WACC).")
     d3.info("**Information** : Note ou recommandation.")
 
-# ==============================================================================
-# 3. LOGIQUE PRINCIPALE (INTÉGRALE)
-# ==============================================================================
 
 def main():
     setup_page()
 
-    # Initialisation de l'état pour la bascule
     if "active_request" not in st.session_state:
         st.session_state.active_request = None
 
     with st.sidebar:
-        st.header("1. Choix de l'entreprise")
+        st. header("1. Choix de l'entreprise")
         ticker = st.text_input("Ticker (Yahoo Finance)", value="AAPL").strip().upper()
         st.divider()
 
@@ -163,11 +152,11 @@ def main():
         mc_sims = 5000
 
         if not is_expert:
-            st.header("4. Horizon")
+            st. header("4. Horizon")
             years = st.slider("Années de projection", 3, 15, 5)
             st.divider()
 
-            if selected_mode.supports_monte_carlo:
+            if selected_mode. supports_monte_carlo:
                 st.header("5. Analyse de Risque")
                 enable_mc = st.toggle("Activer Monte Carlo", value=False)
                 if enable_mc:
@@ -186,11 +175,8 @@ def main():
             unsafe_allow_html=True
         )
 
-    # --- LOGIQUE DE BASCULE (SWITCH) ---
+    # --- AFFICHAGE DES RÉSULTATS (SANS BOUTON RETOUR) ---
     if st.session_state.active_request:
-        if st.button("Retour aux paramètres", type="secondary"):
-            st.session_state.active_request = None
-            st.rerun()
         run_workflow_and_display(st.session_state.active_request)
 
     elif is_expert:
@@ -201,7 +187,7 @@ def main():
                 ValuationMode.FCFF_TWO_STAGE: render_expert_fcff_standard,
                 ValuationMode.FCFF_NORMALIZED: render_expert_fcff_fundamental,
                 ValuationMode.FCFF_REVENUE_DRIVEN: render_expert_fcff_growth,
-                ValuationMode.RESIDUAL_INCOME_MODEL: render_expert_rim,
+                ValuationMode. RESIDUAL_INCOME_MODEL:  render_expert_rim,
                 ValuationMode.GRAHAM_1974_REVISED: render_expert_graham
             }
             render_func = expert_ui_mapping.get(selected_mode)
@@ -229,9 +215,10 @@ def main():
             options={"enable_monte_carlo": enable_mc, "num_simulations": mc_sims}
         )
         st.session_state.active_request = request
-        st.rerun()
+        st. rerun()
     else:
         display_onboarding_guide()
+
 
 if __name__ == "__main__":
     main()

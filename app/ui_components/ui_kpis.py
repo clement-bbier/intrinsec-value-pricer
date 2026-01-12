@@ -1,9 +1,11 @@
 """
 app/ui_components/ui_kpis.py
 
-RESTITUTION "GLASS BOX" — VERSION V8.2 (SOLID & DYNAMIQUE)
+RESTITUTION "GLASS BOX" — VERSION V8.3 (SOLID & DYNAMIQUE)
 Rôle : Affichage haute fidélité des résultats et audit mathématique.
 Architecture : Composants atomiques et routage dynamique des diagnostics.
+
+V8.3 :  Ajout de l'onglet "Données d'Entrée" pour traçabilité complète.
 """
 
 from __future__ import annotations
@@ -14,8 +16,15 @@ from typing import Any, List, Optional
 import numpy as np
 import streamlit as st
 
-from core.models import AuditReport, CalculationStep, ValuationResult
-from app.ui_components.ui_glass_box_registry import STEP_METADATA, get_step_metadata
+from core.models import (
+    AuditReport,
+    CalculationStep,
+    CompanyFinancials,
+    DCFParameters,
+    ValuationResult,
+    ValuationMode,
+)
+from app.ui_components.ui_glass_box_registry import get_step_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +33,7 @@ logger = logging.getLogger(__name__)
 # 1. COMPOSANTS ATOMIQUES (UI COMPONENTS)
 # ==============================================================================
 
-def atom_kpi_metric(label:  str, value: str, help_text: str = "") -> None:
+def atom_kpi_metric(label: str, value: str, help_text: str = "") -> None:
     """Affiche une métrique clé dans le bandeau supérieur."""
     st.metric(label, value, help=help_text)
 
@@ -64,10 +73,18 @@ def atom_calculation_card(
             elif result == 1.0 and "Initialisation" in label:
                 st.write("**Validée**")
             else:
-                st.markdown(f"### {result: ,.2f}")
+                st.markdown(f"### {result:,.2f}")
 
         if interpretation:
             st.caption(f"Note d'analyse : {interpretation}")
+
+
+def atom_input_row(label: str, value: str, source: str = "Auto") -> None:
+    """Ligne d'affichage d'un input avec sa source."""
+    c1, c2, c3 = st.columns([2, 2, 1])
+    c1.markdown(f"**{label}**")
+    c2.code(value, language=None)
+    c3.caption(source)
 
 
 # ==============================================================================
@@ -78,14 +95,11 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
     """Orchestrateur des onglets de détails post-calcul."""
     st.divider()
 
-    # Séparation des traces (Core vs Monte Carlo)
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
-    mc_steps = [s for s in result.calculation_trace if s. step_key.startswith("MC_")]
+    mc_steps = [s for s in result.calculation_trace if s.step_key. startswith("MC_")]
 
-    # Définition des onglets dynamiques
-    tab_labels = ["Preuve de Calcul", "Audit de Fiabilité"]
+    tab_labels = ["Données d'Entrée", "Preuve de Calcul", "Audit de Fiabilité"]
 
-    # Vérification sécurisée pour Monte Carlo
     show_mc_tab = (
         result.request is not None
         and result.request.mode. supports_monte_carlo
@@ -94,74 +108,328 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
     )
 
     if show_mc_tab:
-        tab_labels.append("Analyse de Risque (MC)")
+        tab_labels. append("Analyse de Risque (MC)")
 
     tabs = st.tabs(tab_labels)
 
     with tabs[0]:
+        _render_inputs_tab(result)
+
+    with tabs[1]:
         for idx, step in enumerate(core_steps, start=1):
             _render_smart_step(idx, step)
 
-    with tabs[1]:
+    with tabs[2]:
         _render_reliability_report(result. audit_report, result)
 
     if show_mc_tab:
-        with tabs[2]:
+        with tabs[3]:
             _render_monte_carlo_tab(result, mc_steps)
 
 
 # ==============================================================================
-# 3. ONGLET AUDIT (VERSION V8.2 DYNAMIQUE - GLASS BOX)
+# 3. ONGLET DONNÉES D'ENTRÉE (NOUVEAU V8.3)
 # ==============================================================================
 
-def _render_reliability_report(report: Optional[AuditReport], result:  ValuationResult) -> None:
+def _render_inputs_tab(result: ValuationResult) -> None:
+    """Onglet 1 : Affiche toutes les données d'entrée utilisées pour le calcul."""
+    f = result.financials
+    p = result.params
+    mode = result.request.mode if result.request else None
+
+    st.markdown("#### Récapitulatif des Données Utilisées")
+    st.caption("Ce tableau liste l'ensemble des inputs injectés dans le moteur de calcul.")
+
+    # =========================================================================
+    # Section A : Identification de l'Entreprise
+    # =========================================================================
+    with st.expander("A. Identification de l'Entreprise", expanded=True):
+        _render_company_identity(f)
+
+    # =========================================================================
+    # Section B : Données Financières
+    # =========================================================================
+    with st.expander("B. Données Financières (Source:  Yahoo Finance)", expanded=True):
+        _render_financial_data(f)
+
+    # =========================================================================
+    # Section C : Paramètres du Modèle
+    # =========================================================================
+    with st.expander("C. Paramètres du Modèle de Valorisation", expanded=True):
+        _render_model_parameters(p, mode, result)
+
+    # =========================================================================
+    # Section D : Configuration Monte Carlo (si activé)
+    # =========================================================================
+    if p.enable_monte_carlo:
+        with st.expander("D. Configuration Monte Carlo", expanded=True):
+            _render_monte_carlo_config(p)
+
+
+def _render_company_identity(f: CompanyFinancials) -> None:
+    """Sous-section :  Identité de l'entreprise."""
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown("**Ticker**")
+        st.code(f.ticker)
+
+    with c2:
+        st.markdown("**Nom**")
+        st.code(f.name)
+
+    with c3:
+        st.markdown("**Secteur**")
+        st.code(f.sector)
+
+    with c4:
+        st.markdown("**Pays**")
+        st.code(f.country)
+
+    c5, c6, c7, c8 = st.columns(4)
+
+    with c5:
+        st.markdown("**Industrie**")
+        st.code(f.industry)
+
+    with c6:
+        st.markdown("**Devise**")
+        st.code(f.currency)
+
+    with c7:
+        st.markdown("**Beta (β)**")
+        st.code(f"{f.beta:.2f}")
+
+    with c8:
+        st.markdown("**Actions en circulation**")
+        st.code(f"{f.shares_outstanding:,.0f}")
+
+
+def _render_financial_data(f: CompanyFinancials) -> None:
+    """Sous-section :  Données financières clés."""
+    st.markdown("##### Marché & Capitalisation")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown("**Cours Actuel**")
+        st.code(f"{f.current_price:,.2f} {f.currency}")
+
+    with c2:
+        st.markdown("**Capitalisation Boursière**")
+        st.code(f"{f.market_cap:,.0f} {f.currency}")
+
+    with c3:
+        st.markdown("**Book Value / Action**")
+        bv_display = f"{f.book_value_per_share:,.2f}" if f.book_value_per_share else "N/A"
+        st.code(bv_display)
+
+    st.markdown("##### Structure du Capital")
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown("**Dette Totale**")
+        st.code(f"{f.total_debt:,.0f} {f.currency}")
+
+    with c2:
+        st.markdown("**Trésorerie**")
+        st.code(f"{f.cash_and_equivalents:,.0f} {f.currency}")
+
+    with c3:
+        st.markdown("**Dette Nette**")
+        st.code(f"{f.net_debt:,.0f} {f.currency}")
+
+    with c4:
+        st.markdown("**Charges d'Intérêts**")
+        st.code(f"{f.interest_expense:,.0f} {f. currency}")
+
+    st.markdown("##### Performance Opérationnelle (TTM)")
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown("**Chiffre d'Affaires**")
+        rev_display = f"{f.revenue_ttm:,.0f}" if f.revenue_ttm else "N/A"
+        st.code(rev_display)
+
+    with c2:
+        st.markdown("**EBIT**")
+        ebit_display = f"{f. ebit_ttm:,.0f}" if f.ebit_ttm else "N/A"
+        st.code(ebit_display)
+
+    with c3:
+        st.markdown("**Résultat Net**")
+        ni_display = f"{f.net_income_ttm:,.0f}" if f.net_income_ttm else "N/A"
+        st.code(ni_display)
+
+    with c4:
+        st.markdown("**BPA (EPS)**")
+        eps_display = f"{f.eps_ttm:,.2f}" if f.eps_ttm else "N/A"
+        st.code(eps_display)
+
+    st.markdown("##### Flux de Trésorerie")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown("**FCF (Dernier)**")
+        fcf_display = f"{f.fcf_last:,.0f}" if f.fcf_last else "N/A"
+        st.code(fcf_display)
+
+    with c2:
+        st.markdown("**CapEx**")
+        capex_display = f"{f.capex:,.0f}" if f.capex else "N/A"
+        st.code(capex_display)
+
+    with c3:
+        st.markdown("**D&A**")
+        da_display = f"{f.depreciation_and_amortization:,.0f}" if f.depreciation_and_amortization else "N/A"
+        st.code(da_display)
+
+
+def _render_model_parameters(p: DCFParameters, mode: Optional[ValuationMode], result: ValuationResult) -> None:
+    """Sous-section : Paramètres du modèle de valorisation."""
+    st.markdown("##### Taux et Primes de Risque")
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown("**Taux Sans Risque (Rf)**")
+        rf_display = f"{p.risk_free_rate:.2%}" if p.risk_free_rate else "N/A"
+        st.code(rf_display)
+
+    with c2:
+        st.markdown("**Prime de Risque (MRP)**")
+        mrp_display = f"{p.market_risk_premium:.2%}" if p.market_risk_premium else "N/A"
+        st.code(mrp_display)
+
+    with c3:
+        st.markdown("**Coût de la Dette (Kd)**")
+        kd_display = f"{p.cost_of_debt:.2%}" if p.cost_of_debt else "N/A"
+        st.code(kd_display)
+
+    with c4:
+        st.markdown("**Taux d'Imposition (τ)**")
+        tax_display = f"{p.tax_rate:.1%}" if p.tax_rate else "N/A"
+        st.code(tax_display)
+
+    st.markdown("##### Croissance et Horizon")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown("**Taux de Croissance (g)**")
+        g_display = f"{p.fcf_growth_rate:.2%}" if p. fcf_growth_rate else "N/A"
+        st. code(g_display)
+
+    with c2:
+        st. markdown("**Croissance Perpétuelle (gn)**")
+        gn_display = f"{p.perpetual_growth_rate:.2%}" if p.perpetual_growth_rate else "N/A"
+        st.code(gn_display)
+
+    with c3:
+        st.markdown("**Horizon de Projection**")
+        st.code(f"{p.projection_years} ans")
+
+    st.markdown("##### Métriques Calculées")
+    c1, c2, c3 = st. columns(3)
+
+    wacc = getattr(result, 'wacc', None)
+    ke = getattr(result, 'cost_of_equity', None)
+
+    with c1:
+        st.markdown("**WACC**")
+        wacc_display = f"{wacc:.2%}" if wacc else "N/A"
+        st.code(wacc_display)
+
+    with c2:
+        st.markdown("**Coût des Fonds Propres (Ke)**")
+        ke_display = f"{ke:.2%}" if ke else "N/A"
+        st.code(ke_display)
+
+    with c3:
+        st.markdown("**Méthode de Valorisation**")
+        mode_display = mode.value if mode else "N/A"
+        st.code(mode_display)
+
+    st.markdown("##### Valeur Terminale")
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.markdown("**Méthode TV**")
+        tv_method = p.terminal_method. value if p.terminal_method else "N/A"
+        st.code(tv_method)
+
+    with c2:
+        if p.terminal_method and p.terminal_method.value == "EXIT_MULTIPLE":
+            st.markdown("**Multiple de Sortie**")
+            exit_display = f"{p.exit_multiple_value:.1f}x" if p.exit_multiple_value else "N/A"
+            st.code(exit_display)
+        else:
+            st. markdown("**Taux Perpétuel (gn)**")
+            gn_display = f"{p.perpetual_growth_rate:.2%}" if p.perpetual_growth_rate else "N/A"
+            st.code(gn_display)
+
+
+def _render_monte_carlo_config(p: DCFParameters) -> None:
+    """Sous-section : Configuration Monte Carlo."""
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown("**Simulations**")
+        st.code(f"{p.num_simulations:,}")
+
+    with c2:
+        st. markdown("**Volatilité Beta**")
+        vb_display = f"{p. beta_volatility:.1%}" if p.beta_volatility else "Auto"
+        st.code(vb_display)
+
+    with c3:
+        st.markdown("**Volatilité Croissance**")
+        vg_display = f"{p. growth_volatility:.1%}" if p.growth_volatility else "Auto"
+        st.code(vg_display)
+
+    with c4:
+        st.markdown("**Corrélation (β, g)**")
+        st.code(f"{p.correlation_beta_growth:.2f}")
+
+
+# ==============================================================================
+# 4. ONGLET AUDIT (VERSION V8.2 DYNAMIQUE - GLASS BOX)
+# ==============================================================================
+
+def _render_reliability_report(report: Optional[AuditReport], result: ValuationResult) -> None:
     """Rendu analytique dynamique basé sur les piliers d'audit réels."""
     if not report:
         st.info("Aucun rapport d'audit généré pour cette simulation.")
         return
 
-    # =========================================================================
-    # 1. BANDEAU DE CERTITUDE
-    # =========================================================================
     c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
         st.markdown(f"### Score d'Audit Global :  {report.global_score:.1f} / 100")
     with c2:
-        st. metric("Rating Score", report.rating)
+        st.metric("Rating Score", report.rating)
     with c3:
         coverage = (report.audit_coverage or 0.0) * 100
         st.metric("Couverture", f"{coverage:.0f}%")
 
     st.divider()
 
-    # =========================================================================
-    # 2. TABLE DE VÉRIFICATION DYNAMIQUE
-    # =========================================================================
     st.markdown("#### Table de Vérification des Invariants")
 
-    # En-têtes fixes
     h1, h2, h3, h4 = st.columns([2.5, 2.5, 3, 1.5])
     h1.caption("INDICATEUR")
     h2.caption("RÈGLE NORMATIVE")
     h3.caption("PREUVE NUMÉRIQUE")
     h4.caption("VERDICT")
 
-    # Parcours des piliers d'audit fournis par l'auditeur
     if report.pillar_breakdown and report.pillar_breakdown.pillars:
-        for _pillar_type, score_obj in report.pillar_breakdown.pillars.items():
+        for _pillar_type, score_obj in report.pillar_breakdown. pillars.items():
             for diag_message in score_obj.diagnostics:
 
-                # Identification de la clé dans STEP_METADATA
                 test_key = _map_message_to_meta_key(diag_message)
                 meta = get_step_metadata(test_key)
 
                 if not meta:
                     meta = {"label": "Test Spécifique", "formula": r"\text{N/A}"}
 
-                # Extraction de la preuve numérique
                 substitution = _format_numerical_evidence(test_key, result)
 
-                # Détermination du statut visuel
                 alert_keywords = ["ALERTE", "RISQUE", "DIVERGENCE", "FRAGILE", "HORS", "CRITIQUE", "DÉFICIT"]
                 is_alert = any(k in diag_message. upper() for k in alert_keywords)
                 status_text = "Alerte" if is_alert else "Conforme"
@@ -174,9 +442,6 @@ def _render_reliability_report(report: Optional[AuditReport], result:  Valuation
                     r3.info(substitution)
                     r4.markdown(f":{color}[**{status_text}**]")
 
-    # =========================================================================
-    # 3. REGISTRE DES DIAGNOSTICS DÉTAILLÉS
-    # =========================================================================
     relevant_logs = [log for log in report.logs if "attribute" not in log.message. lower()]
 
     if relevant_logs:
@@ -192,19 +457,16 @@ def _render_reliability_report(report: Optional[AuditReport], result:  Valuation
 
 
 # ==============================================================================
-# 4. HELPERS DE MAPPING & EVIDENCE (UNIFIÉ V8.2)
+# 5. HELPERS DE MAPPING & EVIDENCE (UNIFIÉ V8.2)
 # ==============================================================================
 
 def _map_message_to_meta_key(message:  str) -> str:
     """
-    Mapping unifié : diagnostic texte → clé AUDIT_* du registre.
+    Mapping unifié :  diagnostic texte → clé AUDIT_* du registre.
     Toutes les clés retournées sont des clés modernes (namespace AUDIT_).
     """
     m = message.upper()
 
-    # =========================================================================
-    # Data Confidence
-    # =========================================================================
     if "BETA" in m or "BÊTA" in m:
         return "AUDIT_BETA_COHERENCE"
     if "ICR" in m or "SOLVABILITÉ" in m:
@@ -216,9 +478,6 @@ def _map_message_to_meta_key(message:  str) -> str:
     if "LEVIER" in m:
         return "AUDIT_LEVERAGE"
 
-    # =========================================================================
-    # Assumption Risk
-    # =========================================================================
     if "CONVERGENCE MACRO" in m or "G PERPÉTUEL" in m and "RF" in m:
         return "AUDIT_G_RF_CONVERGENCE"
     if "PLANCHER" in m and "RF" in m:
@@ -230,9 +489,6 @@ def _map_message_to_meta_key(message:  str) -> str:
     if "PAYOUT" in m or "DISTRIBUTION" in m:
         return "AUDIT_PAYOUT_STABILITY"
 
-    # =========================================================================
-    # Model Risk
-    # =========================================================================
     if "WACC" in m and ("BAS" in m or "MINIMUM" in m or "PLANCHER" in m):
         return "AUDIT_WACC_FLOOR"
     if "VALEUR TERMINALE" in m or "CONCENTRATION" in m and "TV" in m:
@@ -240,9 +496,6 @@ def _map_message_to_meta_key(message:  str) -> str:
     if "G >=" in m or "GORDON" in m or ("G" in m and "WACC" in m):
         return "AUDIT_G_WACC"
 
-    # =========================================================================
-    # Method Fit
-    # =========================================================================
     if "SPREAD" in m or "ROE" in m and "KE" in m:
         return "AUDIT_ROE_KE_SPREAD"
     if "P/B" in m or "BOOK VALUE" in m:
@@ -259,9 +512,6 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
     f = res.financials
 
     try:
-        # =====================================================================
-        # Data Confidence
-        # =====================================================================
         if key == "AUDIT_BETA_COHERENCE":
             return f"Beta extrait : {f.beta:.2f}"
 
@@ -274,15 +524,12 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
             return f"Cash/MCap : {ratio:.1%}"
 
         if key == "AUDIT_LIQUIDITY":
-            return f"MCap :  {f.market_cap:,. 0f} {f.currency}"
+            return f"MCap :  {f.market_cap:,.0f} {f.currency}"
 
         if key == "AUDIT_LEVERAGE":
             val = getattr(res, 'leverage_observed', None)
             return f"Dette/EBIT : {val:.2f}x" if val is not None else "N/A"
 
-        # =====================================================================
-        # Assumption Risk
-        # =====================================================================
         if key == "AUDIT_G_RF_CONVERGENCE":
             g = res.params.perpetual_growth_rate or 0
             rf = res.params.risk_free_rate or 0
@@ -304,9 +551,6 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
             val = getattr(res, 'payout_ratio_observed', None)
             return f"Payout Ratio : {val:.1%}" if val is not None else "Donnée N/A"
 
-        # =====================================================================
-        # Model Risk
-        # =====================================================================
         if key == "AUDIT_WACC_FLOOR":
             w = getattr(res, 'wacc', 0) or 0
             return f"WACC Calculé : {w:.2%}"
@@ -320,9 +564,6 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
             g = res.params.perpetual_growth_rate or 0
             return f"g:{g:.1%} vs WACC:{w:.1%}"
 
-        # =====================================================================
-        # Method Fit
-        # =====================================================================
         if key == "AUDIT_ROE_KE_SPREAD":
             val = getattr(res, 'spread_roe_ke', None)
             return f"Spread ROE-Ke : {val:.2%}" if val is not None else "N/A"
@@ -332,19 +573,19 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
             return f"P/B Observé : {val:.2f}x" if val is not None else "N/A"
 
     except Exception as e:
-        logger.error(f"Erreur extraction preuve pour {key}: {e}")
+        logger.error("Erreur extraction preuve pour %s:  %s", key, e)
         return "Erreur source"
 
     return "Vérification OK"
 
 
 # ==============================================================================
-# 5. ONGLET MONTE CARLO (PROBABILISTE)
+# 6. ONGLET MONTE CARLO (PROBABILISTE)
 # ==============================================================================
 
 def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]) -> None:
     """Rendu probabiliste de l'analyse Monte Carlo."""
-    from app.ui_components.ui_charts import display_simulation_chart, display_correlation_heatmap
+    from app.ui_components. ui_charts import display_simulation_chart, display_correlation_heatmap
 
     if result.simulation_results is None or len(result.simulation_results) == 0:
         st. warning("La simulation n'a pas pu converger (Paramètres instables).")
@@ -355,9 +596,6 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     prob_overvalued = (sims < result.market_price).mean() if result.market_price else 0.0
     q = result.quantiles or {}
 
-    # =========================================================================
-    # Métriques principales
-    # =========================================================================
     st.markdown("#### Analyse de Conviction Probabiliste")
 
     c1, c2, c3 = st.columns(3)
@@ -369,15 +607,12 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
 
     st.divider()
 
-    # =========================================================================
-    # Sensibilité et Stress Test
-    # =========================================================================
     col_sens, col_stress = st.columns([1.5, 2.5])
 
     with col_sens:
         st.markdown("**Sensibilité Corrélation (ρ)**")
         if result.rho_sensitivity:
-            sens_data = [{"Scénario": k, "IV (P50)": f"{v: ,.2f}"} for k, v in result. rho_sensitivity.items()]
+            sens_data = [{"Scénario": k, "IV (P50)": f"{v:,.2f}"} for k, v in result. rho_sensitivity.items()]
             st.table(sens_data)
         else:
             st.caption("Données non disponibles.")
@@ -385,12 +620,9 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     with col_stress:
         st.markdown("**Scénario de Stress (Bear Case)**")
         if result.stress_test_value is not None:
-            st.warning(f"**Valeur Plancher : {result.stress_test_value: ,.2f} {f.currency}**")
-            st.caption("Paramètres :  g=0%, β=1.5.  Simulation de rupture des fondamentaux.")
+            st.warning(f"**Valeur Plancher :  {result.stress_test_value:,.2f} {f.currency}**")
+            st.caption("Paramètres :  g=0%, β=1.5. Simulation de rupture des fondamentaux.")
 
-    # =========================================================================
-    # Audit des Hypothèses Statistiques
-    # =========================================================================
     with st.expander("Audit des Hypothèses Statistiques", expanded=False):
         col_mat, col_inf = st.columns([1.2, 2.8])
 
@@ -400,26 +632,23 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
         with col_inf:
             beta_vol = p.beta_volatility or 0.0
             growth_vol = p.growth_volatility or 0.0
-            st. caption(f"Volatilité Beta : {beta_vol:.1%}")
+            st.caption(f"Volatilité Beta : {beta_vol:.1%}")
             st.caption(f"Volatilité Croissance : {growth_vol:.1%}")
             st.info("La corrélation négative standard prévient les scénarios financiers incohérents.")
 
-    # =========================================================================
-    # Détail du traitement stochastique
-    # =========================================================================
     with st.expander("Détail du traitement stochastique (Audit)", expanded=False):
         for idx, step in enumerate(mc_steps, start=1):
             _render_smart_step(idx, step)
 
 
 # ==============================================================================
-# 6. RÉSUMÉ EXÉCUTIF
+# 7. RÉSUMÉ EXÉCUTIF
 # ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
     """Synthèse décisionnelle supérieure."""
     f = result.financials
-    st.subheader(f"Dossier de Valorisation : {f.name} ({f.ticker})")
+    st.subheader(f"Dossier de Valorisation :  {f.name} ({f.ticker})")
 
     iv = result.intrinsic_value_per_share
     iv_display = f"{iv:,.2f} {f.currency}" if iv is not None else "N/A"
