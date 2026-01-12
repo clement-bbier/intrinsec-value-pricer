@@ -1,20 +1,18 @@
 """
 core/valuation/strategies/dcf_standard.py
-MÉTHODE : FCFF TWO-STAGE — VERSION V5.0 (Registry-Driven)
+
+MÉTHODE : FCFF TWO-STAGE — VERSION V8.2
 Rôle : Sélection du flux de départ et délégation au moteur mathématique commun.
-Audit-Grade : Ajout de la substitution numérique explicite et labels normalisés.
+Architecture : Registry-Driven avec substitution numérique explicite.
 """
+
+from __future__ import annotations
 
 import logging
 
 from core.exceptions import CalculationError
-from core.models import (
-    CompanyFinancials,
-    DCFParameters,
-    DCFValuationResult,
-    TraceHypothesis
-)
-from core.valuation.strategies.abstract import ValuationStrategy
+from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
+from core.valuation.strategies. abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +20,8 @@ logger = logging.getLogger(__name__)
 class StandardFCFFStrategy(ValuationStrategy):
     """
     FCFF Two-Stage Discounted Cash Flow (Standard).
+
+    Adapté aux entreprises matures avec des flux de trésorerie stables.
     """
 
     academic_reference = "Damodaran"
@@ -39,48 +39,56 @@ class StandardFCFFStrategy(ValuationStrategy):
     ) -> DCFValuationResult:
         """
         Exécute la stratégie en identifiant le flux de départ.
+
+        Args:
+            financials: Données financières de l'entreprise
+            params:  Paramètres de valorisation
+
+        Returns:
+            Résultat DCF complet
         """
+        logger.info("[Strategy] FCFF Two-Stage | ticker=%s", financials. ticker)
 
-        logger.info(
-            "[Strategy] FCFF Two-Stage | ticker=%s",
-            financials.ticker
-        )
+        # =====================================================================
+        # 1. SÉLECTION DU FCF DE BASE
+        # =====================================================================
+        fcf_base, source = self._select_base_fcf(financials, params)
 
-        # ====================================================
-        # 1. SÉLECTION DU FCF DE BASE (ID: FCF_BASE_SELECTION)
-        # ====================================================
-
-        if params.manual_fcf_base is not None:
-            fcf_base = params.manual_fcf_base
-            source = "Manual override (Expert)"
-        else:
-            fcf_base = financials.fcf_last
-            source = "Last reported FCF (TTM) - Yahoo Deep Fetch"
-
-        if fcf_base is None:
-            raise CalculationError(
-                "FCF de base indisponible (fcf_last manquant ou nul)."
-            )
-
-        # --- Trace Glass Box (Audit-Grade : Substitution Numérique) ---
-        # On affiche clairement l'origine de la donnée pour l'auditeur
         self.add_step(
             step_key="FCF_BASE_SELECTION",
             label="Sélection du Flux de Trésorerie de Base (FCF_0)",
-            theoretical_formula="FCF_0 = Initial_Cash_Flow",
+            theoretical_formula=r"FCF_0",
             result=fcf_base,
             numerical_substitution=f"FCF_0 = {fcf_base:,.2f} ({source})",
             interpretation=f"Le modèle démarre avec un flux de {fcf_base:,.2f} {financials.currency}."
         )
 
-        # ====================================================
+        # =====================================================================
         # 2. EXÉCUTION DU DCF DÉTERMINISTE (DÉLÉGATION)
-        # ====================================================
-        # L'intelligence des Multiples et de l'Audit de corrélation
-        # est gérée par le moteur mathématique commun pour garantir
-        # l'uniformité entre toutes les stratégies FCFF.
+        # =====================================================================
         return self._run_dcf_math(
             base_flow=fcf_base,
             financials=financials,
             params=params
         )
+
+    def _select_base_fcf(
+        self,
+        financials:  CompanyFinancials,
+        params: DCFParameters
+    ) -> tuple[float, str]:
+        """
+        Sélectionne le FCF de base avec priorité aux paramètres manuels.
+
+        Returns:
+            Tuple (fcf_base, source_description)
+        """
+        if params.manual_fcf_base is not None:
+            return params.manual_fcf_base, "Manual override (Expert)"
+
+        if financials.fcf_last is None:
+            raise CalculationError(
+                "FCF de base indisponible (fcf_last manquant ou nul)."
+            )
+
+        return financials.fcf_last, "Last reported FCF (TTM) - Yahoo Deep Fetch"

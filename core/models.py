@@ -405,6 +405,8 @@ class ValuationResult(BaseModel, ABC):
     quantiles: Optional[Dict[str, float]] = None
     rho_sensitivity: Dict[str, float] = Field(default_factory=dict)
     stress_test_value: Optional[float] = None
+    mc_valid_ratio: Optional[float] = None
+    mc_clamping_applied: Optional[bool] = None
 
     # =========================================================================
     # Post-initialisation

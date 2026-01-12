@@ -1,33 +1,37 @@
 """
 core/valuation/strategies/abstract.py
-SOCLE ABSTRAIT V6.8 — AUDIT-GRADE & MODEL RISK CONTROL
+
+SOCLE ABSTRAIT — VERSION V8.2
 Rôle : Moteur de calcul DCF avec détection de divergence et transparence totale.
-Note : Correction syntaxique et respect de la souveraineté du zéro.
+Architecture : Audit-Grade avec respect de la souveraineté du zéro.
 """
+
+from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from core.exceptions import CalculationError, ModelDivergenceError
-from core.models import (
-    CompanyFinancials,
-    DCFParameters,
-    ValuationResult,
-    DCFValuationResult,
-    CalculationStep,
-    TraceHypothesis,
-    TerminalValueMethod
-)
 from core.computation.financial_math import (
-    calculate_wacc,
     calculate_discount_factors,
+    calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
-    calculate_terminal_value_exit_multiple
+    calculate_wacc,
 )
 from core.computation.growth import project_flows
+from core.exceptions import CalculationError, ModelDivergenceError
+from core. models import (
+    CalculationStep,
+    CompanyFinancials,
+    DCFParameters,
+    DCFValuationResult,
+    TerminalValueMethod,
+    TraceHypothesis,
+    ValuationResult,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class ValuationStrategy(ABC):
     """Socle abstrait standardisé pour toutes les stratégies de valorisation."""
@@ -36,9 +40,29 @@ class ValuationStrategy(ABC):
         self.glass_box_enabled = glass_box_enabled
         self.calculation_trace: List[CalculationStep] = []
 
-    def add_step(self, step_key: str, result: float, numerical_substitution: str,
-                 label: str = "", theoretical_formula: str = "",
-                 interpretation: str = "", hypotheses: List[TraceHypothesis] = None) -> None:
+    # ==========================================================================
+    # 1. INTERFACE PUBLIQUE
+    # ==========================================================================
+
+    @abstractmethod
+    def execute(
+        self,
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> ValuationResult:
+        """Exécute la stratégie de valorisation."""
+        pass
+
+    def add_step(
+        self,
+        step_key: str,
+        result: float,
+        numerical_substitution: str,
+        label:  str = "",
+        theoretical_formula: str = "",
+        interpretation:  str = "",
+        hypotheses:  Optional[List[TraceHypothesis]] = None
+    ) -> None:
         """Enregistre une étape enrichie pour l'audit buy-side."""
         if not self.glass_box_enabled:
             return
@@ -62,17 +86,85 @@ class ValuationStrategy(ABC):
                 f"Le contrat de sortie n'est pas respecté pour {self.__class__.__name__}."
             )
 
-    @abstractmethod
-    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
-        pass
+    # ==========================================================================
+    # 2. MOTEUR DCF COMMUN (AUDIT-GRADE)
+    # ==========================================================================
+
+    def _run_dcf_math(
+        self,
+        base_flow: float,
+        financials: CompanyFinancials,
+        params: DCFParameters,
+        wacc_override: Optional[float] = None
+    ) -> DCFValuationResult:
+        """
+        Exécute le calcul DCF complet avec traçabilité Glass Box.
+
+        Args:
+            base_flow:  Flux de trésorerie de départ
+            financials: Données financières de l'entreprise
+            params: Paramètres de valorisation
+            wacc_override:  WACC manuel (optionnel)
+
+        Returns:
+            Résultat DCF complet avec métriques d'audit
+        """
+        # A. WACC
+        wacc, wacc_ctx = self._compute_wacc(financials, params, wacc_override)
+
+        # B.  Projections FCF
+        flows = self._compute_projections(base_flow, params)
+
+        # C. Valeur Terminale
+        tv, key_tv = self._compute_terminal_value(flows, wacc, params)
+
+        # D. NPV et Enterprise Value
+        factors, sum_pv, pv_tv, ev = self._compute_enterprise_value(flows, tv, wacc, params)
+
+        # E.  Equity Bridge
+        equity_val, bridge_components = self._compute_equity_bridge(ev, financials, params)
+
+        # F. Valeur par action
+        iv_share = self._compute_value_per_share(equity_val, bridge_components["shares"], financials)
+
+        # G. Métriques d'audit
+        audit_metrics = self._compute_audit_metrics(financials, pv_tv, ev)
+
+        return DCFValuationResult(
+            request=None,
+            financials=financials,
+            params=params,
+            intrinsic_value_per_share=iv_share,
+            market_price=financials.current_price,
+            wacc=wacc,
+            cost_of_equity=wacc_ctx.cost_of_equity if wacc_ctx else 0.0,
+            cost_of_debt_after_tax=wacc_ctx.cost_of_debt_after_tax if wacc_ctx else 0.0,
+            projected_fcfs=flows,
+            discount_factors=factors,
+            sum_discounted_fcf=sum_pv,
+            terminal_value=tv,
+            discounted_terminal_value=pv_tv,
+            enterprise_value=ev,
+            equity_value=equity_val,
+            calculation_trace=self.calculation_trace,
+            icr_observed=audit_metrics["icr"],
+            capex_to_da_ratio=audit_metrics["capex_ratio"],
+            terminal_value_weight=audit_metrics["tv_weight"],
+            payout_ratio_observed=audit_metrics["payout"],
+            leverage_observed=audit_metrics["leverage"]
+        )
 
     # ==========================================================================
-    # LOGIQUE MATHÉMATIQUE (AUDIT-GRADE V6.8)
+    # 3. ÉTAPES DE CALCUL (PRIVATE)
     # ==========================================================================
-    def _run_dcf_math(self, base_flow: float, financials: CompanyFinancials,
-                      params: DCFParameters, wacc_override: Optional[float] = None) -> DCFValuationResult:
 
-        # --- A. WACC : Coût Moyen Pondéré du Capital ---
+    def _compute_wacc(
+        self,
+        financials:  CompanyFinancials,
+        params: DCFParameters,
+        wacc_override: Optional[float]
+    ) -> tuple:
+        """Calcule le WACC avec traçabilité."""
         if wacc_override is not None:
             wacc = wacc_override
             wacc_ctx = None
@@ -80,13 +172,13 @@ class ValuationStrategy(ABC):
         else:
             wacc_ctx = calculate_wacc(financials, params)
             wacc = wacc_ctx.wacc
-
-            # Respect de la souveraineté du 0.0 pour le Beta
             beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
 
             sub_wacc = (
-                f"{wacc_ctx.weight_equity:.2f} × [{params.risk_free_rate or 0:.4f} + {beta_used:.2f} × ({params.market_risk_premium or 0:.4f})] + "
-                f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt or 0:.4f} × (1 - {params.tax_rate or 0:.2f})]"
+                f"{wacc_ctx. weight_equity:.2f} × [{params.risk_free_rate or 0:.4f} + "
+                f"{beta_used:.2f} × ({params.market_risk_premium or 0:4f})] + "
+                f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt or 0:.4f} × "
+                f"(1 - {params.tax_rate or 0:.2f})]"
             )
 
         self.add_step(
@@ -98,22 +190,43 @@ class ValuationStrategy(ABC):
             interpretation=f"Taux d'actualisation cible (WACC) de {wacc:.2%}, basé sur la structure de capital actuelle."
         )
 
-        # --- B. PROJECTIONS : Flux de Trésorerie Disponibles ---
-        flows = project_flows(base_flow, params.projection_years, params.fcf_growth_rate,
-                              params.perpetual_growth_rate, params.high_growth_years)
+        return wacc, wacc_ctx
+
+    def _compute_projections(
+        self,
+        base_flow: float,
+        params:  DCFParameters
+    ) -> List[float]:
+        """Projette les flux de trésorerie."""
+        flows = project_flows(
+            base_flow,
+            params.projection_years,
+            params.fcf_growth_rate,
+            params.perpetual_growth_rate,
+            params.high_growth_years
+        )
 
         self.add_step(
             step_key="FCF_PROJ",
             label="Projections des Flux (Somme)",
             theoretical_formula=r"\sum FCF_t",
             result=sum(flows),
-            numerical_substitution=f"{base_flow:,.0f} × (1 + {params.fcf_growth_rate or 0:.3f})^{params.projection_years}",
+            numerical_substitution=f"{base_flow: ,.0f} × (1 + {params.fcf_growth_rate or 0:.3f})^{params.projection_years}",
             interpretation=f"Projection sur {params.projection_years} ans à un taux de croissance annuel moyen de {params.fcf_growth_rate or 0:.2%}"
         )
 
-        # --- C. VALEUR TERMINALE : Contrôle de Risque de Modèle ---
+        return flows
+
+    def _compute_terminal_value(
+        self,
+        flows: List[float],
+        wacc: float,
+        params: DCFParameters
+    ) -> tuple:
+        """Calcule la valeur terminale avec contrôle de divergence."""
         if params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             p_growth = params.perpetual_growth_rate or 0.0
+
             if p_growth >= wacc:
                 raise ModelDivergenceError(p_growth, wacc)
 
@@ -137,7 +250,16 @@ class ValuationStrategy(ABC):
             interpretation="Estimation de la valeur de l'entreprise au-delà de la période explicite."
         )
 
-        # --- D. NPV : Valeur Actuelle de l'Entreprise (EV) ---
+        return tv, key_tv
+
+    def _compute_enterprise_value(
+        self,
+        flows: List[float],
+        tv: float,
+        wacc: float,
+        params: DCFParameters
+    ) -> tuple:
+        """Calcule la valeur d'entreprise (EV)."""
         factors = calculate_discount_factors(wacc, params.projection_years)
         sum_pv = sum(f * d for f, d in zip(flows, factors))
         pv_tv = tv * factors[-1]
@@ -152,10 +274,18 @@ class ValuationStrategy(ABC):
             interpretation="Valeur totale de l'outil de production actualisée."
         )
 
-        # --- E. BRIDGE : Passage à la Valeur des Fonds Propres ---
+        return factors, sum_pv, pv_tv, ev
+
+    def _compute_equity_bridge(
+        self,
+        ev: float,
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> tuple:
+        """Calcule le passage EV → Equity Value."""
         debt = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
         cash = params.manual_cash if params.manual_cash is not None else financials.cash_and_equivalents
-        shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
+        shares = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials. shares_outstanding
         minorities = params.manual_minority_interests if params.manual_minority_interests is not None else financials.minority_interests
         pensions = params.manual_pension_provisions if params.manual_pension_provisions is not None else financials.pension_provisions
 
@@ -170,9 +300,26 @@ class ValuationStrategy(ABC):
             interpretation="Ajustement de la structure financière."
         )
 
-        # --- F. VALEUR FINALE PAR ACTION ---
+        bridge_components = {
+            "debt": debt,
+            "cash":  cash,
+            "shares": shares,
+            "minorities":  minorities,
+            "pensions":  pensions
+        }
+
+        return equity_val, bridge_components
+
+    def _compute_value_per_share(
+        self,
+        equity_val: float,
+        shares: float,
+        financials:  CompanyFinancials
+    ) -> float:
+        """Calcule la valeur intrinsèque par action."""
         if shares <= 0:
             raise CalculationError("Nombre d'actions en circulation invalide (<= 0).")
+
         iv_share = equity_val / shares
 
         self.add_step(
@@ -180,34 +327,46 @@ class ValuationStrategy(ABC):
             label="Valeur Intrinsèque par Action",
             theoretical_formula=r"Price = \frac{Equity\_Value}{Shares\_Outstanding}",
             result=iv_share,
-            numerical_substitution=f"{equity_val:,.0f} / {shares:,.0f}",
+            numerical_substitution=f"{equity_val: ,.0f} / {shares:,.0f}",
             interpretation=f"Estimation de la valeur réelle d'une action pour {financials.ticker}."
         )
 
-        # --- G. CALCUL DES MÉTRIQUES D'AUDIT (INJECTION) ---
-        icr = financials.ebit_ttm / financials.interest_expense if financials.interest_expense > 0 else None
+        return iv_share
 
+    def _compute_audit_metrics(
+        self,
+        financials: CompanyFinancials,
+        pv_tv: float,
+        ev:  float
+    ) -> dict:
+        """Calcule les métriques d'audit pour injection dans le résultat."""
+        # ICR (Interest Coverage Ratio)
+        icr = None
+        if financials.interest_expense and financials.interest_expense > 0:
+            icr = financials.ebit_ttm / financials.interest_expense
+
+        # Capex / D&A ratio
         capex_ratio = None
         if financials.capex and financials.depreciation_and_amortization:
             capex_ratio = abs(financials.capex) / financials.depreciation_and_amortization
 
+        # Terminal Value weight
         tv_weight = pv_tv / ev if ev > 0 else None
 
-        # Utilisation de la nouvelle propriété calculée dans models.py
-        payout = financials.dividends_total_calculated / financials.net_income_ttm if (
-                    financials.net_income_ttm and financials.net_income_ttm > 0) else None
+        # Payout ratio
+        payout = None
+        if financials.net_income_ttm and financials.net_income_ttm > 0:
+            payout = financials.dividends_total_calculated / financials.net_income_ttm
 
-        leverage = financials.total_debt / financials.ebit_ttm if (
-                    financials.ebit_ttm and financials.ebit_ttm > 0) else None
+        # Leverage
+        leverage = None
+        if financials.ebit_ttm and financials.ebit_ttm > 0:
+            leverage = financials.total_debt / financials.ebit_ttm
 
-        return DCFValuationResult(
-            request=None, financials=financials, params=params,
-            intrinsic_value_per_share=iv_share, market_price=financials.current_price,
-            wacc=wacc, cost_of_equity=wacc_ctx.cost_of_equity if wacc_ctx else 0.0,
-            cost_of_debt_after_tax=wacc_ctx.cost_of_debt_after_tax if wacc_ctx else 0.0,
-            projected_fcfs=flows, discount_factors=factors,
-            sum_discounted_fcf=sum_pv, terminal_value=tv, discounted_terminal_value=pv_tv,
-            enterprise_value=ev, equity_value=equity_val, calculation_trace=self.calculation_trace,
-            icr_observed=icr, capex_to_da_ratio=capex_ratio, terminal_value_weight=tv_weight,
-            payout_ratio_observed=payout, leverage_observed=leverage
-        )
+        return {
+            "icr": icr,
+            "capex_ratio":  capex_ratio,
+            "tv_weight": tv_weight,
+            "payout": payout,
+            "leverage": leverage
+        }
