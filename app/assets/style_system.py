@@ -5,6 +5,7 @@ Rôle : Centraliser le CSS et les composants visuels de structure (Action 1.1).
 """
 
 import streamlit as st
+from app.ui_components.ui_texts import CommonTexts, LegalTexts
 
 # ==============================================================================
 # 1. DESIGN SYSTEM (CSS COPIÉ MOT POUR MOT)
@@ -80,26 +81,24 @@ def inject_institutional_design():
     st.markdown(INSTITUTIONAL_CSS, unsafe_allow_html=True)
 
 def render_terminal_header():
-    """Rendu HTML du titre et de la note de conformité (Version intégrale)."""
-    # Titre et Badge
+    """Rendu HTML utilisant les constantes centralisées."""
+    # Titre et Badge (Utilise CommonTexts)
     st.markdown(
-        """
+        f"""
         <div style="display: flex; align-items: center; margin-bottom: 6px;">
-            <h1 style="margin: 0; font-weight: 700; color: #1e293b;">Intrinsic Value Pricer</h1>
-            <span class="project-badge">Projet Personnel Public</span>
+            <h1 style="margin: 0; font-weight: 700; color: #1e293b;">{CommonTexts.APP_TITLE}</h1>
+            <span class="project-badge">{CommonTexts.PROJECT_BADGE}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # Note de conformité (Disclaimer complet)
+    # Note de conformité (Utilise LegalTexts)
     st.markdown(
-        """
+        f"""
         <div style="margin-bottom: 16px;">
             <p style="font-size: 0.85rem; color: #64748b; font-style: italic; line-height: 1.4; margin: 0;">
-                <b>Note de conformité</b> : Ces estimations constituent des simulations prospectives basées sur des modèles d’analyse intrinsèque. 
-                La précision du prix théorique dépend strictement de la qualité des entrées fournies et des paramètres de risque sélectionnés. 
-                Ce travail à visée pédagogique ne constitue pas un conseil en investissement.
+                <b>{LegalTexts.COMPLIANCE_TITLE}</b> : {LegalTexts.COMPLIANCE_BODY}
             </p>
         </div>
         """,
