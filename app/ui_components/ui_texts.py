@@ -491,3 +491,67 @@ class RegistryTexts:
 
     AUDIT_UNK_L = "Test Spécifique"
     AUDIT_UNK_D = "Test non référencé dans le registre."
+
+class WorkflowTexts:
+    """Messages d'état du cycle de vie de l'analyse (workflow.py)."""
+    STATUS_MAIN_LABEL = "Initialisation de l'analyse..."
+    STATUS_DATA_ACQUISITION = "Acquisition des données de marché et macro-économiques..."
+    STATUS_SMART_MERGE = "Conciliation des hypothèses (Smart Merge)..."
+    STATUS_ENGINE_RUN = "Exécution du moteur de calcul : {mode}..."
+    STATUS_MC_RUN = "Simulation stochastique, tests de sensibilité et stress-testing en cours..."
+    STATUS_AUDIT_GEN = "Génération du rapport d'audit et score de confiance..."
+
+    STATUS_COMPLETE = "Analyse finalisée avec succès"
+    STATUS_INTERRUPTED = "Analyse interrompue"
+    STATUS_CRITICAL_ERROR = "Erreur système critique"
+
+    DIAG_EXPANDER_TITLE = "Détails techniques et remédiation"
+    DIAG_ACTION_LABEL = "Action recommandée :"
+
+    PREFIX_CRITICAL = "**ARRÊT CRITIQUE :**"
+    PREFIX_WARNING = "**AVERTISSEMENT :**"
+    PREFIX_INFO = "**INFORMATION :**"
+
+
+class DiagnosticTexts:
+    """Messages du registre de diagnostic et des exceptions (diagnostics.py & exceptions.py)."""
+
+    # Registre : Divergence Gordon
+    MODEL_G_DIV_MSG = "ERREUR DE CONVERGENCE : Le taux de croissance g ({g:.2%}) est supérieur ou égal au WACC ({wacc:.2%})."
+    MODEL_G_DIV_HINT = "Mathématiquement, une entreprise ne peut pas croître plus vite que son coût du capital à l'infini. Réduisez 'gn' dans le Terminal Expert ou révisez le WACC."
+
+    # Registre : Instabilité Monte Carlo
+    MODEL_MC_INST_MSG = "INSTABILITÉ CRITIQUE : Seuls {valid_ratio:.1%} des scénarios sont valides (Seuil minimum requis : {threshold:.0%})."
+    MODEL_MC_INST_HINT = "Le modèle est trop sensible à vos volatilités actuelles (g >= WACC trop fréquent). Diminuez la 'Vol. gn' ou augmentez la marge entre gn et le WACC."
+
+    # Registre : Métriques manquantes
+    DATA_MISSING_CORE_MSG = "Métrique critique manquante : {metric_name}."
+    DATA_MISSING_CORE_HINT = "Utilisez le mode 'Expert' pour saisir manuellement cette donnée."
+
+    # Registre : Risques
+    RISK_EXCESSIVE_GROWTH_MSG = "Croissance projetée agressive ({g:.2%})."
+    RISK_EXCESSIVE_GROWTH_HINT = "Vérifiez si ce taux est soutenable face à la moyenne du secteur."
+
+    DATA_NEGATIVE_BETA_MSG = "Beta atypique détecté ({beta:.2f})."
+    DATA_NEGATIVE_BETA_HINT = "Un Beta négatif est rare ; vérifiez la source ou saisissez un Beta sectoriel."
+
+    # Erreurs Système (Crash)
+    SYSTEM_CRASH_MSG = "Une défaillance technique inattendue a été détectée lors de l'exécution."
+    SYSTEM_CRASH_HINT = "Veuillez vérifier votre connexion internet ou tenter une requête simplifiée (Mode Auto)."
+
+    # Exceptions : Ticker & Données
+    TICKER_NOT_FOUND_MSG = "Le ticker '{ticker}' est introuvable sur Yahoo Finance."
+    TICKER_NOT_FOUND_HINT = "Vérifiez l'orthographe (ex: 'AIR.PA' pour Airbus) ou si l'entreprise est radiée."
+
+    DATA_FIELD_MISSING_YEAR = "Donnée manquante pour {ticker} : '{field}' pour l'année {year}."
+    DATA_FIELD_MISSING_GENERIC = "Donnée fondamentale manquante pour {ticker} : '{field}' est vide ou invalide."
+    DATA_FIELD_HINT = "Cette entreprise ne publie peut-être pas cette donnée, ou l'historique est trop court."
+
+    # Exceptions : Infrastructure
+    PROVIDER_FAIL_MSG = "Échec de connexion au fournisseur {provider}."
+    PROVIDER_FAIL_HINT = "Vérifiez votre connexion internet. L'API est peut-être temporairement indisponible."
+
+    # Exceptions : Logique Modèle
+    MODEL_LOGIC_MSG = "Incohérence dans le modèle {model} : {issue}"
+    MODEL_LOGIC_HINT = "Vérifiez vos hypothèses de croissance ou de taux d'actualisation."
+    CALC_GENERIC_HINT = "Vérifiez les données d'entrée ou les paramètres du modèle dans le Terminal Expert."
