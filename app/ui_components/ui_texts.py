@@ -619,3 +619,50 @@ class CalculationErrors:
     MISSING_EPS_GRAHAM = "EPS strictement positif requis pour le modèle de Graham."
     INVALID_AAA = "Le rendement obligataire AAA (Y) doit être > 0."
     MISSING_FCF_STD = "FCF de base indisponible (fcf_last manquant ou nul)."
+
+
+class AuditCategories:
+    """Catégories de logs d'audit (infra/auditing/)."""
+    DATA = "Données"
+    MACRO = "Macro"
+    SYSTEM = "Système"
+    MODEL = "Modèle"
+
+
+class AuditMessages:
+    """Verdicts et diagnostics générés par l'auditeur institutionnel (auditors.py)."""
+    # --- Base Auditor (Data & Macro) ---
+    BETA_MISSING = "Beta manquant."
+    BETA_ATYPICAL = "Beta atypique ({beta:.2f})"
+    SOLVENCY_FRAGILE = "Solvabilité fragile (ICR: {icr:.2f} < 1.5)"
+    NET_NET_ANOMALY = "Anomalie : Trésorerie > Capitalisation (Situation Net-Net)"
+    LIQUIDITY_SMALL_CAP = "Segment Small-Cap : Risque de liquidité et volatilité."
+
+    MACRO_G_RF_DIV = "Divergence macro : g perpétuel ({g:.1%}) > Taux sans risque ({rf:.1%})."
+    MACRO_RF_FLOOR = "Paramétrage Rf < 1% : Risque de survalorisation mécanique."
+
+    # --- DCF Auditor ---
+    DCF_LEVERAGE_EXCESSIVE = "Levier financier excessif (> 4x EBIT)."
+    DCF_REINVESTMENT_DEFICIT = "Déficit de réinvestissement : Capex < 80% des dotations aux amortissements."
+    DCF_GROWTH_OUTSIDE_NORMS = "Taux de croissance g ({g:.1%}) hors normes normatives."
+    DCF_WACC_FLOOR = "Taux d'actualisation WACC ({wacc:.1%}) excessivement bas."
+    DCF_TV_CONCENTRATION = "Concentration de valeur critique : {weight:.1%} repose sur la TV."
+    DCF_MATH_INSTABILITY = "Instabilité mathématique : Taux g >= WACC."
+
+    # --- RIM Auditor ---
+    RIM_CASH_SECTOR_NOTE = "Note sectorielle : Trésorerie élevée (Standard Bancaire)."
+    RIM_PERSISTENCE_EXTREME = "Hypothèse de persistance des surprofits (ω) statistiquement extrême."
+    RIM_PAYOUT_EROSION = "Payout Ratio ({payout:.1%}) > 100% : risque d'érosion des fonds propres."
+    RIM_SPREAD_ROE_KE_NULL = "Spread ROE-Ke quasi nul : absence de création de richesse additionnelle."
+    RIM_PB_RATIO_HIGH = "Ratio P/B élevé ({pb:.1f}x) : le modèle RIM perd en pertinence."
+
+    # --- Graham Auditor ---
+    GRAHAM_GROWTH_PRUDENCE = "Taux de croissance g Graham ({g:.1%}) hors périmètre de prudence."
+
+
+class AuditEngineTexts:
+    """Messages techniques et fallbacks du moteur d'audit (audit_engine.py)."""
+    NO_REQUEST_WARNING = "[AuditEngine] ValuationResult sans requête, utilisation du fallback."
+    ENGINE_FAILURE_PREFIX = "Audit Engine Failure: {error}"
+    AGGREGATION_FORMULA = "Somme(Score * Poids) * Couverture"
+    FALLBACK_RATING = "Erreur"
