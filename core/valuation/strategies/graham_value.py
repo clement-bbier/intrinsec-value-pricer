@@ -14,6 +14,14 @@ from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, GrahamValuationResult
 from core.valuation.strategies. abstract import ValuationStrategy
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,11 +64,11 @@ class GrahamNumberStrategy(ValuationStrategy):
 
         self. add_step(
             step_key="GRAHAM_EPS_BASE",
-            label="BPA Normalisé (EPS)",
+            label=RegistryTexts.GRAHAM_EPS_L,
             theoretical_formula=r"EPS",
             result=eps,
             numerical_substitution=f"EPS = {eps:.2f} ({source_eps})",
-            interpretation="Bénéfice par action utilisé comme socle de rentabilité."
+            interpretation=StrategyInterpretations.GRAHAM_EPS
         )
 
         # =====================================================================
@@ -71,11 +79,11 @@ class GrahamNumberStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="GRAHAM_MULTIPLIER",
-            label="Multiplicateur de croissance",
+            label=RegistryTexts.GRAHAM_MULT_L,
             theoretical_formula=r"M = 8.5 + 2g",
             result=growth_multiplier,
             numerical_substitution=f"8.5 + 2 × {g_display:.2f}",
-            interpretation="Prime de croissance appliquée selon le barème révisé de Graham."
+            interpretation=StrategyInterpretations.GRAHAM_MULT
         )
 
         # =====================================================================
@@ -90,11 +98,11 @@ class GrahamNumberStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="GRAHAM_FINAL",
-            label="Valeur Graham 1974",
+            label=RegistryTexts.GRAHAM_IV_L,
             theoretical_formula=r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}",
             result=intrinsic_value,
             numerical_substitution=f"({eps:.2f} × {growth_multiplier:.2f} × 4.4) / {y_display:.2f}",
-            interpretation="Estimation de la valeur intrinsèque ajustée par le rendement des obligations AAA."
+            interpretation=StrategyInterpretations.GRAHAM_IV
         )
 
         # =====================================================================
@@ -128,36 +136,26 @@ class GrahamNumberStrategy(ValuationStrategy):
     ) -> tuple[float, str]:
         """
         Sélectionne l'EPS avec cascade de fallbacks.
-
-        Priorité :
-        1. Manual override (Expert)
-        2. EPS TTM (Yahoo)
-        3. Net Income / Shares (calculé)
-
-        Returns:
-            Tuple (eps, source_description)
         """
         # Priorité 1 : Override manuel
         if params.manual_fcf_base is not None:
-            return params.manual_fcf_base, "Manual override (Expert)"
+            return params.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
         # Priorité 2 : EPS TTM direct
         if financials.eps_ttm is not None and financials.eps_ttm > 0:
-            return financials.eps_ttm, "Yahoo Finance (TTM)"
+            return financials.eps_ttm, StrategySources.YAHOO_TTM_SIMPLE
 
         # Priorité 3 :  Calcul depuis Net Income
         if financials.net_income_ttm and financials.shares_outstanding > 0:
             eps_calc = financials.net_income_ttm / financials.shares_outstanding
             if eps_calc > 0:
-                return eps_calc, "Calculated (Net Income / Shares)"
+                return eps_calc, StrategySources.CALCULATED_NI
 
-        raise CalculationError("EPS strictement positif requis pour le modèle de Graham.")
+        raise CalculationError(CalculationErrors.MISSING_EPS_GRAHAM)
 
     def _compute_growth_multiplier(self, growth_rate: float) -> float:
         """
         Calcule le multiplicateur de croissance Graham.
-
-        Formule : M = 8.5 + 2g (où g est en pourcentage)
         """
         g_percent = growth_rate * 100.0
         return 8.5 + 2.0 * g_percent
@@ -165,7 +163,7 @@ class GrahamNumberStrategy(ValuationStrategy):
     def _validate_aaa_yield(self, aaa_yield: float) -> None:
         """Valide que le rendement AAA est strictement positif."""
         if aaa_yield is None or aaa_yield <= 0:
-            raise CalculationError("Le rendement obligataire AAA (Y) doit être > 0.")
+            raise CalculationError(CalculationErrors.INVALID_AAA)
 
     def _compute_intrinsic_value(
         self,
@@ -175,9 +173,6 @@ class GrahamNumberStrategy(ValuationStrategy):
     ) -> float:
         """
         Calcule la valeur intrinsèque Graham.
-
-        Formule : IV = (EPS × Multiplier × 4.4) / Y
-        Le 4.4 est le rendement AAA de référence en 1962.
         """
         y_percent = aaa_yield * 100.0
         return (eps * multiplier * 4.4) / y_percent

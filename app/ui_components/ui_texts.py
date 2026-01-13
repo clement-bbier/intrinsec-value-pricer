@@ -512,7 +512,6 @@ class WorkflowTexts:
     PREFIX_WARNING = "**AVERTISSEMENT :**"
     PREFIX_INFO = "**INFORMATION :**"
 
-
 class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions (diagnostics.py & exceptions.py)."""
 
@@ -555,3 +554,68 @@ class DiagnosticTexts:
     MODEL_LOGIC_MSG = "Incohérence dans le modèle {model} : {issue}"
     MODEL_LOGIC_HINT = "Vérifiez vos hypothèses de croissance ou de taux d'actualisation."
     CALC_GENERIC_HINT = "Vérifiez les données d'entrée ou les paramètres du modèle dans le Terminal Expert."
+
+class StrategySources:
+    """Descriptions des sources de données utilisées dans les calculs (strategies/)."""
+    MANUAL_OVERRIDE = "Manual override (Expert)"
+    YAHOO_TTM = "Last reported FCF (TTM) - Yahoo Deep Fetch"
+    YAHOO_FUNDAMENTAL = "Fundamental smoothed FCF (Yahoo/Analyst)"
+    YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
+    CALCULATED_NI = "Calculated (Net Income / Shares)"
+    ANALYST_OVERRIDE = "Surcharge Analyste"
+    WACC_MANUAL = "WACC = {wacc:.4f} (Manual Override)"
+
+class StrategyInterpretations:
+    """Notes pédagogiques dynamiques générées par les stratégies (Glass Box)."""
+    # DCF & Abstract
+    WACC = "Taux d'actualisation cible (WACC) de {wacc:.2%}, basé sur la structure de capital actuelle."
+    PROJ = "Projection sur {years} ans à un taux de croissance annuel moyen de {g:.2%}"
+    TV = "Estimation de la valeur de l'entreprise au-delà de la période explicite."
+    EV = "Valeur totale de l'outil de production actualisée."
+    BRIDGE = "Ajustement de la structure financière."
+    IV = "Estimation de la valeur réelle d'une action pour {ticker}."
+
+    # RIM
+    RIM_TV = "Estimation de la persistance des surprofits."
+
+    # Growth
+    GROWTH_REV = "Point de départ du modèle basé sur le chiffre d'affaires TTM."
+    GROWTH_MARGIN = "Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
+    GROWTH_TV = "Valeur de l'entreprise à l'infini basée sur la dernière marge convergée."
+    GROWTH_EV = "Somme actualisée des flux et de la valeur terminale."
+    GROWTH_IV = "Estimation finale du prix théorique par titre."
+
+    # Fundamental
+    FUND_NORM = "Le modèle utilise un flux lissé sur un cycle complet pour neutraliser la volatilité des bénéfices industriels ou cycliques."
+    FUND_VIABILITY = "Validation de la capacité de l'entreprise à générer des flux de trésorerie positifs sur un cycle."
+
+    # Graham
+    GRAHAM_EPS = "Bénéfice par action utilisé comme socle de rentabilité."
+    GRAHAM_MULT = "Prime de croissance appliquée selon le barème révisé de Graham."
+    GRAHAM_IV = "Estimation de la valeur intrinsèque ajustée par le rendement des obligations AAA."
+
+    # Monte Carlo
+    MC_CLAMP_NOTE = " (Écrêté de {g_raw:.1%} pour cohérence WACC)"
+    MC_INIT = "Calibration des lois normales multivariées.{note}"
+    MC_SAMPLING_SUB = "Génération de {count} vecteurs d'inputs via Décomposition de Cholesky."
+    MC_SAMPLING_INTERP = "Application des corrélations pour garantir la cohérence économique des scénarios tirés."
+    MC_FILTERING = "Élimination des scénarios de divergence pour stabiliser la distribution."
+    MC_SENS_NEUTRAL = "Neutre (rho=0)"
+    MC_SENS_BASE = "Base (rho=-0.3)"
+    MC_SENS_INTERP = "Audit de l'impact de la corrélation sur la stabilité de la valeur médiane."
+    MC_STRESS_SUB = "Bear Case = {val:,.2f} {curr}"
+    MC_STRESS_INTERP = "Scénario de stress : croissance nulle et risque élevé (Point de rupture)."
+
+class CalculationErrors:
+    """Messages d'erreurs levés lors des phases de calcul (CalculationError)."""
+    CONTRACT_VIOLATION = "Le contrat de sortie n'est pas respecté pour {cls}."
+    INVALID_SHARES = "Nombre d'actions en circulation invalide (<= 0)."
+    MISSING_BV = "Book Value par action requise et > 0."
+    MISSING_EPS_RIM = "EPS requis pour projeter les profits résiduels."
+    MISSING_REV = "Chiffre d'affaires (Revenue) requis pour ce modèle."
+    INVALID_SHARES_SIMPLE = "Nombre d'actions invalide."
+    MISSING_FCF_NORM = "FCF normalisé indisponible (fcf_fundamental_smoothed manquant)."
+    NEGATIVE_FCF_NORM = "Flux normalisé négatif : l'entreprise ne génère pas de valeur sur son cycle. La méthode DCF est mathématiquement inapplicable ici."
+    MISSING_EPS_GRAHAM = "EPS strictement positif requis pour le modèle de Graham."
+    INVALID_AAA = "Le rendement obligataire AAA (Y) doit être > 0."
+    MISSING_FCF_STD = "FCF de base indisponible (fcf_last manquant ou nul)."

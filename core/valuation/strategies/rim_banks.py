@@ -21,6 +21,14 @@ from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, RIMValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,13 +55,6 @@ class RIMBankingStrategy(ValuationStrategy):
     ) -> RIMValuationResult:
         """
         Exécute la stratégie Residual Income Model.
-
-        Args:
-            financials: Données financières de l'entreprise
-            params:  Paramètres de valorisation
-
-        Returns:
-            Résultat RIM complet avec métriques d'audit
         """
         logger.info("[Strategy] Residual Income Model | ticker=%s", financials.ticker)
 
@@ -64,10 +65,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_BV_INITIAL",
-            label="Actif Net Comptable Initial",
+            label=RegistryTexts.RIM_BV_L,
             theoretical_formula=r"BV_0",
             result=bv_per_share,
-            numerical_substitution=f"BV_0 = {bv_per_share:,.2f}"
+            numerical_substitution=f"BV_0 = {bv_per_share:,.2f}",
+            interpretation=RegistryTexts.RIM_BV_D
         )
 
         # =====================================================================
@@ -77,10 +79,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_KE_CALC",
-            label="Coût des Fonds Propres (Ke)",
+            label=RegistryTexts.RIM_KE_L,
             theoretical_formula=r"k_e = R_f + \beta \times MRP",
             result=ke,
-            numerical_substitution=sub_ke
+            numerical_substitution=sub_ke,
+            interpretation=RegistryTexts.RIM_KE_D
         )
 
         # =====================================================================
@@ -91,10 +94,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_PAYOUT",
-            label="Politique de Distribution",
+            label=RegistryTexts.RIM_PAYOUT_L,
             theoretical_formula=r"Payout = \frac{Div}{EPS}",
             result=payout_ratio,
-            numerical_substitution=f"{financials.last_dividend or 0.0:,.2f} / {eps_base:,.2f}"
+            numerical_substitution=f"{financials.last_dividend or 0.0:,.2f} / {eps_base:,.2f}",
+            interpretation=RegistryTexts.RIM_PAYOUT_D
         )
 
         # =====================================================================
@@ -105,10 +109,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_EPS_PROJ",
-            label="Projection des Bénéfices",
+            label=RegistryTexts.RIM_EPS_PROJ_L,
             theoretical_formula=r"EPS_t = EPS_{t-1} \times (1+g)",
             result=projected_eps[-1],
-            numerical_substitution=f"{eps_base:,.2f} × (1 + {params.fcf_growth_rate:.3f})^{years}"
+            numerical_substitution=f"{eps_base:,.2f} × (1 + {params.fcf_growth_rate:.3f})^{years}",
+            interpretation=RegistryTexts.RIM_EPS_PROJ_D
         )
 
         # =====================================================================
@@ -120,10 +125,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_RI_CALC",
-            label="Calcul des Surprofits (RI)",
+            label=RegistryTexts.RIM_RI_L,
             theoretical_formula=r"RI_t = NI_t - (k_e \times BV_{t-1})",
             result=sum(residual_incomes),
-            numerical_substitution=f"{projected_eps[0]:,.2f} - ({ke:.4f} × {bv_per_share:,.2f})"
+            numerical_substitution=f"{projected_eps[0]:,.2f} - ({ke:.4f} × {bv_per_share:,.2f})",
+            interpretation=RegistryTexts.RIM_RI_D
         )
 
         # =====================================================================
@@ -134,10 +140,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="NPV_CALC",
-            label="Valeur Actuelle des Surprofits",
+            label=RegistryTexts.DCF_EV_L,
             theoretical_formula=r"\sum \frac{RI_t}{(1+k_e)^t}",
             result=discounted_ri_sum,
-            numerical_substitution=f"NPV(Residual Incomes, r={ke:.4f})"
+            numerical_substitution=f"NPV(Residual Incomes, r={ke:.4f})",
+            interpretation=RegistryTexts.DCF_EV_D
         )
 
         # =====================================================================
@@ -155,10 +162,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_FINAL_VALUE",
-            label="Valeur Intrinsèque RIM",
+            label=RegistryTexts.RIM_IV_L,
             theoretical_formula=r"IV = BV_0 + \sum PV(RI_t) + PV(TV)",
             result=intrinsic_value,
-            numerical_substitution=f"{bv_per_share:,.2f} + {discounted_ri_sum:,.2f} + {discounted_tv:,.2f}"
+            numerical_substitution=f"{bv_per_share:,.2f} + {discounted_ri_sum:,.2f} + {discounted_tv:,.2f}",
+            interpretation=RegistryTexts.RIM_IV_D
         )
 
         # =====================================================================
@@ -201,7 +209,7 @@ class RIMBankingStrategy(ValuationStrategy):
         bv = params.manual_book_value if params.manual_book_value is not None else financials.book_value_per_share
 
         if bv is None or bv <= 0:
-            raise CalculationError("Book Value par action requise et > 0.")
+            raise CalculationError(CalculationErrors.MISSING_BV)
 
         return bv
 
@@ -215,7 +223,7 @@ class RIMBankingStrategy(ValuationStrategy):
 
         if params.manual_cost_of_equity is not None:
             ke = params.manual_cost_of_equity
-            sub_ke = f"k_e = {ke:.4f} (Surcharge Analyste)"
+            sub_ke = f"k_e = {ke:.4f} ({StrategySources.ANALYST_OVERRIDE})"
         else:
             ke = calculate_cost_of_equity_capm(
                 params.risk_free_rate, beta_used, params.market_risk_premium
@@ -233,7 +241,7 @@ class RIMBankingStrategy(ValuationStrategy):
                 eps_base = financials.net_income_ttm / financials.shares_outstanding
 
         if eps_base is None or eps_base <= 0:
-            raise CalculationError("EPS requis pour projeter les profits résiduels.")
+            raise CalculationError(CalculationErrors.MISSING_EPS_RIM)
 
         return eps_base
 
@@ -271,11 +279,11 @@ class RIMBankingStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="RIM_TV_OHLSON",
-            label="Valeur Terminale (Persistance ω)",
+            label=RegistryTexts.RIM_TV_L,
             theoretical_formula=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
             result=discounted_tv,
             numerical_substitution=f"{sub_tv} × {last_discount_factor:.4f}",
-            interpretation="Estimation de la persistance des surprofits."
+            interpretation=StrategyInterpretations.RIM_TV
         )
 
         return tv_ri, discounted_tv
@@ -290,7 +298,7 @@ class RIMBankingStrategy(ValuationStrategy):
         """Calcule les métriques d'audit spécifiques au RIM."""
         roe = eps_base / bv_per_share if bv_per_share > 0 else 0.0
         pb_ratio = financials.current_price / bv_per_share if bv_per_share > 0 else 0.0
-        spread = roe - ke
+        spread = (roe - ke) if ke is not None else 0.0
 
         return {
             "roe": roe,

@@ -14,6 +14,14 @@ from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
 from core.valuation.strategies. abstract import ValuationStrategy
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,11 +64,11 @@ class StandardFCFFStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="FCF_BASE_SELECTION",
-            label="Sélection du Flux de Trésorerie de Base (FCF_0)",
+            label=RegistryTexts.DCF_FCF_BASE_L,
             theoretical_formula=r"FCF_0",
             result=fcf_base,
             numerical_substitution=f"FCF_0 = {fcf_base:,.2f} ({source})",
-            interpretation=f"Le modèle démarre avec un flux de {fcf_base:,.2f} {financials.currency}."
+            interpretation=RegistryTexts.DCF_FCF_BASE_D
         )
 
         # =====================================================================
@@ -84,11 +92,9 @@ class StandardFCFFStrategy(ValuationStrategy):
             Tuple (fcf_base, source_description)
         """
         if params.manual_fcf_base is not None:
-            return params.manual_fcf_base, "Manual override (Expert)"
+            return params.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
         if financials.fcf_last is None:
-            raise CalculationError(
-                "FCF de base indisponible (fcf_last manquant ou nul)."
-            )
+            raise CalculationError(CalculationErrors.MISSING_FCF_STD)
 
-        return financials.fcf_last, "Last reported FCF (TTM) - Yahoo Deep Fetch"
+        return financials.fcf_last, StrategySources.YAHOO_TTM

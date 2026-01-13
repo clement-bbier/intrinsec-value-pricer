@@ -30,6 +30,14 @@ from core. models import (
     ValuationResult,
 )
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,7 +91,7 @@ class ValuationStrategy(ABC):
         contract = result.build_output_contract()
         if not contract.is_valid():
             raise CalculationError(
-                f"Le contrat de sortie n'est pas respecté pour {self.__class__.__name__}."
+                CalculationErrors.CONTRACT_VIOLATION.format(cls=self.__class__.__name__)
             )
 
     # ==========================================================================
@@ -99,15 +107,6 @@ class ValuationStrategy(ABC):
     ) -> DCFValuationResult:
         """
         Exécute le calcul DCF complet avec traçabilité Glass Box.
-
-        Args:
-            base_flow:  Flux de trésorerie de départ
-            financials: Données financières de l'entreprise
-            params: Paramètres de valorisation
-            wacc_override:  WACC manuel (optionnel)
-
-        Returns:
-            Résultat DCF complet avec métriques d'audit
         """
         # A. WACC
         wacc, wacc_ctx = self._compute_wacc(financials, params, wacc_override)
@@ -168,7 +167,7 @@ class ValuationStrategy(ABC):
         if wacc_override is not None:
             wacc = wacc_override
             wacc_ctx = None
-            sub_wacc = f"WACC = {wacc:.4f} (Manual Override)"
+            sub_wacc = StrategySources.WACC_MANUAL.format(wacc=wacc)
         else:
             wacc_ctx = calculate_wacc(financials, params)
             wacc = wacc_ctx.wacc
@@ -176,18 +175,18 @@ class ValuationStrategy(ABC):
 
             sub_wacc = (
                 f"{wacc_ctx. weight_equity:.2f} × [{params.risk_free_rate or 0:.4f} + "
-                f"{beta_used:.2f} × ({params.market_risk_premium or 0:4f})] + "
+                f"{beta_used:.2f} × ({params.market_risk_premium or 0:.4f})] + "
                 f"{wacc_ctx.weight_debt:.2f} × [{params.cost_of_debt or 0:.4f} × "
                 f"(1 - {params.tax_rate or 0:.2f})]"
             )
 
         self.add_step(
             step_key="WACC_CALC",
-            label="Calcul du WACC",
+            label=RegistryTexts.DCF_WACC_L,
             theoretical_formula=r"WACC = w_e \cdot [R_f + \beta \cdot (ERP)] + w_d \cdot [K_d \cdot (1 - \tau)]",
             result=wacc,
             numerical_substitution=sub_wacc,
-            interpretation=f"Taux d'actualisation cible (WACC) de {wacc:.2%}, basé sur la structure de capital actuelle."
+            interpretation=StrategyInterpretations.WACC.format(wacc=wacc)
         )
 
         return wacc, wacc_ctx
@@ -208,11 +207,14 @@ class ValuationStrategy(ABC):
 
         self.add_step(
             step_key="FCF_PROJ",
-            label="Projections des Flux (Somme)",
+            label=RegistryTexts.DCF_PROJ_L,
             theoretical_formula=r"\sum FCF_t",
             result=sum(flows),
             numerical_substitution=f"{base_flow: ,.0f} × (1 + {params.fcf_growth_rate or 0:.3f})^{params.projection_years}",
-            interpretation=f"Projection sur {params.projection_years} ans à un taux de croissance annuel moyen de {params.fcf_growth_rate or 0:.2%}"
+            interpretation=StrategyInterpretations.PROJ.format(
+                years=params.projection_years,
+                g=params.fcf_growth_rate or 0
+            )
         )
 
         return flows
@@ -234,20 +236,22 @@ class ValuationStrategy(ABC):
             key_tv = "TV_GORDON"
             sub_tv = f"({flows[-1]:,.0f} × {1 + p_growth:.3f}) / ({wacc:.4f} - {p_growth:.4f})"
             formula_tv = r"TV = \frac{FCF_n \cdot (1 + g)}{WACC - g}"
+            label_tv = RegistryTexts.DCF_TV_GORDON_L
         else:
             exit_m = params.exit_multiple_value or 12.0
             tv = calculate_terminal_value_exit_multiple(flows[-1], exit_m)
             key_tv = "TV_MULTIPLE"
             sub_tv = f"{flows[-1]:,.0f} × {exit_m:.1f}"
             formula_tv = r"TV = EBITDA_n \cdot Exit\_Multiple"
+            label_tv = RegistryTexts.DCF_TV_MULT_L
 
         self.add_step(
             step_key=key_tv,
-            label="Valeur Terminale (TV)",
+            label=label_tv,
             theoretical_formula=formula_tv,
             result=tv,
             numerical_substitution=sub_tv,
-            interpretation="Estimation de la valeur de l'entreprise au-delà de la période explicite."
+            interpretation=StrategyInterpretations.TV
         )
 
         return tv, key_tv
@@ -267,11 +271,11 @@ class ValuationStrategy(ABC):
 
         self.add_step(
             step_key="NPV_CALC",
-            label="Valeur d'Entreprise (Enterprise Value)",
+            label=RegistryTexts.DCF_EV_L,
             theoretical_formula=r"EV = \sum \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^n}",
             result=ev,
             numerical_substitution=f"{sum_pv:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})",
-            interpretation="Valeur totale de l'outil de production actualisée."
+            interpretation=StrategyInterpretations.EV
         )
 
         return factors, sum_pv, pv_tv, ev
@@ -293,11 +297,11 @@ class ValuationStrategy(ABC):
 
         self.add_step(
             step_key="EQUITY_BRIDGE",
-            label="Pont de Valeur (Equity Bridge)",
+            label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=r"Equity = EV - Debt + Cash - Minority\_Interests - Provisions",
             result=equity_val,
             numerical_substitution=f"{ev:,.0f} - {debt:,.0f} + {cash:,.0f} - {minorities:,.0f} - {pensions:,.0f}",
-            interpretation="Ajustement de la structure financière."
+            interpretation=StrategyInterpretations.BRIDGE
         )
 
         bridge_components = {
@@ -318,17 +322,17 @@ class ValuationStrategy(ABC):
     ) -> float:
         """Calcule la valeur intrinsèque par action."""
         if shares <= 0:
-            raise CalculationError("Nombre d'actions en circulation invalide (<= 0).")
+            raise CalculationError(CalculationErrors.INVALID_SHARES)
 
         iv_share = equity_val / shares
 
         self.add_step(
             step_key="VALUE_PER_SHARE",
-            label="Valeur Intrinsèque par Action",
+            label=RegistryTexts.DCF_IV_L,
             theoretical_formula=r"Price = \frac{Equity\_Value}{Shares\_Outstanding}",
             result=iv_share,
             numerical_substitution=f"{equity_val: ,.0f} / {shares:,.0f}",
-            interpretation=f"Estimation de la valeur réelle d'une action pour {financials.ticker}."
+            interpretation=StrategyInterpretations.IV.format(ticker=financials.ticker)
         )
 
         return iv_share

@@ -25,6 +25,14 @@ from core.exceptions import (
 from core.models import CompanyFinancials, DCFParameters, ValuationResult
 from core. valuation.strategies.abstract import ValuationStrategy
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,11 +93,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         # =====================================================================
         # ÉTAPE 1 : CONFIGURATION
         # =====================================================================
-        clamping_note = f" (Écrêté de {g_raw:.1%} pour cohérence WACC)" if clamping_applied else ""
+        clamping_note = StrategyInterpretations.MC_CLAMP_NOTE.format(g_raw=g_raw) if clamping_applied else ""
 
         self.add_step(
             step_key="MC_CONFIG",
-            label="Initialisation du Moteur Stochastique",
+            label=RegistryTexts.MC_INIT_L,
             theoretical_formula=r"\sigma_{\beta}, \sigma_g, \sigma_{g_n}, \rho",
             result=1.0,
             numerical_substitution=(
@@ -98,7 +106,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                 f"g: 𝒩({(params.fcf_growth_rate or 0.03):.1%}, {(params.growth_volatility or 0.015):.1%}) | "
                 f"ρ(β,g): {params.correlation_beta_growth:.2f}"
             ),
-            interpretation=f"Calibration des lois normales multivariées. {clamping_note}"
+            interpretation=StrategyInterpretations.MC_INIT.format(note=clamping_note)
         )
 
         # =====================================================================
@@ -110,11 +118,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="MC_SAMPLING",
-            label="Simulation Multivariée",
+            label=RegistryTexts.MC_SAMP_L,
             theoretical_formula=r"f(\beta, g, g_n) \to N_{sims}",
             result=float(num_simulations),
-            numerical_substitution=f"Génération de {num_simulations} vecteurs d'inputs via Décomposition de Cholesky.",
-            interpretation="Application des corrélations pour garantir la cohérence économique des scénarios tirés."
+            numerical_substitution=StrategyInterpretations.MC_SAMPLING_SUB.format(count=num_simulations),
+            interpretation=StrategyInterpretations.MC_SAMPLING_INTERP
         )
 
         # =====================================================================
@@ -133,11 +141,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="MC_FILTERING",
-            label="Contrôle de Convergence",
+            label=RegistryTexts.MC_FILT_L,
             theoretical_formula=r"\frac{N_{valid}}{N_{total}}",
             result=valid_ratio,
             numerical_substitution=f"{valid_count} valides / {num_simulations} itérations",
-            interpretation="Élimination des scénarios de divergence pour stabiliser la distribution."
+            interpretation=StrategyInterpretations.MC_FILTERING
         )
 
         if valid_ratio < self.MIN_VALID_RATIO:
@@ -158,11 +166,11 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="MC_MEDIAN",
-            label="Valeur Probabiliste Centrale (P50)",
+            label=RegistryTexts.MC_MED_L,
             theoretical_formula=r"Median(IV_i)",
             result=p50,
             numerical_substitution=f"P50 = {p50:,.2f} {financials. currency}",
-            interpretation="Valeur intrinsèque centrale dérivée de la distribution stochastique."
+            interpretation=RegistryTexts.MC_MED_D
         )
 
         # =====================================================================
@@ -323,15 +331,18 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                     continue
 
             p50_neutral = float(np.percentile(sims_neutral, 50)) if sims_neutral else p50_base
-            final_result. rho_sensitivity = {"Neutre (rho=0)": p50_neutral, "Base (rho=-0.3)": p50_base}
+            final_result. rho_sensitivity = {
+                StrategyInterpretations.MC_SENS_NEUTRAL: p50_neutral,
+                StrategyInterpretations.MC_SENS_BASE: p50_base
+            }
 
             self.add_step(
                 step_key="MC_SENSITIVITY",
-                label="Sensibilité à la Corrélation (ρ)",
+                label=RegistryTexts.MC_SENS_L,
                 theoretical_formula=r"\frac{\partial P50}{\partial \rho}",
                 result=p50_neutral,
                 numerical_substitution=f"P50(rho=0) = {p50_neutral:,.2f} vs Base = {p50_base:,.2f}",
-                interpretation="Audit de l'impact de la corrélation sur la stabilité de la valeur médiane."
+                interpretation=StrategyInterpretations.MC_SENS_INTERP
             )
 
         except (ValueError, RuntimeError) as e:
@@ -356,11 +367,14 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
             self. add_step(
                 step_key="MC_STRESS_TEST",
-                label="Stress Test (Bear Case)",
+                label=RegistryTexts.MC_STRESS_L,
                 theoretical_formula=r"f(g \to 0, \beta \to 1.5)",
                 result=final_result. stress_test_value,
-                numerical_substitution=f"Bear Case = {final_result.stress_test_value:,.2f} {financials.currency}",
-                interpretation="Scénario de stress :  croissance nulle et risque élevé (Point de rupture)."
+                numerical_substitution=StrategyInterpretations.MC_STRESS_SUB.format(
+                    val=final_result.stress_test_value,
+                    curr=financials.currency
+                ),
+                interpretation=StrategyInterpretations.MC_STRESS_INTERP
             )
 
         except (CalculationError, ModelDivergenceError, ValueError) as e:

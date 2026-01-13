@@ -20,6 +20,14 @@ from core.exceptions import CalculationError
 from core. models import CompanyFinancials, DCFParameters, DCFValuationResult
 from core. valuation.strategies.abstract import ValuationStrategy
 
+# Import des constantes de texte pour i18n
+from app.ui_components.ui_texts import (
+    RegistryTexts,
+    StrategyInterpretations,
+    CalculationErrors,
+    StrategySources
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,11 +70,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self. add_step(
             step_key="GROWTH_REV_BASE",
-            label="Ancrage des Revenus (Rev_0)",
+            label=RegistryTexts.GROWTH_REV_BASE_L,
             theoretical_formula=r"Rev_0",
             result=rev_base,
             numerical_substitution=f"Rev_0 = {rev_base: ,.0f}",
-            interpretation="Point de départ du modèle basé sur le chiffre d'affaires TTM."
+            interpretation=StrategyInterpretations.GROWTH_REV
         )
 
         # =====================================================================
@@ -76,11 +84,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="GROWTH_MARGIN_CONV",
-            label="Convergence des Marges",
+            label=RegistryTexts.GROWTH_MARGIN_L,
             theoretical_formula=r"Margin_t \to Margin_{target}",
             result=target_margin,
             numerical_substitution=f"{curr_margin:.2%} \\to {target_margin:.2%} (sur {params.projection_years} ans)",
-            interpretation="Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
+            interpretation=StrategyInterpretations.GROWTH_MARGIN
         )
 
         # =====================================================================
@@ -108,14 +116,14 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="TV_GORDON",
-            label="Valeur Terminale (Gordon)",
+            label=RegistryTexts.DCF_TV_GORDON_L,
             theoretical_formula=r"TV = \frac{FCF_n \cdot (1 + g)}{WACC - g}",
             result=tv,
             numerical_substitution=(
                 f"({projected_fcfs[-1]:,.0f} × {1 + params.perpetual_growth_rate:.3f}) / "
                 f"({wacc:.4f} - {params.perpetual_growth_rate:3f})"
             ),
-            interpretation="Valeur de l'entreprise à l'infini basée sur la dernière marge convergée."
+            interpretation=StrategyInterpretations.GROWTH_TV
         )
 
         # =====================================================================
@@ -126,11 +134,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="NPV_CALC",
-            label="Valeur d'Entreprise (Enterprise Value)",
+            label=RegistryTexts.DCF_EV_L,
             theoretical_formula=r"EV = \sum \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^n}",
             result=ev,
             numerical_substitution=f"{discounted_sum:,.0f} + ({tv:,.0f} × {factors[-1]:.4f})",
-            interpretation="Somme actualisée des flux et de la valeur terminale."
+            interpretation=StrategyInterpretations.GROWTH_EV
         )
 
         # =====================================================================
@@ -140,14 +148,14 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="EQUITY_BRIDGE",
-            label="Valeur des Fonds Propres (Equity Value)",
+            label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=r"Equity = EV - Debt + Cash - Minorities - Provisions",
             result=equity_val,
             numerical_substitution=(
                 f"{ev:,.0f} - {bridge['debt']:,.0f} + {bridge['cash']:,.0f} - "
                 f"{bridge['minorities']: ,.0f} - {bridge['pensions']:,.0f}"
             ),
-            interpretation="Ajustement de la structure financière."
+            interpretation=StrategyInterpretations.BRIDGE
         )
 
         # =====================================================================
@@ -157,11 +165,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="VALUE_PER_SHARE",
-            label="Valeur Intrinsèque par Action",
+            label=RegistryTexts.DCF_IV_L,
             theoretical_formula=r"IV = \frac{Equity\_Value}{Shares\_Outstanding}",
             result=intrinsic_value,
             numerical_substitution=f"{equity_val: ,.0f} / {bridge['shares']:,.0f}",
-            interpretation="Estimation finale du prix théorique par titre."
+            interpretation=StrategyInterpretations.GROWTH_IV
         )
 
         return DCFValuationResult(
@@ -197,7 +205,7 @@ class RevenueBasedStrategy(ValuationStrategy):
             return params. manual_fcf_base
 
         if financials.revenue_ttm is None or financials.revenue_ttm <= 0:
-            raise CalculationError("Chiffre d'affaires (Revenue) requis pour ce modèle.")
+            raise CalculationError(CalculationErrors.MISSING_REV)
 
         return financials.revenue_ttm
 
@@ -235,11 +243,11 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         self.add_step(
             step_key="WACC_CALC",
-            label="Calcul du WACC",
+            label=RegistryTexts.DCF_WACC_L,
             theoretical_formula=r"WACC = w_e \cdot [R_f + \beta \cdot (ERP)] + w_d \cdot [K_d \cdot (1 - \tau)]",
             result=wacc,
             numerical_substitution=sub_wacc,
-            interpretation="Taux d'actualisation cible pour l'entreprise."
+            interpretation=StrategyInterpretations.WACC.format(wacc=wacc)
         )
 
         return wacc, wacc_ctx
@@ -298,6 +306,6 @@ class RevenueBasedStrategy(ValuationStrategy):
     def _compute_growth_value_per_share(self, equity_val: float, shares: float) -> float:
         """Calcule la valeur intrinsèque par action."""
         if shares <= 0:
-            raise CalculationError("Nombre d'actions invalide.")
+            raise CalculationError(CalculationErrors.INVALID_SHARES_SIMPLE)
 
         return equity_val / shares
