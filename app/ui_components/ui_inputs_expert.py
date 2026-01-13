@@ -120,10 +120,13 @@ def atom_bridge_smart(formula_latex: str, is_rim: bool = False) -> Dict[str, Any
         "manual_minority_interests": minorities, "manual_pension_provisions": pensions
     }
 
-def atom_monte_carlo_smart(mode: ValuationMode) -> Dict[str, Any]:
-    """Étape 6 : Monte Carlo - Labels centralisés."""
+
+def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[TerminalValueMethod] = None) -> Dict[
+    str, Any]:
+    """Étape 6 : Monte Carlo - Réactif à la méthode de sortie."""
     st.markdown(ExpertTerminalTexts.SEC_6_MC)
     enable = st.toggle(ExpertTerminalTexts.MC_CALIBRATION, value=False)
+
     if enable:
         with st.container(border=True):
             c1, c2 = st.columns(2)
@@ -132,11 +135,22 @@ def atom_monte_carlo_smart(mode: ValuationMode) -> Dict[str, Any]:
             st.caption(ExpertTerminalTexts.MC_CALIBRATION)
             v1, v2, v3 = st.columns(3)
 
-            vb = v1.number_input(ExpertTerminalTexts.MC_VOL_BETA, min_value=0.0, max_value=1.0, value=None, format="%.3f")
+            vb = v1.number_input(ExpertTerminalTexts.MC_VOL_BETA, min_value=0.0, max_value=1.0, value=None,
+                                 format="%.3f")
             vg = v2.number_input(ExpertTerminalTexts.MC_VOL_G, min_value=0.0, max_value=0.20, value=None, format="%.3f")
 
-            label_v_terminal = ExpertTerminalTexts.MC_VOL_OMEGA if mode == ValuationMode.RESIDUAL_INCOME_MODEL else ExpertTerminalTexts.MC_VOL_GN
-            v_term = v3.number_input(label_v_terminal, min_value=0.0, max_value=0.05, value=None, format="%.3f")
+            # Logique de visibilité réactive
+            v_term = None
+            if mode == ValuationMode.RESIDUAL_INCOME_MODEL:
+                v_term = v3.number_input(ExpertTerminalTexts.MC_VOL_OMEGA, min_value=0.0, max_value=0.20, value=None,
+                                         format="%.3f")
+            elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
+                v_term = v3.number_input(ExpertTerminalTexts.MC_VOL_GN, min_value=0.0, max_value=0.05, value=None,
+                                         format="%.3f")
+            else:
+                # Méthode Multiple : On affiche un champ vide ou désactivé pour garder l'alignement
+                v3.empty()
+
             return {
                 "enable_monte_carlo": True, "num_simulations": sims,
                 "beta_volatility": vb, "growth_volatility": vg, "terminal_growth_volatility": v_term
@@ -159,17 +173,29 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     st.latex(r"FCF_t = FCF_{t-1} \times (1 + g)")
     c1, c2 = st.columns(2)
     n_years = c1.slider(ExpertTerminalTexts.SLIDER_PROJ_YEARS, 3, 15, 5)
-    g_rate = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G, min_value=-0.50, max_value=1.0, value=None, format="%.3f")
+    g_rate = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G, min_value=-0.50, max_value=1.0, value=None,
+                             format="%.3f")
     st.divider()
 
     all_data = {"manual_fcf_base": fcf_base, "projection_years": n_years, "fcf_growth_rate": g_rate}
     all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_TWO_STAGE))
-    all_data.update(atom_terminal_dcf(r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}"))
-    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_TWO_STAGE))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+    # Correction : Capturer la méthode terminale
+    tv_data = atom_terminal_dcf(
+        r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}")
+    all_data.update(tv_data)
+
+    all_data.update(atom_bridge_smart(
+        r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
+
+    # Correction : Passer la méthode au Monte Carlo
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_TWO_STAGE, tv_data.get("terminal_method")))
+
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE,
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
+
 
 def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     st.subheader(ExpertTerminalTexts.TITLE_FCFF_FUND)
@@ -183,17 +209,29 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     st.latex(r"FCF_t = FCF_{norm} \times (1+g)^t")
     c1, c2 = st.columns(2)
     n_years = c1.slider(ExpertTerminalTexts.SLIDER_CYCLE_YEARS, 3, 15, 5)
-    g_rate = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G, min_value=-0.20, max_value=0.30, value=None, format="%.3f")
+    g_rate = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G, min_value=-0.20, max_value=0.30, value=None,
+                             format="%.3f")
     st.divider()
 
     all_data = {"manual_fcf_base": fcf_base, "projection_years": n_years, "fcf_growth_rate": g_rate}
     all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_NORMALIZED))
-    all_data.update(atom_terminal_dcf(r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}"))
-    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_NORMALIZED))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", use_container_width=True):        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+    # Correction : Capturer la méthode terminale
+    tv_data = atom_terminal_dcf(
+        r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}")
+    all_data.update(tv_data)
+
+    all_data.update(atom_bridge_smart(
+        r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
+
+    # Correction : Passer la méthode au Monte Carlo
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_NORMALIZED, tv_data.get("terminal_method")))
+
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", use_container_width=True):
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED,
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
+
 
 def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     st.subheader(ExpertTerminalTexts.TITLE_FCFF_GROWTH)
@@ -208,17 +246,29 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     c1, c2, c3 = st.columns(3)
     n_years = c1.slider(ExpertTerminalTexts.SLIDER_PROJ_T, 3, 15, 5)
     g_rev = c2.number_input(ExpertTerminalTexts.INP_REV_GROWTH, min_value=0.0, max_value=1.0, value=None, format="%.3f")
-    m_target = c3.number_input(ExpertTerminalTexts.INP_MARGIN_TARGET, min_value=0.0, max_value=0.80, value=None, format="%.2f")
+    m_target = c3.number_input(ExpertTerminalTexts.INP_MARGIN_TARGET, min_value=0.0, max_value=0.80, value=None,
+                               format="%.2f")
     st.divider()
 
-    all_data = {"manual_fcf_base": rev_base, "projection_years": n_years, "fcf_growth_rate": g_rev, "target_fcf_margin": m_target}
+    all_data = {"manual_fcf_base": rev_base, "projection_years": n_years, "fcf_growth_rate": g_rev,
+                "target_fcf_margin": m_target}
     all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_REVENUE_DRIVEN))
-    all_data.update(atom_terminal_dcf(r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}"))
-    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_REVENUE_DRIVEN))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", use_container_width=True):
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+    # Correction : Capturer la méthode terminale
+    tv_data = atom_terminal_dcf(
+        r"TV_n = \begin{cases} \dfrac{FCF_n(1+g_n)}{WACC - g_n} & \text{(Gordon)} \\ FCF_n \times \text{Multiple} & \text{(Exit)} \end{cases}")
+    all_data.update(tv_data)
+
+    all_data.update(atom_bridge_smart(
+        r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
+
+    # Correction : Passer la méthode au Monte Carlo
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_REVENUE_DRIVEN, tv_data.get("terminal_method")))
+
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary",
+                 use_container_width=True):
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN,
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
 
 def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:

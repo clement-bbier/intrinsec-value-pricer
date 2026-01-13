@@ -22,7 +22,7 @@ from core.exceptions import (
     ModelDivergenceError,
     MonteCarloInstabilityError,
 )
-from core.models import CompanyFinancials, DCFParameters, ValuationResult
+from core.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
 from core. valuation.strategies.abstract import ValuationStrategy
 
 # Import des constantes de texte pour i18n
@@ -234,7 +234,15 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         """Génère les échantillons multivariés pour la simulation."""
         sig_b = params.beta_volatility if params.beta_volatility is not None else 0.10
         sig_g = params.growth_volatility if params.growth_volatility is not None else 0.015
-        sig_gn = params.terminal_growth_volatility if params. terminal_growth_volatility is not None else 0.005
+
+        is_gordon = params.terminal_method == TerminalValueMethod.GORDON_GROWTH
+        is_rim = financials.sector in ["Financial Services", "Banking"]
+
+        if params.terminal_growth_volatility is not None:
+            sig_gn = params.terminal_growth_volatility
+        else:
+            # Si Multiple, sigma = 0 (valeur fixe). Sinon, fallback auto.
+            sig_gn = 0.005 if is_gordon else 0.0
 
         betas, growths = generate_multivariate_samples(
             mu_beta=financials.beta,

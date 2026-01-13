@@ -86,7 +86,7 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
     if market_price > 0:
         layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2, strokeDash=[5, 2]).encode(x='x'))
 
-    st.altair_chart(alt.layer(*layers).properties(height=320), width="stretch")
+    st.altair_chart(alt.layer(*layers).properties(height=320), use_container_width=True)
 
     st.markdown(f"""
     {ChartTexts.SIM_SUMMARY_TITLE.format(count=len(values))}
@@ -170,5 +170,5 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
         color=alt.condition((alt.datum.Val > 0.5) | (alt.datum.Val < -0.5), alt.value('white'), alt.value('black'))
     )
 
-    st.altair_chart((heatmap + text).properties(height=180), width="stretch")
+    st.altair_chart((heatmap + text).properties(height=180), use_container_width=True)
     st.caption(ChartTexts.CORREL_CAPTION)

@@ -20,9 +20,10 @@ from core.models import (
     DCFParameters,
     ValuationResult,
     ValuationMode,
+    TerminalValueMethod
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
-from app.ui_components.ui_texts import KPITexts, AuditTexts
+from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts
 
 logger = logging.getLogger(__name__)
 
@@ -481,12 +482,16 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
         col_mat, col_inf = st.columns([1.2, 2.8])
         with col_mat: display_correlation_heatmap(rho=result.params.correlation_beta_growth or -0.3)
         with col_inf:
-            st.caption(f"{AuditTexts.MC_VOL_BETA} : {result.params.beta_volatility:.1%}")
-            st.caption(f"{AuditTexts.MC_VOL_G} : {result.params.growth_volatility:.1%}")
-            st.info(AuditTexts.MC_CORREL_INFO)
+            st.caption(f"{AuditTexts.MC_VOL_BETA} : {(result.params.beta_volatility or 0.0):.1%}")
+            st.caption(f"{AuditTexts.MC_VOL_G} : {(result.params.growth_volatility or 0.0):.1%}")
 
-    with st.expander(AuditTexts.MC_AUDIT_STOCH, expanded=False):
-        for idx, step in enumerate(mc_steps, start=1): _render_smart_step(idx, step)
+            # Affichage réactif aux modèles de sortie
+            if result.params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
+                st.caption(f"{ExpertTerminalTexts.MC_VOL_GN} : {(result.params.terminal_growth_volatility or 0.0):.1%}")
+            elif result.request and result.request.mode == ValuationMode.RESIDUAL_INCOME_MODEL:
+                st.caption(f"{ExpertTerminalTexts.MC_VOL_OMEGA} : {(result.params.terminal_growth_volatility or 0.0):.1%}")
+
+            st.info(AuditTexts.MC_CORREL_INFO)
 
 
 # ==============================================================================
