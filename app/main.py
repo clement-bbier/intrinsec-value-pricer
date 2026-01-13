@@ -2,12 +2,12 @@
 app/main.py
 
 POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Version :  V9.0 — Clean Architecture & SOLID
+Version :  V9.1 — Refactorisation i18n (Pilotage par ui_texts.py)
 
 Principes appliqués :
-- Single Responsibility :  Chaque fonction a une responsabilité unique
+- Centralisation du texte : Zéro chaîne de caractères "en dur"
+- Single Responsibility : Chaque fonction a une responsabilité unique
 - Open/Closed : Extensible via EXPERT_UI_REGISTRY sans modifier le code
-- Dependency Inversion : Configuration externalisée dans les constantes
 """
 
 from __future__ import annotations
@@ -44,6 +44,14 @@ from app.ui_components.ui_inputs_expert import (
 from app.workflow import run_workflow_and_display
 from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest
 
+# IMPORT DU RÉFÉRENTIEL TEXTUEL
+from app.ui_components.ui_texts import (
+    CommonTexts,
+    SidebarTexts,
+    OnboardingTexts,
+    FeedbackMessages
+)
+
 # ==============================================================================
 # CONFIGURATION & LOGGING
 # ==============================================================================
@@ -52,10 +60,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# REGISTRES DE CONFIGURATION (Open/Closed Principle)
+# REGISTRES DE CONFIGURATION (Alignés sur ui_texts)
 # ==============================================================================
 
-VALUATION_DISPLAY_NAMES:  Dict[ValuationMode, str] = {
+VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = {
     ValuationMode.FCFF_TWO_STAGE: "FCFF Standard",
     ValuationMode.FCFF_NORMALIZED:  "FCFF Fundamental",
     ValuationMode.FCFF_REVENUE_DRIVEN:  "FCFF Growth",
@@ -75,7 +83,7 @@ EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable[[str], Optional[ValuationReques
 # CONSTANTES UI
 # ==============================================================================
 
-_DEFAULT_TICKER = "AAPL"
+_DEFAULT_TICKER = CommonTexts.DEFAULT_TICKER
 _DEFAULT_PROJECTION_YEARS = 5
 _MIN_PROJECTION_YEARS = 1
 _MAX_PROJECTION_YEARS = 15
@@ -86,7 +94,7 @@ _MC_SIMULATIONS_STEP = 200
 
 
 # ==============================================================================
-# GESTION DU STATE (Single Responsibility)
+# GESTION DU STATE
 # ==============================================================================
 
 def _init_session_state() -> None:
@@ -114,13 +122,13 @@ def _set_active_request(request: ValuationRequest) -> None:
 
 
 # ==============================================================================
-# SETUP PAGE (Single Responsibility)
+# SETUP PAGE
 # ==============================================================================
 
 def _setup_page() -> None:
     """Configure la page Streamlit avec le design institutionnel."""
     st.set_page_config(
-        page_title="Intrinsic Value Pricer",
+        page_title=CommonTexts.APP_TITLE,
         page_icon="📊",
         layout="wide",
     )
@@ -129,22 +137,22 @@ def _setup_page() -> None:
 
 
 # ==============================================================================
-# SIDEBAR — INPUTS UTILISATEUR (Single Responsibility)
+# SIDEBAR — INPUTS UTILISATEUR
 # ==============================================================================
 
 def _render_sidebar_ticker() -> str:
     """Rend le champ de saisie du ticker."""
-    st.header("1. Choix de l'entreprise")
-    ticker = st.text_input("Ticker (Yahoo Finance)", value=_DEFAULT_TICKER)
+    st.header(SidebarTexts.SEC_1_COMPANY)
+    ticker = st.text_input(SidebarTexts.TICKER_LABEL, value=_DEFAULT_TICKER)
     st.divider()
     return ticker.strip().upper()
 
 
 def _render_sidebar_methodology() -> ValuationMode:
     """Rend le sélecteur de méthodologie."""
-    st.header("2. Choix de la méthodologie")
+    st.header(SidebarTexts.SEC_2_METHODOLOGY)
     selected_name = st.selectbox(
-        "Méthode de Valorisation",
+        SidebarTexts.METHOD_LABEL,
         options=list(VALUATION_DISPLAY_NAMES.values()),
     )
     st.divider()
@@ -156,10 +164,10 @@ def _render_sidebar_methodology() -> ValuationMode:
 
 def _render_sidebar_source() -> bool:
     """Rend le sélecteur de source de données. Retourne True si mode Expert."""
-    st.header("3. Source des données")
+    st.header(SidebarTexts.SEC_3_SOURCE)
     input_mode = st.radio(
-        "Stratégie de pilotage",
-        options=["Auto (Yahoo Finance)", "Expert (Surcharge Manuelle)"],
+        SidebarTexts.STRATEGY_LABEL,
+        options=SidebarTexts.SOURCE_OPTIONS,
     )
     st.divider()
     return "Expert" in input_mode
@@ -167,9 +175,9 @@ def _render_sidebar_source() -> bool:
 
 def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
     """Rend les options spécifiques au mode Auto."""
-    st.header("4. Horizon")
+    st.header(SidebarTexts.SEC_4_HORIZON)
     years = st.slider(
-        "Années de projection",
+        SidebarTexts.YEARS_LABEL,
         min_value=_MIN_PROJECTION_YEARS,
         max_value=_MAX_PROJECTION_YEARS,
         value=_DEFAULT_PROJECTION_YEARS,
@@ -180,11 +188,11 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
     mc_sims = _DEFAULT_MC_SIMULATIONS
 
     if mode.supports_monte_carlo:
-        st.header("5. Analyse de Risque")
-        enable_mc = st.toggle("Activer Monte Carlo", value=False)
+        st.header(SidebarTexts.SEC_5_RISK)
+        enable_mc = st.toggle(SidebarTexts.MC_TOGGLE_LABEL, value=False)
         if enable_mc:
             mc_sims = st.number_input(
-                "Simulations",
+                SidebarTexts.MC_SIMS_LABEL,
                 min_value=_MIN_MC_SIMULATIONS,
                 max_value=_MAX_MC_SIMULATIONS,
                 value=_DEFAULT_MC_SIMULATIONS,
@@ -202,14 +210,14 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
 def _render_sidebar_footer() -> None:
     """Rend le footer de la sidebar."""
     st.markdown(
-        """
+        f"""
         <div style="margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; 
                     border-top: 0.5px solid #334155; padding-top: 1rem;">
-            Developed by <br>
+            {CommonTexts.DEVELOPED_BY} <br>
             <a href="https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/" 
                target="_blank" 
                style="color: #6366f1; text-decoration:  none; font-weight: 600;">
-               Clément Barbier
+               {CommonTexts.AUTHOR_NAME}
             </a><br>
         </div>
         """,
@@ -218,59 +226,50 @@ def _render_sidebar_footer() -> None:
 
 
 # ==============================================================================
-# CONTENT — AFFICHAGE PRINCIPAL (Single Responsibility)
+# CONTENT — AFFICHAGE PRINCIPAL
 # ==============================================================================
 
 def _render_onboarding_guide() -> None:
-    """Guide d'onboarding — Contenu intégral préservé."""
-    st.info("Estimez la valeur intrinsèque d'une entreprise et comparez-la à son prix de marché.")
+    """Guide d'onboarding — Contenu intégral préservé via ui_texts."""
+    st.info(OnboardingTexts.INTRO_INFO)
     st.divider()
 
-    st.subheader("A. Sélection de la Méthodologie")
-    st.markdown(
-        "Chaque méthodologie vise à modéliser la réalité économique d'une entreprise à un instant donné, "
-        "conditionnellement à un ensemble d'hypothèses financières, "
-        "selon les principes de "
-        "[l'évaluation intrinsèque](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/home.htm) :"
-    )
+    st.subheader(OnboardingTexts.TITLE_A)
+    st.markdown(OnboardingTexts.DESC_A)
 
     m1, m2, m3 = st.columns(3)
 
     with m1:
-        st.markdown("**Modèles DCF (FCFF)**")
+        st.markdown(OnboardingTexts.MODEL_DCF_TITLE)
         st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
         st.markdown(
-            """
+            f"""
             <small style="color: #64748b;">
-            • <b>Standard</b> : Approche de Damodaran pour entreprises matures aux flux de trésorerie prévisibles. <br>
-            • <b>Fundamental</b> : Adapté aux cycliques ; utilise des flux normalisés pour gommer la volatilité d'un cycle économique complet.<br>
-            • <b>Growth</b> : Modèle "Revenue-Driven" pour la Tech ; simule la convergence des marges vers un profil normatif à l'équilibre.
+            {OnboardingTexts.MODEL_DCF_DESC}
             </small>
             """,
             unsafe_allow_html=True,
         )
 
     with m2:
-        st.markdown("**Residual Income (RIM)**")
+        st.markdown(OnboardingTexts.MODEL_RIM_TITLE)
         st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
         st.markdown(
-            """
+            f"""
             <small style="color: #64748b;">
-            Standard académique (Penman/Ohlson) pour les <b>Banques et Assurances</b> dont la valeur repose sur l'actif net.<br>
-            Additionne la valeur comptable actuelle et la valeur actuelle de la richesse créée au-delà du coût d'opportunité des fonds propres.
+            {OnboardingTexts.MODEL_RIM_DESC}
             </small>
             """,
             unsafe_allow_html=True,
         )
 
     with m3:
-        st.markdown("**Modèle de Graham**")
+        st.markdown(OnboardingTexts.MODEL_GRAHAM_TITLE)
         st.latex(r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
         st.markdown(
-            """
+            f"""
             <small style="color: #64748b;">
-            Estimation "Value" (1974 Revised) liant la capacité bénéficiaire actuelle aux conditions de crédit de haute qualité (AAA).<br>
-            Définit un prix de référence basé sur le multiple de croissance historique et l'ajustement au rendement obligataire actuel.
+            {OnboardingTexts.MODEL_GRAHAM_DESC}
             </small>
             """,
             unsafe_allow_html=True,
@@ -278,44 +277,38 @@ def _render_onboarding_guide() -> None:
 
     st.divider()
 
-    st.subheader("B. Pilotage & Gestion du Risque")
+    st.subheader(OnboardingTexts.TITLE_B)
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown("**Pilotage des Données (Auto vs Expert)**")
-        st.caption(
-            "Le mode **Auto** extrait les données de Yahoo Finance...  "
-            "Le mode **Expert** offre une autonomie totale..."
-        )
+        st.markdown(OnboardingTexts.PILOTAGE_TITLE)
+        st.caption(OnboardingTexts.PILOTAGE_DESC)
     with c2:
-        st.markdown("**Analyse Probabiliste (Monte Carlo)**")
-        st.caption(
-            "La valeur intrinsèque est présentée comme une distribution...  "
-            "simule des variations sur la croissance et le risque..."
-        )
+        st.markdown(OnboardingTexts.MC_TITLE)
+        st.caption(OnboardingTexts.MC_DESC)
 
     st.divider()
 
-    st.subheader("C.Gouvernance & Transparence")
+    st.subheader(OnboardingTexts.TITLE_C)
     g1, g2 = st.columns([2, 3])
     with g1:
-        st.markdown("**Audit Reliability Score**")
-        st.caption("Indicateur mesurant la cohérence des inputs...")
+        st.markdown(OnboardingTexts.AUDIT_TITLE)
+        st.caption(OnboardingTexts.AUDIT_DESC)
     with g2:
-        st.markdown("**Valuation Traceability**")
-        st.caption("Chaque étape est détaillé dans l'onglet 'Calcul'...")
+        st.markdown(OnboardingTexts.TRACE_TITLE)
+        st.caption(OnboardingTexts.TRACE_DESC)
 
     st.divider()
-    st.markdown("Système de Diagnostic :")
+    st.markdown(OnboardingTexts.DIAGNOSTIC_HEADER)
     d1, d2, d3 = st.columns(3)
-    d1.error("**Bloquant** : Erreur de donnée ou paramètre manquant.")
-    d2.warning("**Avertissement** : Hypothèse divergente (ex: g > WACC).")
-    d3.info("**Information** : Note ou recommandation.")
+    d1.error(OnboardingTexts.DIAG_BLOQUANT)
+    d2.warning(OnboardingTexts.DIAG_WARN)
+    d3.info(OnboardingTexts.DIAG_INFO)
 
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
     """Gère l'affichage et le lancement en mode Expert."""
     if not ticker:
-        st.warning("Veuillez saisir un ticker dans la barre latérale.")
+        st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
     render_func = EXPERT_UI_REGISTRY.get(mode)
@@ -328,7 +321,7 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
     """Gère le lancement en mode Auto."""
     if not ticker:
-        st.warning("Veuillez saisir un ticker valide.")
+        st.warning(FeedbackMessages.TICKER_INVALID)
         return
 
     config_params = DCFParameters(
@@ -386,7 +379,7 @@ def main() -> None:
         if not is_expert:
             auto_options = _render_sidebar_auto_options(selected_mode)
             launch_analysis = st.button(
-                "Lancer le calcul",
+                CommonTexts.RUN_BUTTON,
                 type="primary",
                 width="stretch",
             )
