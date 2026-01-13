@@ -529,17 +529,3 @@ class GrahamValuationResult(ValuationResult):
             has_intrinsic_value=True,
             has_calculation_trace=len(self.calculation_trace) > 0
         )
-
-
-class DDMValuationResult(ValuationResult):
-    """Résultat d'une valorisation DDM (Dividend Discount Model)."""
-
-    def build_output_contract(self) -> ValuationOutputContract:
-        return ValuationOutputContract(
-            has_params=True,
-            has_projection=False,
-            has_terminal_value=False,
-            has_equity_bridge=False,
-            has_intrinsic_value=True,
-            has_calculation_trace=False
-        )
