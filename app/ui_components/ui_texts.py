@@ -317,3 +317,177 @@ class AuditTexts:
     EVIDENCE_ERROR = "Erreur source"
     EVIDENCE_OK = "Vérification OK"
 
+
+class ChartTexts:
+    """Libellés et textes pour les graphiques (ui_charts.py)."""
+    # Graphique de Prix
+    PRICE_HISTORY_TITLE = "Historique de marché : {ticker}"
+    PRICE_UNAVAILABLE = "Historique de prix indisponible pour {ticker}."
+    PRICE_AXIS_Y = "Prix"
+    TOOLTIP_DATE = "Date"
+    TOOLTIP_PRICE = "Prix"
+    DATE_FORMAT = "%d %b %Y"
+
+    # Monte Carlo
+    SIM_UNAVAILABLE = "Pas de données de simulation disponibles."
+    SIM_AXIS_X = "Valeur Intrinsèque ({currency})"
+    SIM_AXIS_Y = "Fréquence"
+    SIM_SUMMARY_TITLE = "**Synthèse de la distribution ({count} scénarios) :**"
+    SIM_SUMMARY_P50 = "Valeur centrale (P50)"
+    SIM_SUMMARY_PRICE = "Prix de marché"
+    SIM_SUMMARY_CI = "Intervalle de confiance (P10-P90)"
+    SIM_SUMMARY_PROB = "({prob}% de probabilité)"
+
+    # Sensibilité
+    SENS_TITLE = "Sensibilité (WACC / Croissance)"
+    SENS_UNAVAILABLE = "Matrice impossible (WACC trop proche de g)."
+    SENS_AXIS_X = "Croissance (g)"
+    SENS_AXIS_Y = "WACC / Ke"
+    SENS_TOOLTIP_WACC = "Taux (WACC)"
+    SENS_TOOLTIP_GROWTH = "Croissance"
+    SENS_TOOLTIP_VAL = "Valeur ({currency})"
+
+    # Corrélation
+    CORREL_CAPTION = "Matrice de Corrélation des Inputs (Stochastique)"
+
+
+class RegistryTexts:
+    """Labels et descriptions pédagogiques du registre Glass Box (ui_glass_box_registry.py)."""
+
+    # --- DCF ---
+    DCF_FCF_BASE_L = "Ancrage FCF₀"
+    DCF_FCF_BASE_D = "Flux de trésorerie disponible de départ pour la projection."
+
+    DCF_FCF_NORM_L = "Ancrage FCF Normalisé"
+    DCF_FCF_NORM_D = "Flux lissé sur un cycle complet pour neutraliser la volatilité."
+
+    DCF_STABILITY_L = "Contrôle de Viabilité Financière"
+    DCF_STABILITY_D = "Validation de la capacité à générer des flux positifs."
+
+    DCF_WACC_L = "Coût Moyen Pondéré du Capital"
+    DCF_WACC_D = "Taux d'actualisation reflétant le coût du capital de l'entreprise."
+
+    DCF_PROJ_L = "Projection des Flux"
+    DCF_PROJ_D = "Projection des flux sur l'horizon explicite."
+
+    DCF_TV_GORDON_L = "Valeur Terminale (Gordon)"
+    DCF_TV_GORDON_D = "Valeur de l'entreprise au-delà de la période explicite (modèle de Gordon)."
+
+    DCF_TV_MULT_L = "Valeur Terminale (Multiple)"
+    DCF_TV_MULT_D = "Valeur terminale basée sur un multiple de sortie."
+
+    DCF_EV_L = "Valeur d'Entreprise (EV)"
+    DCF_EV_D = "Somme actualisée des flux et de la valeur terminale."
+
+    DCF_BRIDGE_L = "Pont de Valeur (Equity Bridge)"
+    DCF_BRIDGE_D = "Ajustement de la structure financière pour obtenir la valeur des fonds propres."
+
+    DCF_IV_L = "Valeur Intrinsèque par Action"
+    DCF_IV_D = "Estimation de la valeur réelle d'une action."
+
+    # --- GROWTH ---
+    GROWTH_REV_BASE_L = "Chiffre d'Affaires de Base"
+    GROWTH_REV_BASE_D = "Point de départ du modèle basé sur le chiffre d'affaires TTM."
+
+    GROWTH_MARGIN_L = "Convergence des Marges"
+    GROWTH_MARGIN_D = "Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
+
+    # --- RIM ---
+    RIM_BV_L = "Actif Net Comptable Initial"
+    RIM_BV_D = "Valeur comptable par action au départ du modèle."
+
+    RIM_KE_L = "Coût des Fonds Propres (Ke)"
+    RIM_KE_D = "Coût des capitaux propres via le CAPM."
+
+    RIM_RI_L = "Calcul des Surprofits (RI)"
+    RIM_RI_D = "Profit résiduel après rémunération des fonds propres."
+
+    RIM_TV_L = "Valeur Terminale (Persistance ω)"
+    RIM_TV_D = "Estimation de la persistance des surprofits selon le modèle d'Ohlson."
+
+    RIM_IV_L = "Valeur Intrinsèque RIM"
+    RIM_IV_D = "Valeur totale issue du modèle Residual Income."
+
+    RIM_PAYOUT_L = "Politique de Distribution"
+    RIM_PAYOUT_D = "Ratio de distribution des dividendes."
+
+    RIM_EPS_PROJ_L = "Projection des Bénéfices"
+    RIM_EPS_PROJ_D = "Projection des bénéfices par action."
+
+    # --- GRAHAM ---
+    GRAHAM_EPS_L = "BPA Normalisé (EPS)"
+    GRAHAM_EPS_D = "Bénéfice par action utilisé comme socle de rentabilité."
+
+    GRAHAM_MULT_L = "Multiplicateur de Croissance"
+    GRAHAM_MULT_D = "Prime de croissance appliquée selon le barème révisé de Graham."
+
+    GRAHAM_IV_L = "Valeur Graham 1974"
+    GRAHAM_IV_D = "Estimation de la valeur intrinsèque ajustée par le rendement AAA."
+
+    # --- MC ---
+    MC_INIT_L = "Initialisation du Moteur Stochastique"
+    MC_INIT_D = "Calibration des lois normales multivariées."
+
+    MC_SAMP_L = "Simulation Multivariée"
+    MC_SAMP_D = "Génération des vecteurs d'inputs via décomposition de Cholesky."
+
+    MC_FILT_L = "Contrôle de Convergence"
+    MC_FILT_D = "Élimination des scénarios de divergence."
+
+    MC_MED_L = "Valeur Probabiliste Centrale (P50)"
+    MC_MED_D = "Valeur intrinsèque centrale de la distribution stochastique."
+
+    MC_SENS_L = "Sensibilité à la Corrélation (ρ)"
+    MC_SENS_D = "Impact de la corrélation sur la stabilité de la valeur médiane."
+
+    MC_STRESS_L = "Stress Test (Bear Case)"
+    MC_STRESS_D = "Scénario de stress avec croissance nulle et risque élevé."
+
+    # --- AUDIT ---
+    AUDIT_BETA_L = "Cohérence du Beta"
+    AUDIT_BETA_D = "Vérifie que le beta est dans une plage économiquement réaliste."
+
+    AUDIT_ICR_L = "Solvabilité (ICR)"
+    AUDIT_ICR_D = "Évalue la capacité à honorer la charge de la dette."
+
+    AUDIT_CASH_L = "Position Net-Net"
+    AUDIT_CASH_D = "Vérifie si la trésorerie excède la valorisation boursière."
+
+    AUDIT_LIQ_L = "Taille de Marché"
+    AUDIT_LIQ_D = "Identifie les risques de liquidité sur les small-caps."
+
+    AUDIT_LEV_L = "Levier Financier"
+    AUDIT_LEV_D = "Mesure l'endettement relatif à la capacité bénéficiaire."
+
+    AUDIT_MACRO_L = "Convergence Macro"
+    AUDIT_MACRO_D = "Vérifie la cohérence entre croissance perpétuelle et taux sans risque."
+
+    AUDIT_RF_L = "Plancher du Taux Sans Risque"
+    AUDIT_RF_D = "Alerte si le Rf est anormalement bas."
+
+    AUDIT_REINV_L = "Taux de Renouvellement Industriel"
+    AUDIT_REINV_D = "Mesure la capacité à maintenir l'outil de production."
+
+    AUDIT_GLIM_L = "Borne de Croissance"
+    AUDIT_GLIM_D = "Alerte si le taux de croissance est hors normes."
+
+    AUDIT_PAY_L = "Soutenabilité de la Distribution"
+    AUDIT_PAY_D = "Vérifie que la politique de dividende ne décapitalise pas l'entreprise."
+
+    AUDIT_WACC_L = "Plancher du WACC"
+    AUDIT_WACC_D = "Alerte si le taux d'actualisation est excessivement bas."
+
+    AUDIT_TVC_L = "Concentration Valeur Terminale"
+    AUDIT_TVC_D = "Mesure la dépendance du modèle à la valeur terminale."
+
+    AUDIT_G_WACC_L = "Stabilité de Convergence Gordon"
+    AUDIT_G_WACC_D = "Assure la convergence mathématique du modèle de Gordon."
+
+    AUDIT_SPREAD_L = "Spread de Création de Valeur"
+    AUDIT_SPREAD_D = "Mesure la création de richesse additionnelle."
+
+    AUDIT_PB_L = "Pertinence RIM (P/B)"
+    AUDIT_PB_D = "Indicateur de pertinence pour le modèle Residual Income."
+
+    AUDIT_UNK_L = "Test Spécifique"
+    AUDIT_UNK_D = "Test non référencé dans le registre."

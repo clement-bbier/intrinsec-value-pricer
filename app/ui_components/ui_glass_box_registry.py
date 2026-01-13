@@ -1,102 +1,100 @@
 """
 app/ui_components/ui_glass_box_registry.py
-
 REGISTRE UNIFIÉ DES MÉTADONNÉES GLASS BOX — VERSION V8.2
-Rôle : Source unique de vérité pour les labels, formules et descriptions d'audit.
-Architecture : Namespaces unifiés (DCF, RIM, GRAHAM, MC, AUDIT).
+Rôle : Source unique de vérité pour les labels et formules, textes déportés dans RegistryTexts.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
-
+from app.ui_components.ui_texts import RegistryTexts
 
 # ==============================================================================
 # REGISTRE UNIFIÉ DES MÉTADONNÉES
 # ==============================================================================
 
-STEP_METADATA:  Dict[str, Dict[str, Any]] = {
+STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
     # ==========================================================================
     # 1. DCF — FLUX DE TRÉSORERIE ACTUALISÉS
     # ==========================================================================
 
     "FCF_BASE_SELECTION": {
-        "label": "Ancrage FCF₀",
+        "label": RegistryTexts.DCF_FCF_BASE_L,
         "formula": r"FCF_0",
         "unit": "currency",
-        "description": "Flux de trésorerie disponible de départ pour la projection."
+        "description": RegistryTexts.DCF_FCF_BASE_D
     },
     "FCF_NORM_SELECTION": {
-        "label": "Ancrage FCF Normalisé",
+        "label": RegistryTexts.DCF_FCF_NORM_L,
         "formula": r"FCF_{norm}",
-        "unit":  "currency",
-        "description":  "Flux lissé sur un cycle complet pour neutraliser la volatilité."
+        "unit": "currency",
+        "description": RegistryTexts.DCF_FCF_NORM_D
     },
     "FCF_STABILITY_CHECK": {
-        "label": "Contrôle de Viabilité Financière",
-        "formula":  r"FCF_{norm} > 0",
+        "label": RegistryTexts.DCF_STABILITY_L,
+        "formula": r"FCF_{norm} > 0",
         "unit": "bool",
-        "description": "Validation de la capacité à générer des flux positifs."
+        "description": RegistryTexts.DCF_STABILITY_D
     },
     "WACC_CALC": {
-        "label": "Coût Moyen Pondéré du Capital",
+        "label": RegistryTexts.DCF_WACC_L,
         "formula": r"WACC = w_e \cdot [R_f + \beta \cdot MRP] + w_d \cdot [k_d \cdot (1-\tau)]",
         "unit": "%",
-        "description": "Taux d'actualisation reflétant le coût du capital de l'entreprise."
+        "description": RegistryTexts.DCF_WACC_D
     },
-    "FCF_PROJ":  {
-        "label": "Projection des Flux",
+    "FCF_PROJ": {
+        "label": RegistryTexts.DCF_PROJ_L,
         "formula": r"FCF_t = FCF_{t-1} \times (1+g)",
         "unit": "currency",
-        "description": "Projection des flux sur l'horizon explicite."
+        "description": RegistryTexts.DCF_PROJ_D
     },
     "TV_GORDON": {
-        "label": "Valeur Terminale (Gordon)",
+        "label": RegistryTexts.DCF_TV_GORDON_L,
         "formula": r"TV = \frac{FCF_n \times (1+g_n)}{WACC - g_n}",
         "unit": "currency",
-        "description": "Valeur de l'entreprise au-delà de la période explicite (modèle de Gordon)."
+        "description": RegistryTexts.DCF_TV_GORDON_D
     },
     "TV_MULTIPLE": {
-        "label": "Valeur Terminale (Multiple)",
+        "label": RegistryTexts.DCF_TV_MULT_L,
         "formula": r"TV = EBITDA_n \times Multiple",
         "unit": "currency",
-        "description": "Valeur terminale basée sur un multiple de sortie."
+        "description": RegistryTexts.DCF_TV_MULT_D
     },
     "NPV_CALC": {
-        "label": "Valeur d'Entreprise (EV)",
+        "label": RegistryTexts.DCF_EV_L,
         "formula": r"EV = \sum \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^n}",
         "unit": "currency",
-        "description": "Somme actualisée des flux et de la valeur terminale."
+        "description": RegistryTexts.DCF_EV_D
     },
     "EQUITY_BRIDGE": {
-        "label": "Pont de Valeur (Equity Bridge)",
+        "label": RegistryTexts.DCF_BRIDGE_L,
         "formula": r"Equity = EV - Dette + Cash - Minoritaires - Provisions",
         "unit": "currency",
-        "description": "Ajustement de la structure financière pour obtenir la valeur des fonds propres."
+        "description": RegistryTexts.DCF_BRIDGE_D
     },
     "VALUE_PER_SHARE": {
-        "label": "Valeur Intrinsèque par Action",
+        "label": RegistryTexts.DCF_IV_L,
         "formula": r"IV = \frac{Equity\_Value}{Actions}",
         "unit": "currency",
-        "description": "Estimation de la valeur réelle d'une action."
+        "description": RegistryTexts.DCF_IV_D
     },
 
     # ==========================================================================
     # 2. DCF GROWTH — REVENUE-DRIVEN
     # ==========================================================================
 
-    "GROWTH_REV_BASE":  {
-        "label": "Chiffre d'Affaires de Base",
+    "GROWTH_REV_BASE": {
+        "label": RegistryTexts.GROWTH_REV_BASE_L,
         "formula": r"Rev_0",
         "unit": "currency",
-        "description": "Point de départ du modèle basé sur le chiffre d'affaires TTM."
+        "description": RegistryTexts.GROWTH_REV_BASE_D
     },
     "GROWTH_MARGIN_CONV": {
-        "label": "Convergence des Marges",
+        "label": RegistryTexts.GROWTH_MARGIN_L,
         "formula": r"Margin_t \to Margin_{target}",
         "unit": "%",
-        "description": "Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
+        "description": RegistryTexts.GROWTH_MARGIN_D
     },
 
     # ==========================================================================
@@ -104,46 +102,46 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "RIM_BV_INITIAL": {
-        "label": "Actif Net Comptable Initial",
+        "label": RegistryTexts.RIM_BV_L,
         "formula": r"BV_0",
         "unit": "currency",
-        "description": "Valeur comptable par action au départ du modèle."
+        "description": RegistryTexts.RIM_BV_D
     },
     "RIM_KE_CALC": {
-        "label": "Coût des Fonds Propres (Ke)",
-        "formula":  r"k_e = R_f + \beta \times MRP",
-        "unit":  "%",
-        "description": "Coût des capitaux propres via le CAPM."
+        "label": RegistryTexts.RIM_KE_L,
+        "formula": r"k_e = R_f + \beta \times MRP",
+        "unit": "%",
+        "description": RegistryTexts.RIM_KE_D
     },
     "RIM_RI_CALC": {
-        "label": "Calcul des Surprofits (RI)",
+        "label": RegistryTexts.RIM_RI_L,
         "formula": r"RI_t = NI_t - (k_e \times BV_{t-1})",
         "unit": "currency",
-        "description": "Profit résiduel après rémunération des fonds propres."
+        "description": RegistryTexts.RIM_RI_D
     },
     "RIM_TV_OHLSON": {
-        "label": "Valeur Terminale (Persistance ω)",
+        "label": RegistryTexts.RIM_TV_L,
         "formula": r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
         "unit": "currency",
-        "description": "Estimation de la persistance des surprofits selon le modèle d'Ohlson."
+        "description": RegistryTexts.RIM_TV_D
     },
     "RIM_FINAL_VALUE": {
-        "label": "Valeur Intrinsèque RIM",
+        "label": RegistryTexts.RIM_IV_L,
         "formula": r"IV = BV_0 + \sum PV(RI_t) + PV(TV)",
         "unit": "currency",
-        "description": "Valeur totale issue du modèle Residual Income."
+        "description": RegistryTexts.RIM_IV_D
     },
-    "RIM_PAYOUT":  {
-        "label": "Politique de Distribution",
+    "RIM_PAYOUT": {
+        "label": RegistryTexts.RIM_PAYOUT_L,
         "formula": r"Payout = \frac{Div}{EPS}",
         "unit": "%",
-        "description": "Ratio de distribution des dividendes."
+        "description": RegistryTexts.RIM_PAYOUT_D
     },
     "RIM_EPS_PROJ": {
-        "label": "Projection des Bénéfices",
+        "label": RegistryTexts.RIM_EPS_PROJ_L,
         "formula": r"EPS_t = EPS_{t-1} \times (1+g)",
         "unit": "currency",
-        "description": "Projection des bénéfices par action."
+        "description": RegistryTexts.RIM_EPS_PROJ_D
     },
 
     # ==========================================================================
@@ -151,22 +149,22 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "GRAHAM_EPS_BASE": {
-        "label": "BPA Normalisé (EPS)",
-        "formula":  r"EPS",
+        "label": RegistryTexts.GRAHAM_EPS_L,
+        "formula": r"EPS",
         "unit": "currency",
-        "description": "Bénéfice par action utilisé comme socle de rentabilité."
+        "description": RegistryTexts.GRAHAM_EPS_D
     },
     "GRAHAM_MULTIPLIER": {
-        "label":  "Multiplicateur de Croissance",
-        "formula": r"M = 8. 5 + 2g",
+        "label": RegistryTexts.GRAHAM_MULT_L,
+        "formula": r"M = 8.5 + 2g",
         "unit": "x",
-        "description": "Prime de croissance appliquée selon le barème révisé de Graham."
+        "description": RegistryTexts.GRAHAM_MULT_D
     },
-    "GRAHAM_FINAL":  {
-        "label": "Valeur Graham 1974",
-        "formula": r"IV = \frac{EPS \times (8.5 + 2g) \times 4. 4}{Y}",
+    "GRAHAM_FINAL": {
+        "label": RegistryTexts.GRAHAM_IV_L,
+        "formula": r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}",
         "unit": "currency",
-        "description": "Estimation de la valeur intrinsèque ajustée par le rendement AAA."
+        "description": RegistryTexts.GRAHAM_IV_D
     },
 
     # ==========================================================================
@@ -174,40 +172,40 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "MC_CONFIG": {
-        "label": "Initialisation du Moteur Stochastique",
+        "label": RegistryTexts.MC_INIT_L,
         "formula": r"\sigma_{\beta}, \sigma_g, \sigma_{g_n}, \rho",
         "unit": "params",
-        "description": "Calibration des lois normales multivariées."
+        "description": RegistryTexts.MC_INIT_D
     },
     "MC_SAMPLING": {
-        "label": "Simulation Multivariée",
-        "formula":  r"f(\beta, g, g_n) \to N_{sims}",
+        "label": RegistryTexts.MC_SAMP_L,
+        "formula": r"f(\beta, g, g_n) \to N_{sims}",
         "unit": "iter",
-        "description": "Génération des vecteurs d'inputs via décomposition de Cholesky."
+        "description": RegistryTexts.MC_SAMP_D
     },
     "MC_FILTERING": {
-        "label": "Contrôle de Convergence",
+        "label": RegistryTexts.MC_FILT_L,
         "formula": r"\frac{N_{valid}}{N_{total}}",
         "unit": "ratio",
-        "description": "Élimination des scénarios de divergence."
+        "description": RegistryTexts.MC_FILT_D
     },
     "MC_MEDIAN": {
-        "label": "Valeur Probabiliste Centrale (P50)",
+        "label": RegistryTexts.MC_MED_L,
         "formula": r"Median(IV_i)",
         "unit": "currency",
-        "description": "Valeur intrinsèque centrale de la distribution stochastique."
+        "description": RegistryTexts.MC_MED_D
     },
     "MC_SENSITIVITY": {
-        "label": "Sensibilité à la Corrélation (ρ)",
+        "label": RegistryTexts.MC_SENS_L,
         "formula": r"\frac{\partial P50}{\partial \rho}",
         "unit": "currency",
-        "description": "Impact de la corrélation sur la stabilité de la valeur médiane."
+        "description": RegistryTexts.MC_SENS_D
     },
     "MC_STRESS_TEST": {
-        "label":  "Stress Test (Bear Case)",
-        "formula":  r"f(g \to 0, \beta \to 1.5)",
+        "label": RegistryTexts.MC_STRESS_L,
+        "formula": r"f(g \to 0, \beta \to 1.5)",
         "unit": "currency",
-        "description": "Scénario de stress avec croissance nulle et risque élevé."
+        "description": RegistryTexts.MC_STRESS_D
     },
 
     # ==========================================================================
@@ -215,34 +213,34 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "AUDIT_BETA_COHERENCE": {
-        "label": "Cohérence du Beta",
-        "formula": r"0. 4 < \beta < 3.0",
-        "unit":  "ratio",
-        "description": "Vérifie que le beta est dans une plage économiquement réaliste."
+        "label": RegistryTexts.AUDIT_BETA_L,
+        "formula": r"0.4 < \beta < 3.0",
+        "unit": "ratio",
+        "description": RegistryTexts.AUDIT_BETA_D
     },
     "AUDIT_SOLVENCY_ICR": {
-        "label":  "Solvabilité (ICR)",
-        "formula":  r"\frac{\text{EBIT}}{\text{Intérêts}} > 1.5",
+        "label": RegistryTexts.AUDIT_ICR_L,
+        "formula": r"\frac{\text{EBIT}}{\text{Intérêts}} > 1.5",
         "unit": "x",
-        "description": "Évalue la capacité à honorer la charge de la dette."
+        "description": RegistryTexts.AUDIT_ICR_D
     },
     "AUDIT_CASH_MCAP": {
-        "label": "Position Net-Net",
+        "label": RegistryTexts.AUDIT_CASH_L,
         "formula": r"\frac{\text{Trésorerie}}{\text{Market Cap}} < 1.0",
-        "unit":  "%",
-        "description": "Vérifie si la trésorerie excède la valorisation boursière."
+        "unit": "%",
+        "description": RegistryTexts.AUDIT_CASH_D
     },
-    "AUDIT_LIQUIDITY":  {
-        "label": "Taille de Marché",
+    "AUDIT_LIQUIDITY": {
+        "label": RegistryTexts.AUDIT_LIQ_L,
         "formula": r"MCap > 250M",
         "unit": "currency",
-        "description": "Identifie les risques de liquidité sur les small-caps."
+        "description": RegistryTexts.AUDIT_LIQ_D
     },
     "AUDIT_LEVERAGE": {
-        "label": "Levier Financier",
+        "label": RegistryTexts.AUDIT_LEV_L,
         "formula": r"\frac{\text{Dette}}{\text{EBIT}} < 4x",
         "unit": "x",
-        "description": "Mesure l'endettement relatif à la capacité bénéficiaire."
+        "description": RegistryTexts.AUDIT_LEV_D
     },
 
     # ==========================================================================
@@ -250,34 +248,34 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "AUDIT_G_RF_CONVERGENCE": {
-        "label":  "Convergence Macro",
+        "label": RegistryTexts.AUDIT_MACRO_L,
         "formula": r"g_{perp} < R_f",
         "unit": "ratio",
-        "description": "Vérifie la cohérence entre croissance perpétuelle et taux sans risque."
+        "description": RegistryTexts.AUDIT_MACRO_D
     },
     "AUDIT_RF_FLOOR": {
-        "label": "Plancher du Taux Sans Risque",
+        "label": RegistryTexts.AUDIT_RF_L,
         "formula": r"R_f > 1\%",
         "unit": "%",
-        "description": "Alerte si le Rf est anormalement bas."
+        "description": RegistryTexts.AUDIT_RF_D
     },
     "AUDIT_CAPEX_DA": {
-        "label": "Taux de Renouvellement Industriel",
+        "label": RegistryTexts.AUDIT_REINV_L,
         "formula": r"\frac{|\text{Capex}|}{\text{D\&A}} > 0.8",
         "unit": "%",
-        "description": "Mesure la capacité à maintenir l'outil de production."
+        "description": RegistryTexts.AUDIT_REINV_D
     },
     "AUDIT_GROWTH_LIMIT": {
-        "label": "Borne de Croissance",
+        "label": RegistryTexts.AUDIT_GLIM_L,
         "formula": r"g < 20\%",
         "unit": "%",
-        "description": "Alerte si le taux de croissance est hors normes."
+        "description": RegistryTexts.AUDIT_GLIM_D
     },
     "AUDIT_PAYOUT_STABILITY": {
-        "label": "Soutenabilité de la Distribution",
+        "label": RegistryTexts.AUDIT_PAY_L,
         "formula": r"\frac{\text{Dividendes}}{\text{Résultat Net}} < 1.0",
         "unit": "%",
-        "description": "Vérifie que la politique de dividende ne décapitalise pas l'entreprise."
+        "description": RegistryTexts.AUDIT_PAY_D
     },
 
     # ==========================================================================
@@ -285,22 +283,22 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "AUDIT_WACC_FLOOR": {
-        "label": "Plancher du WACC",
-        "formula":  r"WACC > 6\%",
-        "unit":  "%",
-        "description": "Alerte si le taux d'actualisation est excessivement bas."
+        "label": RegistryTexts.AUDIT_WACC_L,
+        "formula": r"WACC > 6\%",
+        "unit": "%",
+        "description": RegistryTexts.AUDIT_WACC_D
     },
     "AUDIT_TV_CONCENTRATION": {
-        "label": "Concentration Valeur Terminale",
+        "label": RegistryTexts.AUDIT_TVC_L,
         "formula": r"\frac{TV}{EV} < 90\%",
         "unit": "%",
-        "description": "Mesure la dépendance du modèle à la valeur terminale."
+        "description": RegistryTexts.AUDIT_TVC_D
     },
     "AUDIT_G_WACC": {
-        "label": "Stabilité de Convergence Gordon",
+        "label": RegistryTexts.AUDIT_G_WACC_L,
         "formula": r"g_n < WACC",
-        "unit":  "ratio",
-        "description": "Assure la convergence mathématique du modèle de Gordon."
+        "unit": "ratio",
+        "description": RegistryTexts.AUDIT_G_WACC_D
     },
 
     # ==========================================================================
@@ -308,16 +306,16 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "AUDIT_ROE_KE_SPREAD": {
-        "label": "Spread de Création de Valeur",
+        "label": RegistryTexts.AUDIT_SPREAD_L,
         "formula": r"ROE - k_e \neq 0",
         "unit": "%",
-        "description":  "Mesure la création de richesse additionnelle."
+        "description": RegistryTexts.AUDIT_SPREAD_D
     },
     "AUDIT_PB_RATIO": {
-        "label": "Pertinence RIM (P/B)",
-        "formula":  r"\frac{\text{Prix}}{\text{Book Value}} < 8x",
+        "label": RegistryTexts.AUDIT_PB_L,
+        "formula": r"\frac{\text{Prix}}{\text{Book Value}} < 8x",
         "unit": "x",
-        "description": "Indicateur de pertinence pour le modèle Residual Income."
+        "description": RegistryTexts.AUDIT_PB_D
     },
 
     # ==========================================================================
@@ -325,22 +323,12 @@ STEP_METADATA:  Dict[str, Dict[str, Any]] = {
     # ==========================================================================
 
     "AUDIT_UNKNOWN": {
-        "label": "Test Spécifique",
+        "label": RegistryTexts.AUDIT_UNK_L,
         "formula": r"\text{N/A}",
         "unit": "",
-        "description": "Test non référencé dans le registre."
+        "description": RegistryTexts.AUDIT_UNK_D
     },
 }
 
-
 def get_step_metadata(key: str) -> Dict[str, Any]:
-    """
-    Récupère les métadonnées d'une clé.
-
-    Args:
-        key:  Clé de l'étape
-
-    Returns:
-        Dictionnaire des métadonnées ou dict vide si non trouvé
-    """
     return STEP_METADATA.get(key, {})

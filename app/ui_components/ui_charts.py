@@ -1,8 +1,7 @@
 """
 app/ui_components/ui_charts.py
 VISUALISATIONS — VERSION V3.3 (Hedge Fund Standard)
-Rôle : Rendu graphique haute précision, alignement responsif et pédagogie.
-Changements : Alignement de la matrice de corrélation et conformité Streamlit 2026.
+Rôle : Rendu graphique haute précision utilisant les constantes i18n.
 """
 
 from __future__ import annotations
@@ -13,14 +12,16 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 
+from app.ui_components.ui_texts import ChartTexts
+
 # ============================================================================
 # 1. HISTORIQUE DE PRIX
 # ============================================================================
 
 def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> None:
-    """Affiche l'historique de prix avec une ligne simple et propre."""
+    """Affiche l'historique de prix avec les labels centralisés."""
     if price_history is None or price_history.empty:
-        st.info(f"Historique de prix indisponible pour {ticker}.")
+        st.info(ChartTexts.PRICE_UNAVAILABLE.format(ticker=ticker))
         return
 
     df = price_history.copy()
@@ -28,7 +29,6 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
         df.index = pd.to_datetime(df.index, errors='coerce')
     df = df.reset_index()
 
-    # Détection intelligente des colonnes
     date_col = next((c for c in df.columns if str(c).lower() in ['date', 'index']), None)
     if not date_col: return
 
@@ -44,8 +44,14 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
     chart = alt.Chart(df).mark_line(color='#1E88E5', strokeWidth=1.5).encode(
         x=alt.X('Date:T', title=None, axis=alt.Axis(format='%Y-%m')),
         y=alt.Y('Prix:Q', scale=alt.Scale(zero=False), title=None),
-        tooltip=[alt.Tooltip('Date:T', format='%d %b %Y'), alt.Tooltip('Prix:Q', format=',.2f')]
-    ).properties(height=300, title=f"Historique de marché : {ticker}").interactive()
+        tooltip=[
+            alt.Tooltip('Date:T', format=ChartTexts.DATE_FORMAT, title=ChartTexts.TOOLTIP_DATE),
+            alt.Tooltip('Prix:Q', format=',.2f', title=ChartTexts.TOOLTIP_PRICE)
+        ]
+    ).properties(
+        height=300,
+        title=ChartTexts.PRICE_HISTORY_TITLE.format(ticker=ticker)
+    ).interactive()
 
     st.altair_chart(chart, width="stretch")
 
@@ -55,9 +61,9 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 # ============================================================================
 
 def display_simulation_chart(simulation_results: List[float], market_price: float, currency: str) -> None:
-    """Affiche l'histogramme Monte Carlo et une synthèse technique factuelle."""
+    """Affiche l'histogramme Monte Carlo avec synthèse technique localisée."""
     if not simulation_results:
-        st.warning("Pas de données de simulation disponibles.")
+        st.warning(ChartTexts.SIM_UNAVAILABLE)
         return
 
     values = np.array([v for v in simulation_results if v is not None and not np.isnan(v)])
@@ -69,28 +75,24 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 
     df_sim = pd.DataFrame({"Valeur": values})
 
-    # --- Graphique ---
     hist = alt.Chart(df_sim).mark_bar(color="#546E7A", opacity=0.7).encode(
-        x=alt.X("Valeur:Q", bin=alt.Bin(maxbins=50), title=f"Valeur Intrinsèque ({currency})"),
-        y=alt.Y("count()", title="Fréquence")
+        x=alt.X("Valeur:Q", bin=alt.Bin(maxbins=50), title=ChartTexts.SIM_AXIS_X.format(currency=currency)),
+        y=alt.Y("count()", title=ChartTexts.SIM_AXIS_Y)
     )
     rule_p50 = alt.Chart(pd.DataFrame({'x': [p50]})).mark_rule(color="#2E7D32", strokeWidth=3).encode(x='x')
-    rule_quantiles = alt.Chart(pd.DataFrame({'x': [p10, p90]})).mark_rule(color="#90A4AE", strokeDash=[4, 4]).encode(
-        x='x')
+    rule_quantiles = alt.Chart(pd.DataFrame({'x': [p10, p90]})).mark_rule(color="#90A4AE", strokeDash=[4, 4]).encode(x='x')
 
     layers = [hist, rule_p50, rule_quantiles]
     if market_price > 0:
-        layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2,
-                                                                               strokeDash=[5, 2]).encode(x='x'))
+        layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2, strokeDash=[5, 2]).encode(x='x'))
 
     st.altair_chart(alt.layer(*layers).properties(height=320), width="stretch")
 
-    # --- Synthèse Technique ---
     st.markdown(f"""
-    **Synthèse de la distribution ({len(values)} scénarios) :**
-    * Valeur centrale (P50) : {p50:,.2f} {currency}
-    * Prix de marché : {market_price:,.2f} {currency}
-    * Intervalle de confiance (P10-P90) : {p10:,.2f} à {p90:,.2f} (80% de probabilité)
+    {ChartTexts.SIM_SUMMARY_TITLE.format(count=len(values))}
+    * {ChartTexts.SIM_SUMMARY_P50} : {p50:,.2f} {currency}
+    * {ChartTexts.SIM_SUMMARY_PRICE} : {market_price:,.2f} {currency}
+    * {ChartTexts.SIM_SUMMARY_CI} : {p10:,.2f} à {p90:,.2f} {ChartTexts.SIM_SUMMARY_PROB.format(prob=80)}
     """)
 
 # ============================================================================
@@ -98,8 +100,8 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 # ============================================================================
 
 def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator_func: Callable, currency: str = "EUR") -> None:
-    """Affiche une matrice de sensibilité bidimensionnelle (WACC vs g)."""
-    st.subheader("Sensibilité (WACC / Croissance)")
+    """Affiche une matrice de sensibilité avec titres i18n."""
+    st.subheader(ChartTexts.SENS_TITLE)
 
     wacc_steps = [-0.010, -0.005, 0.0, 0.005, 0.010]
     growth_steps = [-0.005, -0.0025, 0.0, 0.0025, 0.005]
@@ -117,39 +119,35 @@ def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator
             except: continue
 
     if not data:
-        st.warning("Matrice impossible (WACC trop proche de g).")
+        st.warning(ChartTexts.SENS_UNAVAILABLE)
         return
 
     df = pd.DataFrame(data)
 
     base = alt.Chart(df).encode(
-        x=alt.X('Growth:O', title="Croissance (g)", axis=alt.Axis(format='.2%')),
-        y=alt.Y('WACC:O', title="WACC / Ke", axis=alt.Axis(format='.2%'))
+        x=alt.X('Growth:O', title=ChartTexts.SENS_AXIS_X, axis=alt.Axis(format='.2%')),
+        y=alt.Y('WACC:O', title=ChartTexts.SENS_AXIS_Y, axis=alt.Axis(format='.2%'))
     )
 
     heatmap = base.mark_rect().encode(
         color=alt.Color('Valeur:Q', scale=alt.Scale(scheme='yellowgreenblue'), legend=None),
         tooltip=[
-            alt.Tooltip('WACC', format='.2%', title="Taux (WACC)"),
-            alt.Tooltip('Growth', format='.2%', title="Croissance"),
-            alt.Tooltip('Valeur', format=',.2f', title=f"Valeur ({currency})")
+            alt.Tooltip('WACC', format='.2%', title=ChartTexts.SENS_TOOLTIP_WACC),
+            alt.Tooltip('Growth', format='.2%', title=ChartTexts.SENS_TOOLTIP_GROWTH),
+            alt.Tooltip('Valeur', format=',.2f', title=ChartTexts.SENS_TOOLTIP_VAL.format(currency=currency))
         ]
     )
 
     text = base.mark_text(baseline='middle').encode(
         text=alt.Text('Valeur:Q', format=',.0f'),
-        color=alt.condition(
-            alt.datum.Valeur > df['Valeur'].quantile(0.5),
-            alt.value('white'),
-            alt.value('black')
-        )
+        color=alt.condition(alt.datum.Valeur > df['Valeur'].quantile(0.5), alt.value('white'), alt.value('black'))
     )
 
     st.altair_chart((heatmap + text).properties(height=350), width="stretch")
 
 
 def display_correlation_heatmap(rho: float = -0.30) -> None:
-    """Rendu de la matrice de corrélation. Fix : Alignement responsif."""
+    """Rendu de la matrice de corrélation avec légende centralisée."""
     corr_data = pd.DataFrame([
         {"X": "Beta (β)", "Y": "Beta (β)", "Val": 1.0},
         {"X": "Growth (g)", "Y": "Growth (g)", "Val": 1.0},
@@ -158,7 +156,7 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
     ])
 
     base = alt.Chart(corr_data).encode(
-        x=alt.X('X:N', title=None, axis=alt.Axis(labelAngle=0)), # Alignement horizontal
+        x=alt.X('X:N', title=None, axis=alt.Axis(labelAngle=0)),
         y=alt.Y('Y:N', title=None)
     )
 
@@ -169,13 +167,8 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
 
     text = base.mark_text().encode(
         text=alt.Text('Val:Q', format='.2f'),
-        color=alt.condition(
-            (alt.datum.Val > 0.5) | (alt.datum.Val < -0.5),
-            alt.value('white'),
-            alt.value('black')
-        )
+        color=alt.condition((alt.datum.Val > 0.5) | (alt.datum.Val < -0.5), alt.value('white'), alt.value('black'))
     )
 
-    # Propriétés de taille fixe pour le carré, mais responsive en largeur
     st.altair_chart((heatmap + text).properties(height=180), width="stretch")
-    st.caption("Matrice de Corrélation des Inputs (Stochastique)")
+    st.caption(ChartTexts.CORREL_CAPTION)
