@@ -168,8 +168,7 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_TWO_STAGE))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", width="stretch"):
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
 
 def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
@@ -193,8 +192,7 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_NORMALIZED))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", width="stretch"):
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", use_container_width=True):        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
 
 def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
@@ -219,7 +217,7 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Dette} + \text{Trésorerie} - \text{Minoritaires} - \text{Pensions}}{\text{Actions}}"))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_REVENUE_DRIVEN))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", width="stretch"):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
 
@@ -246,7 +244,7 @@ def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \dfrac{\text{Equity Value}}{\text{Actions}}", is_rim=True))
     all_data.update(atom_monte_carlo_smart(ValuationMode.RESIDUAL_INCOME_MODEL))
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", width="stretch"):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RESIDUAL_INCOME_MODEL, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
 
@@ -268,7 +266,7 @@ def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
     tau = c2.number_input(ExpertTerminalTexts.INP_TAX_SIMPLE, min_value=0.0, max_value=0.60, value=None, format="%.2f")
     st.divider()
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", width="stretch"):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", use_container_width=True):
         all_data = {"manual_fcf_base": eps, "fcf_growth_rate": g_lt, "corporate_aaa_yield": yield_aaa, "tax_rate": tau, "projection_years": 1, "enable_monte_carlo": False}
         return ValuationRequest(ticker=ticker, projection_years=1, mode=ValuationMode.GRAHAM_1974_REVISED, input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
     return None
