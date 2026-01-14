@@ -189,3 +189,20 @@ def calculate_rim_vectors(
         prev_bv = new_bv
 
     return residual_incomes, book_values
+
+
+def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> List[float]:
+    """
+    Calcule des proportions normalisées (somme = 1.0).
+    Gère la division par zéro et les valeurs None.
+    """
+    clean_values = [v or 0.0 for v in values]
+    total = sum(clean_values)
+
+    if total <= 0:
+        # Fallback institutionnel : Si rien n'est défini, 100% sur le premier élément (Equity)
+        result = [0.0] * len(clean_values)
+        result[fallback_index] = 1.0
+        return result
+
+    return [v / total for v in clean_values]

@@ -213,47 +213,47 @@ class KPITexts:
     LABEL_SHARES = "Actions en circulation"
 
     # Labels Financiers
-    SUB_MARKET = "##### Marché & Capitalisation"
+    SUB_MARKET = "Marché & Capitalisation"
     LABEL_PRICE = "Cours Actuel"
     LABEL_MCAP = "Capitalisation Boursière"
     LABEL_BVPS = "Book Value / Action"
 
-    SUB_CAPITAL = "##### Structure du Capital"
+    SUB_CAPITAL = "Structure du Capital"
     LABEL_DEBT = "Dette Totale"
     LABEL_CASH = "Trésorerie"
     LABEL_NET_DEBT = "Dette Nette"
     LABEL_INTEREST = "Charges d'Intérêts"
 
-    SUB_PERF = "##### Performance Opérationnelle (TTM)"
+    SUB_PERF = "Performance Opérationnelle (TTM)"
     LABEL_REV = "Chiffre d'Affaires"
     LABEL_EBIT = "EBIT"
     LABEL_NI = "Résultat Net"
     LABEL_EPS = "BPA (EPS)"
 
-    SUB_CASH = "##### Flux de Trésorerie"
+    SUB_CASH = "Flux de Trésorerie"
     LABEL_FCF_LAST = "FCF (Dernier)"
     LABEL_CAPEX = "CapEx"
     LABEL_DA = "D&A"
 
     # Paramètres Modèle
-    SUB_RATES = "##### Taux et Primes de Risque"
+    SUB_RATES = "Taux et Primes de Risque"
     LABEL_RF = "Taux Sans Risque (Rf)"
     LABEL_MRP = "Prime de Risque (MRP)"
     LABEL_KD = "Coût de la Dette (Kd)"
     LABEL_TAX = "Taux d'Imposition (τ)"
 
-    SUB_GROWTH = "##### Croissance et Horizon"
+    SUB_GROWTH = "Croissance et Horizon"
     LABEL_G = "Taux de Croissance (g)"
     LABEL_GN = "Croissance Perpétuelle (gn)"
     LABEL_HORIZON = "Horizon de Projection"
     UNIT_YEARS = "ans"
 
-    SUB_CALCULATED = "##### Métriques Calculées"
+    SUB_CALCULATED = "Métriques Calculées"
     LABEL_WACC = "WACC"
     LABEL_KE = "Coût des Fonds Propres (Ke)"
     LABEL_METHOD = "Méthode de Valorisation"
 
-    SUB_TV = "##### Valeur Terminale"
+    SUB_TV = "Valeur Terminale"
     LABEL_TV_METHOD = "Méthode TV"
     LABEL_EXIT_M = "Multiple de Sortie"
 
@@ -296,10 +296,10 @@ class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
     # Rapport d'Audit
     NO_REPORT = "Aucun rapport d'audit généré pour cette simulation."
-    GLOBAL_SCORE = "### Score d'Audit Global : {score:.1f} / 100"
+    GLOBAL_SCORE = "Score d'Audit Global : {score:.1f} / 100"
     RATING_SCORE = "Rating Score"
     COVERAGE = "Couverture"
-    CHECK_TABLE = "#### Table de Vérification des Invariants"
+    CHECK_TABLE = "Table de Vérification des Invariants"
 
     # Headers Table
     H_INDICATOR = "INDICATEUR"
