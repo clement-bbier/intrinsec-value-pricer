@@ -163,8 +163,6 @@ class ValuationStrategy(ABC):
 
         return equity_val, bridge_components
 
-        return equity_val, bridge_components
-
     def _compute_value_per_share(self, equity_val, shares, financials) -> float:
         if shares <= 0: raise CalculationError(CalculationErrors.INVALID_SHARES)
         iv_share = equity_val / shares
