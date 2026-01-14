@@ -1,9 +1,9 @@
 """
 app/workflow.py
 
-ORCHESTRATEUR LOGIQUE — VERSION V8.2
+ORCHESTRATEUR LOGIQUE — VERSION V9.0 (Segmenté & i18n Secured)
 Rôle : Pilotage de l'analyse avec fusion résiliente et gestion d'erreurs enrichie.
-Architecture : Smart Merge "Empty=Auto" vs "0=Value".
+Architecture : Smart Merge respectant les segments Rates, Growth et MC.
 """
 
 from __future__ import annotations
@@ -34,9 +34,6 @@ logger = logging.getLogger(__name__)
 def run_workflow_and_display(request: ValuationRequest) -> None:
     """
     Point d'entrée unique pilotant le cycle de vie complet de l'analyse financière.
-
-    Args:
-        request: Requête de valorisation contenant ticker, mode et paramètres
     """
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
 
@@ -53,17 +50,18 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
         )
 
         # =====================================================================
-        # ÉTAPE 2 : CONCILIATION DES PARAMÈTRES (SMART MERGE)
+        # ÉTAPE 2 : CONCILIATION DES PARAMÈTRES (SMART MERGE V9)
         # =====================================================================
         status.write(WorkflowTexts.STATUS_SMART_MERGE)
 
         final_params = _merge_parameters(request, auto_params)
 
+        # CORRECTION V9 : Accès via .monte_carlo.enable_monte_carlo
         logger.info(
             "[Workflow] Dispatching calculation | Ticker: %s | Source: %s | MC: %s",
             request.ticker,
             request.input_source.value,
-            final_params.enable_monte_carlo
+            final_params.monte_carlo.enable_monte_carlo
         )
 
         # =====================================================================
@@ -71,7 +69,8 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
         # =====================================================================
         status.write(WorkflowTexts.STATUS_ENGINE_RUN.format(mode=request.mode.value))
 
-        if final_params.enable_monte_carlo:
+        # CORRECTION V9 : Accès via .monte_carlo.enable_monte_carlo
+        if final_params.monte_carlo.enable_monte_carlo:
             status.write(WorkflowTexts.STATUS_MC_RUN)
 
         result = run_valuation(request, financials, final_params)
@@ -102,7 +101,7 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
 
 
 # ==============================================================================
-# 2. HELPERS
+# 2. HELPERS DE FUSION (V9 SEGMENTÉ)
 # ==============================================================================
 
 def _create_data_provider() -> YahooFinanceProvider:
@@ -112,9 +111,7 @@ def _create_data_provider() -> YahooFinanceProvider:
 
 
 def _merge_parameters(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """
-    Fusionne les paramètres auto et manuels selon la source d'input.
-    """
+    """Fusionne les paramètres selon la source d'input."""
     if request.input_source == InputSource.MANUAL:
         return _merge_manual_params(request, auto_params)
 
@@ -122,35 +119,38 @@ def _merge_parameters(request: ValuationRequest, auto_params: DCFParameters) -> 
 
 
 def _merge_manual_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """Fusionne les paramètres en mode expert."""
-    merged_data = auto_params.model_dump()
-    expert_data = request.manual_params.model_dump(exclude_unset=True)
+    """Fusionne les paramètres expert avec respect de la segmentation."""
+    expert_rates = request.manual_params.rates.model_dump(exclude_unset=True)
+    expert_growth = request.manual_params.growth.model_dump(exclude_unset=True)
 
-    # Écrasement sélectif : seules les valeurs non-None sont appliquées
-    merged_data.update({k: v for k, v in expert_data.items() if v is not None})
+    final_params = auto_params.model_copy(deep=True)
 
-    final_params = DCFParameters(**merged_data)
+    for k, v in expert_rates.items():
+        if v is not None: setattr(final_params.rates, k, v)
 
-    # Respect des flags Monte Carlo du terminal expert
-    final_params.enable_monte_carlo = request.manual_params.enable_monte_carlo
-    final_params.num_simulations = request.manual_params.num_simulations
+    for k, v in expert_growth.items():
+        if v is not None: setattr(final_params.growth, k, v)
+
+    # Le Monte Carlo expert prévaut
+    final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
 
     return final_params
 
 
 def _merge_auto_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """Fusionne les paramètres en mode automatique."""
-    final_params = auto_params.model_copy()
-
+    """Fusionne les options simples pour le mode automatique (Alignement V9)."""
+    final_params = auto_params.model_copy(deep=True)
     ui_options = request.options or {}
-    final_params.enable_monte_carlo = ui_options.get("enable_monte_carlo", False)
-    final_params.num_simulations = ui_options.get("num_simulations", 2000)
+
+    # Utilisation des clés 'enable_mc' et 'mc_sims' définies dans main.py
+    final_params.monte_carlo.enable_monte_carlo = ui_options.get("enable_mc", False)
+    final_params.monte_carlo.num_simulations = ui_options.get("mc_sims", 5000)
 
     return final_params
 
 
 def _create_crash_diagnostic(error: Exception) -> DiagnosticEvent:
-    """Crée un événement diagnostic pour les erreurs système via DiagnosticTexts."""
+    """Crée un événement diagnostic pour les erreurs système."""
     return DiagnosticEvent(
         code="SYSTEM_CRASH",
         severity=SeverityLevel.CRITICAL,
@@ -162,7 +162,7 @@ def _create_crash_diagnostic(error: Exception) -> DiagnosticEvent:
 
 
 def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
-    """Affiche un message diagnostic formaté avec les préfixes de WorkflowTexts."""
+    """Affiche un message diagnostic formaté."""
     if diag.severity in [SeverityLevel.CRITICAL, SeverityLevel.ERROR]:
         st.error(f"{WorkflowTexts.PREFIX_CRITICAL} {diag.message}")
     elif diag.severity == SeverityLevel.WARNING:

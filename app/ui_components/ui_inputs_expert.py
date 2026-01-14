@@ -22,16 +22,19 @@ from app.ui_components.ui_texts import ExpertTerminalTexts
 # ==============================================================================
 
 def safe_factory_params(all_data: Dict[str, Any]) -> DCFParameters:
-    """SÉCURITÉ PYDANTIC : Traite les données UI (Empty=Auto, 0=Value)."""
-    final_data = {
+    """SÉCURITÉ PYDANTIC : Traite les données UI vers la structure segmentée."""
+    # Valeurs par défaut pour les champs critiques non saisis
+    base_defaults = {
         "projection_years": 5,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,
-        "enable_monte_carlo": False
+        "enable_monte_carlo": False,
+        "num_simulations": 5000
     }
-    final_data.update({k: v for k, v in all_data.items() if v is not None})
-    allowed_keys = DCFParameters.model_fields.keys()
-    filtered_data = {k: v for k, v in final_data.items() if k in allowed_keys}
-    return DCFParameters(**filtered_data)
+    # On fusionne avec les données de l'UI
+    full_data = {**base_defaults, **{k: v for k, v in all_data.items() if v is not None}}
+
+    # On utilise l'adaptateur legacy pour construire l'objet segmenté
+    return DCFParameters.from_legacy(full_data)
 
 # ==============================================================================
 # 1. LES ATOMES UI (PILOTÉS PAR UI_TEXTS)

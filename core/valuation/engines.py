@@ -1,9 +1,9 @@
 """
-core/valuation/engines. py
+core/valuation/engines.py
 
-ROUTEUR CENTRAL DES MOTEURS DE VALORISATION
-Version : V8.1 — Clean Architecture & Centralized Logic
-Responsabilités :  Orchestration, Routage et Sécurisation du contrat de sortie.
+ROUTEUR CENTRAL DES MOTEURS DE VALORISATION — VERSION V9.0 (Segmenté)
+Responsabilités : Orchestration, Routage, Wrapper Monte Carlo et Reverse DCF.
+Architecture : Grade-A avec isolation des segments de paramètres.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import logging
 import traceback
 from typing import Dict, Type, Optional
 
+from app.ui_components.ui_texts import DiagnosticTexts
 from core.exceptions import (
     ValuationException,
     DiagnosticEvent,
@@ -29,7 +30,7 @@ from core.models import (
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-from core. valuation.strategies.dcf_growth import RevenueBasedStrategy
+from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
 from core.valuation.strategies.rim_banks import RIMBankingStrategy
 from core.valuation.strategies.graham_value import GrahamNumberStrategy
 from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
-    ValuationMode.FCFF_TWO_STAGE:  StandardFCFFStrategy,
+    ValuationMode.FCFF_TWO_STAGE: StandardFCFFStrategy,
     ValuationMode.FCFF_NORMALIZED: FundamentalFCFFStrategy,
     ValuationMode.FCFF_REVENUE_DRIVEN: RevenueBasedStrategy,
     ValuationMode.RESIDUAL_INCOME_MODEL: RIMBankingStrategy,
@@ -61,7 +62,6 @@ def run_valuation(
 ) -> ValuationResult:
     """
     Exécute une valorisation et déclenche instantanément l'audit de fiabilité.
-    Architecture V8.1 : Injection Request -> Calcul -> Audit -> Certification.
     """
     logger.info(f"[Engine] Initialisation {request.mode.value} pour {request.ticker}")
 
@@ -73,9 +73,10 @@ def run_valuation(
         raise _raise_unknown_strategy(request.mode)
 
     # =========================================================================
-    # B. WRAPPER MONTE CARLO (Optionnel)
+    # B. WRAPPER MONTE CARLO (Correction : Accès segment monte_carlo)
     # =========================================================================
-    use_mc = params.enable_monte_carlo and request.mode.supports_monte_carlo
+    use_mc = params.monte_carlo.enable_monte_carlo and request.mode.supports_monte_carlo
+
     if use_mc:
         strategy = MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
     else:
@@ -88,7 +89,7 @@ def run_valuation(
         # 1. Calcul mathématique de la valeur intrinsèque
         result = strategy.execute(financials, params)
 
-        # 2. INJECTION DE LA REQUÊTE (AVANT l'audit)
+        # 2. INJECTION DE LA REQUÊTE (Indispensable pour l'audit)
         _inject_request_safely(result, request)
 
         # 3. APPEL DU MOTEUR D'AUDIT
@@ -98,7 +99,7 @@ def run_valuation(
         # 4. Validation du contrat de sortie
         strategy.verify_output_contract(result)
 
-        logger.info(f"[Engine] Valorisation terminée avec succès. Score Audit: {result.audit_report.global_score:.1f}")
+        logger.info(f"[Engine] Valorisation terminée. Score: {result.audit_report.global_score:.1f}")
         return result
 
     except ValuationException:
@@ -115,7 +116,7 @@ def run_valuation(
 # ==============================================================================
 
 def _inject_request_safely(result: ValuationResult, request: ValuationRequest) -> None:
-    """Gère l'injection de la requête même si l'objet est 'frozen'."""
+    """Gère l'injection de la requête sur le résultat."""
     try:
         result.request = request
     except Exception:
@@ -123,18 +124,17 @@ def _inject_request_safely(result: ValuationResult, request: ValuationRequest) -
 
 
 def _raise_unknown_strategy(mode: ValuationMode) -> ValuationException:
-    """Lève une exception pour une stratégie non enregistrée."""
+    """Lève une exception via ui_texts."""
     return ValuationException(DiagnosticEvent(
         code="UNKNOWN_STRATEGY",
         severity=SeverityLevel.CRITICAL,
-        domain=DiagnosticDomain. SYSTEM,
-        message=f"La stratégie pour {mode} n'est pas enregistrée.",
-        remediation_hint="Vérifiez le dictionnaire STRATEGY_REGISTRY dans engines. py."
+        domain=DiagnosticDomain.SYSTEM,
+        message=DiagnosticTexts.UNKNOWN_STRATEGY_MSG.format(mode=mode),
+        remediation_hint=DiagnosticTexts.UNKNOWN_STRATEGY_HINT
     ))
 
 
-def _handle_calculation_error(ce:  CalculationError) -> ValuationException:
-    """Transforme une erreur de calcul en exception de valorisation."""
+def _handle_calculation_error(ce: CalculationError) -> ValuationException:
     return ValuationException(DiagnosticEvent(
         code="CALCULATION_ERROR",
         severity=SeverityLevel.ERROR,
@@ -145,19 +145,19 @@ def _handle_calculation_error(ce:  CalculationError) -> ValuationException:
 
 
 def _handle_system_crash(e: Exception) -> ValuationException:
-    """Gère les erreurs système critiques."""
+    """Gère les crashs via ui_texts."""
     return ValuationException(DiagnosticEvent(
         code="STRATEGY_CRASH",
         severity=SeverityLevel.CRITICAL,
         domain=DiagnosticDomain.SYSTEM,
-        message=f"Échec critique du moteur : {str(e)}",
+        message=DiagnosticTexts.STRATEGY_CRASH_MSG.format(error=str(e)),
         technical_detail=traceback.format_exc(),
-        remediation_hint="Redémarrez l'analyse ou contactez le support technique."
+        remediation_hint=DiagnosticTexts.STRATEGY_CRASH_HINT
     ))
 
 
 # ==============================================================================
-# 4. REVERSE DCF
+# 4. REVERSE DCF (Version Segmentée)
 # ==============================================================================
 
 def run_reverse_dcf(
@@ -166,7 +166,10 @@ def run_reverse_dcf(
     market_price: float,
     max_iterations: int = 50
 ) -> Optional[float]:
-    """Calcul du taux de croissance implicite par dichotomie."""
+    """
+    Calcul du taux de croissance implicite par dichotomie.
+    Correction : Accès et modification via le segment 'growth'.
+    """
     if market_price <= 0:
         return None
 
@@ -175,7 +178,10 @@ def run_reverse_dcf(
 
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
-        test_params = params.model_copy(update={"fcf_growth_rate": mid})
+
+        # Mise à jour profonde du paramètre de croissance
+        test_params = params.model_copy(deep=True)
+        test_params.growth.fcf_growth_rate = mid
 
         try:
             result = strategy.execute(financials, test_params)

@@ -1,18 +1,20 @@
 import pytest
-from core.valuation.strategies.dcf_standard import SimpleFCFFStrategy
+from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-from core.valuation.strategies.monte_carlo import MonteCarloDCFStrategy
+from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
 from core.exceptions import CalculationError
+from app.ui_components.ui_texts import CalculationErrors
 
-
-def test_simple_strategy_execution(sample_financials, sample_params):
-    """Vérifie que la stratégie Simple s'exécute et produit un résultat cohérent."""
-    strategy = SimpleFCFFStrategy()
+def test_standard_strategy_execution(sample_financials, sample_params):
+    """Vérifie que la stratégie Standard s'exécute avec les segments V9."""
+    # sample_params est supposé être un objet DCFParameters segmenté
+    strategy = StandardFCFFStrategy()
     result = strategy.execute(sample_financials, sample_params)
 
     assert result.intrinsic_value_per_share > 0
-    assert len(result.projected_fcfs) == sample_params.projection_years
-    # Le WACC doit être cohérent avec les inputs (ex: ~8-9% avec les params par défaut)
+    # Accès via le segment growth
+    assert len(result.projected_fcfs) == sample_params.growth.projection_years
+    # Le WACC doit être cohérent (~8-9% par défaut)
     assert 0.05 < result.wacc < 0.15
 
 
@@ -21,19 +23,23 @@ def test_fundamental_strategy_missing_data(sample_financials, sample_params):
     sample_financials.fcf_fundamental_smoothed = None
     strategy = FundamentalFCFFStrategy()
 
-    with pytest.raises(CalculationError, match="Donnée manquante"):
+    # Utilisation de la constante i18n pour le matching d'erreur
+    expected_error = CalculationErrors.MISSING_FCF_NORM.split("(")[0] # On match le début du message
+    with pytest.raises(CalculationError, match=expected_error):
         strategy.execute(sample_financials, sample_params)
 
 
 def test_monte_carlo_strategy_structure(sample_financials, sample_params):
-    """Vérifie que Monte Carlo retourne bien une distribution et des quantiles."""
-    # Setup volatilités pour MC
-    sample_params.beta_volatility = 0.10
-    sample_params.growth_volatility = 0.02
-    # On force un petit nombre de sims pour que le test soit rapide
-    sample_params.num_simulations = 50
+    """Vérifie que Monte Carlo utilise le segment monte_carlo et retourne des quantiles."""
+    # Setup via le segment monte_carlo
+    mc = sample_params.monte_carlo
+    mc.enable_monte_carlo = True
+    mc.beta_volatility = 0.10
+    mc.growth_volatility = 0.02
+    mc.num_simulations = 50 # Simulations réduites pour le test
 
-    strategy = MonteCarloDCFStrategy()
+    # Utilisation du wrapper générique mis à jour
+    strategy = MonteCarloGenericStrategy(strategy_cls=StandardFCFFStrategy)
     result = strategy.execute(sample_financials, sample_params)
 
     assert result.simulation_results is not None

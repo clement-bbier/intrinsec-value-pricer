@@ -42,7 +42,8 @@ from app.ui_components.ui_inputs_expert import (
     render_expert_graham,
 )
 from app.workflow import run_workflow_and_display
-from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest
+from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest, CoreRateParameters, \
+    GrowthParameters, MonteCarloConfig
 
 # IMPORT DU RÉFÉRENTIEL TEXTUEL
 from app.ui_components.ui_texts import (
@@ -319,21 +320,19 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
-    """Gère le lancement en mode Auto."""
+    """Gère le lancement en mode Auto avec la nouvelle structure DCFParameters."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_INVALID)
         return
 
+    # Instanciation segmentée V9
     config_params = DCFParameters(
-        risk_free_rate=0.0,
-        market_risk_premium=0.0,
-        corporate_aaa_yield=0.0,
-        cost_of_debt=0.0,
-        tax_rate=0.0,
-        fcf_growth_rate=0.0,
-        projection_years=options["years"],
-        enable_monte_carlo=options["enable_mc"],
-        num_simulations=options["mc_sims"],
+        rates=CoreRateParameters(), # Laissé en Auto (None)
+        growth=GrowthParameters(projection_years=options["years"]),
+        monte_carlo=MonteCarloConfig(
+            enable_monte_carlo=options["enable_mc"],
+            num_simulations=options["mc_sims"]
+        )
     )
 
     request = ValuationRequest(
@@ -342,10 +341,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
         mode=mode,
         input_source=InputSource.AUTO,
         manual_params=config_params,
-        options={
-            "enable_monte_carlo": options["enable_mc"],
-            "num_simulations": options["mc_sims"],
-        },
+        options=options
     )
 
     _set_active_request(request)

@@ -1,16 +1,16 @@
 """
 core/valuation/strategies/dcf_fundamental.py
 
-MÉTHODE :  FCFF NORMALIZED — VERSION V8.2
-Rôle :  Normalisation des flux cycliques et délégation au moteur mathématique.
-Architecture :  Audit-Grade avec alignement intégral sur le registre Glass Box.
+MÉTHODE : FCFF NORMALIZED — VERSION V9.0 (Segmenté & i18n Secured)
+Rôle : Normalisation des flux cycliques et délégation au pipeline DCF.
+Architecture : Audit-Grade avec alignement intégral sur le registre Glass Box.
 """
 
 from __future__ import annotations
 
 import logging
 
-from core. exceptions import CalculationError
+from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, TraceHypothesis
 from core.valuation.strategies.abstract import ValuationStrategy
 
@@ -19,7 +19,8 @@ from app.ui_components.ui_texts import (
     RegistryTexts,
     StrategyInterpretations,
     CalculationErrors,
-    StrategySources
+    StrategySources,
+    KPITexts
 )
 
 logger = logging.getLogger(__name__)
@@ -28,34 +29,18 @@ logger = logging.getLogger(__name__)
 class FundamentalFCFFStrategy(ValuationStrategy):
     """
     FCFF Normalisé (Cyclical / Fundamental).
-
-    Utilise des flux lissés pour neutraliser la volatilité des cycles économiques.
-    Adapté aux entreprises industrielles et cycliques.
+    Utilise des flux lissés pour neutraliser la volatilité des cycles.
     """
 
     academic_reference = "CFA Institute / Damodaran"
     economic_domain = "Cyclical / Industrial firms"
-    financial_invariants = [
-        "normalized_fcf > 0",
-        "WACC > g_terminal",
-        "projection_years > 0"
-    ]
 
     def execute(
         self,
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> DCFValuationResult:
-        """
-        Exécute la stratégie en identifiant et validant le flux normalisé de départ.
-
-        Args:
-            financials: Données financières de l'entreprise
-            params:  Paramètres de valorisation
-
-        Returns:
-            Résultat DCF complet
-        """
+        """Exécute la stratégie via le segment 'growth'."""
         logger.info("[Strategy] FCFF Normalized | ticker=%s", financials.ticker)
 
         # =====================================================================
@@ -63,12 +48,13 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         # =====================================================================
         fcf_base, source = self._select_normalized_fcf(financials, params)
 
+        # CORRECTION i18n : Utilisation de SUB_FCF_NORM
         self.add_step(
             step_key="FCF_NORM_SELECTION",
             label=RegistryTexts.DCF_FCF_NORM_L,
             theoretical_formula=r"FCF_{norm}",
             result=fcf_base,
-            numerical_substitution=f"FCF_norm = {fcf_base: ,.2f} ({source})",
+            numerical_substitution=KPITexts.SUB_FCF_NORM.format(val=fcf_base, src=source),
             interpretation=StrategyInterpretations.FUND_NORM,
             hypotheses=[
                 TraceHypothesis(
@@ -95,7 +81,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         )
 
         # =====================================================================
-        # 3. EXÉCUTION DU DCF DÉTERMINISTE (DÉLÉGATION)
+        # 3. EXÉCUTION DU DCF MATH (V9 Segmented)
         # =====================================================================
         return self._run_dcf_math(
             base_flow=fcf_base,
@@ -103,19 +89,10 @@ class FundamentalFCFFStrategy(ValuationStrategy):
             params=params
         )
 
-    def _select_normalized_fcf(
-        self,
-        financials: CompanyFinancials,
-        params: DCFParameters
-    ) -> tuple[float, str]:
-        """
-        Sélectionne le FCF normalisé avec priorité aux paramètres manuels.
-
-        Returns:
-            Tuple (fcf_base, source_description)
-        """
-        if params.manual_fcf_base is not None:
-            return params.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
+    def _select_normalized_fcf(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
+        """Sélection via le segment growth."""
+        if params.growth.manual_fcf_base is not None:
+            return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
         if financials.fcf_fundamental_smoothed is None:
             raise CalculationError(CalculationErrors.MISSING_FCF_NORM)
@@ -123,10 +100,6 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         return financials.fcf_fundamental_smoothed, StrategySources.YAHOO_FUNDAMENTAL
 
     def _validate_fcf_positivity(self, fcf_base: float) -> None:
-        """
-        Valide que le FCF normalisé est strictement positif.
-
-        Un FCF négatif invalide l'usage d'un DCF standard pour l'auditeur.
-        """
+        """Lève une exception i18n si le flux est négatif."""
         if fcf_base <= 0:
             raise CalculationError(CalculationErrors.NEGATIVE_FCF_NORM)

@@ -1,27 +1,23 @@
 """
 core/computation/financial_math.py
 
-MOTEUR MATHÉMATIQUE FINANCIER
-Version : V3.1 — Souveraineté Analyste (None=Auto Logic)
-
-Standardisation :
-- Gestion stricte du paradigm "None = Delegation" vs "0.0 = Value".
-- Suppression des opérateurs 'or' sur les types numériques.
-- Protocoles de secours (Fallbacks) pour le WACC et la fiscalité.
-- Lève des CalculationError explicites en cas d'aberration.
+MOTEUR MATHÉMATIQUE FINANCIER — VERSION V9.0 (i18n Secured)
+Architecture : Souveraineté Analyste avec isolation des segments Rates & Growth.
+Rôle : Calculs financiers atomiques et déterminations du coût du capital.
 """
 
 import logging
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 
+from app.ui_components.ui_texts import CalculationErrors, StrategySources
 from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters
 
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# CONSTANTES & TABLES DE RÉFÉRENCE (DAMODARAN)
+# TABLES DE RÉFÉRENCE (DAMODARAN)
 # ==============================================================================
 
 SPREADS_LARGE_CAP = [
@@ -38,7 +34,6 @@ SPREADS_SMALL_MID_CAP = [
     (0.8, 0.1010), (0.5, 0.1550), (-999, 0.1900)
 ]
 
-
 @dataclass
 class WACCBreakdown:
     cost_of_equity: float
@@ -49,197 +44,144 @@ class WACCBreakdown:
     wacc: float
     method: str
 
-
 # ==============================================================================
 # 1. VALEUR TEMPORELLE DE L'ARGENT (TIME VALUE OF MONEY)
 # ==============================================================================
 
 def calculate_discount_factors(rate: float, years: int) -> List[float]:
-    """Génère le vecteur d'actualisation : [1/(1+r)^1, ..., 1/(1+r)^N]."""
+    """Génère les facteurs d'actualisation 1/(1+r)^t."""
     if rate <= -1.0:
-        raise CalculationError(f"Taux d'actualisation invalide : {rate:.2%}")
+        raise CalculationError(CalculationErrors.INVALID_DISCOUNT_RATE.format(rate=rate))
     return [1.0 / ((1.0 + rate) ** t) for t in range(1, years + 1)]
 
-
 def calculate_npv(flows: List[float], rate: float) -> float:
-    """Calcule la Valeur Actuelle Nette (NPV)."""
+    """Calcule la Valeur Actuelle Nette (NPV) d'une série de flux."""
     factors = calculate_discount_factors(rate, len(flows))
     return sum(f * d for f, d in zip(flows, factors))
 
-
 def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
-    """Modèle de Gordon-Shapiro. Invariant : rate > g_perp."""
-
+    """Modèle de croissance perpétuelle (Gordon Growth)."""
     if rate <= g_perp:
-        raise CalculationError(
-            f"Convergence impossible : Taux ({rate:.2%}) <= Croissance ({g_perp:.2%})."
-        )
+        raise CalculationError(CalculationErrors.CONVERGENCE_IMPOSSIBLE.format(rate=rate, g=g_perp))
     return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
 
-
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
-    """Modèle de Sortie par Multiple."""
+    """Modèle de sortie par multiple (ex: EV/EBITDA final)."""
     if multiple < 0:
-        raise CalculationError("Le multiple de sortie ne peut pas être négatif.")
+        raise CalculationError(CalculationErrors.NEGATIVE_EXIT_MULTIPLE)
     return final_metric * multiple
-
-
-def calculate_equity_value_bridge(enterprise_value: float, total_debt: float, cash: float, minorities: float = 0.0, pensions: float = 0.0) -> float:
-    """Passage de l'Enterprise Value (EV) à l'Equity Value."""
-    return enterprise_value - total_debt + cash - minorities - pensions
-
 
 # ==============================================================================
 # 2. COÛT DU CAPITAL (WACC / CAPM)
 # ==============================================================================
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
-    """Modèle CAPM : Ke = Rf + Beta * MRP"""
+    """Modèle CAPM : Ke = Rf + Beta * MRP."""
     return rf + (beta * mrp)
 
 
 def calculate_synthetic_cost_of_debt(
         rf: float,
         ebit: Optional[float],
-        interest_expense: Optional[float],
+        interest_expense: Optional[float],  # Renommé ici (était 'interest' ou 'interest_expense')
         market_cap: float
 ) -> float:
-    """
-    Estime le coût de la dette (Rf + Spread) basé sur l'ICR.
-    Sécurisé pour gérer les données manquantes (None-Safe).
-    """
-    # 1. Normalisation des entrées (None -> 0.0 pour les tests logiques)
+    """Estime le coût de la dette basé sur l'ICR (Synthetic Rating)."""
     safe_ebit = ebit if ebit is not None else 0.0
-    safe_interest = interest_expense if interest_expense is not None else 0.0
+    safe_int = interest_expense if interest_expense is not None else 0.0  # Mise à jour ici
 
-    # 2. Cas de défaut : Pas d'intérêt ou pas d'EBIT (Incapacité de calcul ICR)
-    if safe_interest <= 0 or safe_ebit <= 0:
-        # On applique un spread prudent (A-rated proxy)
-        return rf + 0.0107
+    if safe_int <= 0 or safe_ebit <= 0:
+        return rf + 0.0107  # Spread par défaut A-rated proxy
 
-    # 3. Calcul de l'Interest Coverage Ratio (ICR)
-    icr = safe_ebit / safe_interest
+    icr = safe_ebit / safe_int
+    table = SPREADS_LARGE_CAP if market_cap >= 5_000_000_000 else SPREADS_SMALL_MID_CAP
 
-    # 4. Sélection de la table de spread selon la capitalisation
-    is_large = market_cap >= 5_000_000_000
-    table = SPREADS_LARGE_CAP if is_large else SPREADS_SMALL_MID_CAP
-
-    # 5. Recherche du spread par paliers (Waterfall lookup)
-    selected_spread = 0.20  # Défaut Junk/Caa
-    for threshold, spread_value in table:
+    selected_spread = 0.20
+    for threshold, spread in table:
         if icr >= threshold:
-            selected_spread = spread_value
+            selected_spread = spread
             break
-
     return rf + selected_spread
 
-
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """Calcul centralisé du WACC avec respect du paradigme None=Auto."""
+    """
+    Calcul centralisé du WACC via segmentation V9.
+    Intègre les surcharges Rates et Growth.
+    """
+    r, g = params.rates, params.growth
 
+    # 1. Résolution des taux (Segment Rates)
+    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
+    mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
+    tax = r.tax_rate if r.tax_rate is not None else 0.25
 
-    # 1. Résolution des taux de base (Fallbacks normatifs si None)
-    rf = params.risk_free_rate if params.risk_free_rate is not None else 0.04
-    mrp = params.market_risk_premium if params.market_risk_premium is not None else 0.05
-    tax_to_use = params.tax_rate if params.tax_rate is not None else 0.25
+    # 2. Résolution structurelle (Segment Growth pour surcharges)
+    debt = g.manual_total_debt if g.manual_total_debt is not None else financials.total_debt
+    shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
 
-    # 2. Détermination des composantes structurelles
-    debt_to_use = params.manual_total_debt if params.manual_total_debt is not None else financials.total_debt
-    shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
+    # A. Coût des Fonds Propres (Ke)
+    ke = r.manual_cost_of_equity if r.manual_cost_of_equity is not None else \
+         calculate_cost_of_equity_capm(rf, r.manual_beta if r.manual_beta is not None else financials.beta, mrp)
 
-    # A. Cost of Equity (Ke)
-    if params.manual_cost_of_equity is not None:
-        ke = params.manual_cost_of_equity
+    # B. Coût de la Dette (Kd)
+    kd_gross = r.cost_of_debt if r.cost_of_debt is not None else \
+               calculate_synthetic_cost_of_debt(rf, financials.ebit_ttm, financials.interest_expense, financials.market_cap)
+    kd_net = kd_gross * (1.0 - tax)
+
+    # C. Structure de Capital
+    market_equity = financials.current_price * shares
+    if g.target_equity_weight > 0 and g.target_debt_weight > 0:
+        we, wd = g.target_equity_weight, g.target_debt_weight
+        method = StrategySources.WACC_TARGET
     else:
-        beta_to_use = params.manual_beta if params.manual_beta is not None else financials.beta
-        ke = calculate_cost_of_equity_capm(rf, beta_to_use, mrp)
-
-    # B. Cost of Debt (Kd)
-    if params.cost_of_debt is not None:
-        kd_gross = params.cost_of_debt
-    else:
-        # Délégation au modèle synthétique si Kd n'est pas fourni
-        kd_gross = calculate_synthetic_cost_of_debt(
-            rf=rf,
-            ebit=financials.ebit_ttm if financials.ebit_ttm is not None else 0.0,
-            interest_expense=financials.interest_expense if financials.interest_expense is not None else 0.0,
-            market_cap=financials.market_cap
-        )
-
-    kd_net = kd_gross * (1.0 - tax_to_use)
-
-    # C. Poids de la structure de capital
-    market_equity = financials.current_price * shares_to_use
-
-    if params.target_equity_weight > 0 and params.target_debt_weight > 0:
-        we = params.target_equity_weight
-        wd = params.target_debt_weight
-        method = "TARGET"
-    else:
-        total_cap = market_equity + debt_to_use
-        if total_cap <= 0:
-            we, wd = 1.0, 0.0
-            method = "FALLBACK_EQUITY"
-        else:
-            we = market_equity / total_cap
-            wd = debt_to_use / total_cap
-            method = "MARKET"
+        total_cap = market_equity + debt
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        method = StrategySources.WACC_MARKET if total_cap > 0 else StrategySources.WACC_FALLBACK
 
     wacc_raw = (we * ke) + (wd * kd_net)
+    wacc_final = r.wacc_override if r.wacc_override is not None else wacc_raw
 
-    # D. Surcharge finale
-    if params.wacc_override is not None:
-        wacc_final = params.wacc_override
-        method = "MANUAL_OVERRIDE"
-    else:
-        wacc_final = wacc_raw
-
-    return WACCBreakdown(
-        cost_of_equity=ke,
-        cost_of_debt_pre_tax=kd_gross,
-        cost_of_debt_after_tax=kd_net,
-        weight_equity=we,
-        weight_debt=wd,
-        wacc=wacc_final,
-        method=method
-    )
-
+    return WACCBreakdown(ke, kd_gross, kd_net, we, wd, wacc_final, method)
 
 # ==============================================================================
-# 3. MODÈLES SPÉCIFIQUES
+# 3. MODÈLES SPÉCIFIQUES (INDISPENSABLES POUR RIM ET GRAHAM)
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
     """Formule Révisée de Benjamin Graham (1974)."""
-    if aaa_yield is None or aaa_yield <= 0:
-        # Fallback institutionnel si le rendement AAA est manquant
-        aaa_yield = 0.044
+    # Rendement AAA par défaut si non fourni
+    yield_val = aaa_yield if (aaa_yield and aaa_yield > 0) else 0.044
 
-    # Conversion stricte pour le modèle (8.5 + 2g)
+    # Conversion en points de base pour la formule (8.5 + 2g)
     g_scaled = (growth_rate if growth_rate is not None else 0.0) * 100.0
-    y_scaled = aaa_yield * 100.0
+    y_scaled = yield_val * 100.0
 
     growth_multiplier = 8.5 + 2.0 * g_scaled
     rate_adjustment = 4.4 / y_scaled
 
     return eps * growth_multiplier * rate_adjustment
 
-
 def calculate_rim_vectors(
-        current_book_value: float,
-        cost_of_equity: float,
-        projected_earnings: List[float],
-        payout_ratio: float
+    current_book_value: float,
+    cost_of_equity: float,
+    projected_earnings: List[float],
+    payout_ratio: float
 ) -> Tuple[List[float], List[float]]:
-    """Residual Income Model Vectors."""
+    """
+    Génère les vecteurs de Profit Résiduel (RI) et de Book Value (BV).
+    Formule : RI_t = NI_t - (k_e * BV_{t-1})
+    """
     book_values = []
     residual_incomes = []
     prev_bv = current_book_value
 
     for earnings in projected_earnings:
-        dividend = earnings * (payout_ratio if payout_ratio is not None else 0.0)
+        # RI = Revenu Net - Charge du Capital
         equity_charge = prev_bv * cost_of_equity
         ri = earnings - equity_charge
+
+        # Mise à jour de la Book Value (NI - Dividendes)
+        dividend = earnings * (payout_ratio if payout_ratio is not None else 0.0)
         new_bv = prev_bv + earnings - dividend
 
         residual_incomes.append(ri)

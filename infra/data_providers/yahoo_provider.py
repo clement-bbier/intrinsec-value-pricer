@@ -2,13 +2,13 @@
 infra/data_providers/yahoo_provider.py
 
 FOURNISSEUR DE DONNÉES — YAHOO FINANCE
-Version : V9.0 — Clean Architecture (Découplé)
-Rôle : Orchestration et interface publique avec cache.
+Version : V9.0 — Clean Architecture & Segmentation V9
+Rôle : Orchestration et instanciation des paramètres segmentés (Auto-Mode).
 
 Architecture :
 - YahooRawFetcher : Appels API bruts
-- FinancialDataNormalizer :  Reconstruction des métriques
-- YahooFinanceProvider :  Orchestration + cache + fallback
+- FinancialDataNormalizer : Reconstruction des métriques
+- YahooFinanceProvider : Orchestration + instanciation segmentée
 """
 
 from __future__ import annotations
@@ -24,7 +24,13 @@ from pydantic import ValidationError
 
 from core.computation.financial_math import calculate_synthetic_cost_of_debt
 from core.exceptions import ExternalServiceError, TickerNotFoundError
-from core.models import CompanyFinancials, DCFParameters
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    CoreRateParameters,
+    GrowthParameters,
+    MonteCarloConfig
+)
 from infra.data_providers.base_provider import DataProvider
 from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher
 from infra.data_providers.financial_normalizer import FinancialDataNormalizer
@@ -37,19 +43,10 @@ logger = logging.getLogger(__name__)
 
 class YahooFinanceProvider(DataProvider):
     """
-    Fournisseur de données Yahoo Finance avec architecture découplée.
-
-    Compose :
-    - YahooRawFetcher : Transport des données brutes
-    - FinancialDataNormalizer :  Transformation en CompanyFinancials
-
-    Responsabilités :
-    - Cache Streamlit
-    - Fallback suffixes de marché
-    - Orchestration du workflow Auto-Mode
+    Fournisseur de données Yahoo Finance avec support de la segmentation V9.
     """
 
-    MARKET_SUFFIXES:  List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
+    MARKET_SUFFIXES: List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
     MAX_RETRY_ATTEMPTS: int = 1
 
     def __init__(self, macro_provider: YahooMacroProvider):
@@ -63,15 +60,12 @@ class YahooFinanceProvider(DataProvider):
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_company_financials(_self, ticker: str) -> CompanyFinancials:
-        """
-        Récupère et normalise les états financiers.
-        Point d'entrée public avec cache Streamlit.
-        """
+        """Récupère et normalise les états financiers."""
         normalized_ticker = ticker.upper().strip()
         return _self._fetch_financials_with_fallback(normalized_ticker)
 
     @st.cache_data(ttl=3600 * 4)
-    def get_price_history(_self, ticker: str, period:  str = "5y") -> pd.DataFrame:
+    def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
         """Récupère l'historique des prix pour les graphiques."""
         return _self.fetcher.fetch_price_history(ticker, period)
 
@@ -80,7 +74,9 @@ class YahooFinanceProvider(DataProvider):
         ticker: str,
         projection_years: int
     ) -> Tuple[CompanyFinancials, DCFParameters]:
-        """Workflow Auto-Mode :  récupère financials et paramètres."""
+        """
+        Workflow Auto-Mode : construit financials et DCFParameters segmentés.
+        """
         financials = self.get_company_financials(ticker)
         macro = self._fetch_macro_context(financials)
 
@@ -89,25 +85,34 @@ class YahooFinanceProvider(DataProvider):
             COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)["tax_rate"]
         )
 
+        # Calcul du coût de la dette synthétique
         cost_of_debt = calculate_synthetic_cost_of_debt(
             rf=macro.risk_free_rate,
-            ebit=financials.ebit_ttm or 1.0,
+            ebit=financials.ebit_ttm,
             interest_expense=financials.interest_expense,
             market_cap=financials.market_cap
         )
 
+        # CONSTRUCTION SEGMENTÉE (V9)
         params = DCFParameters(
-            risk_free_rate=macro.risk_free_rate,
-            market_risk_premium=macro.market_risk_premium,
-            corporate_aaa_yield=macro.corporate_aaa_yield,
-            cost_of_debt=cost_of_debt,
-            tax_rate=tax_rate,
-            fcf_growth_rate=growth_estimated,
-            perpetual_growth_rate=macro.perpetual_growth_rate,
-            projection_years=projection_years,
-            target_equity_weight=financials.market_cap,
-            target_debt_weight=financials.total_debt
+            rates=CoreRateParameters(
+                risk_free_rate=macro.risk_free_rate,
+                market_risk_premium=macro.market_risk_premium,
+                corporate_aaa_yield=macro.corporate_aaa_yield,
+                cost_of_debt=cost_of_debt,
+                tax_rate=tax_rate
+            ),
+            growth=GrowthParameters(
+                fcf_growth_rate=growth_estimated,
+                perpetual_growth_rate=macro.perpetual_growth_rate,
+                projection_years=projection_years,
+                target_equity_weight=financials.market_cap,
+                target_debt_weight=financials.total_debt
+            ),
+            monte_carlo=MonteCarloConfig() # Initialisation par défaut
         )
+
+        # Normalisation des poids (Déléguée au segment growth par le parent)
         params.normalize_weights()
 
         return financials, params
@@ -116,19 +121,9 @@ class YahooFinanceProvider(DataProvider):
     # LOGIQUE DE FETCH AVEC FALLBACK
     # =========================================================================
 
-    def _fetch_financials_with_fallback(
-        self,
-        ticker: str,
-        _attempt: int = 0
-    ) -> CompanyFinancials:
-        """
-        Fetch avec fallback contrôlé sur les suffixes de marché.
-
-        Garanties :
-        - Maximum 1 retry avec suffixe
-        - Pas de retry si le ticker a déjà un suffixe connu
-        """
-        logger.info("[Yahoo] Fetching financials for %s.. .", ticker)
+    def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> CompanyFinancials:
+        """Fetch avec fallback contrôlé sur les suffixes de marché."""
+        logger.info("[Yahoo] Fetching financials for %s...", ticker)
 
         try:
             result = self._fetch_and_normalize(ticker)
@@ -149,19 +144,8 @@ class YahooFinanceProvider(DataProvider):
         raw_data = self.fetcher.fetch_all(ticker)
         return self.normalizer.normalize(raw_data)
 
-    def _attempt_market_suffix_fallback(
-        self,
-        original_ticker: str,
-        current_attempt: int
-    ) -> CompanyFinancials:
-        """
-        Tente un fallback avec suffixe de marché européen.
-
-        Règles strictes :
-        1. Maximum MAX_RETRY_ATTEMPTS tentatives
-        2. Pas de retry si le ticker a déjà un suffixe connu
-        3. Lève TickerNotFoundError si échec
-        """
+    def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> CompanyFinancials:
+        """Tente un fallback avec suffixe de marché européen."""
         if current_attempt >= self.MAX_RETRY_ATTEMPTS:
             logger.warning("[Yahoo] Retry limit reached for %s", original_ticker)
             raise TickerNotFoundError(ticker=original_ticker)
@@ -171,7 +155,7 @@ class YahooFinanceProvider(DataProvider):
             raise TickerNotFoundError(ticker=original_ticker)
 
         ticker_with_suffix = f"{original_ticker}.PA"
-        logger.info("[Yahoo] Trying fallback:  %s -> %s", original_ticker, ticker_with_suffix)
+        logger.info("[Yahoo] Trying fallback: %s -> %s", original_ticker, ticker_with_suffix)
 
         try:
             result = self._fetch_and_normalize(ticker_with_suffix)
@@ -212,7 +196,8 @@ class YahooFinanceProvider(DataProvider):
         """Estime la croissance via CAGR historique."""
         try:
             yt = yf.Ticker(ticker)
-            hist_cf = safe_api_call(lambda:  yt.cash_flow, "Hist Growth")
+            # Safe API Call label non-i18n car destiné au logging technique
+            hist_cf = safe_api_call(lambda: yt.cash_flow, "Hist Growth")
             cagr = calculate_historical_cagr(hist_cf, "Free Cash Flow")
             return max(0.01, min(cagr or 0.03, 0.10))
         except (ValueError, KeyError, ZeroDivisionError):

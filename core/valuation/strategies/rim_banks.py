@@ -1,9 +1,9 @@
 """
 core/valuation/strategies/rim_banks.py
 
-MÉTHODE : RESIDUAL INCOME MODEL (RIM) — VERSION V8.2
-Rôle : Valorisation des institutions financières via les profits résiduels.
-Architecture :  Registry-Driven avec alignement numérique intégral (Penman/Ohlson).
+MÉTHODE : RESIDUAL INCOME MODEL (RIM) — VERSION V9.0 (Segmenté & i18n Secured)
+Rôle : Valorisation des institutions financières via les profits résiduels (Ohlson).
+Architecture : Audit-Grade utilisant les segments Rates & Growth du modèle V9.
 """
 
 from __future__ import annotations
@@ -26,7 +26,8 @@ from app.ui_components.ui_texts import (
     RegistryTexts,
     StrategyInterpretations,
     CalculationErrors,
-    StrategySources
+    StrategySources,
+    KPITexts
 )
 
 logger = logging.getLogger(__name__)
@@ -35,47 +36,42 @@ logger = logging.getLogger(__name__)
 class RIMBankingStrategy(ValuationStrategy):
     """
     Residual Income Model (Penman/Ohlson) pour institutions financières.
-
-    Adapté aux banques et assurances où le DCF classique est inadapté.
     Formule : IV = BV₀ + Σ PV(RI) + PV(TV)
     """
 
     academic_reference = "Penman / Ohlson"
-    economic_domain = "Banks / Insurance / Financials"
-    financial_invariants = [
-        "book_value > 0",
-        "eps > 0",
-        "cost_of_equity > 0"
-    ]
+    economic_domain = "Banks / Insurance / Financial Services"
 
     def execute(
         self,
-        financials:  CompanyFinancials,
+        financials: CompanyFinancials,
         params: DCFParameters
     ) -> RIMValuationResult:
-        """
-        Exécute la stratégie Residual Income Model.
-        """
-        logger.info("[Strategy] Residual Income Model | ticker=%s", financials.ticker)
+        """Exécute la séquence RIM avec traçabilité Glass Box intégrale."""
+        logger.info("[Strategy] RIM Banking | ticker=%s", financials.ticker)
+
+        # Raccourcis vers les segments V9
+        r = params.rates
+        g = params.growth
 
         # =====================================================================
-        # 1. ANCRAGE COMPTABLE (BOOK VALUE)
+        # 1. ANCRAGE VALEUR COMPTABLE (BV₀)
         # =====================================================================
-        bv_per_share = self._select_book_value(financials, params)
+        bv_per_share, src_bv = self._select_book_value(financials, params)
 
         self.add_step(
             step_key="RIM_BV_INITIAL",
             label=RegistryTexts.RIM_BV_L,
             theoretical_formula=r"BV_0",
             result=bv_per_share,
-            numerical_substitution=f"BV_0 = {bv_per_share:,.2f}",
+            numerical_substitution=KPITexts.SUB_BV_BASE.format(val=bv_per_share, src=src_bv),
             interpretation=RegistryTexts.RIM_BV_D
         )
 
         # =====================================================================
-        # 2. COÛT DES FONDS PROPRES (Ke)
+        # 2. COÛT DES FONDS PROPRES (kₑ)
         # =====================================================================
-        ke, sub_ke = self._compute_cost_of_equity(financials, params)
+        ke, sub_ke = self._compute_ke(financials, params)
 
         self.add_step(
             step_key="RIM_KE_CALC",
@@ -83,94 +79,74 @@ class RIMBankingStrategy(ValuationStrategy):
             theoretical_formula=r"k_e = R_f + \beta \times MRP",
             result=ke,
             numerical_substitution=sub_ke,
-            interpretation=RegistryTexts.RIM_KE_D
+            interpretation=StrategyInterpretations.WACC.format(wacc=ke)
         )
 
         # =====================================================================
         # 3. POLITIQUE DE DISTRIBUTION (PAYOUT)
         # =====================================================================
-        eps_base = self._select_eps_base(financials)
+        eps_base, src_eps = self._select_eps_base(financials, params)
         payout_ratio = self._compute_payout_ratio(financials, eps_base)
 
         self.add_step(
             step_key="RIM_PAYOUT",
             label=RegistryTexts.RIM_PAYOUT_L,
-            theoretical_formula=r"Payout = \frac{Div}{EPS}",
+            theoretical_formula=r"Payout = \frac{Div_{TTM}}{EPS_{TTM}}",
             result=payout_ratio,
-            numerical_substitution=f"{financials.last_dividend or 0.0:,.2f} / {eps_base:,.2f}",
+            numerical_substitution=KPITexts.SUB_PAYOUT.format(
+                div=financials.dividends_total_calculated / financials.shares_outstanding if financials.shares_outstanding else 0,
+                eps=eps_base
+            ),
             interpretation=RegistryTexts.RIM_PAYOUT_D
         )
 
         # =====================================================================
-        # 4. PROJECTION DES BÉNÉFICES
+        # 4. PROJECTION DES PROFITS RÉSIDUELS (RI)
         # =====================================================================
-        years = params.projection_years
-        projected_eps = self._project_eps(eps_base, params.fcf_growth_rate, years)
+        # Projection géométrique des EPS via g.fcf_growth_rate
+        projected_eps = [eps_base * ((1.0 + (g.fcf_growth_rate or 0.0)) ** t)
+                         for t in range(1, g.projection_years + 1)]
+
+        ri_vectors, bv_vectors = calculate_rim_vectors(bv_per_share, ke, projected_eps, payout_ratio)
+
+        factors = calculate_discount_factors(ke, g.projection_years)
+        discounted_ri_sum = sum(ri * df for ri, df in zip(ri_vectors, factors))
 
         self.add_step(
-            step_key="RIM_EPS_PROJ",
-            label=RegistryTexts.RIM_EPS_PROJ_L,
-            theoretical_formula=r"EPS_t = EPS_{t-1} \times (1+g)",
-            result=projected_eps[-1],
-            numerical_substitution=f"{eps_base:,.2f} × (1 + {params.fcf_growth_rate:.3f})^{years}",
-            interpretation=RegistryTexts.RIM_EPS_PROJ_D
-        )
-
-        # =====================================================================
-        # 5. CALCUL DES PROFITS RÉSIDUELS
-        # =====================================================================
-        residual_incomes, projected_bvs = calculate_rim_vectors(
-            bv_per_share, ke, projected_eps, payout_ratio
-        )
-
-        self.add_step(
-            step_key="RIM_RI_CALC",
+            step_key="RIM_RI_SUM",
             label=RegistryTexts.RIM_RI_L,
-            theoretical_formula=r"RI_t = NI_t - (k_e \times BV_{t-1})",
-            result=sum(residual_incomes),
-            numerical_substitution=f"{projected_eps[0]:,.2f} - ({ke:.4f} × {bv_per_share:,.2f})",
+            theoretical_formula=r"\sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}{(1+k_e)^t}",
+            result=discounted_ri_sum,
+            numerical_substitution=KPITexts.SUB_SUM_RI.format(val=discounted_ri_sum),
             interpretation=RegistryTexts.RIM_RI_D
         )
 
         # =====================================================================
-        # 6. ACTUALISATION DES PROFITS RÉSIDUELS
+        # 5. VALEUR TERMINALE (OHLSON ω)
         # =====================================================================
-        discount_factors = calculate_discount_factors(ke, years)
-        discounted_ri_sum = calculate_npv(residual_incomes, ke)
+        tv_ri, discounted_tv = self._compute_ohlson_tv(ri_vectors[-1], ke, factors[-1], params)
+
+        # =====================================================================
+        # 6. VALEUR INTRINSÈQUE FINALE (EQUITY BRIDGE INCLUS)
+        # =====================================================================
+        iv = bv_per_share + discounted_ri_sum + discounted_tv
+        shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
 
         self.add_step(
-            step_key="NPV_CALC",
-            label=RegistryTexts.DCF_EV_L,
-            theoretical_formula=r"\sum \frac{RI_t}{(1+k_e)^t}",
-            result=discounted_ri_sum,
-            numerical_substitution=f"NPV(Residual Incomes, r={ke:.4f})",
-            interpretation=RegistryTexts.DCF_EV_D
-        )
-
-        # =====================================================================
-        # 7. VALEUR TERMINALE (PERSISTANCE OHLSON)
-        # =====================================================================
-        tv_ri, discounted_tv = self._compute_rim_terminal_value(
-            residual_incomes[-1], ke, discount_factors[-1], params
-        )
-
-        # =====================================================================
-        # 8. VALEUR INTRINSÈQUE FINALE
-        # =====================================================================
-        intrinsic_value = bv_per_share + discounted_ri_sum + discounted_tv
-        shares_to_use = params.manual_shares_outstanding if params.manual_shares_outstanding is not None else financials.shares_outstanding
-
-        self.add_step(
-            step_key="RIM_FINAL_VALUE",
+            step_key="RIM_FINAL_IV",
             label=RegistryTexts.RIM_IV_L,
-            theoretical_formula=r"IV = BV_0 + \sum PV(RI_t) + PV(TV)",
-            result=intrinsic_value,
-            numerical_substitution=f"{bv_per_share:,.2f} + {discounted_ri_sum:,.2f} + {discounted_tv:,.2f}",
-            interpretation=RegistryTexts.RIM_IV_D
+            theoretical_formula=r"IV = BV_0 + \sum PV(RI) + PV(TV)",
+            result=iv,
+            numerical_substitution=KPITexts.SUB_RIM_FINAL.format(
+                bv=bv_per_share,
+                ri=discounted_ri_sum,
+                tv=discounted_tv
+            ),
+            interpretation=StrategyInterpretations.IV.format(ticker=financials.ticker)
         )
 
         # =====================================================================
-        # 9. MÉTRIQUES D'AUDIT
+        # 7. MÉTRIQUES D'AUDIT
         # =====================================================================
         audit_metrics = self._compute_rim_audit_metrics(financials, eps_base, bv_per_share, ke)
 
@@ -178,130 +154,84 @@ class RIMBankingStrategy(ValuationStrategy):
             request=None,
             financials=financials,
             params=params,
-            intrinsic_value_per_share=intrinsic_value,
+            intrinsic_value_per_share=iv,
             market_price=financials.current_price,
             cost_of_equity=ke,
             current_book_value=bv_per_share,
-            projected_residual_incomes=residual_incomes,
-            projected_book_values=projected_bvs,
-            discount_factors=discount_factors,
+            projected_residual_incomes=ri_vectors,
+            projected_book_values=bv_vectors,
+            discount_factors=factors,
             sum_discounted_ri=discounted_ri_sum,
             terminal_value_ri=tv_ri,
             discounted_terminal_value=discounted_tv,
-            total_equity_value=intrinsic_value * shares_to_use,
+            total_equity_value=iv * shares,
             calculation_trace=self.calculation_trace,
             roe_observed=audit_metrics["roe"],
             payout_ratio_observed=payout_ratio,
-            spread_roe_ke=audit_metrics["spread"],
-            pb_ratio_observed=audit_metrics["pb_ratio"]
+            spread_roe_ke=audit_metrics["roe_ke"],
+            pb_ratio_observed=audit_metrics["pb"]
         )
 
     # ==========================================================================
-    # MÉTHODES PRIVÉES
+    # MÉTHODES PRIVÉES (V9 & i18n Secured)
     # ==========================================================================
 
-    def _select_book_value(
-        self,
-        financials: CompanyFinancials,
-        params: DCFParameters
-    ) -> float:
-        """Sélectionne la Book Value avec priorité aux paramètres manuels."""
-        bv = params.manual_book_value if params.manual_book_value is not None else financials.book_value_per_share
+    def _select_book_value(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
+        """Souveraineté Analyste via segment growth."""
+        if params.growth.manual_book_value is not None:
+            return params.growth.manual_book_value, StrategySources.MANUAL_OVERRIDE
+        if financials.book_value_per_share and financials.book_value_per_share > 0:
+            return financials.book_value_per_share, StrategySources.YAHOO_TTM_SIMPLE
+        raise CalculationError(CalculationErrors.MISSING_BV)
 
-        if bv is None or bv <= 0:
-            raise CalculationError(CalculationErrors.MISSING_BV)
+    def _compute_ke(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
+        """Coût des fonds propres via segment rates."""
+        r = params.rates
+        if r.manual_cost_of_equity is not None:
+            return r.manual_cost_of_equity, StrategySources.WACC_MANUAL.format(wacc=r.manual_cost_of_equity)
 
-        return bv
+        rf, mrp = (r.risk_free_rate or 0.04), (r.market_risk_premium or 0.05)
+        beta = r.manual_beta if r.manual_beta is not None else financials.beta
+        ke = calculate_cost_of_equity_capm(rf, beta, mrp)
+        sub = f"{rf:.4f} + {beta:.2f} \times {mrp:.4f}"
+        return ke, sub
 
-    def _compute_cost_of_equity(
-        self,
-        financials:  CompanyFinancials,
-        params: DCFParameters
-    ) -> tuple[float, str]:
-        """Calcule le coût des fonds propres via CAPM."""
-        beta_used = params.manual_beta if params.manual_beta is not None else financials.beta
+    def _select_eps_base(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
+        """Sélection de l'EPS de départ (Priorité au segment growth.manual_fcf_base)."""
+        if params.growth.manual_fcf_base is not None:
+            return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
+        if financials.eps_ttm and financials.eps_ttm > 0:
+            return financials.eps_ttm, StrategySources.YAHOO_TTM_SIMPLE
+        raise CalculationError(CalculationErrors.MISSING_EPS_RIM)
 
-        if params.manual_cost_of_equity is not None:
-            ke = params.manual_cost_of_equity
-            sub_ke = f"k_e = {ke:.4f} ({StrategySources.ANALYST_OVERRIDE})"
-        else:
-            ke = calculate_cost_of_equity_capm(
-                params.risk_free_rate, beta_used, params.market_risk_premium
-            )
-            sub_ke = f"{params.risk_free_rate:.4f} + ({beta_used:.2f} × {params.market_risk_premium:.4f})"
+    def _compute_payout_ratio(self, financials: CompanyFinancials, eps: float) -> float:
+        """Ratio de distribution effectif."""
+        if eps <= 0: return 0.0
+        div_per_share = financials.dividends_total_calculated / financials.shares_outstanding if financials.shares_outstanding else 0
+        return max(0.0, min(0.95, div_per_share / eps))
 
-        return ke, sub_ke
-
-    def _select_eps_base(self, financials: CompanyFinancials) -> float:
-        """Sélectionne l'EPS de base avec fallback."""
-        eps_base = financials.eps_ttm
-
-        if eps_base is None or eps_base <= 0:
-            if financials.net_income_ttm and financials.shares_outstanding > 0:
-                eps_base = financials.net_income_ttm / financials.shares_outstanding
-
-        if eps_base is None or eps_base <= 0:
-            raise CalculationError(CalculationErrors.MISSING_EPS_RIM)
-
-        return eps_base
-
-    def _compute_payout_ratio(
-        self,
-        financials:  CompanyFinancials,
-        eps_base: float
-    ) -> float:
-        """Calcule le ratio de distribution avec bornes de sécurité."""
-        dividend = financials.last_dividend or 0.0
-        return max(0.0, min(0.90, dividend / eps_base))
-
-    def _project_eps(
-        self,
-        eps_base: float,
-        growth_rate: float,
-        years: int
-    ) -> List[float]:
-        """Projette les EPS sur l'horizon de valorisation."""
-        return [eps_base * ((1.0 + growth_rate) ** (t + 1)) for t in range(years)]
-
-    def _compute_rim_terminal_value(
-        self,
-        terminal_ri: float,
-        ke: float,
-        last_discount_factor: float,
-        params: DCFParameters
-    ) -> tuple[float, float]:
-        """Calcule la valeur terminale selon le modèle d'Ohlson."""
-        omega = params.exit_multiple_value if params.exit_multiple_value is not None else 0.60
+    def _compute_ohlson_tv(self, terminal_ri: float, ke: float, last_df: float, params: DCFParameters) -> tuple[float, float]:
+        """Valeur terminale RIM utilisant omega (persistance)."""
+        omega = params.growth.exit_multiple_value if params.growth.exit_multiple_value is not None else 0.60
         tv_ri = (terminal_ri * omega) / (1 + ke - omega)
-        discounted_tv = tv_ri * last_discount_factor
+        discounted_tv = tv_ri * last_df
 
-        sub_tv = f"({terminal_ri:,.2f} × {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
-
+        sub_tv_math = f"({terminal_ri:,.2f} \times {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
         self.add_step(
             step_key="RIM_TV_OHLSON",
             label=RegistryTexts.RIM_TV_L,
             theoretical_formula=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
             result=discounted_tv,
-            numerical_substitution=f"{sub_tv} × {last_discount_factor:.4f}",
+            numerical_substitution=KPITexts.SUB_RIM_TV.format(sub_tv=sub_tv_math, factor=last_df),
             interpretation=StrategyInterpretations.RIM_TV
         )
-
         return tv_ri, discounted_tv
 
-    def _compute_rim_audit_metrics(
-        self,
-        financials: CompanyFinancials,
-        eps_base: float,
-        bv_per_share: float,
-        ke: float
-    ) -> dict:
-        """Calcule les métriques d'audit spécifiques au RIM."""
-        roe = eps_base / bv_per_share if bv_per_share > 0 else 0.0
-        pb_ratio = financials.current_price / bv_per_share if bv_per_share > 0 else 0.0
-        spread = (roe - ke) if ke is not None else 0.0
-
+    def _compute_rim_audit_metrics(self, financials, eps, bv, ke) -> dict:
+        """Indicateurs pour l'auditeur institutionnel."""
+        roe = eps / bv if bv > 0 else 0.0
         return {
             "roe": roe,
-            "pb_ratio": pb_ratio,
-            "spread": spread
+            "pb": financials.current_price / bv if bv > 0 else 0.0,
+            "roe_ke": roe - ke
         }

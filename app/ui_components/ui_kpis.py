@@ -1,8 +1,8 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" — VERSION V8.3 (SOLID & DYNAMIQUE)
+RESTITUTION "GLASS BOX" — VERSION V9.0 (Segmenté & i18n Secured)
 Rôle : Affichage haute fidélité des résultats et audit mathématique.
-Architecture : Composants atomiques et routage dynamique des diagnostics.
+Architecture : Alignée sur la segmentation DCFParameters (Rates, Growth, MC).
 """
 
 from __future__ import annotations
@@ -91,7 +91,7 @@ def atom_input_row(label: str, value: str, source: str = "Auto") -> None:
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, _provider: Any = None) -> None:
-    """Orchestrateur des onglets de détails post-calcul."""
+    """Orchestrateur des onglets de détails post-calcul (Accès segmenté MC)."""
     st.divider()
 
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
@@ -99,10 +99,11 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
 
     tab_labels = [KPITexts.TAB_INPUTS, KPITexts.TAB_CALC, KPITexts.TAB_AUDIT]
 
+    # Sécurisation de l'accès au segment monte_carlo
     show_mc_tab = (
         result.request is not None
         and result.request.mode.supports_monte_carlo
-        and result.params.enable_monte_carlo
+        and result.params.monte_carlo.enable_monte_carlo
         and mc_steps
     )
 
@@ -131,7 +132,7 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
 # ==============================================================================
 
 def _render_inputs_tab(result: ValuationResult) -> None:
-    """Onglet 1 : Affiche toutes les données d'entrée utilisées pour le calcul."""
+    """Onglet 1 : Affiche les inputs via les nouveaux segments."""
     f = result.financials
     p = result.params
     mode = result.request.mode if result.request else None
@@ -148,13 +149,13 @@ def _render_inputs_tab(result: ValuationResult) -> None:
     with st.expander(KPITexts.SEC_C_MODEL, expanded=True):
         _render_model_parameters(p, mode, result)
 
-    if p.enable_monte_carlo:
+    if p.monte_carlo.enable_monte_carlo:
         with st.expander(KPITexts.SEC_D_MC, expanded=True):
             _render_monte_carlo_config(p)
 
 
 def _render_company_identity(f: CompanyFinancials) -> None:
-    """Sous-section : Identité de l'entreprise."""
+    """Sous-section : Identité de l'entreprise (Contrat Financier)."""
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"**{KPITexts.LABEL_TICKER}**")
@@ -243,33 +244,35 @@ def _render_financial_data(f: CompanyFinancials) -> None:
 
 
 def _render_model_parameters(p: DCFParameters, mode: Optional[ValuationMode], result: ValuationResult) -> None:
-    """Sous-section : Paramètres du modèle de valorisation."""
+    """Sous-section : Paramètres (Segmentés Rates & Growth V9)."""
+    r, g = p.rates, p.growth  # Accès aux nouveaux segments
+
     st.markdown(KPITexts.SUB_RATES)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"**{KPITexts.LABEL_RF}**")
-        st.code(f"{p.risk_free_rate:.2%}" if p.risk_free_rate else "N/A")
+        st.code(f"{r.risk_free_rate:.2%}" if r.risk_free_rate else "N/A")
     with c2:
         st.markdown(f"**{KPITexts.LABEL_MRP}**")
-        st.code(f"{p.market_risk_premium:.2%}" if p.market_risk_premium else "N/A")
+        st.code(f"{r.market_risk_premium:.2%}" if r.market_risk_premium else "N/A")
     with c3:
         st.markdown(f"**{KPITexts.LABEL_KD}**")
-        st.code(f"{p.cost_of_debt:.2%}" if p.cost_of_debt else "N/A")
+        st.code(f"{r.cost_of_debt:.2%}" if r.cost_of_debt else "N/A")
     with c4:
         st.markdown(f"**{KPITexts.LABEL_TAX}**")
-        st.code(f"{p.tax_rate:.1%}" if p.tax_rate else "N/A")
+        st.code(f"{r.tax_rate:.1%}" if r.tax_rate else "N/A")
 
     st.markdown(KPITexts.SUB_GROWTH)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown(f"**{KPITexts.LABEL_G}**")
-        st.code(f"{p.fcf_growth_rate:.2%}" if p.fcf_growth_rate else "N/A")
+        st.code(f"{g.fcf_growth_rate:.2%}" if g.fcf_growth_rate else "N/A")
     with c2:
         st.markdown(f"**{KPITexts.LABEL_GN}**")
-        st.code(f"{p.perpetual_growth_rate:.2%}" if p.perpetual_growth_rate else "N/A")
+        st.code(f"{g.perpetual_growth_rate:.2%}" if g.perpetual_growth_rate else "N/A")
     with c3:
         st.markdown(f"**{KPITexts.LABEL_HORIZON}**")
-        st.code(f"{p.projection_years} {KPITexts.UNIT_YEARS}")
+        st.code(f"{g.projection_years} {KPITexts.UNIT_YEARS}")
 
     st.markdown(KPITexts.SUB_CALCULATED)
     c1, c2, c3 = st.columns(3)
@@ -289,31 +292,32 @@ def _render_model_parameters(p: DCFParameters, mode: Optional[ValuationMode], re
     c1, c2 = st.columns(2)
     with c1:
         st.markdown(f"**{KPITexts.LABEL_TV_METHOD}**")
-        st.code(p.terminal_method.value if p.terminal_method else "N/A")
+        st.code(g.terminal_method.value if g.terminal_method else "N/A")
     with c2:
-        if p.terminal_method and p.terminal_method.value == "EXIT_MULTIPLE":
+        if g.terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
             st.markdown(f"**{KPITexts.LABEL_EXIT_M}**")
-            st.code(f"{p.exit_multiple_value:.1f}x" if p.exit_multiple_value else "N/A")
+            st.code(f"{g.exit_multiple_value:.1f}x" if g.exit_multiple_value else "N/A")
         else:
             st.markdown(f"**{KPITexts.LABEL_GN}**")
-            st.code(f"{p.perpetual_growth_rate:.2%}" if p.perpetual_growth_rate else "N/A")
+            st.code(f"{g.perpetual_growth_rate:.2%}" if g.perpetual_growth_rate else "N/A")
 
 
 def _render_monte_carlo_config(p: DCFParameters) -> None:
-    """Sous-section : Configuration Monte Carlo."""
+    """Sous-section : Configuration MC (Segmentée i18n Secured)."""
+    mc = p.monte_carlo  # Accès au segment MC
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"**Simulations**")
-        st.code(f"{p.num_simulations:,}")
+        st.markdown(f"**{KPITexts.LABEL_SIMULATIONS}**")
+        st.code(f"{mc.num_simulations:,}")
     with c2:
         st.markdown(f"**{AuditTexts.MC_VOL_BETA}**")
-        st.code(f"{p.beta_volatility:.1%}" if p.beta_volatility else "Auto")
+        st.code(f"{mc.beta_volatility:.1%}" if mc.beta_volatility else "Auto")
     with c3:
         st.markdown(f"**{AuditTexts.MC_VOL_G}**")
-        st.code(f"{p.growth_volatility:.1%}" if p.growth_volatility else "Auto")
+        st.code(f"{mc.growth_volatility:.1%}" if mc.growth_volatility else "Auto")
     with c4:
-        st.markdown("**Corrélation (β, g)**")
-        st.code(f"{p.correlation_beta_growth:.2f}")
+        st.markdown(f"**{KPITexts.LABEL_CORRELATION_BG}**")
+        st.code(f"{mc.correlation_beta_growth:.2f}")
 
 
 # ==============================================================================
@@ -374,7 +378,7 @@ def _render_reliability_report(report: Optional[AuditReport], result: ValuationR
 
 
 # ==============================================================================
-# 5. HELPERS DE MAPPING & EVIDENCE
+# 5. HELPERS DE MAPPING & EVIDENCE (Accès Segmentés V9)
 # ==============================================================================
 
 def _map_message_to_meta_key(message: str) -> str:
@@ -398,7 +402,10 @@ def _map_message_to_meta_key(message: str) -> str:
 
 
 def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
+    """Extrait les preuves numériques via les nouveaux segments."""
     f = res.financials
+    r, g = res.params.rates, res.params.growth
+
     try:
         if key == "AUDIT_BETA_COHERENCE": return f"Beta extrait : {f.beta:.2f}"
         if key == "AUDIT_SOLVENCY_ICR":
@@ -412,23 +419,26 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
             val = getattr(res, 'leverage_observed', None)
             return f"Dette/EBIT : {val:.2f}x" if val is not None else "N/A"
         if key == "AUDIT_G_RF_CONVERGENCE":
-            g, rf = res.params.perpetual_growth_rate or 0, res.params.risk_free_rate or 0
-            return f"g:{g:.1%} vs Rf:{rf:.1%}"
-        if key == "AUDIT_RF_FLOOR": return f"Rf : {res.params.risk_free_rate:.2%}"
+            gn, rf = (g.perpetual_growth_rate or 0.0), (r.risk_free_rate or 0.0)
+            return f"g:{gn:.1%} vs Rf:{rf:.1%}"
+        if key == "AUDIT_RF_FLOOR":
+            return f"Rf : {(r.risk_free_rate or 0.0):.2%}"
         if key == "AUDIT_CAPEX_DA":
             val = getattr(res, 'capex_to_da_ratio', None)
             return f"Ratio CapEx/D&A : {val:.1%}" if val is not None else "Donnée N/A"
-        if key == "AUDIT_GROWTH_LIMIT": return f"Taux g : {res.params.fcf_growth_rate:.1%}"
+        if key == "AUDIT_GROWTH_LIMIT":
+            return f"Taux g : {(g.fcf_growth_rate or 0.0):.1%}"
         if key == "AUDIT_PAYOUT_STABILITY":
             val = getattr(res, 'payout_ratio_observed', None)
             return f"Payout Ratio : {val:.1%}" if val is not None else "Donnée N/A"
-        if key == "AUDIT_WACC_FLOOR": return f"WACC Calculé : {getattr(res, 'wacc', 0):.2%}"
+        if key == "AUDIT_WACC_FLOOR":
+            return f"WACC Calculé : {getattr(res, 'wacc', 0):.2%}"
         if key == "AUDIT_TV_CONCENTRATION":
             val = getattr(res, 'terminal_value_weight', None)
             return f"Poids TV : {val:.1%}" if val is not None else "N/A"
         if key == "AUDIT_G_WACC":
-            w, g = getattr(res, 'wacc', 0) or 0, res.params.perpetual_growth_rate or 0
-            return f"g:{g:.1%} vs WACC:{w:.1%}"
+            w, gn = getattr(res, 'wacc', 0) or 0, (g.perpetual_growth_rate or 0)
+            return f"g:{gn:.1%} vs WACC:{w:.1%}"
         if key == "AUDIT_ROE_KE_SPREAD":
             val = getattr(res, 'spread_roe_ke', None)
             return f"Spread ROE-Ke : {val:.2%}" if val is not None else "N/A"
@@ -442,12 +452,13 @@ def _format_numerical_evidence(key: str, res: ValuationResult) -> str:
 
 
 # ==============================================================================
-# 6. ONGLET MONTE CARLO
+# 6. ONGLET MONTE CARLO (Accès Segmentés V9)
 # ==============================================================================
 
 def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationStep]) -> None:
-    """Rendu probabiliste de l'analyse Monte Carlo."""
+    """Rendu probabiliste (Pilotage intégral par ui_texts)."""
     from app.ui_components.ui_charts import display_simulation_chart, display_correlation_heatmap
+
     if result.simulation_results is None or len(result.simulation_results) == 0:
         st.warning(AuditTexts.MC_FAILED)
         return
@@ -455,6 +466,9 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
     f, sims = result.financials, np.array(result.simulation_results)
     prob_overvalued = (sims < result.market_price).mean() if result.market_price else 0.0
     q = result.quantiles or {}
+
+    # Raccourcis segmentés
+    mc, g = result.params.monte_carlo, result.params.growth
 
     st.markdown(AuditTexts.MC_TITLE)
     c1, c2, c3 = st.columns(3)
@@ -480,26 +494,29 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
 
     with st.expander(AuditTexts.MC_AUDIT_HYP, expanded=False):
         col_mat, col_inf = st.columns([1.2, 2.8])
-        with col_mat: display_correlation_heatmap(rho=result.params.correlation_beta_growth or -0.3)
+        with col_mat: display_correlation_heatmap(rho=mc.correlation_beta_growth)
         with col_inf:
-            st.caption(f"{AuditTexts.MC_VOL_BETA} : {(result.params.beta_volatility or 0.0):.1%}")
-            st.caption(f"{AuditTexts.MC_VOL_G} : {(result.params.growth_volatility or 0.0):.1%}")
+            st.caption(f"{AuditTexts.MC_VOL_BETA} : {(mc.beta_volatility or 0.0):.1%}")
+            st.caption(f"{AuditTexts.MC_VOL_G} : {(mc.growth_volatility or 0.0):.1%}")
 
-            # Affichage réactif aux modèles de sortie
-            if result.params.terminal_method == TerminalValueMethod.GORDON_GROWTH:
-                st.caption(f"{ExpertTerminalTexts.MC_VOL_GN} : {(result.params.terminal_growth_volatility or 0.0):.1%}")
+            # Affichage réactif via segment growth
+            if g.terminal_method == TerminalValueMethod.GORDON_GROWTH:
+                st.caption(f"{ExpertTerminalTexts.MC_VOL_GN} : {(mc.terminal_growth_volatility or 0.0):.1%}")
             elif result.request and result.request.mode == ValuationMode.RESIDUAL_INCOME_MODEL:
-                st.caption(f"{ExpertTerminalTexts.MC_VOL_OMEGA} : {(result.params.terminal_growth_volatility or 0.0):.1%}")
+                st.caption(f"{ExpertTerminalTexts.MC_VOL_OMEGA} : {(mc.terminal_growth_volatility or 0.0):.1%}")
 
             st.info(AuditTexts.MC_CORREL_INFO)
 
+    with st.expander(AuditTexts.MC_AUDIT_STOCH, expanded=False):
+        for idx, step in enumerate(mc_steps, start=1): _render_smart_step(idx, step)
+
 
 # ==============================================================================
-# 7. RÉSUMÉ EXÉCUTIF
+# 7. RÉSUMÉ EXÉCUTIF (i18n Secured)
 # ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
-    """Synthèse décisionnelle supérieure."""
+    """Synthèse décisionnelle (Utilise KPITexts.LABEL_IV)."""
     f = result.financials
     st.subheader(KPITexts.EXEC_TITLE.format(name=f.name, ticker=f.ticker))
 
@@ -510,7 +527,7 @@ def render_executive_summary(result: ValuationResult) -> None:
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
         with c1: atom_kpi_metric(KPITexts.LABEL_PRICE, price_display)
-        with c2: atom_kpi_metric("Valeur Intrinsèque", iv_display) # Note: On peut ajouter LABEL_IV à KPITexts si besoin
+        with c2: atom_kpi_metric(KPITexts.LABEL_IV, iv_display)
         with c3: atom_kpi_metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "N/A")
 
 

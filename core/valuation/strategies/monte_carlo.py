@@ -1,8 +1,8 @@
 """
 core/valuation/strategies/monte_carlo.py
-MOTEUR STOCHASTIQUE — VERSION V8.3
-Rôle :  Simulation multivariée avec garantie de convergence et transparence d'audit.
-Architecture : Écrêtage économique (Sanity Clamping) et paradigme "None = Auto".
+MOTEUR STOCHASTIQUE — VERSION V9.0 (Segmenté & i18n Secured)
+Rôle : Simulation multivariée avec garantie de convergence et transparence d'audit.
+Architecture : Écrêtage économique (Sanity Clamping) et segmentation des paramètres.
 """
 
 from __future__ import annotations
@@ -23,14 +23,15 @@ from core.exceptions import (
     MonteCarloInstabilityError,
 )
 from core.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
-from core. valuation.strategies.abstract import ValuationStrategy
+from core.valuation.strategies.abstract import ValuationStrategy
 
 # Import des constantes de texte pour i18n
 from app.ui_components.ui_texts import (
     RegistryTexts,
     StrategyInterpretations,
     CalculationErrors,
-    StrategySources
+    StrategySources,
+    KPITexts
 )
 
 logger = logging.getLogger(__name__)
@@ -39,9 +40,7 @@ logger = logging.getLogger(__name__)
 class MonteCarloGenericStrategy(ValuationStrategy):
     """
     Wrapper Monte Carlo avec protection contre la divergence économique.
-
-    Encapsule n'importe quelle stratégie de valorisation pour y ajouter
-    une dimension stochastique (distribution des valeurs intrinsèques).
+    Désormais aligné sur la segmentation Rates / Growth / MonteCarloConfig.
     """
 
     DEFAULT_SIMULATIONS = 5000
@@ -54,7 +53,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     def __init__(
         self,
         strategy_cls: Type[ValuationStrategy],
-        glass_box_enabled:  bool = True
+        glass_box_enabled: bool = True
     ):
         super().__init__(glass_box_enabled=glass_box_enabled)
         self.strategy_cls = strategy_cls
@@ -66,15 +65,10 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     ) -> ValuationResult:
         """
         Exécute la simulation Monte Carlo sur la stratégie encapsulée.
-
-        Args:
-            financials: Données financières de l'entreprise
-            params:  Paramètres de valorisation
-
-        Returns:
-            Résultat enrichi avec distribution stochastique et quantiles
         """
-        num_simulations = params.num_simulations or self.DEFAULT_SIMULATIONS
+        # Accès au segment Monte Carlo
+        mc_cfg = params.monte_carlo
+        num_simulations = mc_cfg.num_simulations or self.DEFAULT_SIMULATIONS
 
         # =====================================================================
         # ÉTAPE 0 : SANITY CLAMPING (Écrêtage Économique)
@@ -83,15 +77,16 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         g_raw, g_clamped, clamping_applied = self._apply_growth_clamping(params, base_wacc)
 
         if clamping_applied:
-            params = params.model_copy(update={"fcf_growth_rate": g_clamped})
+            # On met à jour le champ dans le segment growth du modèle
+            params.growth.fcf_growth_rate = g_clamped
             logger.warning(
-                "[Monte Carlo] Clamping appliqué sur g:  %s -> %s",
+                "[Monte Carlo] Clamping appliqué sur g: %s -> %s",
                 f"{g_raw:.1%}",
                 f"{g_clamped:.1%}"
             )
 
         # =====================================================================
-        # ÉTAPE 1 : CONFIGURATION
+        # ÉTAPE 1 : CONFIGURATION (i18n Secured via KPITexts)
         # =====================================================================
         clamping_note = StrategyInterpretations.MC_CLAMP_NOTE.format(g_raw=g_raw) if clamping_applied else ""
 
@@ -100,11 +95,13 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             label=RegistryTexts.MC_INIT_L,
             theoretical_formula=r"\sigma_{\beta}, \sigma_g, \sigma_{g_n}, \rho",
             result=1.0,
-            numerical_substitution=(
-                f"Itérations :  {num_simulations} | "
-                f"β: 𝒩({financials.beta:.2f}, {(params.beta_volatility or 0.10):.1%}) | "
-                f"g: 𝒩({(params.fcf_growth_rate or 0.03):.1%}, {(params.growth_volatility or 0.015):.1%}) | "
-                f"ρ(β,g): {params.correlation_beta_growth:.2f}"
+            numerical_substitution=KPITexts.MC_CONFIG_SUB.format(
+                sims=num_simulations,
+                beta=financials.beta,
+                sig_b=mc_cfg.beta_volatility or 0.10,
+                g=params.growth.fcf_growth_rate or 0.03,
+                sig_g=mc_cfg.growth_volatility or 0.015,
+                rho=mc_cfg.correlation_beta_growth
             ),
             interpretation=StrategyInterpretations.MC_INIT.format(note=clamping_note)
         )
@@ -134,7 +131,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         )
 
         # =====================================================================
-        # ÉTAPE 4 : FILTRAGE ET CONVERGENCE
+        # ÉTAPE 4 : FILTRAGE ET CONVERGENCE (i18n Secured)
         # =====================================================================
         valid_count = len(simulated_values)
         valid_ratio = valid_count / num_simulations
@@ -144,7 +141,10 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             label=RegistryTexts.MC_FILT_L,
             theoretical_formula=r"\frac{N_{valid}}{N_{total}}",
             result=valid_ratio,
-            numerical_substitution=f"{valid_count} valides / {num_simulations} itérations",
+            numerical_substitution=KPITexts.MC_FILTER_SUB.format(
+                valid=valid_count,
+                total=num_simulations
+            ),
             interpretation=StrategyInterpretations.MC_FILTERING
         )
 
@@ -152,7 +152,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             raise MonteCarloInstabilityError(valid_ratio, self.MIN_VALID_RATIO)
 
         # =====================================================================
-        # ÉTAPE 5 : EXTRACTION DES QUANTILES
+        # ÉTAPE 5 : EXTRACTION DES QUANTILES (i18n Secured)
         # =====================================================================
         ref_strategy = self.strategy_cls(glass_box_enabled=True)
         final_result = ref_strategy.execute(financials, params)
@@ -169,7 +169,10 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             label=RegistryTexts.MC_MED_L,
             theoretical_formula=r"Median(IV_i)",
             result=p50,
-            numerical_substitution=f"P50 = {p50:,.2f} {financials. currency}",
+            numerical_substitution=KPITexts.SUB_P50_VAL.format(
+                val=p50,
+                curr=financials.currency
+            ),
             interpretation=RegistryTexts.MC_MED_D
         )
 
@@ -188,17 +191,17 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         # =====================================================================
         final_result.mc_valid_ratio = valid_ratio
         final_result.mc_clamping_applied = clamping_applied
-        final_result.calculation_trace = self. calculation_trace + final_result.calculation_trace
+        final_result.calculation_trace = self.calculation_trace + final_result.calculation_trace
 
         return final_result
 
     # ==========================================================================
-    # MÉTHODES PRIVÉES
+    # MÉTHODES PRIVÉES (Ajustées pour segmentation et isolation profonde)
     # ==========================================================================
 
     def _compute_base_wacc(
         self,
-        financials:  CompanyFinancials,
+        financials: CompanyFinancials,
         params: DCFParameters
     ) -> float:
         """Calcule le WACC de base pour le clamping."""
@@ -212,14 +215,9 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         params: DCFParameters,
         base_wacc: float
     ) -> tuple[float, float, bool]:
-        """
-        Applique l'écrêtage économique sur le taux de croissance.
-
-        Returns:
-            Tuple (g_raw, g_clamped, clamping_applied)
-        """
-        g_raw = params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03
-        g_clamped = min(g_raw, base_wacc - self. GROWTH_SAFETY_MARGIN)
+        """Écrêtage économique sur le taux de croissance (Segment growth)."""
+        g_raw = params.growth.fcf_growth_rate if params.growth.fcf_growth_rate is not None else 0.03
+        g_clamped = min(g_raw, base_wacc - self.GROWTH_SAFETY_MARGIN)
         clamping_applied = g_clamped < g_raw
 
         return g_raw, g_clamped, clamping_applied
@@ -229,32 +227,31 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters,
         num_simulations: int,
-        base_wacc:  float
+        base_wacc: float
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Génère les échantillons multivariés pour la simulation."""
-        sig_b = params.beta_volatility if params.beta_volatility is not None else 0.10
-        sig_g = params.growth_volatility if params.growth_volatility is not None else 0.015
+        """Génère les échantillons via segments MonteCarlo et Growth."""
+        mc = params.monte_carlo
+        g = params.growth
 
-        is_gordon = params.terminal_method == TerminalValueMethod.GORDON_GROWTH
-        is_rim = financials.sector in ["Financial Services", "Banking"]
+        sig_b = mc.beta_volatility if mc.beta_volatility is not None else 0.10
+        sig_g = mc.growth_volatility if mc.growth_volatility is not None else 0.015
+        sig_gn = mc.terminal_growth_volatility if mc.terminal_growth_volatility is not None else 0.005
 
-        if params.terminal_growth_volatility is not None:
-            sig_gn = params.terminal_growth_volatility
-        else:
-            # Si Multiple, sigma = 0 (valeur fixe). Sinon, fallback auto.
-            sig_gn = 0.005 if is_gordon else 0.0
+        # Protection : Si Multiple, sigma = 0 (valeur fixe).
+        if g.terminal_method != TerminalValueMethod.GORDON_GROWTH:
+            sig_gn = 0.0
 
         betas, growths = generate_multivariate_samples(
             mu_beta=financials.beta,
             sigma_beta=sig_b,
-            mu_growth=params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03,
+            mu_growth=g.fcf_growth_rate if g.fcf_growth_rate is not None else 0.03,
             sigma_growth=sig_g,
-            rho=params.correlation_beta_growth,
+            rho=mc.correlation_beta_growth,
             num_simulations=num_simulations
         )
 
         terminal_growths = generate_independent_samples(
-            mean=params.perpetual_growth_rate if params.perpetual_growth_rate is not None else 0.02,
+            mean=g.perpetual_growth_rate if g.perpetual_growth_rate is not None else 0.02,
             sigma=sig_gn,
             num_simulations=num_simulations,
             clip_min=0.0,
@@ -267,40 +264,41 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self,
         worker: ValuationStrategy,
         financials: CompanyFinancials,
-        params:  DCFParameters,
+        params: DCFParameters,
         betas: np.ndarray,
         growths: np.ndarray,
         terminal_growths: np.ndarray,
         num_simulations: int
     ) -> List[float]:
-        """Exécute la boucle de simulation principale."""
+        """Boucle de simulation avec isolation profonde (V9 Deep Copy)."""
         simulated_values = []
 
         for i in range(num_simulations):
             try:
+                # 1. Mise à jour du beta dans le clone financials
                 s_fin = financials.model_copy(update={"beta": float(betas[i])})
-                s_par = params.model_copy(update={
-                    "fcf_growth_rate": float(growths[i]),
-                    "perpetual_growth_rate": float(terminal_growths[i])
-                })
+
+                # 2. ISOLATION : Copie profonde des paramètres pour modifier les segments
+                s_par = params.model_copy(deep=True)
+                s_par.growth.fcf_growth_rate = float(growths[i])
+                s_par.growth.perpetual_growth_rate = float(terminal_growths[i])
+
                 res = worker.execute(s_fin, s_par)
                 iv = res.intrinsic_value_per_share
 
-                # Filtrage technique des valeurs aberrantes
                 if 0.0 < iv < self.MAX_IV_FILTER:
                     simulated_values.append(iv)
 
             except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
-                # Scénarios invalides attendus dans une simulation MC
                 continue
 
         return simulated_values
 
     def _compute_quantiles(self, simulated_values: List[float]) -> dict:
-        """Calcule les quantiles de la distribution."""
+        """Calcule les statistiques descriptives de la distribution."""
         return {
             "P10": float(np.percentile(simulated_values, 10)),
-            "P50": float(np. percentile(simulated_values, 50)),
+            "P50": float(np.percentile(simulated_values, 50)),
             "P90": float(np.percentile(simulated_values, 90)),
             "Mean": float(np.mean(simulated_values)),
             "Std": float(np.std(simulated_values))
@@ -314,32 +312,38 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         final_result: ValuationResult,
         p50_base: float
     ) -> None:
-        """Exécute l'analyse de sensibilité à la corrélation (rho)."""
+        """Analyse de l'impact de la corrélation (rho) via isolation V9."""
+        mc = params.monte_carlo
+        g = params.growth
+
         try:
             b_neutral, g_neutral = generate_multivariate_samples(
                 mu_beta=financials.beta,
-                sigma_beta=params. beta_volatility if params.beta_volatility is not None else 0.1,
-                mu_growth=params.fcf_growth_rate if params.fcf_growth_rate is not None else 0.03,
-                sigma_growth=params.growth_volatility if params. growth_volatility is not None else 0.02,
-                rho=0.0,
-                num_simulations=self. SENSITIVITY_SIMULATIONS
+                sigma_beta=mc.beta_volatility if mc.beta_volatility is not None else 0.1,
+                mu_growth=g.fcf_growth_rate if g.fcf_growth_rate is not None else 0.03,
+                sigma_growth=mc.growth_volatility if mc.growth_volatility is not None else 0.02,
+                rho=0.0, # Test de l'indépendance
+                num_simulations=self.SENSITIVITY_SIMULATIONS
             )
 
             sims_neutral = []
             for i in range(self.SENSITIVITY_SIMULATIONS):
                 try:
+                    s_par = params.model_copy(deep=True)
+                    s_par.growth.fcf_growth_rate = float(g_neutral[i])
+
                     r_n = worker.execute(
-                        financials. model_copy(update={"beta": float(b_neutral[i])}),
-                        params.model_copy(update={"fcf_growth_rate":  float(g_neutral[i])})
+                        financials.model_copy(update={"beta": float(b_neutral[i])}),
+                        s_par
                     )
                     if 0 < r_n.intrinsic_value_per_share < self.MAX_IV_FILTER:
-                        sims_neutral. append(r_n.intrinsic_value_per_share)
+                        sims_neutral.append(r_n.intrinsic_value_per_share)
 
                 except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
                     continue
 
             p50_neutral = float(np.percentile(sims_neutral, 50)) if sims_neutral else p50_base
-            final_result. rho_sensitivity = {
+            final_result.rho_sensitivity = {
                 StrategyInterpretations.MC_SENS_NEUTRAL: p50_neutral,
                 StrategyInterpretations.MC_SENS_BASE: p50_base
             }
@@ -349,7 +353,10 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                 label=RegistryTexts.MC_SENS_L,
                 theoretical_formula=r"\frac{\partial P50}{\partial \rho}",
                 result=p50_neutral,
-                numerical_substitution=f"P50(rho=0) = {p50_neutral:,.2f} vs Base = {p50_base:,.2f}",
+                numerical_substitution=KPITexts.MC_SENS_SUB.format(
+                    p50_n=p50_neutral,
+                    p50_b=p50_base
+                ),
                 interpretation=StrategyInterpretations.MC_SENS_INTERP
             )
 
@@ -363,21 +370,22 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         params: DCFParameters,
         final_result: ValuationResult
     ) -> None:
-        """Exécute le stress test (Bear Case déterministe)."""
+        """Exécute le stress test déterministe (Bear Case) via segments V9."""
         try:
-            stress_params = params.model_copy(update={
-                "fcf_growth_rate": 0.0,
-                "perpetual_growth_rate": 0.01,
-                "manual_beta": 1.50
-            })
+            # Création d'un environnement de stress via les segments growth et rates
+            stress_params = params.model_copy(deep=True)
+            stress_params.growth.fcf_growth_rate = 0.0
+            stress_params.growth.perpetual_growth_rate = 0.01
+            stress_params.rates.manual_beta = 1.50 # Risque systémique maximum
+
             stress_res = worker.execute(financials, stress_params)
             final_result.stress_test_value = stress_res.intrinsic_value_per_share
 
-            self. add_step(
+            self.add_step(
                 step_key="MC_STRESS_TEST",
                 label=RegistryTexts.MC_STRESS_L,
                 theoretical_formula=r"f(g \to 0, \beta \to 1.5)",
-                result=final_result. stress_test_value,
+                result=final_result.stress_test_value,
                 numerical_substitution=StrategyInterpretations.MC_STRESS_SUB.format(
                     val=final_result.stress_test_value,
                     curr=financials.currency

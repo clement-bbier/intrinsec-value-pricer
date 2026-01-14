@@ -270,6 +270,27 @@ class KPITexts:
     EXEC_TITLE = "Dossier de Valorisation : {name} ({ticker})"
     EXEC_CONFIDENCE = "Indice de Confiance"
 
+    # Labels
+    LABEL_IV = "Valeur Intrinsèque"
+    LABEL_SIMULATIONS = "Simulations"
+    LABEL_CORRELATION_BG = "Corrélation (β, g)"
+    LABEL_HORIZON_SUB = "Horizon : {years} ans"
+
+    MC_CONFIG_SUB = "Itérations : {sims} | β: 𝒩({beta:.2f}, {sig_b:.1%}) | g: 𝒩({g:.1%}, {sig_g:.1%}) | ρ(β,g): {rho:.2f}"
+    MC_FILTER_SUB = "{valid} valides / {total} itérations"
+    MC_SENS_SUB = "P50(rho=0) = {p50_n:,.2f} vs Base = {p50_b:,.2f}"
+
+    SUB_FCF_BASE = "FCF_0 = {val:,.2f} ({src})"
+    SUB_FCF_NORM = "FCF_norm = {val:,.2f} ({src})"
+    SUB_REV_BASE = "Rev_0 = {val:,.0f}"
+    SUB_MARGIN_CONV = "{curr:.2%} -> {target:.2%} (sur {years} ans)"
+    SUB_EPS_GRAHAM = "EPS = {val:.2f} ({src})"
+    SUB_GRAHAM_MULT = "8.5 + 2 × {g:.2f}"
+    SUB_BV_BASE = "BV_0 = {val:,.2f} ({src})"
+    SUB_SUM_RI = "Σ PV(RI) = {val:,.2f}"
+    SUB_RIM_TV = "{sub_tv} × {factor:.4f}"
+    SUB_RIM_FINAL = "{bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
+    SUB_P50_VAL = "P50 = {val:,.2f} {curr}"
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
@@ -555,8 +576,17 @@ class DiagnosticTexts:
     MODEL_LOGIC_HINT = "Vérifiez vos hypothèses de croissance ou de taux d'actualisation."
     CALC_GENERIC_HINT = "Vérifiez les données d'entrée ou les paramètres du modèle dans le Terminal Expert."
 
+    UNKNOWN_STRATEGY_MSG = "La stratégie pour {mode} n'est pas enregistrée."
+    UNKNOWN_STRATEGY_HINT = "Vérifiez le registre des stratégies dans le moteur central."
+    STRATEGY_CRASH_MSG = "Échec critique du moteur : {error}"
+    STRATEGY_CRASH_HINT = "Redémarrez l'analyse ou contactez le support technique."
+
 class StrategySources:
     """Descriptions des sources de données utilisées dans les calculs (strategies/)."""
+    WACC_TARGET = "Structure Cible"
+    WACC_MARKET = "Structure de Marché"
+    WACC_FALLBACK = "Structure de Secours (100% Equity)"
+    WACC_MANUAL = "Surcharge manuelle : {wacc:.2%}"
     MANUAL_OVERRIDE = "Manual override (Expert)"
     YAHOO_TTM = "Last reported FCF (TTM) - Yahoo Deep Fetch"
     YAHOO_FUNDAMENTAL = "Fundamental smoothed FCF (Yahoo/Analyst)"
@@ -619,6 +649,10 @@ class CalculationErrors:
     MISSING_EPS_GRAHAM = "EPS strictement positif requis pour le modèle de Graham."
     INVALID_AAA = "Le rendement obligataire AAA (Y) doit être > 0."
     MISSING_FCF_STD = "FCF de base indisponible (fcf_last manquant ou nul)."
+    INVALID_DISCOUNT_RATE = "Taux d'actualisation invalide : {rate:.2%}"
+    CONVERGENCE_IMPOSSIBLE = "Convergence impossible : Taux ({rate:.2%}) <= Croissance ({g:.2%})"
+    MANUAL_OVERRIDE_LABEL = "Surcharge manuelle : {wacc:.2%}"
+    NEGATIVE_EXIT_MULTIPLE = "Le multiple de sortie ne peut pas être négatif."
 
 
 class AuditCategories:

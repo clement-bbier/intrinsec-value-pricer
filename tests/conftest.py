@@ -1,5 +1,11 @@
 import pytest
-from core.models import CompanyFinancials, DCFParameters
+from core.models import (
+    CompanyFinancials,
+    DCFParameters,
+    CoreRateParameters,
+    GrowthParameters,
+    MonteCarloConfig
+)
 
 @pytest.fixture
 def sample_financials():
@@ -22,14 +28,22 @@ def sample_financials():
 
 @pytest.fixture
 def sample_params():
+    """Fixture mise à jour pour l'architecture segmentée V9.0."""
     return DCFParameters(
-        risk_free_rate=0.04,
-        market_risk_premium=0.05,
-        cost_of_debt=0.06,
-        tax_rate=0.25,
-        fcf_growth_rate=0.05,
-        perpetual_growth_rate=0.02,
-        projection_years=5,
-        target_equity_weight=0.8,
-        target_debt_weight=0.2
+        rates=CoreRateParameters(
+            risk_free_rate=0.04,
+            market_risk_premium=0.05,
+            cost_of_debt=0.06,
+            tax_rate=0.25
+        ),
+        growth=GrowthParameters(
+            fcf_growth_rate=0.05,
+            perpetual_growth_rate=0.02,
+            projection_years=5,
+            target_equity_weight=0.8,
+            target_debt_weight=0.2
+        ),
+        monte_carlo=MonteCarloConfig(
+            enable_monte_carlo=False
+        )
     )

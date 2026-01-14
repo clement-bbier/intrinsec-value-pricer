@@ -169,108 +169,113 @@ class CompanyFinancials(BaseModel):
 
 
 # ==============================================================================
-# 4. PARAMÈTRES DU MODÈLE (HYPOTHÈSES) — ZONE SÉCURISÉE
+# 4.0 SOUS-PARAMÈTRES DU MODÈLE (SEGMENTATION)
 # ==============================================================================
 
-class DCFParameters(BaseModel):
-    """
-    Paramètres du modèle avec validation 'Border Patrol' et support du mode hybride.
-    Standard Hedge Fund : Distingue None (Délégation Auto) du 0.0 (Saisie Volontaire).
-    """
-
-    # =========================================================================
-    # Taux et Risque
-    # =========================================================================
+class CoreRateParameters(BaseModel):
+    """Segment : Taux, Risques et Surcharges de Coût du Capital."""
     risk_free_rate: Optional[float] = None
     market_risk_premium: Optional[float] = None
     corporate_aaa_yield: Optional[float] = None
     cost_of_debt: Optional[float] = None
     tax_rate: Optional[float] = None
 
-    # =========================================================================
-    # Croissance et Horizon
-    # =========================================================================
+    # Surcharges spécifiques au Coût du Capital
+    manual_cost_of_equity: Optional[float] = None
+    wacc_override: Optional[float] = None
+    manual_beta: Optional[float] = None
+
+    @field_validator('risk_free_rate', 'market_risk_premium', 'corporate_aaa_yield',
+                     'cost_of_debt', 'tax_rate', mode='before')
+    @classmethod
+    def enforce_decimal(cls, v: Any) -> Any:
+        return _decimal_guard(v)
+
+
+class GrowthParameters(BaseModel):
+    """Segment : Projections, Valeur Terminale et Structure Financière."""
     fcf_growth_rate: Optional[float] = None
     projection_years: int = 5
     high_growth_years: int = 0
 
-    # =========================================================================
     # Valeur Terminale
-    # =========================================================================
     terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
     perpetual_growth_rate: Optional[float] = None
     exit_multiple_value: Optional[float] = None
 
-    # =========================================================================
-    # Pondérations Cibles
-    # =========================================================================
+    # Pondérations et Marges
     target_equity_weight: float = 0.0
-    target_debt_weight:  float = 0.0
+    target_debt_weight: float = 0.0
     target_fcf_margin: Optional[float] = None
 
-    # =========================================================================
-    # Surcharges Analyste (Souveraineté)
-    # =========================================================================
+    # Surcharges Opérationnelles (Souveraineté Analyste)
     manual_fcf_base: Optional[float] = None
-    manual_cost_of_equity: Optional[float] = None
-    wacc_override: Optional[float] = None
-    manual_beta: Optional[float] = None
     manual_stock_price: Optional[float] = None
     manual_total_debt: Optional[float] = None
-    manual_cash:  Optional[float] = None
+    manual_cash: Optional[float] = None
     manual_minority_interests: Optional[float] = None
     manual_pension_provisions: Optional[float] = None
     manual_shares_outstanding: Optional[float] = None
     manual_book_value: Optional[float] = None
 
-    # =========================================================================
-    # Configuration Monte Carlo
-    # =========================================================================
+    @field_validator('fcf_growth_rate', 'perpetual_growth_rate', mode='before')
+    @classmethod
+    def enforce_decimal(cls, v: Any) -> Any:
+        return _decimal_guard(v)
+
+
+class MonteCarloConfig(BaseModel):
+    """Segment : Configuration de la Simulation Stochastique."""
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
-    beta_volatility:  Optional[float] = None
+    beta_volatility: Optional[float] = None
     growth_volatility: Optional[float] = None
     terminal_growth_volatility: Optional[float] = None
     correlation_beta_growth: float = -0.30
 
-    # =========================================================================
-    # Validateurs
-    # =========================================================================
-
-    @field_validator(
-        'risk_free_rate', 'market_risk_premium', 'corporate_aaa_yield',
-        'cost_of_debt', 'tax_rate', 'fcf_growth_rate', 'perpetual_growth_rate',
-        'beta_volatility', 'growth_volatility', 'terminal_growth_volatility',
-        mode='before'
-    )
+    @field_validator('beta_volatility', 'growth_volatility', 'terminal_growth_volatility', mode='before')
     @classmethod
-    def enforce_decimal_format(cls, v: Any) -> Any:
-        """
-        GARDE-FOU : Convertit les pourcentages (ex:  5.0) en décimales (0.05).
-        Respecte le None (Délégation Auto) et le 0.0 (Souveraineté Analyste).
-        """
-        if v is None or v == "":
-            return None
+    def enforce_decimal(cls, v: Any) -> Any:
+        return _decimal_guard(v)
 
-        try:
-            val = float(v)
-            if 1.0 < val <= 100.0:
-                return val / 100.0
-            return val
-        except (ValueError, TypeError):
-            return None
+# ==============================================================================
+# 4.1 PARAMÈTRES DU MODÈLE (HYPOTHÈSES) — ZONE SÉCURISÉE
+# ==============================================================================
 
-    # =========================================================================
-    # Méthodes
-    # =========================================================================
+class DCFParameters(BaseModel):
+    """
+    Paramètres Unifiés (Composition).
+    Standard Hedge Fund : Segmentation par domaine de responsabilité.
+    """
+    rates: CoreRateParameters = Field(default_factory=CoreRateParameters)
+    growth: GrowthParameters = Field(default_factory=GrowthParameters)
+    monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
 
     def normalize_weights(self) -> None:
-        """Ajuste les poids pour qu'ils somment à 1.0."""
-        total = self.target_equity_weight + self.target_debt_weight
+        """Délègue la normalisation au bloc growth."""
+        total = self.growth.target_equity_weight + self.growth.target_debt_weight
         if total > 0:
-            self.target_equity_weight /= total
-            self. target_debt_weight /= total
+            self.growth.target_equity_weight /= total
+            self.growth.target_debt_weight /= total
 
+    @classmethod
+    def from_legacy(cls, data: Dict[str, Any]) -> DCFParameters:
+        """Adaptateur pour transformer un dictionnaire plat en structure hiérarchique."""
+        return cls(
+            rates=CoreRateParameters(**data),
+            growth=GrowthParameters(**data),
+            monte_carlo=MonteCarloConfig(**data)
+        )
+
+
+# Helper interne pour la validation (DRY)
+def _decimal_guard(v: Any) -> Optional[float]:
+    if v is None or v == "": return None
+    try:
+        val = float(v)
+        return val / 100.0 if 1.0 < val <= 100.0 else val
+    except (ValueError, TypeError):
+        return None
 
 # ==============================================================================
 # 5. CONTRAT DE SORTIE
