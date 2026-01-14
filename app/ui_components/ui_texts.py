@@ -1,6 +1,7 @@
 """
 app/ui_components/ui_texts.py
 CENTRALISATION INTÉGRALE DES TEXTES — PROJET IVP 2026
+Version : V10.0 — Sprint 3 : Expansion Analytique (DDM & FCFE)
 Rôle : Source unique de vérité pour toutes les chaînes de caractères visibles.
 """
 
@@ -43,11 +44,19 @@ class OnboardingTexts:
         "[l'évaluation intrinsèque](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/home.htm) :"
     )
 
-    MODEL_DCF_TITLE = "**Modèles DCF (FCFF)**"
+    MODEL_DCF_TITLE = "**Modèles DCF (Approche Entité)**"
     MODEL_DCF_DESC = (
-        "• <b>Standard</b> : Approche de Damodaran pour entreprises matures aux flux de trésorerie prévisibles. <br>"
+        "• <b>FCFF (Firm)</b> : Standard Damodaran actualisant les flux avant service de la dette via le WACC. <br>"
+        "• <b>Standard</b> : Approche pour entreprises matures aux flux de trésorerie prévisibles. <br>"
         "• <b>Fundamental</b> : Adapté aux cycliques ; utilise des flux normalisés pour gommer la volatilité d'un cycle économique complet.<br>"
         "• <b>Growth</b> : Modèle \"Revenue-Driven\" pour la Tech ; simule la convergence des marges vers un profil normatif à l'équilibre."
+    )
+
+    # NOUVEAUTÉ SPRINT 3
+    MODEL_EQUITY_TITLE = "**Modèles Direct Equity (Approche Actionnaire)**"
+    MODEL_EQUITY_DESC = (
+        "• <b>FCFE (Equity)</b> : Actualise le flux résiduel après service de la dette au coût des fonds propres (Ke). <br>"
+        "• <b>DDM (Dividend Model)</b> : Standard académique pour les entreprises dont la politique de distribution est le principal vecteur de valeur."
     )
 
     MODEL_RIM_TITLE = "**Residual Income (RIM)**"
@@ -91,6 +100,11 @@ class ExpertTerminalTexts:
     TITLE_FCFF_STD = "Terminal Expert : FCFF Standard"
     TITLE_FCFF_FUND = "Terminal Expert : FCFF Fundamental"
     TITLE_FCFF_GROWTH = "Terminal Expert : FCFF Growth"
+
+    # NOUVEAUTÉ SPRINT 3
+    TITLE_FCFE = "Terminal Expert : FCFE (Direct Equity)"
+    TITLE_DDM = "Terminal Expert : Dividend Discount Model"
+
     TITLE_RIM = "Terminal Expert : RIM"
     TITLE_GRAHAM = "Terminal Expert : Graham"
 
@@ -98,6 +112,11 @@ class ExpertTerminalTexts:
     SEC_1_FCF_STD = "#### 1. Flux de trésorerie de base ($FCF_0$)"
     SEC_1_FCF_NORM = "#### 1. Flux normalisé de base ($FCF_{norm}$)"
     SEC_1_REV_BASE = "#### 1. Chiffre d'Affaires de base ($Rev_0$)"
+
+    # NOUVEAUTÉ SPRINT 3
+    SEC_1_FCFE_BASE = "#### 1. Flux aux Actionnaires ($FCFE_0$)"
+    SEC_1_DDM_BASE = "#### 1. Dividende de départ ($D_0$)"
+
     SEC_1_RIM_BASE = "#### 1. Valeur Comptable ($BV_0$) & Profits ($NI_t$)"
     SEC_1_GRAHAM_BASE = "#### 1. Bénéfices ($EPS$) & Croissance attendue ($g$)"
 
@@ -140,6 +159,12 @@ class ExpertTerminalTexts:
     INP_MINORITIES = "Intérêts Minoritaires (Vide = Auto Yahoo)"
     INP_PENSIONS = "Provisions Pensions (Vide = Auto Yahoo)"
 
+    # NOUVEAUTÉ SPRINT 3
+    INP_FCFE_BASE = "Flux FCFE de base (Vide = Auto Yahoo)"
+    INP_NET_BORROWING = "Variation nette de la dette ($Net Borrowing$, Vide = 0)"
+    INP_DIVIDEND_BASE = "Dernier dividende par action payé ($D_0$)"
+    INP_PAYOUT_TARGET = "Ratio de distribution cible (Payout %)"
+
     # Labels Interactifs
     RADIO_TV_METHOD = "Modèle de sortie"
     TV_GORDON = "Croissance Perpétuelle (Gordon)"
@@ -163,6 +188,8 @@ class ExpertTerminalTexts:
     BTN_VALUATE_GROWTH = "Lancer l'analyse Growth : {ticker}"
     BTN_VALUATE_RIM = "Lancer la valorisation RIM : {ticker}"
     BTN_VALUATE_GRAHAM = "Calculer la valeur Graham : {ticker}"
+    BTN_VALUATE_FCFE = "Calculer la valeur FCFE (Actionnaire) : {ticker}"
+    BTN_VALUATE_DDM = "Calculer la valeur DDM (Dividendes) : {ticker}"
 
 class TooltipsTexts:
     """Infobulles et aides contextuelles pour le mode Expert."""
@@ -173,8 +200,6 @@ class FeedbackMessages:
     """Messages système et alertes de validation."""
     TICKER_REQUIRED_SIDEBAR = "Veuillez saisir un ticker dans la barre latérale."
     TICKER_INVALID = "Veuillez saisir un ticker valide."
-
-# --- NOUVELLE CLASSE POUR LE DESIGN SYSTEM (EXTRACTION style_system.py) ---
 
 class LegalTexts:
     """Textes juridiques, avertissements et notes de conformité."""
@@ -235,6 +260,12 @@ class KPITexts:
     LABEL_CAPEX = "CapEx"
     LABEL_DA = "D&A"
 
+    # Nouveaux Labels Financiers Sprint 3
+    LABEL_NET_BORROWING = "Variation Dette Nette"
+    LABEL_FCFE_TTM = "FCFE (Dernier)"
+    LABEL_DIVIDEND_D0 = "Dividende $D_0$"
+    LABEL_PAYOUT_RATIO = "Ratio de Distribution"
+
     # Paramètres Modèle
     SUB_RATES = "Taux et Primes de Risque"
     LABEL_RF = "Taux Sans Risque (Rf)"
@@ -291,6 +322,12 @@ class KPITexts:
     SUB_RIM_TV = "{sub_tv} × {factor:.4f}"
     SUB_RIM_FINAL = "{bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
     SUB_P50_VAL = "P50 = {val:,.2f} {curr}"
+
+    # Substitutions Glass Box Sprint 3
+    SUB_FCFE_CALC = "FCFE = FCFF - Int(1-τ) + ΔDette = {val:,.2f}"
+    SUB_DDM_BASE = "D_0 = {val:,.2f} / action"
+    SUB_KE_LABEL = "Cost of Equity (Ke) = {val:.2%}"
+    SUB_EQUITY_NPV = "Equity Value = NPV(Equity Flows) = {val:,.2f}"
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
@@ -388,6 +425,9 @@ class RegistryTexts:
     DCF_WACC_L = "Coût Moyen Pondéré du Capital"
     DCF_WACC_D = "Taux d'actualisation reflétant le coût du capital de l'entreprise."
 
+    DCF_KE_L = "Coût des Fonds Propres (Ke)"
+    DCF_KE_D = "Taux d'actualisation utilisé pour les modèles actionnaires (CAPM)."
+
     DCF_PROJ_L = "Projection des Flux"
     DCF_PROJ_D = "Projection des flux sur l'horizon explicite."
 
@@ -405,6 +445,20 @@ class RegistryTexts:
 
     DCF_IV_L = "Valeur Intrinsèque par Action"
     DCF_IV_D = "Estimation de la valeur réelle d'une action."
+
+    # --- FCFE ---
+    FCFE_BASE_L = "Ancrage FCFE₀"
+    FCFE_BASE_D = "Flux net disponible pour les actionnaires après service de la dette."
+
+    FCFE_DEBT_ADJ_L = "Ajustement de l'Endettement"
+    FCFE_DEBT_ADJ_D = "Intégration du Net Borrowing (Nouvelle dette - Remboursements)."
+
+    # --- DDM ---
+    DDM_BASE_L = "Ancrage Dividende D₀"
+    DDM_BASE_D = "Dividende de référence utilisé pour la projection de croissance."
+
+    DDM_GROWTH_L = "Dynamique de Distribution"
+    DDM_GROWTH_D = "Modélisation de la croissance future des dividendes."
 
     # --- GROWTH ---
     GROWTH_REV_BASE_L = "Chiffre d'Affaires de Base"
@@ -569,7 +623,7 @@ class DiagnosticTexts:
 
     # Exceptions : Infrastructure
     PROVIDER_FAIL_MSG = "Échec de connexion au fournisseur {provider}."
-    PROVIDER_FAIL_HINT = "Vérifiez votre connexion internet. L'API est peut-être temporairement indisponible."
+    PROVIDER_FAIL_HINT = "Veuillez vérifier votre connexion internet. L'API est peut-être temporairement indisponible."
 
     # Exceptions : Logique Modèle
     MODEL_LOGIC_MSG = "Incohérence dans le modèle {model} : {issue}"
@@ -593,7 +647,6 @@ class StrategySources:
     YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
     CALCULATED_NI = "Calculated (Net Income / Shares)"
     ANALYST_OVERRIDE = "Surcharge Analyste"
-    WACC_MANUAL = "WACC = {wacc:.4f} (Manual Override)"
 
 class StrategyInterpretations:
     """Notes pédagogiques dynamiques générées par les stratégies (Glass Box)."""
@@ -636,6 +689,18 @@ class StrategyInterpretations:
     MC_STRESS_SUB = "Bear Case = {val:,.2f} {curr}"
     MC_STRESS_INTERP = "Scénario de stress : croissance nulle et risque élevé (Point de rupture)."
 
+    # FCFE (Sprint 3)
+    FCFE_LOGIC = (
+        "Le modèle FCFE mesure le cash-flow restant après avoir payé les intérêts et "
+        "remboursé la dette. Contrairement au FCFF, il est actualisé par le Ke."
+    )
+
+    # DDM (Sprint 3)
+    DDM_LOGIC = (
+        "Le Dividend Discount Model repose sur l'idée que la valeur d'une action est "
+        "la somme actualisée de tous ses futurs dividendes."
+    )
+
 class CalculationErrors:
     """Messages d'erreurs levés lors des phases de calcul (CalculationError)."""
     CONTRACT_VIOLATION = "Le contrat de sortie n'est pas respecté pour {cls}."
@@ -653,6 +718,11 @@ class CalculationErrors:
     CONVERGENCE_IMPOSSIBLE = "Convergence impossible : Taux ({rate:.2%}) <= Croissance ({g:.2%})"
     MANUAL_OVERRIDE_LABEL = "Surcharge manuelle : {wacc:.2%}"
     NEGATIVE_EXIT_MULTIPLE = "Le multiple de sortie ne peut pas être négatif."
+
+    # Sprint 3
+    NEGATIVE_FCFE = "Le flux FCFE est négatif. Le modèle est inapplicable ou l'entreprise sur-endettée."
+    MISSING_NET_BORROWING = "Donnée de variation de dette (Net Borrowing) manquante pour le FCFE."
+    INVALID_DIVIDEND = "Dividende de base nul ou invalide pour le modèle DDM."
 
 
 class AuditCategories:
@@ -692,6 +762,10 @@ class AuditMessages:
 
     # --- Graham Auditor ---
     GRAHAM_GROWTH_PRUDENCE = "Taux de croissance g Graham ({g:.1%}) hors périmètre de prudence."
+
+    # --- Sprint 3 ---
+    FCFE_HIGH_BORROWING = "Attention : La valorisation repose sur un fort endettement (Net Borrowing élevé)."
+    DDM_PAYOUT_UNSUSTAINABLE = "Alerte : Le Payout Ratio > 100% indique un dividende non soutenable."
 
 
 class AuditEngineTexts:

@@ -24,15 +24,32 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # ==============================================================================
 
 class ValuationMode(str, Enum):
+    # Approche Entité (Firm Value)
     FCFF_TWO_STAGE = "FCFF Two-Stage (Damodaran)"
     FCFF_NORMALIZED = "FCFF Normalized (Cyclical / Industrial)"
     FCFF_REVENUE_DRIVEN = "FCFF Revenue-Driven (High Growth / Tech)"
+
+    # Approche Actionnaire (Equity Value) - NOUVEAUTÉ SPRINT 3
+    FCFE_TWO_STAGE = "FCFE Two-Stage (Direct Equity)"
+    DDM_GORDON_GROWTH = "Dividend Discount Model (Gordon / DDM)"
+
+    # Autres Modèles
     RESIDUAL_INCOME_MODEL = "Residual Income Model (Penman)"
     GRAHAM_1974_REVISED = "Graham Intrinsic Value (1974 Revised)"
 
     @property
     def supports_monte_carlo(self) -> bool:
         return self != ValuationMode.GRAHAM_1974_REVISED
+
+    @property
+    def is_direct_equity(self) -> bool:
+        """Détermine si le modèle calcule directement la valeur actionnariale."""
+        return self in [
+            ValuationMode.FCFE_TWO_STAGE,
+            ValuationMode.DDM_GORDON_GROWTH,
+            ValuationMode.RESIDUAL_INCOME_MODEL,
+            ValuationMode.GRAHAM_1974_REVISED
+        ]
 
 
 class InputSource(str, Enum):
@@ -124,6 +141,9 @@ class CompanyFinancials(BaseModel):
     dividend_share: Optional[float] = None
     fcf_last: Optional[float] = None
     fcf_fundamental_smoothed: Optional[float] = None
+
+    net_borrowing_ttm: Optional[float] = None
+
     capex: Optional[float] = None
     depreciation_and_amortization: Optional[float] = None
 
@@ -135,7 +155,6 @@ class CompanyFinancials(BaseModel):
     def net_debt(self) -> float:
         return self.total_debt - self.cash_and_equivalents
 
-    # --- CORRECTIF : RESTAURATION DE LA PROPRIÉTÉ MANQUANTE ---
     @property
     def dividends_total_calculated(self) -> float:
         """Calcul sécurisé du montant total des dividendes versés."""
@@ -183,6 +202,8 @@ class GrowthParameters(BaseModel):
     manual_pension_provisions: Optional[float] = None
     manual_shares_outstanding: Optional[float] = None
     manual_book_value: Optional[float] = None
+    manual_net_borrowing: Optional[float] = None
+    manual_dividend_base: Optional[float] = None
 
     @field_validator('fcf_growth_rate', 'perpetual_growth_rate', mode='before')
     @classmethod
@@ -372,4 +393,19 @@ class GrahamValuationResult(ValuationResult):
         return ValuationOutputContract(
             has_params=True, has_projection=False,
             has_terminal_value=True, has_intrinsic_value=True, has_audit=self.audit_report is not None
+        )
+
+class EquityDCFValuationResult(ValuationResult):
+    cost_of_equity: float
+    projected_equity_flows: List[float]
+    equity_value: float
+    discounted_terminal_value: Optional[float] = None
+
+    def build_output_contract(self) -> ValuationOutputContract:
+        return ValuationOutputContract(
+            has_params=True,
+            has_projection=len(self.projected_equity_flows) > 0,
+            has_terminal_value=self.discounted_terminal_value is not None,
+            has_intrinsic_value=True,
+            has_audit=self.audit_report is not None
         )

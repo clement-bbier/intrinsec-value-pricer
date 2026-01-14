@@ -1,9 +1,10 @@
 """
 core/computation/financial_math.py
 
-MOTEUR MATHÉMATIQUE FINANCIER — VERSION V9.0 (i18n Secured)
-Architecture : Souveraineté Analyste avec isolation des segments Rates & Growth.
-Rôle : Calculs financiers atomiques et déterminations du coût du capital.
+MOTEUR MATHÉMATIQUE FINANCIER — VERSION V10.0 (i18n Secured)
+Sprint 3 : Expansion Analytique (DDM & FCFE)
+Rôle : Calculs financiers atomiques, WACC, Ke et flux actionnaires.
+Sources : Damodaran (Investment Valuation), McKinsey (Valuation).
 """
 
 import logging
@@ -72,23 +73,37 @@ def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float)
     return final_metric * multiple
 
 # ==============================================================================
-# 2. COÛT DU CAPITAL (WACC / CAPM)
+# 2. COÛT DU CAPITAL (WACC / CAPM / Ke)
 # ==============================================================================
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
-    """Modèle CAPM : Ke = Rf + Beta * MRP."""
+    """Modèle CAPM standard : Ke = Rf + Beta * MRP."""
     return rf + (beta * mrp)
 
+def calculate_cost_of_equity(financials: CompanyFinancials, params: DCFParameters) -> float:
+    """
+    Isole le calcul du Ke (Cost of Equity) via les segments Rates.
+    Utilisé pour DDM et FCFE.
+    """
+    r = params.rates
+    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
+    mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
+    beta = r.manual_beta if r.manual_beta is not None else financials.beta
+
+    if r.manual_cost_of_equity is not None:
+        return r.manual_cost_of_equity
+
+    return calculate_cost_of_equity_capm(rf, beta, mrp)
 
 def calculate_synthetic_cost_of_debt(
         rf: float,
         ebit: Optional[float],
-        interest_expense: Optional[float],  # Renommé ici (était 'interest' ou 'interest_expense')
+        interest_expense: Optional[float],
         market_cap: float
 ) -> float:
-    """Estime le coût de la dette basé sur l'ICR (Synthetic Rating)."""
+    """Estime le coût de la dette basé sur l'ICR (Synthetic Rating Damodaran)."""
     safe_ebit = ebit if ebit is not None else 0.0
-    safe_int = interest_expense if interest_expense is not None else 0.0  # Mise à jour ici
+    safe_int = interest_expense if interest_expense is not None else 0.0
 
     if safe_int <= 0 or safe_ebit <= 0:
         return rf + 0.0107  # Spread par défaut A-rated proxy
@@ -104,32 +119,24 @@ def calculate_synthetic_cost_of_debt(
     return rf + selected_spread
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """
-    Calcul centralisé du WACC via segmentation V9.
-    Intègre les surcharges Rates et Growth.
-    """
+    """Calcul centralisé du WACC (Approach Firm Value)."""
     r, g = params.rates, params.growth
 
-    # 1. Résolution des taux (Segment Rates)
-    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
-    mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
+    # 1. Résolution Ke
+    ke = calculate_cost_of_equity(financials, params)
+
+    # 2. Résolution Kd
     tax = r.tax_rate if r.tax_rate is not None else 0.25
-
-    # 2. Résolution structurelle (Segment Growth pour surcharges)
-    debt = g.manual_total_debt if g.manual_total_debt is not None else financials.total_debt
-    shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
-
-    # A. Coût des Fonds Propres (Ke)
-    ke = r.manual_cost_of_equity if r.manual_cost_of_equity is not None else \
-         calculate_cost_of_equity_capm(rf, r.manual_beta if r.manual_beta is not None else financials.beta, mrp)
-
-    # B. Coût de la Dette (Kd)
+    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
     kd_gross = r.cost_of_debt if r.cost_of_debt is not None else \
                calculate_synthetic_cost_of_debt(rf, financials.ebit_ttm, financials.interest_expense, financials.market_cap)
     kd_net = kd_gross * (1.0 - tax)
 
-    # C. Structure de Capital
+    # 3. Structure de Capital
+    debt = g.manual_total_debt if g.manual_total_debt is not None else financials.total_debt
+    shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
     market_equity = financials.current_price * shares
+
     if g.target_equity_weight > 0 and g.target_debt_weight > 0:
         we, wd = g.target_equity_weight, g.target_debt_weight
         method = StrategySources.WACC_TARGET
@@ -144,21 +151,38 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     return WACCBreakdown(ke, kd_gross, kd_net, we, wd, wacc_final, method)
 
 # ==============================================================================
-# 3. MODÈLES SPÉCIFIQUES (INDISPENSABLES POUR RIM ET GRAHAM)
+# 3. MODÈLES ACTIONNAIRES
+# ==============================================================================
+
+def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borrowing: float) -> float:
+    """
+    Formule rigoureuse du FCFE (Free Cash Flow to Equity).
+    Source : Damodaran.
+    FCFE = FCFF - Intérêts * (1 - Taux_Imposition) + Variation_Nette_Dette
+    """
+    tax_adj_interest = interest * (1.0 - tax_rate)
+    return fcff - tax_adj_interest + net_borrowing
+
+def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
+    """
+    Calcule le taux de croissance soutenable (Sustainable Growth Rate).
+    Source : CFA Institute / McKinsey.
+    g = ROE * Retention_Ratio (où Retention_Ratio = 1 - Payout)
+    """
+    retention_ratio = 1.0 - payout_ratio
+    return roe * retention_ratio
+
+# ==============================================================================
+# 4. MODÈLES SPÉCIFIQUES (RIM & GRAHAM)
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
     """Formule Révisée de Benjamin Graham (1974)."""
-    # Rendement AAA par défaut si non fourni
     yield_val = aaa_yield if (aaa_yield and aaa_yield > 0) else 0.044
-
-    # Conversion en points de base pour la formule (8.5 + 2g)
     g_scaled = (growth_rate if growth_rate is not None else 0.0) * 100.0
     y_scaled = yield_val * 100.0
-
     growth_multiplier = 8.5 + 2.0 * g_scaled
     rate_adjustment = 4.4 / y_scaled
-
     return eps * growth_multiplier * rate_adjustment
 
 def calculate_rim_vectors(
@@ -167,42 +191,28 @@ def calculate_rim_vectors(
     projected_earnings: List[float],
     payout_ratio: float
 ) -> Tuple[List[float], List[float]]:
-    """
-    Génère les vecteurs de Profit Résiduel (RI) et de Book Value (BV).
-    Formule : RI_t = NI_t - (k_e * BV_{t-1})
-    """
+    """Génère les vecteurs de Profit Résiduel (RI) et de Book Value (BV)."""
     book_values = []
     residual_incomes = []
     prev_bv = current_book_value
 
     for earnings in projected_earnings:
-        # RI = Revenu Net - Charge du Capital
         equity_charge = prev_bv * cost_of_equity
         ri = earnings - equity_charge
-
-        # Mise à jour de la Book Value (NI - Dividendes)
         dividend = earnings * (payout_ratio if payout_ratio is not None else 0.0)
         new_bv = prev_bv + earnings - dividend
-
         residual_incomes.append(ri)
         book_values.append(new_bv)
         prev_bv = new_bv
 
     return residual_incomes, book_values
 
-
 def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> List[float]:
-    """
-    Calcule des proportions normalisées (somme = 1.0).
-    Gère la division par zéro et les valeurs None.
-    """
+    """Calcule des proportions normalisées (somme = 1.0)."""
     clean_values = [v or 0.0 for v in values]
     total = sum(clean_values)
-
     if total <= 0:
-        # Fallback institutionnel : Si rien n'est défini, 100% sur le premier élément (Equity)
         result = [0.0] * len(clean_values)
         result[fallback_index] = 1.0
         return result
-
     return [v / total for v in clean_values]
