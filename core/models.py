@@ -350,6 +350,7 @@ class ValuationResult(BaseModel, ABC):
     stress_test_value: Optional[float] = None
     mc_valid_ratio: Optional[float] = None
     mc_clamping_applied: Optional[bool] = None
+    multiples_triangulation: Optional['MultiplesValuationResult'] = None
     relative_valuation: Optional[Dict[str, float]] = None
 
     def model_post_init(self, __context: Any) -> None:

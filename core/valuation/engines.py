@@ -26,7 +26,8 @@ from core.models import (
     ValuationMode,
     CompanyFinancials,
     DCFParameters,
-    ValuationResult
+    ValuationResult,
+    MultiplesData
 )
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
@@ -69,18 +70,18 @@ STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
 # ==============================================================================
 
 def run_valuation(
-    request: ValuationRequest,
-    financials: CompanyFinancials,
-    params: DCFParameters
+        request: ValuationRequest,
+        financials: CompanyFinancials,
+        params: DCFParameters
 ) -> ValuationResult:
     """
     Exécute une valorisation complète et déclenche l'audit institutionnel.
-    Supporte nativement le mode Monte Carlo pour tous les modèles compatibles.
+    Supporte nativement le mode Monte Carlo et la triangulation hybride automatique (Phase 5).
     """
     logger.info(f"[Engine] Initialisation {request.mode.value} pour {request.ticker}")
 
     # =========================================================================
-    # A. RÉCUPÉRATION DE LA STRATÉGIE
+    # A. RÉCUPÉRATION DE LA STRATÉGIE PRINCIPALE
     # =========================================================================
     strategy_cls = STRATEGY_REGISTRY.get(request.mode)
     if not strategy_cls:
@@ -98,7 +99,7 @@ def run_valuation(
         strategy = strategy_cls()
 
     # =========================================================================
-    # C. EXÉCUTION, AUDIT ET VALIDATION DU CONTRAT
+    # C. EXÉCUTION DU MODÈLE INTRINSÈQUE
     # =========================================================================
     try:
         # 1. Calcul mathématique de la valeur intrinsèque (Délégation)
@@ -106,6 +107,29 @@ def run_valuation(
 
         # 2. Injection de la requête (Nécessaire pour le contexte d'audit)
         _inject_request_safely(result, request)
+
+        # =====================================================================
+        # NOUVEAUTÉ PHASE 5 : DÉCLENCHEMENT DE LA TRIANGULATION (HYBRIDE)
+        # =====================================================================
+        # On vérifie la présence de données de cohorte dans les options de la requête
+        multiples_data = request.options.get("multiples_data")
+
+        if multiples_data and hasattr(multiples_data, "peers") and len(multiples_data.peers) > 0:
+            try:
+                from core.valuation.strategies.multiples import MarketMultiplesStrategy
+
+                # Exécution de la stratégie de multiples (Calcul de la valeur de marché)
+                rel_strategy = MarketMultiplesStrategy(multiples_data=multiples_data)
+                result.multiples_triangulation = rel_strategy.execute(financials, params)
+
+                logger.info(f"[Engine] Triangulation sectorielle finalisée avec {len(multiples_data.peers)} pairs.")
+            except Exception as e:
+                # Sécurité "Honest Data" : l'échec des pairs ne doit pas bloquer l'analyse principale
+                logger.warning(f"[Engine] Échec non critique de la triangulation : {str(e)}")
+                result.multiples_triangulation = None
+        else:
+            result.multiples_triangulation = None
+        # =====================================================================
 
         # 3. APPEL DU MOTEUR D'AUDIT (Calcul du Reliability Score)
         from infra.auditing.audit_engine import AuditEngine
@@ -127,7 +151,6 @@ def run_valuation(
         # Capture des défaillances imprévues (Système)
         logger.error(f"Erreur critique moteur : {str(e)}")
         raise _handle_system_crash(e)
-
 
 # ==============================================================================
 # 3. HELPERS DE MAINTENANCE (AUDIT & DIAGNOSTIC)

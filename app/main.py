@@ -335,9 +335,11 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
         st.warning(FeedbackMessages.TICKER_INVALID)
         return
 
+    options.setdefault("manual_peers", [])
+
     # Instanciation segmentée V9
     config_params = DCFParameters(
-        rates=CoreRateParameters(), # Laissé en Auto (None)
+        rates=CoreRateParameters(),
         growth=GrowthParameters(projection_years=options["years"]),
         monte_carlo=MonteCarloConfig(
             enable_monte_carlo=options["enable_mc"],

@@ -1,18 +1,20 @@
 """
 app/ui_components/ui_charts.py
-VISUALISATIONS — VERSION V3.3 (Hedge Fund Standard)
-Rôle : Rendu graphique haute précision utilisant les constantes i18n.
+VISUALISATIONS — VERSION V4.0 (Hedge Fund Standard)
+Rôle : Rendu graphique haute précision incluant le Football Field Chart.
+Standards : Altair, i18n, Zero-Depreciation.
 """
 
 from __future__ import annotations
 
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict, Any
 import numpy as np
 import pandas as pd
 import altair as alt
 import streamlit as st
 
-from app.ui_components.ui_texts import ChartTexts
+from app.ui_components.ui_texts import ChartTexts, KPITexts
+from core.models import ValuationResult
 
 # ============================================================================
 # 1. HISTORIQUE DE PRIX
@@ -53,7 +55,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
         title=ChartTexts.PRICE_HISTORY_TITLE.format(ticker=ticker)
     ).interactive()
 
-    st.altair_chart(chart, width="stretch")
+    st.altair_chart(chart, use_container_width=True)
 
 
 # ============================================================================
@@ -95,21 +97,108 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
     * {ChartTexts.SIM_SUMMARY_CI} : {p10:,.2f} à {p90:,.2f} {ChartTexts.SIM_SUMMARY_PROB.format(prob=80)}
     """)
 
+
 # ============================================================================
-# 3. SENSIBILITÉ & CORRÉLATION
+# 3. TRIANGULATION : FOOTBALL FIELD CHART (NOUVEAUTÉ SPRINT 4)
+# ============================================================================
+
+def display_football_field(result: ValuationResult) -> None:
+    """
+    Rendu visuel de la triangulation (Football Field).
+    Compare le modèle intrinsèque (avec range MC si possible) aux multiples de marché.
+    """
+    st.subheader(KPITexts.FOOTBALL_FIELD_TITLE)
+
+    data = []
+    currency = result.financials.currency
+
+    # 1. Préparation du signal Intrinsèque (avec Range P10-P90 si Monte Carlo)
+    iv_p50 = result.intrinsic_value_per_share
+    iv_low = iv_p50
+    iv_high = iv_p50
+
+    if result.params.monte_carlo.enable_monte_carlo and result.quantiles:
+        iv_low = result.quantiles.get("P10", iv_p50)
+        iv_high = result.quantiles.get("P90", iv_p50)
+
+    data.append({
+        "Method": KPITexts.LABEL_FOOTBALL_FIELD_IV,
+        "Low": iv_low, "High": iv_high, "Mid": iv_p50,
+        "Color": "#1B5E20" # Vert Institutionnel
+    })
+
+    # 2. Ajout des multiples (Signaux Spot)
+    if result.multiples_triangulation:
+        rel = result.multiples_triangulation
+        signals = [
+            (KPITexts.LABEL_FOOTBALL_FIELD_PE, rel.pe_based_price),
+            (KPITexts.LABEL_FOOTBALL_FIELD_EBITDA, rel.ebitda_based_price),
+            (KPITexts.LABEL_FOOTBALL_FIELD_REV, rel.rev_based_price)
+        ]
+
+        for label, val in signals:
+            if val > 0:
+                # Pour les multiples, on simule un range étroit de +/- 5% pour la visibilité
+                data.append({
+                    "Method": label,
+                    "Low": val * 0.95, "High": val * 1.05, "Mid": val,
+                    "Color": "#455A64" # Gris Bleu Secteur
+                })
+
+    if not data:
+        st.info(KPITexts.LABEL_MULTIPLES_UNAVAILABLE)
+        return
+
+    df = pd.DataFrame(data)
+
+    # Création du graphique Altair
+    base = alt.Chart(df).encode(
+        y=alt.Y("Method:N", title=None, sort=None),
+        x=alt.X("Low:Q", scale=alt.Scale(zero=False), title=f"Valeur par Action ({currency})")
+    )
+
+    # Barres de Range (Intervalle)
+    bars = base.mark_bar(height=15).encode(
+        x="Low:Q",
+        x2="High:Q",
+        color=alt.Color("Color:N", scale=None),
+        tooltip=[
+            alt.Tooltip("Method:N", title="Méthode"),
+            alt.Tooltip("Mid:Q", format=",.2f", title="Valeur")
+        ]
+    )
+
+    # Ticks centraux
+    ticks = base.mark_tick(color="white", size=15, thickness=2).encode(x="Mid:Q")
+
+    # Ligne verticale du prix de marché
+    price_rule = alt.Chart(pd.DataFrame({"x": [result.market_price]})).mark_rule(
+        color="#D32F2F", strokeWidth=2, strokeDash=[4, 4]
+    ).encode(x="x:Q")
+
+    price_label = price_rule.mark_text(
+        align='left', dx=5, dy=-140, color="#D32F2F", fontWeight='bold'
+    ).encode(text=alt.value(f"{KPITexts.LABEL_FOOTBALL_FIELD_PRICE}"))
+
+    final_chart = alt.layer(bars, ticks, price_rule, price_label).properties(height=250)
+
+    st.altair_chart(final_chart, use_container_width=True)
+
+
+# ============================================================================
+# 4. SENSIBILITÉ & CORRÉLATION
 # ============================================================================
 
 def display_sensitivity_heatmap(
-    base_rate: float, # Renommé de base_wacc pour la généricité
+    base_rate: float,
     base_growth: float,
     calculator_func: Callable,
     currency: str = "EUR",
-    is_direct_equity: bool = False # AJOUT : Flag de bifurcation
+    is_direct_equity: bool = False
 ) -> None:
     """Rendu de la matrice de sensibilité avec labels dynamiques (WACC vs Ke)."""
     st.subheader(ChartTexts.SENS_TITLE)
 
-    # Détermination des labels selon le modèle
     label_y = "Ke" if is_direct_equity else "WACC"
     title_y = "Coût des Fonds Propres (Ke)" if is_direct_equity else "Coût du Capital (WACC)"
     tooltip_y = "Taux (Ke)" if is_direct_equity else ChartTexts.SENS_TOOLTIP_WACC
@@ -122,12 +211,10 @@ def display_sensitivity_heatmap(
         for dg in growth_steps:
             r = base_rate + dr
             g = base_growth + dg
-            # Condition de stabilité Gordon (r > g)
             if r <= g + 0.001: continue
             try:
                 val = calculator_func(r, g)
                 if val and val > 0:
-                    # On utilise la clé dynamique label_y pour le DataFrame
                     data.append({label_y: r, "Growth": g, "Valeur": round(val, 2)})
             except: continue
 
@@ -156,11 +243,11 @@ def display_sensitivity_heatmap(
         color=alt.condition(alt.datum.Valeur > df['Valeur'].quantile(0.5), alt.value('white'), alt.value('black'))
     )
 
-    st.altair_chart((heatmap + text).properties(height=350), width="stretch")
+    st.altair_chart((heatmap + text).properties(height=350), use_container_width=True)
 
 
 def display_correlation_heatmap(rho: float = -0.30) -> None:
-    """Rendu de la matrice de corrélation avec légende centralisée."""
+    """Rendu de la matrice de corrélation."""
     corr_data = pd.DataFrame([
         {"X": "Beta (β)", "Y": "Beta (β)", "Val": 1.0},
         {"X": "Growth (g)", "Y": "Growth (g)", "Val": 1.0},

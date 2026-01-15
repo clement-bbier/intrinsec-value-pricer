@@ -1,12 +1,12 @@
 """
 app/ui_components/ui_inputs_expert.py
-ARCHITECTURE ATOMIQUE — TERMINAL PROFESSIONNEL RÉACTIF (V10.1)
+ARCHITECTURE ATOMIQUE — TERMINAL PROFESSIONNEL RÉACTIF (V11.0)
 Sprint 3 : Expansion Analytique (DDM & FCFE)
 Rôle : Standardisation UI pilotée par ui_texts.py et models.py.
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import streamlit as st
 
 from core.models import (
@@ -40,6 +40,20 @@ def safe_factory_params(all_data: Dict[str, Any]) -> DCFParameters:
 # ==============================================================================
 # 1. LES ATOMES UI (ADAPTATIFS & PILOTÉS PAR MODELS)
 # ==============================================================================
+
+def atom_peer_selection() -> List[str]:
+    """Étape 7 : Sélection manuelle des pairs pour la triangulation (Sprint 4)."""
+    st.markdown(ExpertTerminalTexts.SEC_7_PEERS)
+    raw_input = st.text_input(
+        ExpertTerminalTexts.INP_MANUAL_PEERS,
+        placeholder="ex: AAPL, MSFT, GOOG",
+        help=ExpertTerminalTexts.INP_MANUAL_PEERS_HELP
+    )
+    st.divider()
+    if not raw_input:
+        return []
+    # Nettoyage de la saisie utilisateur (split, uppercase, strip)
+    return [t.strip().upper() for t in raw_input.split(",") if t.strip()]
 
 def atom_discount_rate_smart(mode: ValuationMode) -> Dict[str, Any]:
     """Étape 3 : Coût du Capital - Bifurcation Ke (Equity) vs WACC (Firm)."""
@@ -195,9 +209,13 @@ def render_expert_fcfe(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.FCFE_TWO_STAGE))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFE_TWO_STAGE, tv_data.get("terminal_method")))
 
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_FCFE.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFE_TWO_STAGE,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
@@ -223,9 +241,13 @@ def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.DDM_GORDON_GROWTH))
     all_data.update(atom_monte_carlo_smart(ValuationMode.DDM_GORDON_GROWTH, tv_data.get("terminal_method")))
 
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_DDM.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.DDM_GORDON_GROWTH,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
@@ -245,9 +267,14 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(tv_data)
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_TWO_STAGE))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_TWO_STAGE, tv_data.get("terminal_method")))
+
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
@@ -267,9 +294,14 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(tv_data)
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_NORMALIZED))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_NORMALIZED, tv_data.get("terminal_method")))
+
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
@@ -290,9 +322,14 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(tv_data)
     all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_REVENUE_DRIVEN))
     all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_REVENUE_DRIVEN, tv_data.get("terminal_method")))
+
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
@@ -313,9 +350,14 @@ def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
     all_data.update(atom_terminal_rim(r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"))
     all_data.update(atom_bridge_smart(r"P = \dfrac{\text{Equity Value}}{\text{Actions}}", ValuationMode.RESIDUAL_INCOME_MODEL))
     all_data.update(atom_monte_carlo_smart(ValuationMode.RESIDUAL_INCOME_MODEL))
+
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", use_container_width=True):
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RESIDUAL_INCOME_MODEL,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None
 
 def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
@@ -331,8 +373,13 @@ def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
     yield_aaa = c1.number_input(ExpertTerminalTexts.INP_YIELD_AAA, min_value=0.0, max_value=0.20, value=None, format="%.3f")
     tau = c2.number_input(ExpertTerminalTexts.INP_TAX_SIMPLE, min_value=0.0, max_value=0.60, value=None, format="%.2f")
     st.divider()
+
+    # --- ÉTAPE 7 : TRIANGULATION ---
+    manual_peers = atom_peer_selection()
+
     if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", use_container_width=True):
         all_data = {"manual_fcf_base": eps, "fcf_growth_rate": g_lt, "corporate_aaa_yield": yield_aaa, "tax_rate": tau, "projection_years": 1, "enable_monte_carlo": False}
         return ValuationRequest(ticker=ticker, projection_years=1, mode=ValuationMode.GRAHAM_1974_REVISED,
-                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data))
+                                input_source=InputSource.MANUAL, manual_params=safe_factory_params(all_data),
+                                options={"manual_peers": manual_peers})
     return None

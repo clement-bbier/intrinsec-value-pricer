@@ -34,12 +34,13 @@ logger = logging.getLogger(__name__)
 def run_workflow_and_display(request: ValuationRequest) -> None:
     """
     Point d'entrée unique pilotant le cycle de vie complet de l'analyse financière.
+    Intègre désormais l'acquisition hybride des pairs (Phase 5 - ST2).
     """
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
 
     try:
         # =====================================================================
-        # ÉTAPE 1 : ACQUISITION DES DONNÉES
+        # ÉTAPE 1 : ACQUISITION DES DONNÉES (ENTREPRISE & MACRO)
         # =====================================================================
         status.write(WorkflowTexts.STATUS_DATA_ACQUISITION)
 
@@ -48,6 +49,21 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
             request.ticker,
             request.projection_years
         )
+
+        # =====================================================================
+        # NOUVEAUTÉ PHASE 5 (ST2) : ACQUISITION DES MULTIPLES (PAIRS)
+        # =====================================================================
+        # On vérifie si l'utilisateur a saisi des tickers manuels (Mode Expert)
+        manual_peers = request.options.get("manual_peers")  # Liste de tickers (ex: ["AAPL", "MSFT"])
+
+        # Le provider gère seul la bascule Auto Discovery vs Expert List
+        multiples_data = provider.get_peer_multiples(
+            ticker=request.ticker,
+            manual_peers=manual_peers
+        )
+
+        # Injection dans les options pour le moteur run_valuation
+        request.options["multiples_data"] = multiples_data
 
         # =====================================================================
         # ÉTAPE 2 : CONCILIATION DES PARAMÈTRES (SMART MERGE V9)

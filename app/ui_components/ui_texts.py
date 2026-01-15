@@ -126,6 +126,7 @@ class ExpertTerminalTexts:
     SEC_4_TERMINAL = "#### 4. Valeur de continuation (Sortie)"
     SEC_5_BRIDGE = "#### 5. Ajustements de structure (Equity Bridge)"
     SEC_6_MC = "#### 6. Simulation Probabiliste (Incertitude)"
+    SEC_7_PEERS = "#### 7. Cohorte de Comparables (Triangulation)"
 
     # --- Labels des Inputs (Standard & FCFF) ---
     INP_FCF_TTM = "Dernier flux TTM (devise entreprise, Vide = Auto Yahoo)"
@@ -169,6 +170,9 @@ class ExpertTerminalTexts:
     INP_PAYOUT_TARGET = "Ratio de distribution cible (Payout %)"
     INP_PE_TARGET = "Multiple P/E Cible (Sortie)"
     INP_DIVIDEND_BASE_HELP = "Dividendes versés sur les 12 derniers mois (TTM)."
+
+    INP_MANUAL_PEERS = "Tickers des concurrents (séparés par une virgule)"
+    INP_MANUAL_PEERS_HELP = "Laissez vide pour utiliser l'algorithme de découverte automatique de Yahoo Finance."
 
     # --- Labels Interactifs & Monte Carlo ---
     RADIO_TV_METHOD = "Modèle de sortie (TV)"
@@ -315,6 +319,12 @@ class KPITexts:
     LABEL_CORRELATION_BG = "Corrélation (β, g)"
     LABEL_HORIZON_SUB = "Horizon : {years} ans"
 
+    LABEL_FOOTBALL_FIELD_IV = "Modèle Intrinsèque"
+    LABEL_FOOTBALL_FIELD_PE = "Multiple P/E"
+    LABEL_FOOTBALL_FIELD_EBITDA = "Multiple EV/EBITDA"
+    LABEL_FOOTBALL_FIELD_REV = "Multiple EV/Revenue"
+    LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marché"
+
     MC_CONFIG_SUB = r"Sims : {sims} | β: 𝒩({beta:.2f}, {sig_b:.1%}) | g: 𝒩({g:.1%}, {sig_g:.1%}) | Y₀ Vol: {sig_y0:.1%} | ρ: {rho:.2f}"
     MC_FILTER_SUB = r"{valid} valides / {total} itérations"
     MC_SENS_SUB = r"P50(rho=0) = {p50_n:,.2f} vs Base = {p50_b:,.2f}"
@@ -349,6 +359,7 @@ class KPITexts:
     # Triangulation
     FOOTBALL_FIELD_TITLE = "Synthèse de Triangulation (Football Field)"
     RELATIVE_VAL_DESC = "Comparaison de la valeur intrinsèque face aux multiples médians du secteur."
+    LABEL_MULTIPLES_UNAVAILABLE = "Multiples de marché indisponibles (Cohorte insuffisante)" # NOUVEAU
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
