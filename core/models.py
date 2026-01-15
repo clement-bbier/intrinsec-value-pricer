@@ -167,6 +167,7 @@ class CompanyFinancials(BaseModel):
 
 class CoreRateParameters(BaseModel):
     risk_free_rate: Optional[float] = None
+    risk_free_source: str = "N/A"
     market_risk_premium: Optional[float] = None
     corporate_aaa_yield: Optional[float] = None
     cost_of_debt: Optional[float] = None
@@ -349,6 +350,7 @@ class ValuationResult(BaseModel, ABC):
     stress_test_value: Optional[float] = None
     mc_valid_ratio: Optional[float] = None
     mc_clamping_applied: Optional[bool] = None
+    relative_valuation: Optional[Dict[str, float]] = None
 
     def model_post_init(self, __context: Any) -> None:
         if self.market_price > 0 and self.upside_pct is None:

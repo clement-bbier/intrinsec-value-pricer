@@ -11,6 +11,7 @@ class CountryData(TypedDict):
     risk_free_rate: float      # Taux 10Y (Souverain au 01/2026)
     market_risk_premium: float # Prime de risque marché (ERP)
     inflation_rate: float      # Cible inflation long-terme
+    rf_ticker: str
     url_central_bank: str
     url_tax_source: str
     url_risk_premium: str
@@ -30,6 +31,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.038,     # Stabilisation T-Bond 10Y
         "market_risk_premium": 0.045, # Normalisation prime US
         "inflation_rate": 0.024,
+        "rf_ticker": "^TNX",
         "url_central_bank": "https://fred.stlouisfed.org/series/DGS10",
         "url_tax_source": "https://taxfoundation.org/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
@@ -39,6 +41,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.029,     # OAT 10Y Janvier 2026
         "market_risk_premium": 0.053,
         "inflation_rate": 0.020,
+        "rf_ticker": "FR10YT=RR",
         "url_central_bank": "https://www.banque-france.fr/",
         "url_tax_source": "https://www.economie.gouv.fr/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
@@ -48,6 +51,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.022,     # Bund 10Y
         "market_risk_premium": 0.051,
         "inflation_rate": 0.020,
+        "rf_ticker": "^GDBR10",
         "url_central_bank": "https://www.bundesbank.de/",
         "url_tax_source": "https://taxfoundation.org/location/germany/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
@@ -57,6 +61,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.035,     # Gilt 10Y
         "market_risk_premium": 0.058,
         "inflation_rate": 0.022,
+        "rf_ticker": "^GJGB10",
         "url_central_bank": "https://www.bankofengland.co.uk/",
         "url_tax_source": "https://www.gov.uk/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
@@ -66,6 +71,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.021,     # Poursuite baisse des taux PBOC
         "market_risk_premium": 0.068, # Prime ajustée risque systémique
         "inflation_rate": 0.025,
+        "rf_ticker": "^CN10Y",
         "url_central_bank": "http://www.pbc.gov.cn/",
         "url_tax_source": "http://www.chinatax.gov.cn/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
@@ -75,6 +81,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "risk_free_rate": 0.012,     # Sortie confirmée des taux proches de zéro
         "market_risk_premium": 0.059,
         "inflation_rate": 0.015,
+        "rf_ticker": "^JGBS10",
         "url_central_bank": "https://www.mof.go.jp/",
         "url_tax_source": "https://www.nta.go.jp/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]

@@ -340,6 +340,16 @@ class KPITexts:
     SUB_PAYOUT = r"Payout Ratio = Div_TTM ({div:,.2f}) / EPS_TTM ({eps:,.2f}) = {total:.1%}"
     SUB_TV_PE = r"TV_n = NI_n ({ni:,.0f}) × P/E Target ({pe:.1f}x) = {total:,.2f}"
 
+    # Titres de sections (Relative Valuation)
+    SEC_E_RELATIVE = "E. Valorisation Relative (Multiples de Marché)"
+    LABEL_PE_RATIO = "Multiple P/E (Cours / Bénéfice)"
+    LABEL_EV_EBITDA = "Multiple EV/EBITDA"
+    LABEL_EV_REVENUE = "Multiple EV/Revenue"
+
+    # Triangulation
+    FOOTBALL_FIELD_TITLE = "Synthèse de Triangulation (Football Field)"
+    RELATIVE_VAL_DESC = "Comparaison de la valeur intrinsèque face aux multiples médians du secteur."
+
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
     # Rapport d'Audit
