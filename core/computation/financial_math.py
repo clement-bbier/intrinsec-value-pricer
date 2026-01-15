@@ -1,13 +1,13 @@
 """
 core/computation/financial_math.py
-MOTEUR MATHÉMATIQUE FINANCIER — VERSION V11.0 (Institutional Grade)
-Sprint 3 : Finalisation Expansion Analytique
-Rôle : Calculs financiers atomiques, WACC, Ke et reconstruction des flux.
+MOTEUR MATHÉMATIQUE FINANCIER — VERSION V12.0 (Institutional Grade)
+Sprint 4 : Finalisation Triangulation & Localisation Macro
+Rôle : Calculs financiers atomiques, WACC, Ke et moteur de synthèse hybride.
 Sources : Damodaran (Investment Valuation), McKinsey (Valuation).
 """
 
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
 
 from app.ui_components.ui_texts import CalculationErrors, StrategySources
@@ -72,16 +72,13 @@ def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float)
     return final_metric * multiple
 
 def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> float:
-    """
-    NOUVEAUTÉ : Valeur terminale spécifique Equity (DDM/FCFE).
-    Applique un multiple de bénéfice ($P/E$) au dernier résultat net projeté.
-    """
+    """Valeur terminale Equity : Applique un multiple P/E au résultat net terminal."""
     if pe_multiple <= 0:
         raise CalculationError("Le multiple P/E doit être strictement positif.")
     return final_net_income * pe_multiple
 
 # ==============================================================================
-# 2. COÛT DU CAPITAL (WACC / CAPM / Ke)
+# 2. COÛT DU CAPITAL (WACC / Ke / SYNTETHIC DEBT)
 # ==============================================================================
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
@@ -140,10 +137,7 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
 # ==============================================================================
 
 def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: float) -> float:
-    """
-    NOUVEAUTÉ : Reconstruction rigoureuse du FCFE (Clean Walk).
-    $FCFE = \text{Net Income} + \text{NonCashAdjustments} + \text{Net Borrowing}$
-    """
+    """Reconstruction du FCFE (Clean Walk) : NI + Adj + Net Borrowing."""
     return ni + adjustments + net_borrowing
 
 def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borrowing: float) -> float:
@@ -175,6 +169,7 @@ def calculate_rim_vectors(current_bv: float, ke: float, earnings: List[float], p
     return residual_incomes, book_values
 
 def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> List[float]:
+    """Helper pour normaliser des poids de structure financière."""
     clean_values = [v or 0.0 for v in values]
     total = sum(clean_values)
     if total <= 0:
@@ -182,7 +177,7 @@ def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> Li
     return [v / total for v in clean_values]
 
 # ==============================================================================
-# 5. MULTIPLES EN VALEUR ACTIONNARIALE
+# 5. MULTIPLES & TRIANGULATION (RELATIVE VALUATION)
 # ==============================================================================
 
 def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares: float) -> float:
@@ -191,35 +186,17 @@ def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares
         return 0.0
     return (net_income * median_pe) / shares
 
-def calculate_equity_value_from_ev_multiple(
+def calculate_price_from_ev_multiple(
     metric_value: float,
     median_ev_multiple: float,
     net_debt: float,
+    shares: float,
     minorities: float = 0.0,
     pensions: float = 0.0
 ) -> float:
     """
-    Calcule la valeur des capitaux propres via un multiple d'EV (EBITDA ou Revenus).
-    $EquityValue = (Metric \times Multiple) - NetDebt - Minorities - Pensions$
-    """
-    enterprise_value = metric_value * median_ev_multiple
-    return enterprise_value - net_debt - minorities - pensions
-
-# ==============================================================================
-# 6. MOTEUR DE TRIANGULATION (HYBRID VALUATION)
-# ==============================================================================
-
-def calculate_price_from_ev_multiple(
-        metric_value: float,
-        median_ev_multiple: float,
-        net_debt: float,
-        shares: float,
-        minorities: float = 0.0,
-        pensions: float = 0.0
-) -> float:
-    """
-    Conversion directe d'un multiple d'Enterprise Value en Prix par Action.
-    Applique l'Equity Bridge complet.
+    Conversion d'un multiple d'Enterprise Value en Prix par Action (Equity Bridge).
+    Standard McKinsey : (EV - DetteNette - Minoritaires - Pensions) / Actions
     """
     if shares <= 0 or median_ev_multiple <= 0:
         return 0.0
@@ -228,17 +205,15 @@ def calculate_price_from_ev_multiple(
     equity_value = enterprise_value - net_debt - minorities - pensions
     return max(0.0, equity_value / shares)
 
-
 def calculate_triangulated_price(
-        valuation_signals: Dict[str, float],
-        weights: Optional[Dict[str, float]] = None
+    valuation_signals: Dict[str, float],
+    weights: Optional[Dict[str, float]] = None
 ) -> float:
     """
-    Réalise la synthèse de plusieurs signaux de prix.
-    - Filtre les signaux invalides (<= 0).
-    - Applique une pondération (moyenne simple par défaut).
+    Réalise la synthèse de plusieurs signaux de prix (Triangulation).
+    Filtre les signaux invalides et applique une pondération.
     """
-    # 1. Extraction des signaux valides
+    # 1. Extraction des signaux valides (Honest Data)
     valid_signals = {k: v for k, v in valuation_signals.items() if v > 0}
     if not valid_signals:
         return 0.0
