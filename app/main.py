@@ -244,50 +244,44 @@ def _render_sidebar_footer() -> None:
 # ==============================================================================
 
 def _render_onboarding_guide() -> None:
-    """Guide d'onboarding — Contenu intégral préservé via ui_texts."""
+    """
+    Guide d'onboarding — Restitution intégrale pilotée par OnboardingTexts.
+    Version : V10.0 (Sprint 3)
+    """
+    # --- Introduction ---
     st.info(OnboardingTexts.INTRO_INFO)
     st.divider()
 
+    # --- SECTION A : MÉTHODOLOGIES ---
     st.subheader(OnboardingTexts.TITLE_A)
     st.markdown(OnboardingTexts.DESC_A)
 
-    # MISE À JOUR SPRINT 3 : On utilise 4 colonnes pour inclure l'approche Equity
+    # Grille de 4 colonnes pour les modèles financiers
     m1, m2, m3, m4 = st.columns(4)
 
     with m1:
         st.markdown(OnboardingTexts.MODEL_DCF_TITLE)
         st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
-        st.markdown(
-            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_DCF_DESC}</small>""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_DCF_DESC}</small>", unsafe_allow_html=True)
 
     with m2:
-        st.markdown(OnboardingTexts.MODEL_EQUITY_TITLE) # NOUVEAU
+        st.markdown(OnboardingTexts.MODEL_EQUITY_TITLE)
         st.latex(r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}")
-        st.markdown(
-            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_EQUITY_DESC}</small>""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_EQUITY_DESC}</small>", unsafe_allow_html=True)
 
     with m3:
         st.markdown(OnboardingTexts.MODEL_RIM_TITLE)
         st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
-        st.markdown(
-            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_RIM_DESC}</small>""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_RIM_DESC}</small>", unsafe_allow_html=True)
 
     with m4:
         st.markdown(OnboardingTexts.MODEL_GRAHAM_TITLE)
         st.latex(r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
-        st.markdown(
-            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_GRAHAM_DESC}</small>""",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_GRAHAM_DESC}</small>", unsafe_allow_html=True)
 
     st.divider()
 
+    # --- SECTION B : RISQUE & PILOTAGE ---
     st.subheader(OnboardingTexts.TITLE_B)
     c1, c2 = st.columns(2)
     with c1:
@@ -299,6 +293,7 @@ def _render_onboarding_guide() -> None:
 
     st.divider()
 
+    # --- SECTION C : GOUVERNANCE ---
     st.subheader(OnboardingTexts.TITLE_C)
     g1, g2 = st.columns([2, 3])
     with g1:
@@ -309,7 +304,9 @@ def _render_onboarding_guide() -> None:
         st.caption(OnboardingTexts.TRACE_DESC)
 
     st.divider()
-    st.markdown(OnboardingTexts.DIAGNOSTIC_HEADER)
+
+    # --- FOOTER : DIAGNOSTIC ---
+    st.markdown(f"**{OnboardingTexts.DIAGNOSTIC_HEADER}**")
     d1, d2, d3 = st.columns(3)
     d1.error(OnboardingTexts.DIAG_BLOQUANT)
     d2.warning(OnboardingTexts.DIAG_WARN)
@@ -330,21 +327,24 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
-    """Gère le lancement en mode Auto avec la nouvelle structure DCFParameters."""
+    """Gère le lancement en mode Auto avec support des scénarios par défaut."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_INVALID)
         return
 
     options.setdefault("manual_peers", [])
 
-    # Instanciation segmentée V9
+    # Instanciation segmentée avec Scénarios désactivés par défaut (Sprint 5)
+    from core.models import ScenarioParameters  # Import local si nécessaire
+
     config_params = DCFParameters(
         rates=CoreRateParameters(),
         growth=GrowthParameters(projection_years=options["years"]),
         monte_carlo=MonteCarloConfig(
             enable_monte_carlo=options["enable_mc"],
             num_simulations=options["mc_sims"]
-        )
+        ),
+        scenarios=ScenarioParameters(enabled=False)  # NOUVEAU : Initialisation explicite
     )
 
     request = ValuationRequest(

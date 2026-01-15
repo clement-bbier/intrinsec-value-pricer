@@ -203,6 +203,18 @@ class ExpertTerminalTexts:
     BTN_VALUATE_FCFE = "Calculer la valeur FCFE (Actionnaire) : {ticker}"
     BTN_VALUATE_DDM = "Calculer la valeur DDM (Dividendes) : {ticker}"
 
+    SEC_8_SCENARIOS = "#### 8. Analyse de Scénarios Déterministes (Bull/Base/Bear)"
+    INP_SCENARIO_ENABLE = "Activer l'analyse de scénarios"
+    INP_SCENARIO_PROBA = "Probabilité du scénario (%)"
+    INP_SCENARIO_GROWTH = "Croissance 'g' spécifique"
+    INP_SCENARIO_MARGIN = "Marge FCF spécifique"
+
+    LABEL_SCENARIO_BULL = "Optimiste (Bull Case)"
+    LABEL_SCENARIO_BASE = "Référence (Base Case)"
+    LABEL_SCENARIO_BEAR = "Pessimiste (Bear Case)"
+
+    HELP_SCENARIO_PROBA = "La somme des trois probabilités doit être égale à 100%."
+
 class TooltipsTexts:
     """Infobulles et aides contextuelles pour le mode Expert."""
     # Note: On pourra ici centraliser les aides DAMODARAN plus tard
@@ -359,7 +371,12 @@ class KPITexts:
     # Triangulation
     FOOTBALL_FIELD_TITLE = "Synthèse de Triangulation (Football Field)"
     RELATIVE_VAL_DESC = "Comparaison de la valeur intrinsèque face aux multiples médians du secteur."
-    LABEL_MULTIPLES_UNAVAILABLE = "Multiples de marché indisponibles (Cohorte insuffisante)" # NOUVEAU
+    LABEL_MULTIPLES_UNAVAILABLE = "Multiples de marché indisponibles (Cohorte insuffisante)"
+
+    TAB_SCENARIOS = "Analyse de Scénarios"
+    LABEL_EXPECTED_VALUE = "Valeur Espérée (Pondérée)"
+    LABEL_SCENARIO_RANGE = "Fourchette de Valeur (Bear - Bull)"
+    SUB_SCENARIO_WEIGHTS = "Pondération des Hypothèses"
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
@@ -615,6 +632,7 @@ class WorkflowTexts:
     STATUS_COMPLETE = "Analyse finalisée avec succès"
     STATUS_INTERRUPTED = "Analyse interrompue"
     STATUS_CRITICAL_ERROR = "Erreur système critique"
+    STATUS_SCENARIOS_RUN = "#### Orchestration des trajectoires Bull/Base/Bear..."
 
     DIAG_EXPANDER_TITLE = "Détails techniques et remédiation"
     DIAG_ACTION_LABEL = "Action recommandée :"

@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ==============================================================================
@@ -105,6 +105,43 @@ class AuditStep(BaseModel):
     evidence: str = ""
     description: str = ""
 
+class ScenarioVariant(BaseModel):
+    """Représente une variante spécifique (Bull, Base ou Bear)."""
+    label: str
+    growth_rate: Optional[float] = None
+    target_fcf_margin: Optional[float] = None
+    probability: float = 0.333
+
+class ScenarioResult(BaseModel):
+    """Stocke le résultat individuel d'un scénario calculé."""
+    label: str
+    intrinsic_value: float
+    probability: float
+    growth_used: float
+    margin_used: float
+
+class ScenarioSynthesis(BaseModel):
+    """Conteneur final pour la restitution UI des scénarios."""
+    variants: List[ScenarioResult] = Field(default_factory=list)
+    expected_value: float = 0.0 # Moyenne pondérée (Sum of IV * Prob)
+    max_upside: float = 0.0
+    max_downside: float = 0.0
+
+class ScenarioParameters(BaseModel):
+    """Segment de pilotage des scénarios déterministes."""
+    enabled: bool = False
+    bull: ScenarioVariant = Field(default_factory=lambda: ScenarioVariant(label="Bull", probability=0.25))
+    base: ScenarioVariant = Field(default_factory=lambda: ScenarioVariant(label="Base", probability=0.50))
+    bear: ScenarioVariant = Field(default_factory=lambda: ScenarioVariant(label="Bear", probability=0.25))
+
+    @model_validator(mode='after')
+    def validate_probabilities(self) -> 'ScenarioParameters':
+        """Standard Pydantic : Assure que la somme des probabilités est cohérente (100%)."""
+        if self.enabled:
+            total = self.bull.probability + self.base.probability + self.bear.probability
+            if not (0.98 <= total <= 1.02): # Marge de tolérance pour les flottants
+                raise ValueError("La somme des probabilités (Bull+Base+Bear) doit être égale à 1.0 (100%).")
+        return self
 
 # ==============================================================================
 # 3. DONNÉES FINANCIÈRES (Yahoo Source)
@@ -226,11 +263,11 @@ class MonteCarloConfig(BaseModel):
     def enforce_decimal(cls, v: Any) -> Any:
         return _decimal_guard(v)
 
-
 class DCFParameters(BaseModel):
     rates: CoreRateParameters = Field(default_factory=CoreRateParameters)
     growth: GrowthParameters = Field(default_factory=GrowthParameters)
     monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
+    scenarios: ScenarioParameters = Field(default_factory=ScenarioParameters)
 
     def normalize_weights(self) -> None:
         w_e = self.growth.target_equity_weight or 0.0
@@ -352,6 +389,7 @@ class ValuationResult(BaseModel, ABC):
     mc_clamping_applied: Optional[bool] = None
     multiples_triangulation: Optional['MultiplesValuationResult'] = None
     relative_valuation: Optional[Dict[str, float]] = None
+    scenario_synthesis: Optional[ScenarioSynthesis] = None
 
     def model_post_init(self, __context: Any) -> None:
         if self.market_price > 0 and self.upside_pct is None:

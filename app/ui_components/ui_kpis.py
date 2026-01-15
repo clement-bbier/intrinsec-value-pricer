@@ -23,7 +23,8 @@ from core.models import (
     DCFParameters,
     ValuationResult,
     ValuationMode,
-    MultiplesValuationResult # Import pour le dispatching
+    MultiplesValuationResult,
+    ScenarioSynthesis
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
 from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts
@@ -114,7 +115,7 @@ def atom_audit_card(step: AuditStep) -> None:
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, _provider: Any = None) -> None:
-    """Orchestrateur des onglets post-calcul avec support Triangulation."""
+    """Orchestrateur des onglets post-calcul avec support Triangulation et Scénarios (V13.0)."""
     st.divider()
 
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
@@ -123,9 +124,12 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
     # 1. Définition dynamique des onglets
     tab_labels = [KPITexts.TAB_INPUTS, KPITexts.TAB_CALC]
 
-    # Injection de l'onglet Multiples si disponible
     if result.multiples_triangulation:
         tab_labels.append(KPITexts.SEC_E_RELATIVE)
+
+    # NOUVEAU SPRINT 5 : Ajout de l'onglet Scénarios
+    if result.scenario_synthesis:
+        tab_labels.append(KPITexts.TAB_SCENARIOS)
 
     tab_labels.append(KPITexts.TAB_AUDIT)
 
@@ -150,6 +154,12 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
             _render_relative_valuation_tab(result.multiples_triangulation)
         t_idx += 1
 
+    # NOUVEAU SPRINT 5 : Rendu du contenu Scénarios
+    if result.scenario_synthesis:
+        with tabs[t_idx]:
+            _render_scenarios_tab(result.scenario_synthesis, result.financials.currency)
+        t_idx += 1
+
     with tabs[t_idx]:
         _render_reliability_report(result.audit_report)
         t_idx += 1
@@ -164,6 +174,10 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
 # ==============================================================================
 
 def _render_inputs_tab(result: ValuationResult) -> None:
+    """
+    Rendu de l'onglet des données d'entrée.
+    CORRECTION : Extraction dynamique et précise du WACC ou Ke selon le modèle.
+    """
     f, p = result.financials, result.params
     st.markdown(f"{KPITexts.SECTION_INPUTS_HEADER}")
     st.caption(KPITexts.SECTION_INPUTS_CAPTION)
@@ -184,15 +198,32 @@ def _render_inputs_tab(result: ValuationResult) -> None:
         c3.metric(KPITexts.LABEL_REV, format_smart_number(f.revenue_ttm))
         c4.metric(KPITexts.LABEL_NI, format_smart_number(f.net_income_ttm))
 
-    # Section C : Paramètres Modèle
+    # Section C : Paramètres Modèle (Logique de taux corrigée)
     with st.expander(KPITexts.SEC_C_MODEL.upper(), expanded=True):
         r, g = p.rates, p.growth
+
+        # 1. Détermination du mode (Sécurité si request est None)
+        is_direct_equity = result.request.mode.is_direct_equity if result.request else False
+
+        # 2. Résolution du taux d'actualisation réel utilisé
+        # On priorise les surcharges manuelles, puis les attributs spécifiques aux classes filles
+        if is_direct_equity:
+            label_rate = KPITexts.LABEL_KE
+            # Cherche Ke manuel ou l'attribut cost_of_equity (RIM, FCFE, DDM)
+            actual_discount_rate = r.manual_cost_of_equity or getattr(result, 'cost_of_equity', None)
+        else:
+            label_rate = KPITexts.LABEL_WACC
+            # Cherche WACC manuel ou l'attribut wacc (FCFF)
+            actual_discount_rate = r.wacc_override or getattr(result, 'wacc', None)
+
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(KPITexts.LABEL_RF, format_smart_number(r.risk_free_rate, is_pct=True))
-        c2.metric(KPITexts.LABEL_KE if result.request.mode.is_direct_equity else KPITexts.LABEL_WACC,
-                  format_smart_number(r.manual_cost_of_equity or getattr(result, 'wacc', 0.08), is_pct=True))
+
+        # Affichage du taux résolu (WACC ou Ke) sans fallback "hardcoded"
+        c2.metric(label_rate, format_smart_number(actual_discount_rate, is_pct=True))
+
         c3.metric(KPITexts.LABEL_G, format_smart_number(g.fcf_growth_rate, is_pct=True))
-        c4.metric(KPITexts.LABEL_HORIZON, f"{g.projection_years} ans")
+        c4.metric(KPITexts.LABEL_HORIZON, f"{g.projection_years} {KPITexts.UNIT_YEARS}")
 
 
 def _render_relative_valuation_tab(rel_result: MultiplesValuationResult) -> None:
@@ -269,19 +300,35 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
 # ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
-    """Synthèse Exécutive Hybride (Intrinsèque vs Relatif)."""
+    """Synthèse Exécutive Hybride avec support Valeur Espérée (Sprint 5)."""
     f = result.financials
     st.subheader(KPITexts.EXEC_TITLE.format(name=f.name, ticker=f.ticker).upper())
 
-    # 1. Métriques de base
+    # 1. Métriques de base (Header dynamique)
     with st.container(border=True):
-        c1, c2, c3 = st.columns(3)
-        c1.metric(KPITexts.LABEL_PRICE, f"{result.market_price:,.2f} {f.currency}")
-        c2.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}",
-                  delta=f"{result.upside_pct:.1%}", delta_color="normal")
-        c3.metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "—")
+        if result.scenario_synthesis:
+            # Layout à 4 colonnes : Prix | Valeur Espérée (Risque) | Valeur Réf (Base) | Audit
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric(KPITexts.LABEL_PRICE, f"{result.market_price:,.2f} {f.currency}")
 
-    # 2. Grille de Triangulation (Football Field Grid)
+            # Valeur Espérée : Moyenne pondérée Bull/Base/Bear
+            ev = result.scenario_synthesis.expected_value
+            upside_ev = (ev / result.market_price) - 1
+            c2.metric(KPITexts.LABEL_EXPECTED_VALUE, f"{ev:,.2f} {f.currency}",
+                      delta=f"{upside_ev:.1%}", delta_color="normal")
+
+            # Valeur de Référence (Anchor)
+            c3.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}")
+            c4.metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "—")
+        else:
+            # Layout standard 3 colonnes (Sprint 4)
+            c1, c2, c3 = st.columns(3)
+            c1.metric(KPITexts.LABEL_PRICE, f"{result.market_price:,.2f} {f.currency}")
+            c2.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}",
+                      delta=f"{result.upside_pct:.1%}", delta_color="normal")
+            c3.metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "—")
+
+    # 2. Grille de Triangulation (Inchangée, Football Field Standard)
     st.markdown(f"#### {KPITexts.FOOTBALL_FIELD_TITLE}")
 
     if result.multiples_triangulation:
@@ -294,3 +341,32 @@ def render_executive_summary(result: ValuationResult) -> None:
             c4.metric(KPITexts.LABEL_FOOTBALL_FIELD_PRICE, f"{result.market_price:,.1f}")
     else:
         st.info(KPITexts.LABEL_MULTIPLES_UNAVAILABLE)
+
+
+def _render_scenarios_tab(synthesis: ScenarioSynthesis, currency: str) -> None:
+    """Rendu détaillé de l'analyse de scénarios déterministes (Sprint 5)."""
+    st.markdown(f"#### {KPITexts.TAB_SCENARIOS}")
+    st.caption(KPITexts.SUB_SCENARIO_WEIGHTS)
+
+    rows = []
+    # Mapping pour les labels i18n
+    labels_map = {
+        "Bull": ExpertTerminalTexts.LABEL_SCENARIO_BULL,
+        "Base": ExpertTerminalTexts.LABEL_SCENARIO_BASE,
+        "Bear": ExpertTerminalTexts.LABEL_SCENARIO_BEAR
+    }
+
+    for v in synthesis.variants:
+        rows.append({
+            "Scénario": labels_map.get(v.label, v.label),
+            "Probabilité": f"{v.probability:.0%}",
+            "Croissance (g)": f"{v.growth_used:.2%}",
+            "Marge FCF": f"{v.margin_used:.1%}" if v.margin_used is not None and v.margin_used != 0 else ("0.0%" if v.margin_used == 0 else "Base"),
+            "Valeur par Action": f"{v.intrinsic_value:,.2f} {currency}"
+        })
+
+    st.table(pd.DataFrame(rows))
+
+    # Message de synthèse sur l'asymétrie
+    st.info(
+        f"**{KPITexts.LABEL_SCENARIO_RANGE}** : {synthesis.max_downside:,.2f} à {synthesis.max_upside:,.2f} {currency}")
