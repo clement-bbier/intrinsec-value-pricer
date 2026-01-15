@@ -88,14 +88,17 @@ class RIMBankingStrategy(ValuationStrategy):
         eps_base, src_eps = self._select_eps_base(financials, params)
         payout_ratio = self._compute_payout_ratio(financials, eps_base)
 
+        div_per_share = financials.dividends_total_calculated / financials.shares_outstanding if financials.shares_outstanding else 0
+
         self.add_step(
             step_key="RIM_PAYOUT",
             label=RegistryTexts.RIM_PAYOUT_L,
             theoretical_formula=r"Payout = \frac{Div_{TTM}}{EPS_{TTM}}",
             result=payout_ratio,
             numerical_substitution=KPITexts.SUB_PAYOUT.format(
-                div=financials.dividends_total_calculated / financials.shares_outstanding if financials.shares_outstanding else 0,
-                eps=eps_base
+                div=div_per_share,
+                eps=eps_base,
+                total=payout_ratio
             ),
             interpretation=RegistryTexts.RIM_PAYOUT_D
         )

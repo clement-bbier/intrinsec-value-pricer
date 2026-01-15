@@ -1,6 +1,6 @@
 """
 app/ui_components/ui_inputs_expert.py
-ARCHITECTURE ATOMIQUE — TERMINAL PROFESSIONNEL RÉACTIF (V8.0)
+ARCHITECTURE ATOMIQUE — TERMINAL PROFESSIONNEL RÉACTIF (V10.1)
 Sprint 3 : Expansion Analytique (DDM & FCFE)
 Rôle : Standardisation UI pilotée par ui_texts.py et models.py.
 """
@@ -28,9 +28,12 @@ def safe_factory_params(all_data: Dict[str, Any]) -> DCFParameters:
         "projection_years": 5,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,
         "enable_monte_carlo": False,
-        "num_simulations": 5000
+        "num_simulations": 5000,
+        "base_flow_volatility": 0.05,
+        "beta_volatility": 0.10,
+        "growth_volatility": 0.02
     }
-    # On fusionne avec les données de l'UI
+    # Fusion des données UI avec les valeurs par défaut pour garantir la validité du modèle
     full_data = {**base_defaults, **{k: v for k, v in all_data.items() if v is not None}}
     return DCFParameters.from_legacy(full_data)
 
@@ -42,7 +45,6 @@ def atom_discount_rate_smart(mode: ValuationMode) -> Dict[str, Any]:
     """Étape 3 : Coût du Capital - Bifurcation Ke (Equity) vs WACC (Firm)."""
     st.markdown(ExpertTerminalTexts.SEC_3_CAPITAL)
 
-    # Rigueur : Si le modèle est "Direct Equity", on n'affiche que le Ke (CAPM)
     if mode.is_direct_equity:
         st.latex(r"k_e = R_f + \beta \times MRP")
     else:
@@ -57,7 +59,6 @@ def atom_discount_rate_smart(mode: ValuationMode) -> Dict[str, Any]:
 
     res = {"risk_free_rate": rf, "manual_beta": beta, "market_risk_premium": mrp, "manual_stock_price": manual_price}
 
-    # On n'ajoute les paramètres de dette que pour les modèles "Firm Value" (FCFF)
     if not mode.is_direct_equity:
         kd = col_b.number_input(ExpertTerminalTexts.INP_KD, min_value=0.0, max_value=0.20, value=None, format="%.3f")
         tau = col_a.number_input(ExpertTerminalTexts.INP_TAX, min_value=0.0, max_value=0.60, value=None, format="%.2f")
@@ -93,13 +94,11 @@ def atom_bridge_smart(formula_latex: str, mode: ValuationMode) -> Dict[str, Any]
     st.markdown(ExpertTerminalTexts.SEC_5_BRIDGE)
     st.latex(formula_latex)
 
-    # Si Direct Equity (RIM, DDM, FCFE) : Pas de retrait de dette, juste division par actions
     if mode.is_direct_equity:
         shares = st.number_input(ExpertTerminalTexts.INP_SHARES, value=None, format="%.0f")
         st.divider()
         return {"manual_shares_outstanding": shares}
 
-    # Si Firm Level (FCFF) : Bridge complet
     c1, c2, c3 = st.columns(3)
     debt = c1.number_input(ExpertTerminalTexts.INP_DEBT, value=None, format="%.0f")
     cash = c2.number_input(ExpertTerminalTexts.INP_CASH, value=None, format="%.0f")
@@ -124,31 +123,46 @@ def atom_terminal_rim(formula_latex: str) -> Dict[str, Any]:
     return {"terminal_method": TerminalValueMethod.EXIT_MULTIPLE, "exit_multiple_value": omega}
 
 def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[TerminalValueMethod] = None) -> Dict[str, Any]:
-    """Étape 6 : Monte Carlo - Réactif à la méthode de sortie."""
+    """Étape 6 : Monte Carlo - Réactif à la méthode de sortie et incluant Vol Y0."""
     st.markdown(ExpertTerminalTexts.SEC_6_MC)
     enable = st.toggle(ExpertTerminalTexts.MC_CALIBRATION, value=False)
 
     if enable:
         with st.container(border=True):
-            c1, c2 = st.columns(2)
-            sims = c1.select_slider(ExpertTerminalTexts.MC_ITERATIONS, options=[1000, 5000, 10000, 20000], value=5000)
+            # 1. Itérations
+            c_iter, _ = st.columns([2, 2])
+            sims = c_iter.select_slider(ExpertTerminalTexts.MC_ITERATIONS, options=[1000, 5000, 10000, 20000], value=5000)
 
-            st.caption(ExpertTerminalTexts.MC_CALIBRATION)
-            v1, v2, v3 = st.columns(3)
-            vb = v1.number_input(ExpertTerminalTexts.MC_VOL_BETA, min_value=0.0, max_value=1.0, value=None, format="%.3f")
-            vg = v2.number_input(ExpertTerminalTexts.MC_VOL_G, min_value=0.0, max_value=0.20, value=None, format="%.3f")
+            st.write("---")
+            # 2. Calibration des Volatilités (Grille 2x2)
+            v_col1, v_col2 = st.columns(2)
 
-            v_term = None
+            # Ligne 1 : Incertitude de base (Y0) et Risque Systématique (Beta)
+            v0 = v_col1.number_input(
+                ExpertTerminalTexts.MC_VOL_BASE_FLOW,
+                min_value=0.0, max_value=0.50, value=0.05, format="%.3f",
+                help=ExpertTerminalTexts.MC_VOL_BASE_FLOW_HELP
+            )
+            vb = v_col2.number_input(ExpertTerminalTexts.MC_VOL_BETA, min_value=0.0, max_value=1.0, value=0.10, format="%.3f")
+
+            # Ligne 2 : Incertitude Croissance (g) et Sortie (TV)
+            vg = v_col1.number_input(ExpertTerminalTexts.MC_VOL_G, min_value=0.0, max_value=0.20, value=0.02, format="%.3f")
+
+            v_term = 0.0
             if mode == ValuationMode.RESIDUAL_INCOME_MODEL:
-                v_term = v3.number_input(ExpertTerminalTexts.MC_VOL_OMEGA, min_value=0.0, max_value=0.20, value=None, format="%.3f")
+                v_term = v_col2.number_input(ExpertTerminalTexts.MC_VOL_OMEGA, min_value=0.0, max_value=0.20, value=0.05, format="%.3f")
             elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
-                v_term = v3.number_input(ExpertTerminalTexts.MC_VOL_GN, min_value=0.0, max_value=0.05, value=None, format="%.3f")
+                v_term = v_col2.number_input(ExpertTerminalTexts.MC_VOL_GN, min_value=0.0, max_value=0.05, value=0.01, format="%.3f")
             else:
-                v3.empty()
+                v_col2.empty()
 
             return {
-                "enable_monte_carlo": True, "num_simulations": sims,
-                "beta_volatility": vb, "growth_volatility": vg, "terminal_growth_volatility": v_term
+                "enable_monte_carlo": True,
+                "num_simulations": sims,
+                "base_flow_volatility": v0,
+                "beta_volatility": vb,
+                "growth_volatility": vg,
+                "terminal_growth_volatility": v_term
             }
     return {"enable_monte_carlo": False}
 
@@ -164,7 +178,7 @@ def render_expert_fcfe(ticker: str) -> Optional[ValuationRequest]:
     st.markdown(ExpertTerminalTexts.SEC_1_FCFE_BASE)
     c1, c2 = st.columns(2)
     fcfe_base = c1.number_input(ExpertTerminalTexts.INP_FCFE_BASE, value=None, format="%.0f")
-    net_borrowing = c2.number_input(ExpertTerminalTexts.INP_NET_BORROWING, value=None, format="%.0f")
+    net_borrowing = c2.number_input(ExpertTerminalTexts.INP_NET_BORROWING, value=None, format="%.0f", help=ExpertTerminalTexts.INP_NET_BORROWING_HELP)
     st.divider()
 
     st.markdown(ExpertTerminalTexts.SEC_2_PROJ)
@@ -192,7 +206,7 @@ def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
     st.latex(r"P = \sum_{t=1}^{n} \frac{D_0(1+g)^t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}")
 
     st.markdown(ExpertTerminalTexts.SEC_1_DDM_BASE)
-    d0_base = st.number_input(ExpertTerminalTexts.INP_DIVIDEND_BASE, value=None, format="%.2f")
+    d0_base = st.number_input(ExpertTerminalTexts.INP_DIVIDEND_BASE, value=None, format="%.2f", help=ExpertTerminalTexts.INP_DIVIDEND_BASE_HELP)
     st.divider()
 
     st.markdown(ExpertTerminalTexts.SEC_2_PROJ)

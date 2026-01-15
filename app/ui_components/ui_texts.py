@@ -94,29 +94,25 @@ class OnboardingTexts:
     DIAG_WARN = "**Avertissement** : Hypothèse divergente (ex: g > WACC)."
     DIAG_INFO = "**Information** : Note ou recommandation."
 
+
 class ExpertTerminalTexts:
-    """Titres, Sections et Labels spécifiques aux Terminaux Experts."""
-    # Titres des terminaux
+    """Titres, Sections et Labels spécifiques aux Terminaux Experts (V10.1)."""
+
+    # --- Titres des terminaux ---
     TITLE_FCFF_STD = "Terminal Expert : FCFF Standard"
     TITLE_FCFF_FUND = "Terminal Expert : FCFF Fundamental"
     TITLE_FCFF_GROWTH = "Terminal Expert : FCFF Growth"
-
-    # NOUVEAUTÉ SPRINT 3
     TITLE_FCFE = "Terminal Expert : FCFE (Direct Equity)"
     TITLE_DDM = "Terminal Expert : Dividend Discount Model"
-
     TITLE_RIM = "Terminal Expert : RIM"
     TITLE_GRAHAM = "Terminal Expert : Graham"
 
-    # Sections communes
+    # --- Sections communes (Standardisation de la numérotation) ---
     SEC_1_FCF_STD = "#### 1. Flux de trésorerie de base ($FCF_0$)"
     SEC_1_FCF_NORM = "#### 1. Flux normalisé de base ($FCF_{norm}$)"
     SEC_1_REV_BASE = "#### 1. Chiffre d'Affaires de base ($Rev_0$)"
-
-    # NOUVEAUTÉ SPRINT 3
-    SEC_1_FCFE_BASE = "#### 1. Flux aux Actionnaires ($FCFE_0$)"
+    SEC_1_FCFE_BASE = "#### 1. Reconstruction du Flux Actionnaire (FCFE)"
     SEC_1_DDM_BASE = "#### 1. Dividende de départ ($D_0$)"
-
     SEC_1_RIM_BASE = "#### 1. Valeur Comptable ($BV_0$) & Profits ($NI_t$)"
     SEC_1_GRAHAM_BASE = "#### 1. Bénéfices ($EPS$) & Croissance attendue ($g$)"
 
@@ -126,12 +122,12 @@ class ExpertTerminalTexts:
     SEC_2_PROJ_RIM = "#### 2. Horizon & Croissance des profits"
     SEC_2_GRAHAM = "#### 2. Conditions de Marché AAA & Fiscalité"
 
-    SEC_3_CAPITAL = "#### 3. Coût du Capital"
-    SEC_4_TERMINAL = "#### 4. Valeur de continuation"
+    SEC_3_CAPITAL = "#### 3. Coût du Capital (Actualisation)"
+    SEC_4_TERMINAL = "#### 4. Valeur de continuation (Sortie)"
     SEC_5_BRIDGE = "#### 5. Ajustements de structure (Equity Bridge)"
     SEC_6_MC = "#### 6. Simulation Probabiliste (Incertitude)"
 
-    # Labels des Inputs
+    # --- Labels des Inputs (Standard & FCFF) ---
     INP_FCF_TTM = "Dernier flux TTM (devise entreprise, Vide = Auto Yahoo)"
     INP_FCF_SMOOTHED = "Flux lissé de cycle (devise entreprise, Vide = Auto Yahoo)"
     INP_REV_TTM = "Chiffre d'affaires TTM (devise entreprise, Vide = Auto Yahoo)"
@@ -153,38 +149,50 @@ class ExpertTerminalTexts:
     INP_GN = "Taux de croissance à l'infini gn (décimal, Vide = Auto Yahoo)"
     INP_EXIT_M = "Multiple de sortie (facteur x, Vide = Auto Yahoo)"
     INP_OMEGA = "Facteur de persistance ω (0 à 1, Vide = Auto 0.6)"
+
+    # --- Equity Bridge (FCFF Standard) ---
     INP_DEBT = "Dette Totale (Vide = Auto Yahoo)"
     INP_CASH = "Trésorerie (Vide = Auto Yahoo)"
     INP_SHARES = "Actions en circulation (Vide = Auto Yahoo)"
     INP_MINORITIES = "Intérêts Minoritaires (Vide = Auto Yahoo)"
     INP_PENSIONS = "Provisions Pensions (Vide = Auto Yahoo)"
 
-    # NOUVEAUTÉ SPRINT 3
+    # --- Spécificités FCFE (Clean Walk) ---
+    INP_FCFE_NI = "Résultat Net (Net Income TTM)"
+    INP_FCFE_ADJ = "Ajustements Cash (Amort - Capex - ΔBFR)"
     INP_FCFE_BASE = "Flux FCFE de base (Vide = Auto Yahoo)"
-    INP_NET_BORROWING = "Variation nette de la dette ($Net Borrowing$, Vide = 0)"
-    INP_DIVIDEND_BASE = "Dernier dividende par action payé ($D_0$)"
-    INP_PAYOUT_TARGET = "Ratio de distribution cible (Payout %)"
+    INP_NET_BORROWING = "Variation nette de la dette ($Net Borrowing$)"
+    INP_NET_BORROWING_HELP = "Montant net des émissions moins les remboursements de dette sur l'année."
 
-    # Labels Interactifs
-    RADIO_TV_METHOD = "Modèle de sortie"
+    # --- Spécificités DDM ---
+    INP_DIVIDEND_BASE = "Dernier dividende annuel payé ($D_0$)"
+    INP_PAYOUT_TARGET = "Ratio de distribution cible (Payout %)"
+    INP_PE_TARGET = "Multiple P/E Cible (Sortie)"
+    INP_DIVIDEND_BASE_HELP = "Dividendes versés sur les 12 derniers mois (TTM)."
+
+    # --- Labels Interactifs & Monte Carlo ---
+    RADIO_TV_METHOD = "Modèle de sortie (TV)"
     TV_GORDON = "Croissance Perpétuelle (Gordon)"
-    TV_EXIT = "Multiple de Sortie"
-    MC_CALIBRATION = "Calibration des Volatilités (Décimales, Vide = Auto Yahoo) :"
-    MC_ITERATIONS = "Itérations"
+    TV_EXIT = "Multiple de Sortie / P/E"
+
+    MC_CALIBRATION = "Calibration des Volatilités (Monte Carlo) :"
+    MC_ITERATIONS = "Nombre d'itérations"
+    MC_VOL_BASE_FLOW = "Vol. Flux Base (Y0)"
+    MC_VOL_BASE_FLOW_HELP = "Simule l'incertitude sur la fiabilité du dernier flux reporté (Standard Error)."
     MC_VOL_BETA = "Vol. β"
     MC_VOL_G = "Vol. g"
     MC_VOL_OMEGA = "Vol. ω"
     MC_VOL_GN = "Vol. gn"
 
-    # Horizon Sliders
+    # --- Sliders d'Horizon ---
     SLIDER_PROJ_YEARS = "Horizon de projection (t années)"
     SLIDER_CYCLE_YEARS = "Horizon du cycle (t années)"
     SLIDER_PROJ_T = "Années de projection (t)"
     SLIDER_PROJ_N = "Années de projection (n)"
 
-    # Boutons (Templates)
-    BTN_VALUATE_STD = "Lancer la valorisation {ticker}"
-    BTN_VALUATE_FUND = "Lancer la valorisation Fondamentale ({ticker})"
+    # --- Boutons de validation (Templates) ---
+    BTN_VALUATE_STD = "Lancer la valorisation : {ticker}"
+    BTN_VALUATE_FUND = "Lancer la valorisation Fondamentale : {ticker}"
     BTN_VALUATE_GROWTH = "Lancer l'analyse Growth : {ticker}"
     BTN_VALUATE_RIM = "Lancer la valorisation RIM : {ticker}"
     BTN_VALUATE_GRAHAM = "Calculer la valeur Graham : {ticker}"
@@ -289,11 +297,11 @@ class KPITexts:
     LABEL_EXIT_M = "Multiple de Sortie"
 
     # Preuve de Calcul
-    STEP_LABEL = "Étape {index}"
+    STEP_LABEL = r"Étape {index}"
     FORMULA_THEORY = "Formule Théorique"
     FORMULA_DATA_SOURCE = "*Donnée source*"
     APP_NUMERIC = "Application Numérique"
-    VALUE_UNIT = "Valeur ({unit})"
+    VALUE_UNIT = r"Valeur ({unit})"
     STEP_VALIDATED = "**Validée**"
     NOTE_ANALYSIS = "Note d'analyse"
 
@@ -307,27 +315,30 @@ class KPITexts:
     LABEL_CORRELATION_BG = "Corrélation (β, g)"
     LABEL_HORIZON_SUB = "Horizon : {years} ans"
 
-    MC_CONFIG_SUB = "Itérations : {sims} | β: 𝒩({beta:.2f}, {sig_b:.1%}) | g: 𝒩({g:.1%}, {sig_g:.1%}) | ρ(β,g): {rho:.2f}"
-    MC_FILTER_SUB = "{valid} valides / {total} itérations"
-    MC_SENS_SUB = "P50(rho=0) = {p50_n:,.2f} vs Base = {p50_b:,.2f}"
+    MC_CONFIG_SUB = r"Sims : {sims} | β: 𝒩({beta:.2f}, {sig_b:.1%}) | g: 𝒩({g:.1%}, {sig_g:.1%}) | Y₀ Vol: {sig_y0:.1%} | ρ: {rho:.2f}"
+    MC_FILTER_SUB = r"{valid} valides / {total} itérations"
+    MC_SENS_SUB = r"P50(rho=0) = {p50_n:,.2f} vs Base = {p50_b:,.2f}"
 
-    SUB_FCF_BASE = "FCF_0 = {val:,.2f} ({src})"
-    SUB_FCF_NORM = "FCF_norm = {val:,.2f} ({src})"
-    SUB_REV_BASE = "Rev_0 = {val:,.0f}"
-    SUB_MARGIN_CONV = "{curr:.2%} -> {target:.2%} (sur {years} ans)"
-    SUB_EPS_GRAHAM = "EPS = {val:.2f} ({src})"
-    SUB_GRAHAM_MULT = "8.5 + 2 × {g:.2f}"
-    SUB_BV_BASE = "BV_0 = {val:,.2f} ({src})"
-    SUB_SUM_RI = "Σ PV(RI) = {val:,.2f}"
-    SUB_RIM_TV = "{sub_tv} × {factor:.4f}"
-    SUB_RIM_FINAL = "{bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
-    SUB_P50_VAL = "P50 = {val:,.2f} {curr}"
+    SUB_FCF_BASE = r"FCF_0 = {val:,.2f} ({src})"
+    SUB_FCF_NORM = r"FCF_norm = {val:,.2f} ({src})"
+    SUB_REV_BASE = r"Rev_0 = {val:,.0f}"
+    SUB_MARGIN_CONV = r"{curr:.2%} -> {target:.2%} (sur {years} ans)"
+    SUB_EPS_GRAHAM = r"EPS = {val:.2f} ({src})"
+    SUB_GRAHAM_MULT = r"8.5 + 2 × {g:.2f}"
+    SUB_BV_BASE = r"BV_0 = {val:,.2f} ({src})"
+    SUB_SUM_RI = r"Σ PV(RI) = {val:,.2f}"
+    SUB_RIM_TV = r"{sub_tv} × {factor:.4f}"
+    SUB_RIM_FINAL = r"{bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
+    SUB_P50_VAL = r"P50 = {val:,.2f} {curr}"
 
-    # Substitutions Glass Box Sprint 3
-    SUB_FCFE_CALC = "FCFE = FCFF - Int(1-τ) + ΔDette = {val:,.2f}"
-    SUB_DDM_BASE = "D_0 = {val:,.2f} / action"
-    SUB_KE_LABEL = "Cost of Equity (Ke) = {val:.2%}"
-    SUB_EQUITY_NPV = "Equity Value = NPV(Equity Flows) = {val:,.2f}"
+    SUB_FCFE_CALC = r"FCFE = FCFF - Int(1-τ) + ΔDette = {val:,.2f}"
+    SUB_FCFE_WALK = r"FCFE = NI ({ni:,.0f}) + Adj ({adj:,.0f}) + NetBorrowing ({nb:,.0f}) = {total:,.2f}"
+
+    SUB_DDM_BASE = r"D_0 = {val:,.2f} / action"
+    SUB_KE_LABEL = r"Cost of Equity (Ke) = {val:.2%}"
+    SUB_EQUITY_NPV = r"Equity Value = NPV(Equity Flows) = {val:,.2f}"
+    SUB_PAYOUT = r"Payout Ratio = Div_TTM ({div:,.2f}) / EPS_TTM ({eps:,.2f}) = {total:.1%}"
+    SUB_TV_PE = r"TV_n = NI_n ({ni:,.0f}) × P/E Target ({pe:.1f}x) = {total:,.2f}"
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
@@ -408,164 +419,167 @@ class ChartTexts:
     # Corrélation
     CORREL_CAPTION = "Matrice de Corrélation des Inputs (Stochastique)"
 
-
 class RegistryTexts:
     """Labels et descriptions pédagogiques du registre Glass Box (ui_glass_box_registry.py)."""
 
-    # --- DCF ---
-    DCF_FCF_BASE_L = "Ancrage FCF₀"
-    DCF_FCF_BASE_D = "Flux de trésorerie disponible de départ pour la projection."
+    # --- DCF (Approche Entité - FCFF) ---
+    DCF_FCF_BASE_L = "Ancrage du Flux d'Exploitation (FCF₀)"
+    DCF_FCF_BASE_D = "Flux de trésorerie disponible pour l'entreprise (Firm) avant service de la dette."
 
-    DCF_FCF_NORM_L = "Ancrage FCF Normalisé"
-    DCF_FCF_NORM_D = "Flux lissé sur un cycle complet pour neutraliser la volatilité."
+    DCF_FCF_NORM_L = "Ancrage du Flux Normalisé"
+    DCF_FCF_NORM_D = "Flux lissé sur un cycle complet pour neutraliser la volatilité opérationnelle."
 
     DCF_STABILITY_L = "Contrôle de Viabilité Financière"
-    DCF_STABILITY_D = "Validation de la capacité à générer des flux positifs."
+    DCF_STABILITY_D = "Validation de la capacité de l'actif économique à générer des flux positifs."
 
-    DCF_WACC_L = "Coût Moyen Pondéré du Capital"
-    DCF_WACC_D = "Taux d'actualisation reflétant le coût du capital de l'entreprise."
+    DCF_WACC_L = "Coût Moyen Pondéré du Capital (WACC)"
+    DCF_WACC_D = "Taux d'actualisation reflétant le coût global du capital (Dette + Fonds Propres)."
 
     DCF_KE_L = "Coût des Fonds Propres (Ke)"
-    DCF_KE_D = "Taux d'actualisation utilisé pour les modèles actionnaires (CAPM)."
+    DCF_KE_D = "Taux de rendement exigé par les actionnaires, calculé via le modèle CAPM."
 
-    DCF_PROJ_L = "Projection des Flux"
-    DCF_PROJ_D = "Projection des flux sur l'horizon explicite."
+    DCF_PROJ_L = "Projection des Flux Futurs"
+    DCF_PROJ_D = "Modélisation de la croissance des flux sur l'horizon explicite de projection."
 
-    DCF_TV_GORDON_L = "Valeur Terminale (Gordon)"
-    DCF_TV_GORDON_D = "Valeur de l'entreprise au-delà de la période explicite (modèle de Gordon)."
+    DCF_TV_GORDON_L = "Valeur Terminale (Gordon Growth)"
+    DCF_TV_GORDON_D = r"Estimation de la valeur de perpétuité basée sur un taux de croissance stable ($g_n$)."
 
-    DCF_TV_MULT_L = "Valeur Terminale (Multiple)"
-    DCF_TV_MULT_D = "Valeur terminale basée sur un multiple de sortie."
+    DCF_TV_MULT_L = "Valeur Terminale (Multiple de Sortie)"
+    DCF_TV_MULT_D = "Estimation de la valeur de revente théorique basée sur un multiple (EBITDA ou P/E)."
 
-    DCF_EV_L = "Valeur d'Entreprise (EV)"
-    DCF_EV_D = "Somme actualisée des flux et de la valeur terminale."
+    DCF_EV_L = "Valeur de l'Outil de Production (EV)"
+    DCF_EV_D = "Somme actualisée des flux d'exploitation et de la valeur terminale."
 
     DCF_BRIDGE_L = "Pont de Valeur (Equity Bridge)"
-    DCF_BRIDGE_D = "Ajustement de la structure financière pour obtenir la valeur des fonds propres."
+    DCF_BRIDGE_D = "Passage de la Valeur d'Entreprise à la Valeur Actionnariale (Retrait Dette, Minoritaires, Pensions)."
 
     DCF_IV_L = "Valeur Intrinsèque par Action"
-    DCF_IV_D = "Estimation de la valeur réelle d'une action."
+    DCF_IV_D = "Prix théorique final estimé pour un titre ordinaire."
 
-    # --- FCFE ---
-    FCFE_BASE_L = "Ancrage FCFE₀"
-    FCFE_BASE_D = "Flux net disponible pour les actionnaires après service de la dette."
+    # --- FCFE (Approche Actionnaire - Clean Walk) ---
+    FCFE_BASE_L = "Reconstruction du Flux Actionnaire (FCFE₀)"
+    FCFE_BASE_D = "Calcul du flux résiduel : Résultat Net + Amortissements - CapEx - ΔBFR + Net Borrowing."
 
-    FCFE_DEBT_ADJ_L = "Ajustement de l'Endettement"
-    FCFE_DEBT_ADJ_D = "Intégration du Net Borrowing (Nouvelle dette - Remboursements)."
+    FCFE_DEBT_ADJ_L = "Audit du Levier Actionnaire"
+    FCFE_DEBT_ADJ_D = "Analyse de la contribution de l'endettement net à la génération du flux actionnaire."
 
-    # --- DDM ---
-    DDM_BASE_L = "Ancrage Dividende D₀"
-    DDM_BASE_D = "Dividende de référence utilisé pour la projection de croissance."
+    # --- DDM (Dividend Discount Model) ---
+    DDM_BASE_L = r"Ancrage du Dividende de Référence ($D_0$)"
+    DDM_BASE_D = "Somme des dividendes versés sur les 12 derniers mois (Base de projection)."
 
     DDM_GROWTH_L = "Dynamique de Distribution"
-    DDM_GROWTH_D = "Modélisation de la croissance future des dividendes."
+    DDM_GROWTH_D = "Modélisation de la croissance des dividendes basée sur le taux de rétention et le ROE."
 
-    # --- GROWTH ---
-    GROWTH_REV_BASE_L = "Chiffre d'Affaires de Base"
-    GROWTH_REV_BASE_D = "Point de départ du modèle basé sur le chiffre d'affaires TTM."
+    # --- GROWTH (Convergence des Marges) ---
+    GROWTH_REV_BASE_L = "Chiffre d'Affaires d'Ancrage"
+    GROWTH_REV_BASE_D = "Revenu TTM utilisé comme socle pour la projection de croissance du volume."
 
-    GROWTH_MARGIN_L = "Convergence des Marges"
-    GROWTH_MARGIN_D = "Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
+    GROWTH_MARGIN_L = "Convergence des Marges Opérationnelles"
+    GROWTH_MARGIN_D = "Simulation de l'évolution des marges vers un profil normatif de maturité."
 
-    # --- RIM ---
-    RIM_BV_L = "Actif Net Comptable Initial"
-    RIM_BV_D = "Valeur comptable par action au départ du modèle."
+    # --- RIM (Residual Income Model) ---
+    RIM_BV_L = "Actif Net Comptable d'Ouverture"
+    RIM_BV_D = "Valeur des capitaux propres au bilan au départ du modèle."
 
-    RIM_KE_L = "Coût des Fonds Propres (Ke)"
-    RIM_KE_D = "Coût des capitaux propres via le CAPM."
+    RIM_KE_L = "Coût d'Opportunité des Fonds Propres"
+    RIM_KE_D = "Seuil de rentabilité minimum pour justifier la création de valeur actionnariale."
 
-    RIM_RI_L = "Calcul des Surprofits (RI)"
-    RIM_RI_D = "Profit résiduel après rémunération des fonds propres."
+    RIM_RI_L = "Calcul du Profit Résiduel (Surprofit)"
+    RIM_RI_D = r"Richesse créée au-delà du coût du capital immobilisé ($NI - k_e \times BV_{t-1}$)."
 
-    RIM_TV_L = "Valeur Terminale (Persistance ω)"
-    RIM_TV_D = "Estimation de la persistance des surprofits selon le modèle d'Ohlson."
+    RIM_TV_L = "Valeur Terminale de Persistance (ω)"
+    RIM_TV_D = "Estimation de la vitesse de dégradation du surprofit vers la moyenne du marché."
 
-    RIM_IV_L = "Valeur Intrinsèque RIM"
-    RIM_IV_D = "Valeur totale issue du modèle Residual Income."
+    RIM_IV_L = "Valeur Intrinsèque RIM (Ohlson)"
+    RIM_IV_D = "Somme de la Valeur Comptable et de la valeur actuelle des surprofits futurs."
 
-    RIM_PAYOUT_L = "Politique de Distribution"
-    RIM_PAYOUT_D = "Ratio de distribution des dividendes."
+    RIM_PAYOUT_L = "Politique de Rétention des Profits"
+    RIM_PAYOUT_D = "Impact de la distribution sur la croissance future de la valeur comptable."
 
-    RIM_EPS_PROJ_L = "Projection des Bénéfices"
-    RIM_EPS_PROJ_D = "Projection des bénéfices par action."
+    RIM_EPS_PROJ_L = "Projection des Bénéfices Net (NI)"
+    RIM_EPS_PROJ_D = "Trajectoire attendue du résultat net par action sur l'horizon choisi."
 
-    # --- GRAHAM ---
-    GRAHAM_EPS_L = "BPA Normalisé (EPS)"
-    GRAHAM_EPS_D = "Bénéfice par action utilisé comme socle de rentabilité."
+    # --- GRAHAM (Valuation Historique) ---
+    GRAHAM_EPS_L = "Capacité Bénéficiaire Normalisée (EPS)"
+    GRAHAM_EPS_D = "Bénéfice par action ajusté pour refléter la rentabilité récurrente."
 
-    GRAHAM_MULT_L = "Multiplicateur de Croissance"
-    GRAHAM_MULT_D = "Prime de croissance appliquée selon le barème révisé de Graham."
+    GRAHAM_MULT_L = "Multiplicateur de Croissance Graham"
+    GRAHAM_MULT_D = "Prime de croissance théorique basée sur la formule révisée de 1974."
 
-    GRAHAM_IV_L = "Valeur Graham 1974"
-    GRAHAM_IV_D = "Estimation de la valeur intrinsèque ajustée par le rendement AAA."
+    GRAHAM_IV_L = "Valeur Graham AAA"
+    GRAHAM_IV_D = "Prix de référence ajusté par le rendement actuel des obligations d'entreprises AAA."
 
-    # --- MC ---
-    MC_INIT_L = "Initialisation du Moteur Stochastique"
-    MC_INIT_D = "Calibration des lois normales multivariées."
+    # --- MC (Moteur Stochastique) ---
+    MC_INIT_L = "Initialisation & Lois de Probabilité"
+    MC_INIT_D = r"Paramétrage des distributions normales pour les variables critiques ($k_e, g, gn$)."
 
-    MC_SAMP_L = "Simulation Multivariée"
-    MC_SAMP_D = "Génération des vecteurs d'inputs via décomposition de Cholesky."
+    MC_SAMP_L = "Simulation Multivariée (Cholesky)"
+    MC_SAMP_D = "Génération de scénarios corrélés pour respecter la cohérence économique."
 
-    MC_FILT_L = "Contrôle de Convergence"
-    MC_FILT_D = "Élimination des scénarios de divergence."
+    MC_FILT_L = "Contrôle de Convergence Statistique"
+    MC_FILT_D = r"Filtrage des scénarios mathématiquement divergents ($g \geq r$)."
 
-    MC_MED_L = "Valeur Probabiliste Centrale (P50)"
-    MC_MED_D = "Valeur intrinsèque centrale de la distribution stochastique."
+    MC_MED_L = "Valeur Centrale Probabiliste (P50)"
+    MC_MED_D = "Point médian de la distribution des valeurs intrinsèques simulées."
 
-    MC_SENS_L = "Sensibilité à la Corrélation (ρ)"
-    MC_SENS_D = "Impact de la corrélation sur la stabilité de la valeur médiane."
+    MC_SENS_L = "Analyse de Corrélation des Risques"
+    MC_SENS_D = "Mesure de la sensibilité de la valeur au couple Risque/Croissance."
 
-    MC_STRESS_L = "Stress Test (Bear Case)"
-    MC_STRESS_D = "Scénario de stress avec croissance nulle et risque élevé."
+    MC_STRESS_L = "Test de Résistance (Stress Test)"
+    MC_STRESS_D = "Scénario extrême simulant une rupture de croissance et une hausse du risque."
 
-    # --- AUDIT ---
-    AUDIT_BETA_L = "Cohérence du Beta"
-    AUDIT_BETA_D = "Vérifie que le beta est dans une plage économiquement réaliste."
+    # --- NOUVEAUTÉ MONTE CARLO ---
+    MC_Y0_UNCERTAINTY_L = r"Incertitude sur le Flux d'Ancrage ($Y_0$)"
+    MC_Y0_UNCERTAINTY_D = "Intégration de l'erreur type sur le dernier flux reporté (Standard Error)."
 
-    AUDIT_ICR_L = "Solvabilité (ICR)"
-    AUDIT_ICR_D = "Évalue la capacité à honorer la charge de la dette."
+    # --- AUDIT (Système Expert) ---
+    AUDIT_BETA_L = "Validation du Risque Systématique (β)"
+    AUDIT_BETA_D = "Vérifie que le Beta utilisé est cohérent avec le profil sectoriel."
+
+    AUDIT_ICR_L = "Couverture des Intérêts (Solvabilité)"
+    AUDIT_ICR_D = "Capacité de l'entreprise à honorer sa dette via son résultat opérationnel."
 
     AUDIT_CASH_L = "Position Net-Net"
-    AUDIT_CASH_D = "Vérifie si la trésorerie excède la valorisation boursière."
+    AUDIT_CASH_D = "Alerte si la trésorerie nette dépasse la valeur de marché (Opportunité Value)."
 
-    AUDIT_LIQ_L = "Taille de Marché"
-    AUDIT_LIQ_D = "Identifie les risques de liquidité sur les small-caps."
+    AUDIT_LIQ_L = "Risque de Liquidité de Marché"
+    AUDIT_LIQ_D = "Analyse de la profondeur de marché pour les capitalisations réduites."
 
-    AUDIT_LEV_L = "Levier Financier"
-    AUDIT_LEV_D = "Mesure l'endettement relatif à la capacité bénéficiaire."
+    AUDIT_LEV_L = "Intensité du Levier Financier"
+    AUDIT_LEV_D = "Évaluation du poids de la dette par rapport à la capacité de remboursement."
 
-    AUDIT_MACRO_L = "Convergence Macro"
-    AUDIT_MACRO_D = "Vérifie la cohérence entre croissance perpétuelle et taux sans risque."
+    AUDIT_MACRO_L = "Alignement Macro-économique"
+    AUDIT_MACRO_D = "Vérifie que la croissance perpétuelle ($gn$) ne dépasse pas le PIB nominal attendu."
 
-    AUDIT_RF_L = "Plancher du Taux Sans Risque"
-    AUDIT_RF_D = "Alerte si le Rf est anormalement bas."
+    AUDIT_RF_L = "Cohérence du Taux Sans Risque ($R_f$)"
+    AUDIT_RF_D = "Alerte si le taux sans risque est déconnecté des réalités monétaires."
 
-    AUDIT_REINV_L = "Taux de Renouvellement Industriel"
-    AUDIT_REINV_D = "Mesure la capacité à maintenir l'outil de production."
+    AUDIT_REINV_L = "Taux de Réinvestissement Industriel"
+    AUDIT_REINV_D = "Vérifie si le CapEx est suffisant pour maintenir l'outil de production."
 
-    AUDIT_GLIM_L = "Borne de Croissance"
-    AUDIT_GLIM_D = "Alerte si le taux de croissance est hors normes."
+    AUDIT_GLIM_L = "Plafond de Croissance soutenable"
+    AUDIT_GLIM_D = "Alerte sur les hypothèses de croissance dépassant les standards historiques."
 
-    AUDIT_PAY_L = "Soutenabilité de la Distribution"
-    AUDIT_PAY_D = "Vérifie que la politique de dividende ne décapitalise pas l'entreprise."
+    AUDIT_PAY_L = "Soutenabilité du Dividende"
+    AUDIT_PAY_D = "Vérifie que le Payout Ratio ne compromet pas le réinvestissement nécessaire."
 
-    AUDIT_WACC_L = "Plancher du WACC"
-    AUDIT_WACC_D = "Alerte si le taux d'actualisation est excessivement bas."
+    AUDIT_WACC_L = "Validation du Plancher d'Actualisation"
+    AUDIT_WACC_D = "Alerte si le coût du capital est anormalement bas (Survalorisation)."
 
-    AUDIT_TVC_L = "Concentration Valeur Terminale"
-    AUDIT_TVC_D = "Mesure la dépendance du modèle à la valeur terminale."
+    AUDIT_TVC_L = "Poids de la Valeur Terminale"
+    AUDIT_TVC_D = "Mesure la dépendance de la valorisation à l'hypothèse d'éternité."
 
-    AUDIT_G_WACC_L = "Stabilité de Convergence Gordon"
-    AUDIT_G_WACC_D = "Assure la convergence mathématique du modèle de Gordon."
+    AUDIT_G_WACC_L = "Divergence Gordon-Shapiro"
+    AUDIT_G_WACC_D = "Vérifie la condition critique d'existence du modèle ($r > g$)."
 
-    AUDIT_SPREAD_L = "Spread de Création de Valeur"
-    AUDIT_SPREAD_D = "Mesure la création de richesse additionnelle."
+    AUDIT_SPREAD_L = "Spread de Création de Valeur ($ROE - k_e$)"
+    AUDIT_SPREAD_D = "Mesure l'écart de rentabilité par rapport au coût d'opportunité."
 
-    AUDIT_PB_L = "Pertinence RIM (P/B)"
-    AUDIT_PB_D = "Indicateur de pertinence pour le modèle Residual Income."
+    AUDIT_PB_L = "Pertinence du Modèle RIM (P/B Ratio)"
+    AUDIT_PB_D = "Analyse si la valeur boursière est trop déconnectée de la valeur comptable."
 
-    AUDIT_UNK_L = "Test Spécifique"
-    AUDIT_UNK_D = "Test non référencé dans le registre."
+    AUDIT_UNK_L = "Test de Fiabilité Spécifique"
+    AUDIT_UNK_D = "Diagnostic technique non référencé dans le catalogue standard."
 
 class WorkflowTexts:
     """Messages d'état du cycle de vie de l'analyse (workflow.py)."""
@@ -591,12 +605,12 @@ class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions (diagnostics.py & exceptions.py)."""
 
     # Registre : Divergence Gordon
-    MODEL_G_DIV_MSG = "ERREUR DE CONVERGENCE : Le taux de croissance g ({g:.2%}) est supérieur ou égal au WACC ({wacc:.2%})."
-    MODEL_G_DIV_HINT = "Mathématiquement, une entreprise ne peut pas croître plus vite que son coût du capital à l'infini. Réduisez 'gn' dans le Terminal Expert ou révisez le WACC."
+    MODEL_G_DIV_MSG = r"ERREUR DE CONVERGENCE : Le taux de croissance g ({g:.2%}) est $\geq$ au Ke/WACC ({wacc:.2%})."
+    MODEL_G_DIV_HINT = "Une entreprise ne peut croître plus vite que son coût du capital à l'infini. Réduisez 'gn' ou révisez le taux d'actualisation."
 
     # Registre : Instabilité Monte Carlo
-    MODEL_MC_INST_MSG = "INSTABILITÉ CRITIQUE : Seuls {valid_ratio:.1%} des scénarios sont valides (Seuil minimum requis : {threshold:.0%})."
-    MODEL_MC_INST_HINT = "Le modèle est trop sensible à vos volatilités actuelles (g >= WACC trop fréquent). Diminuez la 'Vol. gn' ou augmentez la marge entre gn et le WACC."
+    MODEL_MC_INST_MSG = "INSTABILITÉ CRITIQUE : Seuls {valid_ratio:.1%} des scénarios sont valides."
+    MODEL_MC_INST_HINT = r"Le modèle diverge trop souvent ($g \geq r$). Diminuez la 'Vol. gn' ou augmentez la marge de sécurité entre gn et le taux d'actualisation."
 
     # Registre : Métriques manquantes
     DATA_MISSING_CORE_MSG = "Métrique critique manquante : {metric_name}."
@@ -634,6 +648,16 @@ class DiagnosticTexts:
     UNKNOWN_STRATEGY_HINT = "Vérifiez le registre des stratégies dans le moteur central."
     STRATEGY_CRASH_MSG = "Échec critique du moteur : {error}"
     STRATEGY_CRASH_HINT = "Redémarrez l'analyse ou contactez le support technique."
+
+    # FCFE & DDM (Sprint 3)
+    FCFE_NEGATIVE_MSG = "FLUX ACTIONNAIRE NÉGATIF ({val:,.0f}) : Modèle inapplicable."
+    FCFE_NEGATIVE_HINT = "Le remboursement de la dette excède la génération de cash. Le modèle DCF ne peut valoriser des flux négatifs perpétuels."
+
+    DDM_PAYOUT_MSG = "DÉCAPITALISATION : Le taux de distribution ({payout:.1%}) dépasse 100%."
+    DDM_PAYOUT_HINT = "L'entreprise distribue plus que ses bénéfices. Vérifiez si cette politique est soutenable."
+
+    MODEL_SGR_DIV_MSG = r"CROISSANCE INSOUTENABLE : $g$ ({g:.1%}) est supérieur au SGR ({sgr:.1%})."
+    MODEL_SGR_DIV_HINT = "La croissance dépasse la capacité d'autofinancement. Réduisez 'gn' ou justifiez un apport de capital externe."
 
 class StrategySources:
     """Descriptions des sources de données utilisées dans les calculs (strategies/)."""
@@ -689,16 +713,14 @@ class StrategyInterpretations:
     MC_STRESS_SUB = "Bear Case = {val:,.2f} {curr}"
     MC_STRESS_INTERP = "Scénario de stress : croissance nulle et risque élevé (Point de rupture)."
 
-    # FCFE (Sprint 3)
     FCFE_LOGIC = (
-        "Le modèle FCFE mesure le cash-flow restant après avoir payé les intérêts et "
-        "remboursé la dette. Contrairement au FCFF, il est actualisé par le Ke."
+        "Le modèle FCFE valorise les fonds propres après service de la dette."
+        "L'actualisation est effectuée via le coût des fonds propres (Ke)."
     )
 
-    # DDM (Sprint 3)
     DDM_LOGIC = (
-        "Le Dividend Discount Model repose sur l'idée que la valeur d'une action est "
-        "la somme actualisée de tous ses futurs dividendes."
+        "Le modèle DDM repose sur la distribution future. Nous utilisons le dividende annuel "
+        "total ($D_0$) comme base, en s'assurant qu'il est couvert par les bénéfices réels."
     )
 
 class CalculationErrors:

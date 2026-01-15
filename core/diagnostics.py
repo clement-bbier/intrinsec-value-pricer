@@ -113,3 +113,36 @@ class DiagnosticRegistry:
             message=DiagnosticTexts.DATA_NEGATIVE_BETA_MSG.format(beta=beta),
             remediation_hint=DiagnosticTexts.DATA_NEGATIVE_BETA_HINT
         )
+
+    @staticmethod
+    def fcfe_negative_flow(val: float) -> DiagnosticEvent:
+        """Erreur : Le flux FCFE calculé est négatif."""
+        return DiagnosticEvent(
+            code="FCFE_NEGATIVE_FLOW",
+            severity=SeverityLevel.CRITICAL,  # Bloquant
+            domain=DiagnosticDomain.MODEL,
+            message=DiagnosticTexts.FCFE_NEGATIVE_MSG.format(val=val),
+            remediation_hint=DiagnosticTexts.FCFE_NEGATIVE_HINT
+        )
+
+    @staticmethod
+    def ddm_payout_excessive(payout: float) -> DiagnosticEvent:
+        """Avertissement : Le Payout Ratio dépasse les bénéfices."""
+        return DiagnosticEvent(
+            code="DDM_PAYOUT_EXCESSIVE",
+            severity=SeverityLevel.WARNING,
+            domain=DiagnosticDomain.MODEL,
+            message=DiagnosticTexts.DDM_PAYOUT_MSG.format(payout=payout),
+            remediation_hint=DiagnosticTexts.DDM_PAYOUT_HINT
+        )
+
+    @staticmethod
+    def model_sgr_divergence(g: float, sgr: float) -> DiagnosticEvent:
+        """Avertissement : Croissance > Sustainable Growth Rate."""
+        return DiagnosticEvent(
+            code="MODEL_SGR_DIVERGENCE",
+            severity=SeverityLevel.WARNING,
+            domain=DiagnosticDomain.MODEL,
+            message=DiagnosticTexts.MODEL_SGR_DIV_MSG.format(g=g, sgr=sgr),
+            remediation_hint=DiagnosticTexts.MODEL_SGR_DIV_HINT
+        )

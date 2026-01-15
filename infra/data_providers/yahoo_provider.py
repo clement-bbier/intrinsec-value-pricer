@@ -1,14 +1,7 @@
 """
 infra/data_providers/yahoo_provider.py
-
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE
-Version : V9.0 — Clean Architecture & Segmentation V9
-Rôle : Orchestration et instanciation des paramètres segmentés (Auto-Mode).
-
-Architecture :
-- YahooRawFetcher : Appels API bruts
-- FinancialDataNormalizer : Reconstruction des métriques
-- YahooFinanceProvider : Orchestration + instanciation segmentée
+FOURNISSEUR DE DONNÉES — YAHOO FINANCE — VERSION V10.1 (Sprint 3 Secured)
+Rôle : Orchestration, acquisition macro et instanciation des paramètres AUTO.
 """
 
 from __future__ import annotations
@@ -22,14 +15,18 @@ import streamlit as st
 import yfinance as yf
 from pydantic import ValidationError
 
-from core.computation.financial_math import calculate_synthetic_cost_of_debt
+from core.computation.financial_math import (
+    calculate_synthetic_cost_of_debt,
+    calculate_sustainable_growth
+)
 from core.exceptions import ExternalServiceError, TickerNotFoundError
 from core.models import (
     CompanyFinancials,
     DCFParameters,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig
+    MonteCarloConfig,
+    ValuationMode
 )
 from infra.data_providers.base_provider import DataProvider
 from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher
@@ -43,7 +40,8 @@ logger = logging.getLogger(__name__)
 
 class YahooFinanceProvider(DataProvider):
     """
-    Fournisseur de données Yahoo Finance avec support de la segmentation V9.
+    Orchestrateur de données Yahoo Finance.
+    Intègre la logique de croissance soutenable (SGR) et l'arbitrage hybride.
     """
 
     MARKET_SUFFIXES: List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
@@ -55,18 +53,16 @@ class YahooFinanceProvider(DataProvider):
         self.normalizer = FinancialDataNormalizer()
 
     # =========================================================================
-    # INTERFACE PUBLIQUE (DataProvider)
+    # INTERFACE PUBLIQUE
     # =========================================================================
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_company_financials(_self, ticker: str) -> CompanyFinancials:
-        """Récupère et normalise les états financiers."""
         normalized_ticker = ticker.upper().strip()
         return _self._fetch_financials_with_fallback(normalized_ticker)
 
     @st.cache_data(ttl=3600 * 4)
     def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """Récupère l'historique des prix pour les graphiques."""
         return _self.fetcher.fetch_price_history(ticker, period)
 
     def get_company_financials_and_parameters(
@@ -74,18 +70,23 @@ class YahooFinanceProvider(DataProvider):
         ticker: str,
         projection_years: int
     ) -> Tuple[CompanyFinancials, DCFParameters]:
-        """
-        Workflow Auto-Mode : construit financials et DCFParameters segmentés.
-        """
+        """Workflow Auto-Mode : Construit les paramètres avec arbitrage de croissance."""
         financials = self.get_company_financials(ticker)
         macro = self._fetch_macro_context(financials)
 
-        growth_estimated = self._estimate_dynamic_growth(ticker)
-        tax_rate = float(
-            COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)["tax_rate"]
-        )
+        # 1. Estimation de la croissance hybride (Dividendes vs FCF)
+        growth_metric = "Dividends" if financials.dividend_share and financials.dividend_share > 0 else "Free Cash Flow"
+        growth_hist = self._estimate_dynamic_growth(ticker, metric=growth_metric)
 
-        # Calcul du coût de la dette synthétique
+        # 2. Rigueur SGR (Sustainable Growth Rate)
+        payout = (financials.dividend_share * financials.shares_outstanding) / financials.net_income_ttm if financials.net_income_ttm and financials.net_income_ttm > 0 else 0.0
+        roe = financials.net_income_ttm / financials.book_value if financials.book_value and financials.book_value > 0 else 0.0
+        growth_sgr = calculate_sustainable_growth(roe, payout)
+
+        # Arbitrage AUTO : Conservatisme (max 8% en mode auto)
+        growth_final = max(0.01, min(growth_hist, growth_sgr or 0.05, 0.08))
+
+        # 3. Coût de la dette (Validation du nom d'argument interest_expense)
         cost_of_debt = calculate_synthetic_cost_of_debt(
             rf=macro.risk_free_rate,
             ebit=financials.ebit_ttm,
@@ -93,112 +94,80 @@ class YahooFinanceProvider(DataProvider):
             market_cap=financials.market_cap
         )
 
-        # CONSTRUCTION SEGMENTÉE (V9)
         params = DCFParameters(
             rates=CoreRateParameters(
                 risk_free_rate=macro.risk_free_rate,
                 market_risk_premium=macro.market_risk_premium,
                 corporate_aaa_yield=macro.corporate_aaa_yield,
                 cost_of_debt=cost_of_debt,
-                tax_rate=tax_rate
+                tax_rate=float(COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)["tax_rate"])
             ),
             growth=GrowthParameters(
-                fcf_growth_rate=growth_estimated,
+                fcf_growth_rate=growth_final,
                 perpetual_growth_rate=macro.perpetual_growth_rate,
                 projection_years=projection_years,
                 target_equity_weight=financials.market_cap,
-                target_debt_weight=financials.total_debt
+                target_debt_weight=financials.total_debt,
+                manual_dividend_base=financials.dividend_share # Pré-remplissage pour DDM
             ),
-            monte_carlo=MonteCarloConfig() # Initialisation par défaut
+            monte_carlo=MonteCarloConfig()
         )
-
-        # Normalisation des poids (Déléguée au segment growth par le parent)
         params.normalize_weights()
-
         return financials, params
 
     # =========================================================================
-    # LOGIQUE DE FETCH AVEC FALLBACK
+    # LOGIQUE DE FETCH ET ESTIMATION
     # =========================================================================
 
-    def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> CompanyFinancials:
-        """Fetch avec fallback contrôlé sur les suffixes de marché."""
-        logger.info("[Yahoo] Fetching financials for %s...", ticker)
+    def _estimate_dynamic_growth(self, ticker: str, metric: str = "Free Cash Flow") -> float:
+        """Estime la croissance via CAGR historique (FCF ou Dividendes)."""
+        try:
+            yt = yf.Ticker(ticker)
+            if metric == "Free Cash Flow":
+                df = safe_api_call(lambda: yt.cash_flow, "Hist FCF Growth")
+                cagr = calculate_historical_cagr(df, "Free Cash Flow")
+            else:
+                divs = safe_api_call(lambda: yt.dividends, "Hist Div Growth")
+                if divs is None or divs.empty: return 0.03
+                divs_annual = divs.resample('YE').sum() # 'YE' remplace 'A' ou 'Y' dans les nouvelles versions pandas
+                if len(divs_annual) < 3: return 0.03
+                cagr = (divs_annual.iloc[-1] / divs_annual.iloc[-3]) ** (1 / 2) - 1
+            return max(0.01, min(cagr or 0.03, 0.10))
+        except Exception:
+            return 0.03
 
+    def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> CompanyFinancials:
         try:
             result = self._fetch_and_normalize(ticker)
-            if result is not None:
-                return result
-
+            if result is not None: return result
             return self._attempt_market_suffix_fallback(ticker, _attempt)
-
-        except TickerNotFoundError:
-            raise
-        except ValidationError as ve:
-            raise ExternalServiceError(provider="Yahoo/Pydantic", error_detail=str(ve)) from ve
-        except (ConnectionError, TimeoutError, KeyError) as e:
-            raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e)) from e
+        except TickerNotFoundError: raise
+        except ValidationError as ve: raise ExternalServiceError(provider="Yahoo/Pydantic", error_detail=str(ve)) from ve
+        except Exception as e: raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e)) from e
 
     def _fetch_and_normalize(self, ticker: str) -> Optional[CompanyFinancials]:
-        """Fetch brut + normalisation."""
         raw_data = self.fetcher.fetch_all(ticker)
         return self.normalizer.normalize(raw_data)
 
     def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> CompanyFinancials:
-        """Tente un fallback avec suffixe de marché européen."""
-        if current_attempt >= self.MAX_RETRY_ATTEMPTS:
-            logger.warning("[Yahoo] Retry limit reached for %s", original_ticker)
+        if current_attempt >= self.MAX_RETRY_ATTEMPTS or any(original_ticker.upper().endswith(s) for s in self.MARKET_SUFFIXES):
             raise TickerNotFoundError(ticker=original_ticker)
-
-        if self._has_market_suffix(original_ticker):
-            logger.warning("[Yahoo] Ticker %s with suffix not found", original_ticker)
-            raise TickerNotFoundError(ticker=original_ticker)
-
         ticker_with_suffix = f"{original_ticker}.PA"
-        logger.info("[Yahoo] Trying fallback: %s -> %s", original_ticker, ticker_with_suffix)
-
         try:
             result = self._fetch_and_normalize(ticker_with_suffix)
-            if result is not None:
-                return result
-        except (ValidationError, ConnectionError, KeyError) as e:
-            logger.debug("[Yahoo] Fallback failed for %s: %s", ticker_with_suffix, e)
-
+            if result is not None: return result
+        except Exception: pass
         raise TickerNotFoundError(ticker=original_ticker)
 
-    def _has_market_suffix(self, ticker: str) -> bool:
-        """Vérifie si le ticker possède déjà un suffixe de marché."""
-        return any(ticker.upper().endswith(suffix) for suffix in self.MARKET_SUFFIXES)
-
-    # =========================================================================
-    # HELPERS
-    # =========================================================================
-
     def _fetch_macro_context(self, financials: CompanyFinancials) -> MacroContext:
-        """Récupère le contexte macro avec fallback sécurisé."""
         try:
-            return self.macro_provider.get_macro_context(
-                date=datetime.now(),
-                currency=financials.currency
-            )
-        except (ValueError, KeyError, ConnectionError):
+            return self.macro_provider.get_macro_context(date=datetime.now(), currency=financials.currency)
+        except Exception:
             country_data = COUNTRY_CONTEXT.get(financials.country, DEFAULT_COUNTRY)
             return MacroContext(
-                date=datetime.now(),
-                currency=financials.currency,
+                date=datetime.now(), currency=financials.currency,
                 risk_free_rate=float(country_data["risk_free_rate"]),
                 market_risk_premium=float(country_data["market_risk_premium"]),
                 perpetual_growth_rate=float(country_data["inflation_rate"]),
                 corporate_aaa_yield=float(country_data["risk_free_rate"] + 0.01)
             )
-
-    def _estimate_dynamic_growth(self, ticker: str) -> float:
-        """Estime la croissance via CAGR historique."""
-        try:
-            yt = yf.Ticker(ticker)
-            # Safe API Call label non-i18n car destiné au logging technique
-            hist_cf = safe_api_call(lambda: yt.cash_flow, "Hist Growth")
-            cagr = calculate_historical_cagr(hist_cf, "Free Cash Flow")
-            return max(0.01, min(cagr or 0.03, 0.10))
-        except (ValueError, KeyError, ZeroDivisionError):
-            return 0.03

@@ -1,9 +1,9 @@
 """
 core/valuation/pipelines.py
-PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE) — VERSION V1.1
+PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE) — VERSION V1.2 (Sync V11.0)
 Rôle : Moteur universel pour les modèles de flux (FCFF, FCFE, DDM).
 Architecture : Orchestration bifurquée Firm-Level (EV) vs Equity-Level (IV).
-Standards : SOLID, Pydantic, Glass Box, i18n (ui_texts).
+Note : Alignement strict sur ui_glass_box_registry.py V11.0 pour éviter les KeyError.
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from core.computation.financial_math import (
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
     calculate_wacc,
-    calculate_cost_of_equity  # Issu de financial_math.py V10.0
+    calculate_cost_of_equity
 )
 from core.computation.growth import FlowProjector, ProjectionOutput
 from core.exceptions import CalculationError, ModelDivergenceError
 from app.ui_components.ui_texts import (
-    RegistryTexts, StrategyInterpretations, CalculationErrors, StrategySources, KPITexts
+    RegistryTexts, StrategyInterpretations, CalculationErrors, KPITexts
 )
 
 logger = logging.getLogger(__name__)
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 class DCFCalculationPipeline:
     """
-    Pipeline de calcul standardisé pour toutes les variantes DCF (Firm & Equity).
-    Gère la bifurcation logique entre la valeur d'entreprise et la valeur actionnariale.
+    Pipeline de calcul standardisé.
+    Les clés (step_key) sont alignées sur le registre Glass Box V11.0.
     """
 
     def __init__(self, projector: FlowProjector, mode: ValuationMode, glass_box_enabled: bool = True):
@@ -50,51 +50,48 @@ class DCFCalculationPipeline:
             params: DCFParameters,
             wacc_override: Optional[float] = None
     ) -> ValuationResult:
-        """Exécute la séquence de valorisation avec détection automatique du niveau (Firm vs Equity)."""
+        """Exécute la séquence de valorisation avec synchronisation des clés registre."""
 
-        # 1. Détermination du taux d'actualisation (WACC vs Ke)
-        # Rigueur : Ke pour DDM/FCFE, WACC pour FCFF.
+        # 1. Détermination du taux d'actualisation (Sync: WACC_CALC / KE_CALC)
         is_equity_level = self.mode.is_direct_equity
 
         if is_equity_level:
-            # Source : Damodaran - Les flux actionnaires doivent être actualisés au Ke
             discount_rate = calculate_cost_of_equity(financials, params)
-            rate_label = RegistryTexts.DCF_KE_L
             rate_key = "KE_CALC"
+            rate_label = RegistryTexts.DCF_KE_L
             interp_rate = KPITexts.SUB_KE_LABEL.format(val=discount_rate)
             wacc_ctx = None
         else:
-            # Source : McKinsey - Les flux entité sont actualisés au WACC
             wacc_breakdown = calculate_wacc(financials, params)
             discount_rate = wacc_override if wacc_override is not None else wacc_breakdown.wacc
-            rate_label = RegistryTexts.DCF_WACC_L
             rate_key = "WACC_CALC"
+            rate_label = RegistryTexts.DCF_WACC_L
             interp_rate = StrategyInterpretations.WACC.format(wacc=discount_rate)
             wacc_ctx = wacc_breakdown
 
         self._add_step(rate_key, discount_rate, interp_rate, label=rate_label, theoretical_formula=r"r")
 
-        # 2. Phase de Projection (via le Projecteur injecté)
+        # 2. Phase de Projection (Sync: FCF_PROJ)
         proj_output = self.projector.project(base_value, financials, params)
         self._add_projection_step(proj_output)
         flows = proj_output.flows
 
-        # 3. Valeur Terminale (TV)
+        # 3. Valeur Terminale (Sync: TV_GORDON / TV_MULTIPLE)
         tv, key_tv = self._compute_terminal_value(flows, discount_rate, params)
 
-        # 4. NPV (Valeur Actuelle Nette)
+        # 4. NPV (Sync: NPV_CALC)
         factors, sum_pv, pv_tv, final_value = self._compute_npv_logic(flows, tv, discount_rate, params)
 
-        # 5. Equity Bridge (Différencié selon le niveau)
+        # 5. Equity Bridge (Sync: EQUITY_BRIDGE / EQUITY_DIRECT)
         equity_val, bridge_shares = self._compute_bridge_by_level(final_value, financials, params, is_equity_level)
 
-        # 6. Valeur Intrinsèque par Action
+        # 6. Valeur Intrinsèque par Action (Sync: VALUE_PER_SHARE)
         iv_share = self._compute_value_per_share(equity_val, bridge_shares, financials)
 
         # 7. Collecte des métriques d'audit
         audit_metrics = self._extract_audit_metrics(financials, pv_tv, final_value)
 
-        # 8. Retour du type de résultat approprié (Contrat Direct Equity vs Entity)
+        # 8. Dispatch du contrat de résultat
         if is_equity_level:
             return EquityDCFValuationResult(
                 financials=financials, params=params, intrinsic_value_per_share=iv_share,
@@ -116,7 +113,7 @@ class DCFCalculationPipeline:
         )
 
     # ==========================================================================
-    # ÉTAPES DE CALCUL (LOGIQUE INTERNE)
+    # LOGIQUE DE TRACE (SYNC RÉGISTRE V11.0)
     # ==========================================================================
 
     def _add_step(self, step_key: str, result: float, numerical_substitution: str,
@@ -135,7 +132,7 @@ class DCFCalculationPipeline:
         ))
 
     def _add_projection_step(self, output: ProjectionOutput) -> None:
-        """Intègre le rendu du projecteur (Simple ou Convergence) dans la trace."""
+        """Utilise la clé FCF_PROJ synchronisée."""
         self._add_step(
             step_key="FCF_PROJ",
             result=sum(output.flows),
@@ -146,42 +143,47 @@ class DCFCalculationPipeline:
         )
 
     def _compute_terminal_value(self, flows, discount_rate, params) -> tuple:
+        """Bifurcation TV_GORDON ou TV_MULTIPLE."""
         g = params.growth
         if g.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             p_growth = g.perpetual_growth_rate or 0.0
             if p_growth >= discount_rate:
                 raise ModelDivergenceError(p_growth, discount_rate)
             tv = calculate_terminal_value_gordon(flows[-1], discount_rate, p_growth)
-            key_tv, sub_tv, label_tv = "TV_GORDON", f"({flows[-1]:,.0f} × {1 + p_growth:.3f}) / ({discount_rate:.4f} - {p_growth:.4f})", RegistryTexts.DCF_TV_GORDON_L
+            key_tv = "TV_GORDON"
+            sub_tv = f"({flows[-1]:,.0f} × {1 + p_growth:.3f}) / ({discount_rate:.4f} - {p_growth:.4f})"
+            label_tv = RegistryTexts.DCF_TV_GORDON_L
         else:
             exit_m = g.exit_multiple_value or 12.0
             tv = calculate_terminal_value_exit_multiple(flows[-1], exit_m)
-            key_tv, sub_tv, label_tv = "TV_MULTIPLE", f"{flows[-1]:,.0f} × {exit_m:.1f}", RegistryTexts.DCF_TV_MULT_L
+            key_tv = "TV_MULTIPLE"
+            sub_tv = f"{flows[-1]:,.0f} × {exit_m:.1f}"
+            label_tv = RegistryTexts.DCF_TV_MULT_L
 
         self._add_step(key_tv, tv, sub_tv, label_tv, interpretation=StrategyInterpretations.TV)
         return tv, key_tv
 
     def _compute_npv_logic(self, flows, tv, rate, params) -> tuple:
+        """Actualisation des flux (Sync: NPV_CALC)."""
         factors = calculate_discount_factors(rate, params.growth.projection_years)
         sum_pv = sum(f * d for f, d in zip(flows, factors))
         pv_tv = tv * factors[-1]
         final_value = sum_pv + pv_tv
 
-        # Le label change si on calcule l'EV (Firm) ou l'Equity Value (Direct)
-        label = RegistryTexts.DCF_EV_L if not self.mode.is_direct_equity else RegistryTexts.DCF_IV_L
-        self._add_step("NPV_CALC", final_value, f"{sum_pv:,.0f} + {pv_tv:,.0f}", label=label, theoretical_formula=r"NPV")
+        # Distinction EV (Entity) vs Total Equity (Direct)
+        label = RegistryTexts.DCF_EV_L if not self.mode.is_direct_equity else "Total Equity Value"
+        self._add_step("NPV_CALC", final_value, f"{sum_pv:,.0f} + {pv_tv:,.0f}", label=label, theoretical_formula=r"PV = \sum PV(Flows) + PV(TV)")
         return factors, sum_pv, pv_tv, final_value
 
     def _compute_bridge_by_level(self, val: float, financials: CompanyFinancials, params: DCFParameters, is_equity_level: bool) -> tuple:
+        """Bifurcation EQUITY_BRIDGE ou EQUITY_DIRECT."""
         g = params.growth
         shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
 
         if is_equity_level:
-            # Pour DDM/FCFE, on a déjà la valeur des capitaux propres (Equity Value)
             self._add_step("EQUITY_DIRECT", val, KPITexts.SUB_EQUITY_NPV.format(val=val), label=RegistryTexts.DCF_BRIDGE_L)
             return val, shares
 
-        # Pour FCFF : Calcul classique Enterprise Value (val) -> Equity Value
         debt = g.manual_total_debt if g.manual_total_debt is not None else financials.total_debt
         cash = g.manual_cash if g.manual_cash is not None else financials.cash_and_equivalents
         minorities = g.manual_minority_interests if g.manual_minority_interests is not None else financials.minority_interests
@@ -192,7 +194,7 @@ class DCFCalculationPipeline:
         self._add_step(
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
-            theoretical_formula=r"Equity = EV - Debt + Cash - Minorities - Provisions",
+            theoretical_formula=r"Equity = EV - Debt + Cash - Min - Prov",
             result=equity_val,
             numerical_substitution=f"{val:,.0f} - {debt:,.0f} + {cash:,.0f} - {minorities:,.0f} - {pensions:,.0f}",
             interpretation=StrategyInterpretations.BRIDGE
@@ -200,6 +202,7 @@ class DCFCalculationPipeline:
         return equity_val, shares
 
     def _compute_value_per_share(self, equity_val, shares, financials) -> float:
+        """Etape finale (Sync: VALUE_PER_SHARE)."""
         if shares <= 0:
             raise CalculationError(CalculationErrors.INVALID_SHARES)
         iv_share = equity_val / shares
@@ -208,15 +211,10 @@ class DCFCalculationPipeline:
         return iv_share
 
     def _extract_audit_metrics(self, financials: CompanyFinancials, pv_tv: float, ev: float) -> dict:
-        """Extrait les ratios nécessaires au moteur d'audit institutionnel."""
         icr = financials.ebit_ttm / financials.interest_expense if financials.interest_expense > 0 and financials.ebit_ttm is not None else None
-        capex_ratio = abs(
-            financials.capex / (financials.depreciation_and_amortization or 1.0)) if financials.capex else None
+        capex_ratio = abs(financials.capex / (financials.depreciation_and_amortization or 1.0)) if financials.capex else None
         tv_weight = (pv_tv / ev) if ev > 0 else None
         payout = financials.dividends_total_calculated / financials.net_income_ttm if financials.net_income_ttm and financials.net_income_ttm > 0 else None
         leverage = financials.total_debt / financials.ebit_ttm if financials.ebit_ttm and financials.ebit_ttm > 0 else None
 
-        return {
-            "icr": icr, "capex_ratio": capex_ratio, "tv_weight": tv_weight,
-            "payout": payout, "leverage": leverage
-        }
+        return {"icr": icr, "capex_ratio": capex_ratio, "tv_weight": tv_weight, "payout": payout, "leverage": leverage}

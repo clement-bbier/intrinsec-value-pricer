@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, TraceHypothesis
+from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, TraceHypothesis, ValuationMode
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
@@ -45,6 +45,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         # 2. Exécution du Pipeline Unifié
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
+            mode=ValuationMode.FCFF_NORMALIZED,
             glass_box_enabled=self.glass_box_enabled
         )
 

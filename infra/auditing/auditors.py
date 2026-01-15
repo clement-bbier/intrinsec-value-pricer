@@ -1,8 +1,8 @@
 """
 infra/auditing/auditors.py
-AUDITEUR INSTITUTIONNEL — VERSION V9.0 (Glass Box Intégrale)
+AUDITEUR INSTITUTIONNEL — VERSION V10.0 (Sprint 3 : Equity Expansion)
 Rôle : Analyse multidimensionnelle de la fiabilité avec traçabilité AuditStep.
-Note : Migration complète des règles métier V9.0 vers l'architecture AuditStep.
+Note : Migration intégrale V9.0 + Rigueur Hedge Fund pour FCFE et DDM.
 """
 
 from __future__ import annotations
@@ -12,12 +12,16 @@ from typing import Dict, List, Tuple, Optional, Any
 
 from core.models import (
     ValuationResult, DCFValuationResult, RIMValuationResult, GrahamValuationResult,
-    AuditLog, AuditPillar, AuditPillarScore, InputSource, DCFParameters,
-    AuditStep, AuditSeverity
+    EquityDCFValuationResult, AuditLog, AuditPillar, AuditPillarScore,
+    InputSource, DCFParameters, AuditStep, AuditSeverity
 )
 from app.ui_components.ui_texts import AuditMessages, AuditCategories
 
 logger = logging.getLogger(__name__)
+
+# ==============================================================================
+# 0. INTERFACE ET SOCLE DE BASE
+# ==============================================================================
 
 class IValuationAuditor(ABC):
     @abstractmethod
@@ -29,7 +33,7 @@ class IValuationAuditor(ABC):
         pass
 
 class BaseAuditor(IValuationAuditor):
-    # Seuils de pénalités normatifs (Inchangés)
+    # Seuils de pénalités normatifs
     PENALTY_CRITICAL = 100.0
     PENALTY_HIGH = 35.0
     PENALTY_MEDIUM = 15.0
@@ -50,6 +54,7 @@ class BaseAuditor(IValuationAuditor):
         """
         verdict = bool(condition)
         step = AuditStep(
+            step_id=len(self._audit_steps) + 1,
             step_key=key,
             indicator_value=value,
             threshold_value=threshold,
@@ -64,7 +69,7 @@ class BaseAuditor(IValuationAuditor):
         return [s for s in self._audit_steps if s.step_key.startswith(prefix)]
 
     def _audit_data_confidence(self, result: ValuationResult) -> Tuple[float, int]:
-        """Migration du Test 1 à 4 vers AuditStep."""
+        """Analyse de la qualité des données sources (Tests 1 à 4)."""
         score = 100.0
         f = result.financials
         is_expert = result.request.input_source == InputSource.MANUAL if result.request else False
@@ -119,11 +124,11 @@ class BaseAuditor(IValuationAuditor):
         return max(0.0, score), 4
 
     def _audit_macro_invariants(self, params: DCFParameters) -> float:
-        """Migration du Test 5 à 6 vers AuditStep."""
+        """Analyse de la cohérence macro-économique (Tests 5 à 6)."""
         score_adj = 0.0
         r, g = params.rates, params.growth
 
-        # Test 5 : Convergence Gordon (gn < Rf)
+        # Test 5 : Convergence Gordon (gn <= Rf)
         g_perp = g.perpetual_growth_rate or 0.0
         rf = r.risk_free_rate or 0.0
         score_adj += self.add_audit_step(
@@ -146,6 +151,10 @@ class BaseAuditor(IValuationAuditor):
         )
         return score_adj
 
+# ==============================================================================
+# 1. AUDITEUR DCF (FCFF)
+# ==============================================================================
+
 class DCFAuditor(BaseAuditor):
     def get_max_potential_checks(self) -> int: return 12
 
@@ -153,31 +162,23 @@ class DCFAuditor(BaseAuditor):
         p, f = result.params, result.financials
         pillars: Dict[AuditPillar, AuditPillarScore] = {}
 
-        # 1. DATA CONFIDENCE (Tests 1-4 + Levier)
+        # 1. DATA CONFIDENCE
         score, checks = self._audit_data_confidence(result)
         ebit = f.ebit_ttm or 0.0
         lev = f.total_debt / ebit if ebit > 0 else 0.0
         score -= self.add_audit_step(
-            key="AUDIT_DATA_LEVERAGE",
-            value=round(lev, 2),
-            threshold="< 4.0x",
-            severity=AuditSeverity.WARNING,
-            condition=(lev < 4.0),
-            penalty=self.PENALTY_MEDIUM
+            key="AUDIT_DATA_LEVERAGE", value=round(lev, 2), threshold="< 4.0x",
+            severity=AuditSeverity.WARNING, condition=(lev < 4.0), penalty=self.PENALTY_MEDIUM
         )
         pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=max(0.0, score), check_count=checks + 1)
 
-        # 2. ASSUMPTION RISK (Macro + CapEx + Growth)
+        # 2. ASSUMPTION RISK
         score = 100.0 - self._audit_macro_invariants(p)
-
-        # CapEx/D&A
-        ratio = abs(f.capex / f.depreciation_and_amortization) if f.depreciation_and_amortization else 0.0
+        ratio = abs(f.capex / (f.depreciation_and_amortization or 1.0)) if f.capex else 0.0
         score -= self.add_audit_step(
             key="AUDIT_MODEL_REINVEST", value=round(ratio, 2), threshold="> 0.8",
             severity=AuditSeverity.WARNING, condition=(ratio >= 0.8), penalty=self.PENALTY_MEDIUM
         )
-
-        # Borne Growth
         g_val = p.growth.fcf_growth_rate or 0.0
         score -= self.add_audit_step(
             key="AUDIT_MODEL_GLIM", value=f"{g_val:.2%}", threshold="< 20%",
@@ -185,29 +186,115 @@ class DCFAuditor(BaseAuditor):
         )
         pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=4)
 
-        # 3. MODEL RISK (WACC + TV + Gordon Stability)
+        # 3. MODEL RISK
         score = 100.0
         score -= self.add_audit_step(
             key="AUDIT_MODEL_WACC", value=f"{result.wacc:.2%}", threshold="> 6%",
             severity=AuditSeverity.WARNING, condition=(result.wacc >= 0.06), penalty=self.PENALTY_MEDIUM
         )
-
-        tv_w = result.discounted_terminal_value / result.enterprise_value if result.enterprise_value > 0 else 0.0
+        tv_w = (result.discounted_terminal_value / result.enterprise_value) if result.enterprise_value > 0 else 0.0
         score -= self.add_audit_step(
             key="AUDIT_MODEL_TVC", value=f"{tv_w:.2%}", threshold="< 90%",
             severity=AuditSeverity.WARNING, condition=(tv_w <= 0.90), penalty=self.PENALTY_HIGH
         )
-
         gn = p.growth.perpetual_growth_rate or 0.0
-        stable = gn < result.wacc
         score -= self.add_audit_step(
             key="AUDIT_MODEL_G_WACC", value=f"g:{gn:.2%}", threshold=f"WACC:{result.wacc:.2%}",
-            severity=AuditSeverity.CRITICAL, condition=stable, penalty=100.0 # Bloquant
+            severity=AuditSeverity.CRITICAL, condition=(gn < result.wacc), penalty=100.0
         )
         pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=max(0.0, score), check_count=3)
         pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=100.0, check_count=1)
 
         return pillars
+
+# ==============================================================================
+# 2. AUDITEUR FCFE (Direct Equity)
+# ==============================================================================
+
+class FCFEAuditor(BaseAuditor):
+    """Auditeur spécialisé dans la soutenabilité du levier pour le FCFE."""
+    def get_max_potential_checks(self) -> int: return 10
+
+    def audit_pillars(self, result: EquityDCFValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+        f, p = result.financials, result.params
+        pillars: Dict[AuditPillar, AuditPillarScore] = {}
+
+        # 1. DATA CONFIDENCE
+        score, checks = self._audit_data_confidence(result)
+        pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=score, check_count=checks)
+
+        # 2. ASSUMPTION RISK (Net Borrowing Sustainability)
+        score = 100.0
+        # Danger Hedge Fund : Dividendes/Flux financés par l'excès de dette
+        net_borrowing = p.growth.manual_net_borrowing if p.growth.manual_net_borrowing is not None else (f.net_borrowing_ttm or 0.0)
+        ni = f.net_income_ttm or 0.0
+        if ni <= 0:
+            # Si l'entreprise perd de l'argent, toute dette émise est un risque critique
+            borrowing_risk = 1.0 if net_borrowing > 0 else 0.0
+            penalty = self.PENALTY_CRITICAL if borrowing_risk > 0 else 0.0
+        else:
+            borrowing_ratio = net_borrowing / ni
+            penalty = self.PENALTY_HIGH if borrowing_ratio > 0.5 else 0.0
+        score -= self.add_audit_step(
+            key="AUDIT_FCFE_BORROWING", value=round(borrowing_ratio, 2), threshold="< 0.5x NI",
+            severity=AuditSeverity.WARNING, condition=(borrowing_ratio < 0.5), penalty=self.PENALTY_HIGH
+        )
+        pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=1)
+
+        # 3. MODEL RISK (Ke & TV Concentration)
+        score = 100.0
+        score -= self.add_audit_step(
+            key="AUDIT_MODEL_KE", value=f"{result.cost_of_equity:.2%}", threshold="> 5%",
+            severity=AuditSeverity.WARNING, condition=(result.cost_of_equity >= 0.05), penalty=self.PENALTY_MEDIUM
+        )
+        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=max(0.0, score), check_count=1)
+        pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=100.0, check_count=1)
+
+        return pillars
+
+# ==============================================================================
+# 3. AUDITEUR DDM (Dividend Discount Model)
+# ==============================================================================
+
+class DDMAuditor(BaseAuditor):
+    """Vérifie la soutenabilité du dividende et de la croissance g."""
+    def get_max_potential_checks(self) -> int: return 10
+
+    def audit_pillars(self, result: EquityDCFValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+        f, p = result.financials, result.params
+        pillars: Dict[AuditPillar, AuditPillarScore] = {}
+
+        # 1. DATA CONFIDENCE
+        score, checks = self._audit_data_confidence(result)
+        pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=score, check_count=checks)
+
+        # 2. ASSUMPTION RISK (Sustainable Growth Rate Audit)
+        score = 100.0
+        payout = f.dividends_total_calculated / (f.net_income_ttm or 1.0)
+        score -= self.add_audit_step(
+            key="AUDIT_DDM_PAYOUT", value=f"{payout:.1%}", threshold="< 100%",
+            severity=AuditSeverity.CRITICAL, condition=(payout <= 1.0), penalty=self.PENALTY_HIGH
+        )
+
+        # Sustainable Growth Rate (SGR) = ROE * (1 - Payout)
+        roe = (f.net_income_ttm / f.book_value) if f.book_value and f.book_value > 0 else 0.0
+        sgr = roe * (1.0 - min(payout, 1.0))
+        g_perp = p.growth.perpetual_growth_rate or 0.0
+
+        score -= self.add_audit_step(
+            key="AUDIT_MODEL_SGR", value=f"g:{g_perp:.1%}", threshold=f"SGR:{sgr:.1%}",
+            severity=AuditSeverity.WARNING, condition=(g_perp <= sgr or roe == 0), penalty=self.PENALTY_MEDIUM
+        )
+        pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=2)
+
+        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=100.0, check_count=1)
+        pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=100.0, check_count=1)
+
+        return pillars
+
+# ==============================================================================
+# 4. AUTRES AUDITEURS (RIM & GRAHAM)
+# ==============================================================================
 
 class RIMAuditor(BaseAuditor):
     def get_max_potential_checks(self) -> int: return 8
@@ -216,45 +303,36 @@ class RIMAuditor(BaseAuditor):
         f, p = result.financials, result.params
         pillars: Dict[AuditPillar, AuditPillarScore] = {}
 
-        # 1. DATA CONFIDENCE (Spécial Secteur Bancaire)
-        # Note : On ignore la pénalité Net-Net si c'est une banque (Trésorerie structurellement haute)
+        # 1. DATA CONFIDENCE (Standard Bancaire : Trésorerie ignorée)
         score, checks = self._audit_data_confidence(result)
         is_net_net_fail = any(s.step_key == "AUDIT_DATA_CASH" and not s.verdict for s in self._audit_steps)
         if is_net_net_fail:
-            score += self.PENALTY_CRITICAL # Annule la pénalité Net-Net
+            score += self.PENALTY_CRITICAL
             self.add_audit_step("AUDIT_DATA_CASH", "Bank Sector", "N/A", AuditSeverity.INFO, True)
-
         pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=min(100.0, score), check_count=checks)
 
-        # 2. ASSUMPTION RISK (Omega + Payout)
+        # 2. ASSUMPTION RISK
         score = 100.0
         omega = p.growth.exit_multiple_value or 0.60
-        score -= self.add_audit_step(
-            key="AUDIT_MODEL_GLIM", value=omega, threshold="< 0.95",
-            severity=AuditSeverity.WARNING, condition=(omega <= 0.95), penalty=self.PENALTY_HIGH
-        )
+        score -= self.add_audit_step(key="AUDIT_MODEL_GLIM", value=omega, threshold="< 0.95",
+            severity=AuditSeverity.WARNING, condition=(omega <= 0.95), penalty=self.PENALTY_HIGH)
 
         payout = f.dividends_total_calculated / (f.net_income_ttm or 1.0)
-        score -= self.add_audit_step(
-            key="AUDIT_MODEL_PAYOUT", value=f"{payout:.1%}", threshold="< 100%",
-            severity=AuditSeverity.WARNING, condition=(payout <= 1.0), penalty=self.PENALTY_MEDIUM
-        )
+        score -= self.add_audit_step(key="AUDIT_MODEL_PAYOUT", value=f"{payout:.1%}", threshold="< 100%",
+            severity=AuditSeverity.WARNING, condition=(payout <= 1.0), penalty=self.PENALTY_MEDIUM)
         pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=2)
 
-        # 3. METHOD FIT (Spread ROE-Ke + P/B)
+        # 3. METHOD FIT
         score = 100.0
         roe = f.eps_ttm / f.book_value_per_share if f.book_value_per_share else 0.0
         spread = abs(roe - result.cost_of_equity)
-        score -= self.add_audit_step(
-            key="AUDIT_FIT_SPREAD", value=f"{spread:.2%}", threshold="> 1%",
-            severity=AuditSeverity.INFO, condition=(spread >= 0.01), penalty=self.PENALTY_LOW
-        )
+        score -= self.add_audit_step(key="AUDIT_FIT_SPREAD", value=f"{spread:.2%}", threshold="> 1%",
+            severity=AuditSeverity.INFO, condition=(spread >= 0.01), penalty=self.PENALTY_LOW)
 
-        pb = f.market_cap / f.book_value if f.book_value else 0.0
-        score -= self.add_audit_step(
-            key="AUDIT_FIT_PB", value=round(pb, 2), threshold="< 8.0x",
-            severity=AuditSeverity.WARNING, condition=(pb <= 8.0), penalty=self.PENALTY_MEDIUM
-        )
+        pb = f.market_cap / (f.book_value or 1.0)
+        score -= self.add_audit_step(key="AUDIT_FIT_PB", value=round(pb, 2), threshold="< 8.0x",
+            severity=AuditSeverity.WARNING, condition=(pb <= 8.0), penalty=self.PENALTY_MEDIUM)
+
         pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=max(0.0, score), check_count=2)
         pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=100.0, check_count=1)
 
@@ -267,12 +345,9 @@ class GrahamAuditor(BaseAuditor):
         f, p = result.financials, result.params
         score, checks = self._audit_data_confidence(result)
 
-        # Prudence Graham
         g = p.growth.fcf_growth_rate or 0.0
-        a_score = 100.0 - self.add_audit_step(
-            key="AUDIT_MODEL_GLIM", value=f"{g:.1%}", threshold="< 15%",
-            severity=AuditSeverity.WARNING, condition=(g <= 0.15), penalty=self.PENALTY_HIGH
-        )
+        a_score = 100.0 - self.add_audit_step(key="AUDIT_MODEL_GLIM", value=f"{g:.1%}", threshold="< 15%",
+            severity=AuditSeverity.WARNING, condition=(g <= 0.15), penalty=self.PENALTY_HIGH)
 
         fit_score = 100.0 if (f.eps_ttm or 0) > 0 else 0.0
         self.add_audit_step("AUDIT_FIT_SPREAD", f.eps_ttm, "> 0", AuditSeverity.CRITICAL, fit_score > 0)

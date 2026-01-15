@@ -214,6 +214,7 @@ class GrowthParameters(BaseModel):
 class MonteCarloConfig(BaseModel):
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
+    base_flow_volatility: Optional[float] = None
     beta_volatility: Optional[float] = None
     growth_volatility: Optional[float] = None
     terminal_growth_volatility: Optional[float] = None

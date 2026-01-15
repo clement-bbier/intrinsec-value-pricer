@@ -2,12 +2,12 @@
 app/main.py
 
 POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Version :  V9.1 — Refactorisation i18n (Pilotage par ui_texts.py)
+Version :  V10.0 — Sprint 3 : Expansion Analytique (DDM & FCFE)
 
 Principes appliqués :
-- Centralisation du texte : Zéro chaîne de caractères "en dur"
-- Single Responsibility : Chaque fonction a une responsabilité unique
-- Open/Closed : Extensible via EXPERT_UI_REGISTRY sans modifier le code
+- Conservation intégrale de la logique V9.1
+- Extension via EXPERT_UI_REGISTRY (Open/Closed Principle)
+- Support de la nouvelle segmentation Direct Equity
 """
 
 from __future__ import annotations
@@ -40,10 +40,19 @@ from app.ui_components.ui_inputs_expert import (
     render_expert_fcff_growth,
     render_expert_rim,
     render_expert_graham,
+    render_expert_fcfe,  
+    render_expert_ddm    
 )
 from app.workflow import run_workflow_and_display
-from core.models import DCFParameters, InputSource, ValuationMode, ValuationRequest, CoreRateParameters, \
-    GrowthParameters, MonteCarloConfig
+from core.models import (
+    DCFParameters,
+    InputSource,
+    ValuationMode,
+    ValuationRequest,
+    CoreRateParameters,
+    GrowthParameters,
+    MonteCarloConfig
+)
 
 # IMPORT DU RÉFÉRENTIEL TEXTUEL
 from app.ui_components.ui_texts import (
@@ -68,7 +77,9 @@ VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = {
     ValuationMode.FCFF_TWO_STAGE: "FCFF Standard",
     ValuationMode.FCFF_NORMALIZED:  "FCFF Fundamental",
     ValuationMode.FCFF_REVENUE_DRIVEN:  "FCFF Growth",
-    ValuationMode.RESIDUAL_INCOME_MODEL: "RIM",
+    ValuationMode.FCFE_TWO_STAGE: "FCFE Direct Equity",
+    ValuationMode.DDM_GORDON_GROWTH: "DDM Dividendes",
+    ValuationMode.RESIDUAL_INCOME_MODEL: "RIM Residual Income",
     ValuationMode.GRAHAM_1974_REVISED: "Graham",
 }
 
@@ -76,6 +87,8 @@ EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable[[str], Optional[ValuationReques
     ValuationMode.FCFF_TWO_STAGE: render_expert_fcff_standard,
     ValuationMode.FCFF_NORMALIZED: render_expert_fcff_fundamental,
     ValuationMode.FCFF_REVENUE_DRIVEN: render_expert_fcff_growth,
+    ValuationMode.FCFE_TWO_STAGE: render_expert_fcfe,       
+    ValuationMode.DDM_GORDON_GROWTH: render_expert_ddm,     
     ValuationMode.RESIDUAL_INCOME_MODEL: render_expert_rim,
     ValuationMode.GRAHAM_1974_REVISED: render_expert_graham,
 }
@@ -238,41 +251,38 @@ def _render_onboarding_guide() -> None:
     st.subheader(OnboardingTexts.TITLE_A)
     st.markdown(OnboardingTexts.DESC_A)
 
-    m1, m2, m3 = st.columns(3)
+    # MISE À JOUR SPRINT 3 : On utilise 4 colonnes pour inclure l'approche Equity
+    m1, m2, m3, m4 = st.columns(4)
 
     with m1:
         st.markdown(OnboardingTexts.MODEL_DCF_TITLE)
         st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
         st.markdown(
-            f"""
-            <small style="color: #64748b;">
-            {OnboardingTexts.MODEL_DCF_DESC}
-            </small>
-            """,
+            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_DCF_DESC}</small>""",
             unsafe_allow_html=True,
         )
 
     with m2:
-        st.markdown(OnboardingTexts.MODEL_RIM_TITLE)
-        st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
+        st.markdown(OnboardingTexts.MODEL_EQUITY_TITLE) # NOUVEAU
+        st.latex(r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}")
         st.markdown(
-            f"""
-            <small style="color: #64748b;">
-            {OnboardingTexts.MODEL_RIM_DESC}
-            </small>
-            """,
+            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_EQUITY_DESC}</small>""",
             unsafe_allow_html=True,
         )
 
     with m3:
+        st.markdown(OnboardingTexts.MODEL_RIM_TITLE)
+        st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
+        st.markdown(
+            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_RIM_DESC}</small>""",
+            unsafe_allow_html=True,
+        )
+
+    with m4:
         st.markdown(OnboardingTexts.MODEL_GRAHAM_TITLE)
         st.latex(r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
         st.markdown(
-            f"""
-            <small style="color: #64748b;">
-            {OnboardingTexts.MODEL_GRAHAM_DESC}
-            </small>
-            """,
+            f"""<small style="color: #64748b;">{OnboardingTexts.MODEL_GRAHAM_DESC}</small>""",
             unsafe_allow_html=True,
         )
 

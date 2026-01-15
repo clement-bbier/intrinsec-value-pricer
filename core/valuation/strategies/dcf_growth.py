@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, DCFValuationResult
+from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, ValuationMode
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import MarginConvergenceProjector
@@ -42,6 +42,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         # 2. Exécution du Pipeline Unifié (avec le projecteur spécifique Growth)
         pipeline = DCFCalculationPipeline(
             projector=MarginConvergenceProjector(),
+            mode=ValuationMode.FCFF_REVENUE_DRIVEN,
             glass_box_enabled=self.glass_box_enabled
         )
 

@@ -46,6 +46,9 @@ DA_KEYS: List[str] = [
     "Depletion"
 ]
 
+# Aliases pour le Net Borrowing (Variation de la dette)
+DEBT_ISSUANCE_KEYS: List[str] = ["Issuance Of Debt", "Long Term Debt Issuance", "Net Issuance Payments Of Debt"]
+DEBT_REPAYMENT_KEYS: List[str] = ["Repayment Of Debt", "Long Term Debt Payments", "Net Long Term Debt"]
 
 # ==============================================================================
 # 2. SÉCURITÉ API (RETRY PATTERN)

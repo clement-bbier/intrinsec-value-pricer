@@ -99,23 +99,36 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 # 3. SENSIBILITÉ & CORRÉLATION
 # ============================================================================
 
-def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator_func: Callable, currency: str = "EUR") -> None:
-    """Affiche une matrice de sensibilité avec titres i18n."""
+def display_sensitivity_heatmap(
+    base_rate: float, # Renommé de base_wacc pour la généricité
+    base_growth: float,
+    calculator_func: Callable,
+    currency: str = "EUR",
+    is_direct_equity: bool = False # AJOUT : Flag de bifurcation
+) -> None:
+    """Rendu de la matrice de sensibilité avec labels dynamiques (WACC vs Ke)."""
     st.subheader(ChartTexts.SENS_TITLE)
 
-    wacc_steps = [-0.010, -0.005, 0.0, 0.005, 0.010]
+    # Détermination des labels selon le modèle
+    label_y = "Ke" if is_direct_equity else "WACC"
+    title_y = "Coût des Fonds Propres (Ke)" if is_direct_equity else "Coût du Capital (WACC)"
+    tooltip_y = "Taux (Ke)" if is_direct_equity else ChartTexts.SENS_TOOLTIP_WACC
+
+    rate_steps = [-0.010, -0.005, 0.0, 0.005, 0.010]
     growth_steps = [-0.005, -0.0025, 0.0, 0.0025, 0.005]
     data = []
 
-    for dw in wacc_steps:
+    for dr in rate_steps:
         for dg in growth_steps:
-            w = base_wacc + dw
+            r = base_rate + dr
             g = base_growth + dg
-            if w <= g + 0.001: continue
+            # Condition de stabilité Gordon (r > g)
+            if r <= g + 0.001: continue
             try:
-                val = calculator_func(w, g)
+                val = calculator_func(r, g)
                 if val and val > 0:
-                    data.append({"WACC": w, "Growth": g, "Valeur": round(val, 2)})
+                    # On utilise la clé dynamique label_y pour le DataFrame
+                    data.append({label_y: r, "Growth": g, "Valeur": round(val, 2)})
             except: continue
 
     if not data:
@@ -126,13 +139,13 @@ def display_sensitivity_heatmap(base_wacc: float, base_growth: float, calculator
 
     base = alt.Chart(df).encode(
         x=alt.X('Growth:O', title=ChartTexts.SENS_AXIS_X, axis=alt.Axis(format='.2%')),
-        y=alt.Y('WACC:O', title=ChartTexts.SENS_AXIS_Y, axis=alt.Axis(format='.2%'))
+        y=alt.Y(f'{label_y}:O', title=title_y, axis=alt.Axis(format='.2%'))
     )
 
     heatmap = base.mark_rect().encode(
         color=alt.Color('Valeur:Q', scale=alt.Scale(scheme='yellowgreenblue'), legend=None),
         tooltip=[
-            alt.Tooltip('WACC', format='.2%', title=ChartTexts.SENS_TOOLTIP_WACC),
+            alt.Tooltip(label_y, format='.2%', title=tooltip_y),
             alt.Tooltip('Growth', format='.2%', title=ChartTexts.SENS_TOOLTIP_GROWTH),
             alt.Tooltip('Valeur', format=',.2f', title=ChartTexts.SENS_TOOLTIP_VAL.format(currency=currency))
         ]
