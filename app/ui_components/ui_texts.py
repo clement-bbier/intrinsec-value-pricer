@@ -681,6 +681,10 @@ class StrategySources:
     YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
     CALCULATED_NI = "Calculated (Net Income / Shares)"
     ANALYST_OVERRIDE = "Surcharge Analyste"
+    MACRO_MATRIX = "Matrix: {ticker}"
+    MACRO_CURRENCY_FALLBACK = "Currency Fallback: {ticker}"
+    MACRO_STATIC_FALLBACK = "Matrix Static Fallback (API Error)"
+    MACRO_API_ERROR = "Matrix Fallback (API Error)"
 
 class StrategyInterpretations:
     """Notes pédagogiques dynamiques générées par les stratégies (Glass Box)."""
