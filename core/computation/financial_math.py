@@ -180,3 +180,79 @@ def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> Li
     if total <= 0:
         res = [0.0] * len(clean_values); res[fallback_index] = 1.0; return res
     return [v / total for v in clean_values]
+
+# ==============================================================================
+# 5. MULTIPLES EN VALEUR ACTIONNARIALE
+# ==============================================================================
+
+def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares: float) -> float:
+    """Calcule le prix théorique via le multiple P/E : $P = (NI \times P/E) / Shares$."""
+    if shares <= 0 or median_pe <= 0:
+        return 0.0
+    return (net_income * median_pe) / shares
+
+def calculate_equity_value_from_ev_multiple(
+    metric_value: float,
+    median_ev_multiple: float,
+    net_debt: float,
+    minorities: float = 0.0,
+    pensions: float = 0.0
+) -> float:
+    """
+    Calcule la valeur des capitaux propres via un multiple d'EV (EBITDA ou Revenus).
+    $EquityValue = (Metric \times Multiple) - NetDebt - Minorities - Pensions$
+    """
+    enterprise_value = metric_value * median_ev_multiple
+    return enterprise_value - net_debt - minorities - pensions
+
+# ==============================================================================
+# 6. MOTEUR DE TRIANGULATION (HYBRID VALUATION)
+# ==============================================================================
+
+def calculate_price_from_ev_multiple(
+        metric_value: float,
+        median_ev_multiple: float,
+        net_debt: float,
+        shares: float,
+        minorities: float = 0.0,
+        pensions: float = 0.0
+) -> float:
+    """
+    Conversion directe d'un multiple d'Enterprise Value en Prix par Action.
+    Applique l'Equity Bridge complet.
+    """
+    if shares <= 0 or median_ev_multiple <= 0:
+        return 0.0
+
+    enterprise_value = metric_value * median_ev_multiple
+    equity_value = enterprise_value - net_debt - minorities - pensions
+    return max(0.0, equity_value / shares)
+
+
+def calculate_triangulated_price(
+        valuation_signals: Dict[str, float],
+        weights: Optional[Dict[str, float]] = None
+) -> float:
+    """
+    Réalise la synthèse de plusieurs signaux de prix.
+    - Filtre les signaux invalides (<= 0).
+    - Applique une pondération (moyenne simple par défaut).
+    """
+    # 1. Extraction des signaux valides
+    valid_signals = {k: v for k, v in valuation_signals.items() if v > 0}
+    if not valid_signals:
+        return 0.0
+
+    # 2. Cas sans poids explicites : Moyenne simple
+    if not weights:
+        return sum(valid_signals.values()) / len(valid_signals)
+
+    # 3. Moyenne pondérée sur les signaux disponibles
+    active_weights = {k: weights[k] for k in valid_signals if k in weights}
+    total_weight = sum(active_weights.values())
+
+    if total_weight <= 0:
+        return sum(valid_signals.values()) / len(valid_signals)
+
+    weighted_sum = sum(valid_signals[k] * active_weights[k] for k in active_weights)
+    return weighted_sum / total_weight

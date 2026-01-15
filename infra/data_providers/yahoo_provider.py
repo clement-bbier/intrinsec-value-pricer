@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple, Dict, Any
 
 import pandas as pd
 import streamlit as st
+import yfinance as yf
 from pydantic import ValidationError
 
 from core.computation.financial_math import (
@@ -66,23 +67,30 @@ class YahooFinanceProvider(DataProvider):
         return _self.fetcher.fetch_price_history(ticker, period)
 
     @st.cache_data(ttl=3600, show_spinner=False)
-    def get_peer_multiples(_self, ticker: str) -> MultiplesData:
+    def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
-        Implémentation du contrat Sprint 4 (Phase 3) :
-        Découvre les concurrents et normalise leurs multiples après filtrage Pydantic.
+        Orchestration de la cohorte (Phase 4 Intermediate).
+        Si manual_peers est fourni, la discovery est ignorée au profit de la liste expert.
         """
-        # 1. Identification de la cohorte via le fetcher (Discovery)
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
-            raw_peers = _self.fetcher.fetch_peer_multiples(ticker)
+            if manual_peers:
+                # --- MODE EXPERT : Surcharge manuelle ---
+                logger.info(f"[Provider] Utilisation de la cohorte expert pour {ticker}")
+                raw_peers = []
+                for p_ticker in manual_peers:
+                    p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", retries=1)
+                    if p_info:
+                        p_info["symbol"] = p_ticker
+                        raw_peers.append(p_info)
+            else:
+                # --- MODE AUTO : Discovery Yahoo ---
+                raw_peers = _self.fetcher.fetch_peer_multiples(ticker)
 
             if not raw_peers:
-                status.update(label="Aucun pair identifié.", state="complete")
+                status.update(label="Aucun pair disponible.", state="complete")
                 return MultiplesData()
 
-            # 2. Normalisation et filtrage via le normalizer (Data Specialist)
-            status.update(label=WorkflowTexts.STATUS_PEER_FETCHING.format(
-                current=len(raw_peers), total=len(raw_peers)
-            ))
+            # Normalisation et calcul des médianes (Rigueur Data Specialist)
             multiples_summary = _self.normalizer.normalize_peers(raw_peers)
 
             status.update(label="Cohorte sectorielle finalisée.", state="complete")

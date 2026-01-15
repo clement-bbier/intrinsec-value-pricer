@@ -738,8 +738,12 @@ class StrategyInterpretations:
 
     DDM_LOGIC = (
         "Le modèle DDM repose sur la distribution future. Nous utilisons le dividende annuel "
-        "total ($D_0$) comme base, en s'assurant qu'il est couvert par les bénéfices réels."
+        r"total ($D_0$) comme base, en s'assurant qu'il est couvert par les bénéfices réels."
     )
+
+    RELATIVE_PE = r"Valeur basée sur le multiple P/E médian du secteur ({val:.1f}x)."
+    RELATIVE_EBITDA = r"Valeur basée sur le multiple EV/EBITDA médian ({val:.1f}x) après Equity Bridge."
+    TRIANGULATION_FINAL = "Valeur hybride obtenue par la moyenne des méthodes relatives."
 
 class CalculationErrors:
     """Messages d'erreurs levés lors des phases de calcul (CalculationError)."""

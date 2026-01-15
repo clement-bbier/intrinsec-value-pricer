@@ -429,3 +429,16 @@ class MultiplesData(BaseModel):
     median_ev_ebitda: float = 0.0
     median_ev_rev: float = 0.0
     source: str = "Yahoo Finance"
+
+class MultiplesValuationResult(ValuationResult):
+    """Résultat spécifique à la valorisation par multiples (Relative Valuation)."""
+    pe_based_price: float = 0.0
+    ebitda_based_price: float = 0.0
+    rev_based_price: float = 0.0
+    multiples_data: MultiplesData # Données de la Phase 3
+
+    def build_output_contract(self) -> ValuationOutputContract:
+        return ValuationOutputContract(
+            has_params=True, has_projection=False,
+            has_terminal_value=False, has_intrinsic_value=True, has_audit=True
+        )
