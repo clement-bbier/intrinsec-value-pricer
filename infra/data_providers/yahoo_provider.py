@@ -1,18 +1,17 @@
 """
 infra/data_providers/yahoo_provider.py
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE — VERSION V11.0 (Sprint 4)
-Rôle : Orchestration, acquisition macro localisée et instanciation des paramètres.
+FOURNISSEUR DE DONNÉES — YAHOO FINANCE — VERSION V12.0 (Sprint 4)
+Rôle : Orchestration, acquisition macro localisée, discovery et normalisation des pairs.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 import pandas as pd
 import streamlit as st
-import yfinance as yf
 from pydantic import ValidationError
 
 from core.computation.financial_math import (
@@ -26,7 +25,7 @@ from core.models import (
     CoreRateParameters,
     GrowthParameters,
     MonteCarloConfig,
-    ValuationMode
+    MultiplesData
 )
 from infra.data_providers.base_provider import DataProvider
 from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher
@@ -34,7 +33,7 @@ from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.extraction_utils import calculate_historical_cagr, safe_api_call
 from infra.macro.yahoo_macro_provider import MacroContext, YahooMacroProvider
 from infra.ref_data.country_matrix import get_country_context
-from app.ui_components.ui_texts import StrategySources
+from app.ui_components.ui_texts import StrategySources, WorkflowTexts
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ logger = logging.getLogger(__name__)
 class YahooFinanceProvider(DataProvider):
     """
     Orchestrateur de données Yahoo Finance.
-    Intègre l'intelligence macro par pays et l'arbitrage de croissance SGR.
+    Intègre l'intelligence macro par pays, l'arbitrage SGR et la gestion de cohorte (Peers).
     """
 
     MARKET_SUFFIXES: List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
@@ -54,7 +53,7 @@ class YahooFinanceProvider(DataProvider):
         self.normalizer = FinancialDataNormalizer()
 
     # =========================================================================
-    # INTERFACE PUBLIQUE
+    # INTERFACE PUBLIQUE (HÉRITÉE DE DATAPROVIDER)
     # =========================================================================
 
     @st.cache_data(ttl=3600, show_spinner=False)
@@ -66,6 +65,29 @@ class YahooFinanceProvider(DataProvider):
     def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
         return _self.fetcher.fetch_price_history(ticker, period)
 
+    @st.cache_data(ttl=3600, show_spinner=False)
+    def get_peer_multiples(_self, ticker: str) -> MultiplesData:
+        """
+        Implémentation du contrat Sprint 4 (Phase 3) :
+        Découvre les concurrents et normalise leurs multiples après filtrage Pydantic.
+        """
+        # 1. Identification de la cohorte via le fetcher (Discovery)
+        with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
+            raw_peers = _self.fetcher.fetch_peer_multiples(ticker)
+
+            if not raw_peers:
+                status.update(label="Aucun pair identifié.", state="complete")
+                return MultiplesData()
+
+            # 2. Normalisation et filtrage via le normalizer (Data Specialist)
+            status.update(label=WorkflowTexts.STATUS_PEER_FETCHING.format(
+                current=len(raw_peers), total=len(raw_peers)
+            ))
+            multiples_summary = _self.normalizer.normalize_peers(raw_peers)
+
+            status.update(label="Cohorte sectorielle finalisée.", state="complete")
+            return multiples_summary
+
     def get_company_financials_and_parameters(
         self,
         ticker: str,
@@ -73,40 +95,29 @@ class YahooFinanceProvider(DataProvider):
     ) -> Tuple[CompanyFinancials, DCFParameters]:
         """Workflow Auto-Mode : Construit les paramètres avec macro localisée et arbitrage SGR."""
         financials = self.get_company_financials(ticker)
-
-        # 1. ACQUISITION MACRO DYNAMIQUE (Phase 2 : Passage du pays)
         macro = self._fetch_macro_context(financials)
 
-        # 2. Estimation de la croissance hybride (Dividendes vs FCF)
-        growth_metric = "Dividends" if financials.dividend_share and financials.dividend_share > 0 else "Free Cash Flow"
-        growth_hist = self._estimate_dynamic_growth(ticker, metric=growth_metric)
+        # 1. Estimation de la croissance hybride
+        growth_hist = self._estimate_dynamic_growth(ticker)
 
-        # 3. Rigueur SGR (Sustainable Growth Rate)
+        # 2. Arbitrage SGR
         payout = (financials.dividend_share * financials.shares_outstanding) / financials.net_income_ttm if financials.net_income_ttm and financials.net_income_ttm > 0 else 0.0
         roe = financials.net_income_ttm / financials.book_value if financials.book_value and financials.book_value > 0 else 0.0
         growth_sgr = calculate_sustainable_growth(roe, payout)
-
-        # Arbitrage AUTO : Conservatisme (max 8% en mode auto)
         growth_final = max(0.01, min(growth_hist, growth_sgr or 0.05, 0.08))
 
-        # 4. Coût de la dette
-        cost_of_debt = calculate_synthetic_cost_of_debt(
-            rf=macro.risk_free_rate,
-            ebit=financials.ebit_ttm,
-            interest_expense=financials.interest_expense,
-            market_cap=financials.market_cap
-        )
-
-        # 5. Récupération du taux d'imposition (Précision pays via Matching Résilient)
+        # 3. Paramétrage des taux avec traçabilité "Glass Box" (Phase 1 & 2)
         country_data = get_country_context(financials.country)
 
         params = DCFParameters(
             rates=CoreRateParameters(
                 risk_free_rate=macro.risk_free_rate,
-                risk_free_source=macro.risk_free_source, # Utilisation de StrategySources via MacroContext
+                risk_free_source=macro.risk_free_source, #
                 market_risk_premium=macro.market_risk_premium,
                 corporate_aaa_yield=macro.corporate_aaa_yield,
-                cost_of_debt=cost_of_debt,
+                cost_of_debt=calculate_synthetic_cost_of_debt(
+                    macro.risk_free_rate, financials.ebit_ttm, financials.interest_expense, financials.market_cap
+                ),
                 tax_rate=float(country_data["tax_rate"])
             ),
             growth=GrowthParameters(
@@ -123,22 +134,15 @@ class YahooFinanceProvider(DataProvider):
         return financials, params
 
     # =========================================================================
-    # LOGIQUE DE FETCH ET ESTIMATION
+    # LOGIQUE INTERNE (PROTECTED)
     # =========================================================================
 
-    def _estimate_dynamic_growth(self, ticker: str, metric: str = "Free Cash Flow") -> float:
-        """Estime la croissance via CAGR historique (FCF ou Dividendes)."""
+    def _estimate_dynamic_growth(self, ticker: str) -> float:
+        """Estimation CAGR simplifiée avec fallback institutionnel."""
         try:
-            yt = yf.Ticker(ticker)
-            if metric == "Free Cash Flow":
-                df = safe_api_call(lambda: yt.cash_flow, "Hist FCF Growth")
-                cagr = calculate_historical_cagr(df, "Free Cash Flow")
-            else:
-                divs = safe_api_call(lambda: yt.dividends, "Hist Div Growth")
-                if divs is None or divs.empty: return 0.03
-                divs_annual = divs.resample('YE').sum()
-                if len(divs_annual) < 3: return 0.03
-                cagr = (divs_annual.iloc[-1] / divs_annual.iloc[-3]) ** (1 / 2) - 1
+            # On privilégie le FCF pour la croissance pérenne
+            df = safe_api_call(lambda: self.fetcher.fetch_all(ticker).cash_flow, "Hist FCF Growth")
+            cagr = calculate_historical_cagr(df, "Free Cash Flow")
             return max(0.01, min(cagr or 0.03, 0.10))
         except Exception:
             return 0.03
@@ -167,19 +171,15 @@ class YahooFinanceProvider(DataProvider):
         raise TickerNotFoundError(ticker=original_ticker)
 
     def _fetch_macro_context(self, financials: CompanyFinancials) -> MacroContext:
-        """
-        Orchestre la récupération du contexte macro.
-        Injecte désormais le pays pour une résolution dynamique du Rf.
-        """
+        """Orchestration de la Phase 2 : Localisation du Rf par pays."""
         try:
             return self.macro_provider.get_macro_context(
                 date=datetime.now(),
                 currency=financials.currency,
-                country_name=financials.country # <--- Activation de l'intelligence pays
+                country_name=financials.country #
             )
         except Exception as e:
             logger.error(f"Echec du MacroContext dynamique pour {financials.country}: {e}")
-            # Fallback institutionnel via la matrice locale et i18n
             country_data = get_country_context(financials.country)
             return MacroContext(
                 date=datetime.now(),

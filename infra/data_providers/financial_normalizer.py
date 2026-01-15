@@ -1,21 +1,24 @@
 """
 infra/data_providers/financial_normalizer.py
 
-NORMALISATION DES DONNÉES FINANCIÈRES — VERSION V10.0 (Sprint 3)
-Rôle : Reconstruction TTM, agrégation D&A, Net Borrowing et standardisation.
-Responsabilité : Transformer les données brutes Yahoo en CompanyFinancials.
+NORMALISATION DES DONNÉES FINANCIÈRES — VERSION V11.0 (Sprint 4)
+Rôle : Reconstruction TTM et normalisation des pairs (Multiples sectoriels).
+Responsabilité : Transformer les données brutes Yahoo en modèles validés (CompanyFinancials & MultiplesData).
 
-Paradigme : Honest Data — Propagation stricte des None.
+Paradigme : Honest Data — Filtrage strict des aberrations pour la triangulation.
 """
 
 from __future__ import annotations
 
 import logging
+import statistics
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from pydantic import ValidationError
 
-from core.models import CompanyFinancials
+from core.models import CompanyFinancials, PeerMetric, MultiplesData
+from app.ui_components.ui_texts import DiagnosticTexts
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from infra.data_providers.extraction_utils import (
     CAPEX_KEYS,
@@ -32,14 +35,16 @@ logger = logging.getLogger(__name__)
 
 class FinancialDataNormalizer:
     """
-    Transforme les données brutes Yahoo en CompanyFinancials standardisé.
-    Gère désormais l'extraction du Net Borrowing pour le modèle FCFE.
+    Transforme les données brutes Yahoo en structures financières standardisées.
+    Gère la validation Pydantic des multiples pour éliminer les outliers sectoriels.
     """
 
+    # =========================================================================
+    # 1. NORMALISATION DE L'ENTREPRISE CIBLE (SPRINT 3)
+    # =========================================================================
+
     def normalize(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
-        """
-        Orchestrateur de la normalisation.
-        """
+        """Orchestrateur de la normalisation pour l'entreprise principale."""
         if not raw.is_valid:
             logger.warning("[Normalizer] Invalid raw data for %s", raw.ticker)
             return None
@@ -47,14 +52,11 @@ class FinancialDataNormalizer:
         info = raw.info
         currency, current_price = normalize_currency_and_price(info)
 
-        # 1. Reconstruction par segments (Passage des DataFrames requis)
+        # Reconstruction par segments
         shares = self._reconstruct_shares(info, raw.balance_sheet, current_price)
-
-        # FIX : On passe explicitement le cash_flow pour le Net Borrowing
         capital_structure = self._reconstruct_capital_structure(
             info, raw.balance_sheet, raw.income_stmt, raw.cash_flow
         )
-
         profitability = self._reconstruct_profitability(
             info,
             raw.income_stmt,
@@ -77,11 +79,81 @@ class FinancialDataNormalizer:
         )
 
     # =========================================================================
-    # RECONSTRUCTION DES MÉTRIQUES
+    # 2. NORMALISATION DES PAIRS (SPRINT 4 - PHASE 3)
+    # =========================================================================
+
+    def normalize_peers(self, raw_peers: List[Dict[str, Any]]) -> MultiplesData:
+        """
+        Transforme une liste de dictionnaires bruts en synthèse de multiples validés.
+        Filtre les données aberrantes (ex: P/E > 100) pour protéger la triangulation.
+        """
+        valid_peers: List[PeerMetric] = []
+
+        for p_info in raw_peers:
+            ticker = p_info.get("symbol", "N/A")
+            try:
+                # 1. Instanciation via Pydantic pour validation de type
+                peer = PeerMetric(
+                    ticker=ticker,
+                    name=p_info.get("shortName", ticker),
+                    pe_ratio=p_info.get("trailingPE"),
+                    ev_ebitda=p_info.get("enterpriseToEbitda"),
+                    ev_revenue=p_info.get("enterpriseToRevenue"),
+                    market_cap=p_info.get("marketCap", 0.0)
+                )
+
+                # 2. Filtrage des aberrations économiques (Robustesse)
+                if self._is_peer_robust(peer):
+                    valid_peers.append(peer)
+                else:
+                    logger.info(DiagnosticTexts.DATA_PEER_SKIP_MSG.format(ticker=ticker))
+
+            except (ValidationError, TypeError, ValueError):
+                logger.debug(f"[Normalizer] Données illisibles pour le pair {ticker}, passage.")
+                continue
+
+        # 3. Calcul des médianes robustes
+        return self._build_multiples_summary(valid_peers)
+
+    def _is_peer_robust(self, peer: PeerMetric) -> bool:
+        """
+        Applique des filtres de sécurité sur les multiples.
+        On écarte les entreprises en perte (P/E négatif) ou les valorisations absurdes.
+        """
+        # Filtrage P/E (Trailing)
+        if peer.pe_ratio is not None:
+            if not (0.1 < peer.pe_ratio < 100.0):
+                return False
+
+        # Filtrage EV/EBITDA
+        if peer.ev_ebitda is not None:
+            if not (0.1 < peer.ev_ebitda < 60.0):
+                return False
+
+        return True
+
+    def _build_multiples_summary(self, peers: List[PeerMetric]) -> MultiplesData:
+        """Calcule les médianes sectorielles pour les colonnes du Football Field."""
+        if not peers:
+            return MultiplesData()
+
+        # Extraction des listes pour calcul statistique (uniquement valeurs non nulles)
+        pes = [p.pe_ratio for p in peers if p.pe_ratio is not None]
+        ebitdas = [p.ev_ebitda for p in peers if p.ev_ebitda is not None]
+        revs = [p.ev_revenue for p in peers if p.ev_revenue is not None]
+
+        return MultiplesData(
+            peers=peers,
+            median_pe=statistics.median(pes) if pes else 0.0,
+            median_ev_ebitda=statistics.median(ebitdas) if ebitdas else 0.0,
+            median_ev_rev=statistics.median(revs) if revs else 0.0
+        )
+
+    # =========================================================================
+    # HELPERS DE RECONSTRUCTION (SPRINT 3 - MAINTENANCE)
     # =========================================================================
 
     def _reconstruct_shares(self, info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:
-        """Reconstruit le nombre d'actions avec fallback intelligent."""
         shares = info.get("sharesOutstanding")
         if not shares and bs is not None:
             shares = extract_most_recent_value(bs, ["Ordinary Shares Number", "Share Issued"])
@@ -96,16 +168,15 @@ class FinancialDataNormalizer:
             info: Dict[str, Any],
             bs: Optional[pd.DataFrame],
             is_: Optional[pd.DataFrame],
-            cf: Optional[pd.DataFrame]  # Doit utiliser 'cf' et non 'raw'
+            cf: Optional[pd.DataFrame]
     ) -> Dict[str, Any]:
         debt = self._extract_total_debt(info, bs)
         cash = self._extract_cash(info, bs)
         minority = self._extract_minority_interests(bs)
         pensions = self._extract_pension_provisions(bs)
         interest = self._extract_interest_expense(is_)
-        net_borrowing = self._extract_net_borrowing(cf)  # Fix reference
+        net_borrowing = self._extract_net_borrowing(cf)
 
-        # Calcul de la Book Value totale (Crucial pour le ROE/Audit)
         book_valu_vps = float(info.get("bookValue") or 0.0)
         shares = info.get("sharesOutstanding") or 1.0
         total_bv = book_valu_vps * shares
@@ -117,35 +188,23 @@ class FinancialDataNormalizer:
             "pension_provisions": float(pensions or 0.0),
             "interest_expense": float(abs(interest)) if interest is not None else 0.0,
             "net_borrowing_ttm": float(net_borrowing) if net_borrowing is not None else 0.0,
-            "book_value": total_bv  # Injection de la valeur totale
+            "book_value": total_bv
         }
 
-    def _reconstruct_profitability(
-            self,
-            info: Dict[str, Any],
-            is_a: Optional[pd.DataFrame],
-            cf_a: Optional[pd.DataFrame],
-            is_q: Optional[pd.DataFrame],
-            cf_q: Optional[pd.DataFrame]
-    ) -> Dict[str, Any]:
-        """Extraction TTM via somme trimestrielle avec agrégation D&A."""
-        # 1. Tentative TTM (Somme des 4 derniers trimestres)
+    def _reconstruct_profitability(self, info: Dict[str, Any], is_a: Optional[pd.DataFrame], cf_a: Optional[pd.DataFrame],
+                                 is_q: Optional[pd.DataFrame], cf_q: Optional[pd.DataFrame]) -> Dict[str, Any]:
         rev_ttm = self._sum_last_4_quarters(is_q, ["Total Revenue", "Revenue"])
         ebit_ttm = self._sum_last_4_quarters(is_q, ["EBIT", "Operating Income"])
         ni_ttm = self._sum_last_4_quarters(is_q, ["Net Income Common Stockholders", "Net Income"])
 
-        # 2. Fallbacks sur l'annuel ou l'info
         rev_ttm = rev_ttm or info.get("totalRevenue") or extract_most_recent_value(is_a, ["Total Revenue"])
         ebit_ttm = ebit_ttm or info.get("operatingCashflow") or extract_most_recent_value(is_a, ["EBIT", "Operating Income"])
         ni_ttm = ni_ttm or info.get("netIncomeToCommon") or extract_most_recent_value(is_a, ["Net Income"])
 
-        # 3. FCF, Capex & D&A
         fcf_annuel = get_simple_annual_fcf(cf_a)
         fcf_ttm = self._sum_last_4_quarters(cf_q, ["Free Cash Flow"]) or fcf_annuel
         capex = extract_most_recent_value(cf_a, CAPEX_KEYS)
         da = self._extract_depreciation_amortization(cf_a)
-
-        # 4. Dividendes (Source robuste)
         div_rate = info.get("dividendRate") or (info.get("dividendYield", 0) * info.get("currentPrice", 0))
 
         return {
@@ -163,25 +222,12 @@ class FinancialDataNormalizer:
             "depreciation_and_amortization": float(da) if da is not None else None
         }
 
-    # =========================================================================
-    # HELPERS D'EXTRACTION (HONEST DATA)
-    # =========================================================================
-
     def _extract_net_borrowing(self, cf: Optional[pd.DataFrame]) -> Optional[float]:
-        """
-        Calcule le Net Borrowing = Émission - Remboursement de dette.
-        Priorité 1 : Clé agrégée Yahoo | Priorité 2 : Calcul manuel.
-        """
         if cf is None: return 0.0
-
-        # Tentative Clé agrégée
         net_flow = extract_most_recent_value(cf, ["Net Issuance Payments Of Debt"])
         if net_flow is not None: return net_flow
-
-        # Calcul manuel via extraction_utils
         issuance = extract_most_recent_value(cf, DEBT_ISSUANCE_KEYS) or 0.0
         repayment = extract_most_recent_value(cf, DEBT_REPAYMENT_KEYS) or 0.0
-
         return issuance + repayment
 
     def _extract_total_debt(self, info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:

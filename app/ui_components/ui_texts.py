@@ -599,7 +599,8 @@ class WorkflowTexts:
     STATUS_ENGINE_RUN = "Exécution du moteur de calcul : {mode}..."
     STATUS_MC_RUN = "Simulation stochastique, tests de sensibilité et stress-testing en cours..."
     STATUS_AUDIT_GEN = "Génération du rapport d'audit et score de confiance..."
-
+    STATUS_PEER_DISCOVERY = "Identification des pairs et concurrents sectoriels..."
+    STATUS_PEER_FETCHING = r"Extraction des multiples de marché ({current}/{total})..."
     STATUS_COMPLETE = "Analyse finalisée avec succès"
     STATUS_INTERRUPTED = "Analyse interrompue"
     STATUS_CRITICAL_ERROR = "Erreur système critique"
@@ -625,6 +626,7 @@ class DiagnosticTexts:
     # Registre : Métriques manquantes
     DATA_MISSING_CORE_MSG = "Métrique critique manquante : {metric_name}."
     DATA_MISSING_CORE_HINT = "Utilisez le mode 'Expert' pour saisir manuellement cette donnée."
+    DATA_PEER_SKIP_MSG = r"Pair '{ticker}' ignoré : Multiples aberrants ou données incomplètes."
 
     # Registre : Risques
     RISK_EXCESSIVE_GROWTH_MSG = "Croissance projetée agressive ({g:.2%})."
@@ -668,6 +670,8 @@ class DiagnosticTexts:
 
     MODEL_SGR_DIV_MSG = r"CROISSANCE INSOUTENABLE : $g$ ({g:.1%}) est supérieur au SGR ({sgr:.1%})."
     MODEL_SGR_DIV_HINT = "La croissance dépasse la capacité d'autofinancement. Réduisez 'gn' ou justifiez un apport de capital externe."
+
+
 
 class StrategySources:
     """Descriptions des sources de données utilisées dans les calculs (strategies/)."""

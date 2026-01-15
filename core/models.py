@@ -412,3 +412,20 @@ class EquityDCFValuationResult(ValuationResult):
             has_intrinsic_value=True,
             has_audit=self.audit_report is not None
         )
+
+class PeerMetric(BaseModel):
+    """Métriques brutes d'un concurrent."""
+    ticker: str
+    name: Optional[str] = "Unknown"
+    pe_ratio: Optional[float] = None
+    ev_ebitda: Optional[float] = None
+    ev_revenue: Optional[float] = None
+    market_cap: Optional[float] = None
+
+class MultiplesData(BaseModel):
+    """Synthèse sectorielle pour la triangulation."""
+    peers: List[PeerMetric] = Field(default_factory=list)
+    median_pe: float = 0.0
+    median_ev_ebitda: float = 0.0
+    median_ev_rev: float = 0.0
+    source: str = "Yahoo Finance"
