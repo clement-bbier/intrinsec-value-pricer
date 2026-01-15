@@ -81,35 +81,39 @@ class YahooRawFetcher:
 
     def fetch_peer_multiples(self, target_ticker: str) -> List[Dict[str, Any]]:
         """
-        Découvre les concurrents sectoriels et extrait leurs données brutes (.info).
-        Standard de sécurité : Isole chaque appel concurrent pour éviter un échec global.
+        Découvre les concurrents sectoriels et extrait leurs données brutes.
+        CORRECTION : Utilisation des tickers recommandés dans l'objet info.
         """
         logger.info("[Fetcher] Démarrage de la discovery des pairs pour %s", target_ticker)
+
+        # 1. Extraction des pairs via l'info 'relatedTickers' (plus fiable que recommendations)
+        # On récupère d'abord l'info de la cible si on ne l'a pas déjà
         target_yt = yf.Ticker(target_ticker)
+        target_info = safe_api_call(lambda: target_yt.info, f"TargetInfo/{target_ticker}", 1)
 
-        # 1. Identification via l'algorithme de recommandation Yahoo (Peers corrélés)
-        peers_df = safe_api_call(lambda: target_yt.recommendations, f"PeersDiscovery/{target_ticker}", retries=1)
+        # Yahoo stocke souvent les concurrents ici
+        peer_tickers = []
+        if target_info and "relatedTickers" in target_info:
+            peer_tickers = target_info.get("relatedTickers", [])
 
-        peer_tickers: List[str] = []
-        if peers_df is not None and not peers_df.empty:
-            # On récupère les symboles uniques de la cohorte proposée par Yahoo
-            peer_tickers = peers_df.index.unique().tolist()
-
+        # Si vide, on tente un fallback via le secteur/industrie (Optionnel ou manuel)
         if not peer_tickers:
-            logger.warning("[Fetcher] Aucune cohorte de pairs identifiée pour %s", target_ticker)
+            logger.warning("[Fetcher] Aucun pair identifié dynamiquement pour %s", target_ticker)
             return []
 
         # 2. Extraction brute des données .info pour chaque pair
-        # On limite à 8 pairs pour garantir des performances acceptables (temps de latence réseau)
         raw_peers_data: List[Dict[str, Any]] = []
         for p_ticker in peer_tickers[:8]:
+            # On s'assure que p_ticker est bien une chaîne
+            if not isinstance(p_ticker, str):
+                continue
+
             p_info = safe_api_call(
                 lambda: yf.Ticker(p_ticker).info,
                 f"PeerInfo/{p_ticker}",
-                retries=1
+                1
             )
             if p_info:
-                # On s'assure que le ticker est présent dans le dictionnaire pour le mapping futur
                 p_info["symbol"] = p_ticker
                 raw_peers_data.append(p_info)
 

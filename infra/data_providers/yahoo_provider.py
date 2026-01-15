@@ -69,21 +69,20 @@ class YahooFinanceProvider(DataProvider):
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
-        Orchestration de la cohorte (Phase 4 Intermediate).
-        Si manual_peers est fourni, la discovery est ignorée au profit de la liste expert.
+        Orchestration de la cohorte.
+        CORRECTION : Passage de l'argument retries en positionnel pour le mode expert.
         """
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
             if manual_peers:
-                # --- MODE EXPERT : Surcharge manuelle ---
                 logger.info(f"[Provider] Utilisation de la cohorte expert pour {ticker}")
                 raw_peers = []
                 for p_ticker in manual_peers:
-                    p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", retries=1)
+                    # Correction de la ligne 81 : retrait du mot-clé 'retries='
+                    p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", 1)
                     if p_info:
                         p_info["symbol"] = p_ticker
                         raw_peers.append(p_info)
             else:
-                # --- MODE AUTO : Discovery Yahoo ---
                 raw_peers = _self.fetcher.fetch_peer_multiples(ticker)
 
             if not raw_peers:
