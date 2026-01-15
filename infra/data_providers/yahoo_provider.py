@@ -38,7 +38,6 @@ from app.ui_components.ui_texts import StrategySources, WorkflowTexts
 
 logger = logging.getLogger(__name__)
 
-
 class YahooFinanceProvider(DataProvider):
     """
     Orchestrateur de données Yahoo Finance.
@@ -69,30 +68,50 @@ class YahooFinanceProvider(DataProvider):
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
-        Orchestration de la cohorte.
-        CORRECTION : Passage de l'argument retries en positionnel pour le mode expert.
+        Orchestration de la cohorte avec limitation stricte pour la performance (Sprint 5).
+        Utilise ui_texts.py pour la transparence et le monitoring.
         """
+        # Constante de performance : On limite à 5 pairs pour éviter le Rate Limiting
+        _MAX_PEERS_ANALYSIS = 5
+
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
+            raw_peers = []
+
             if manual_peers:
                 logger.info(f"[Provider] Utilisation de la cohorte expert pour {ticker}")
-                raw_peers = []
-                for p_ticker in manual_peers:
-                    # Correction de la ligne 81 : retrait du mot-clé 'retries='
+                # --- SÉCURITÉ : Slicing de la liste manuelle ---
+                selected_tickers = manual_peers[:_MAX_PEERS_ANALYSIS]
+                total_peers = len(selected_tickers)
+
+                for i, p_ticker in enumerate(selected_tickers, 1):
+                    # Mise à jour du message de progression (current/total)
+                    status.write(WorkflowTexts.STATUS_PEER_FETCHING.format(current=i, total=total_peers))
+
+                    # Appel API sécurisé avec 1 seul retry pour la rapidité
                     p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", 1)
                     if p_info:
                         p_info["symbol"] = p_ticker
                         raw_peers.append(p_info)
             else:
-                raw_peers = _self.fetcher.fetch_peer_multiples(ticker)
+                # --- AUTO-DISCOVERY : Recherche via l'algorithme Yahoo ---
+                # Le fetcher interne renvoie une liste, on applique le slice ici
+                all_discovered = _self.fetcher.fetch_peer_multiples(ticker)
+                if all_discovered:
+                    raw_peers = all_discovered[:_MAX_PEERS_ANALYSIS]
 
+            # --- GESTION DU CAS VIDE (Honest Data) ---
             if not raw_peers:
-                status.update(label="Aucun pair disponible.", state="complete")
+                # Utilisation du label i18n pour l'indisponibilité
+                status.update(label=WorkflowTexts.PEER_NOT_FOUND, state="complete")
                 return MultiplesData()
 
             # Normalisation et calcul des médianes (Rigueur Data Specialist)
             multiples_summary = _self.normalizer.normalize_peers(raw_peers)
 
-            status.update(label="Cohorte sectorielle finalisée.", state="complete")
+            # --- FINALISATION ---
+            # Utilisation du label de succès global
+            status.update(label=WorkflowTexts.PEER_SUCCESS, state="complete")
+
             return multiples_summary
 
     def get_company_financials_and_parameters(

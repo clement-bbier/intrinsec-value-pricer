@@ -77,10 +77,10 @@ class OnboardingTexts:
         "Le mode **Auto** extrait les données de Yahoo Finance...  "
         "Le mode **Expert** offre une autonomie totale..."
     )
-    MC_TITLE = "**Analyse Probabiliste (Monte Carlo)**"
+    MC_TITLE = "**Analyse de Risque Hybride**"
     MC_DESC = (
-        "La valeur intrinsèque est présentée comme une distribution...  "
-        "simule des variations sur la croissance et le risque..."
+        "Combinez l'analyse **Probabiliste** (Monte Carlo) pour l'incertitude statistique "
+        "et l'analyse **Déterministe** (Bull/Base/Bear) pour tester vos convictions stratégiques."
     )
 
     TITLE_C = "C.Gouvernance & Transparence"
@@ -206,7 +206,7 @@ class ExpertTerminalTexts:
     SEC_8_SCENARIOS = "#### 8. Analyse de Scénarios Déterministes (Bull/Base/Bear)"
     INP_SCENARIO_ENABLE = "Activer l'analyse de scénarios"
     INP_SCENARIO_PROBA = "Probabilité du scénario (%)"
-    INP_SCENARIO_GROWTH = "Croissance 'g' spécifique"
+    INP_SCENARIO_GROWTH = "Croissance g (décimal)"
     INP_SCENARIO_MARGIN = "Marge FCF spécifique"
 
     LABEL_SCENARIO_BULL = "Optimiste (Bull Case)"
@@ -377,6 +377,12 @@ class KPITexts:
     LABEL_EXPECTED_VALUE = "Valeur Espérée (Pondérée)"
     LABEL_SCENARIO_RANGE = "Fourchette de Valeur (Bear - Bull)"
     SUB_SCENARIO_WEIGHTS = "Pondération des Hypothèses"
+
+    LBL_SCENARIO_NAME = "Scénario"
+    LBL_SCENARIO_PROBA = "Probabilité"
+    LBL_SCENARIO_G = "Croissance (g)"
+    LBL_SCENARIO_MARGIN = "Marge FCF"
+    LBL_SCENARIO_VAL = "Valeur par Action"
 
 class AuditTexts:
     """Textes liés au rapport d'audit et à la simulation Monte Carlo."""
@@ -640,6 +646,9 @@ class WorkflowTexts:
     PREFIX_CRITICAL = "**ARRÊT CRITIQUE :**"
     PREFIX_WARNING = "**AVERTISSEMENT :**"
     PREFIX_INFO = "**INFORMATION :**"
+
+    PEER_NOT_FOUND = "Multiples de marché indisponibles (Cohorte insuffisante)"
+    PEER_SUCCESS = "Cohorte sectorielle finalisée avec succès."
 
 class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions (diagnostics.py & exceptions.py)."""
