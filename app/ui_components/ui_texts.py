@@ -876,6 +876,11 @@ class SOTPTexts:
     HELP_SOTP = "La valeur totale est la somme des EV de chaque segment moins la dette nette globale."
     DESC_WATERFALL = "Décomposition de la valeur par Business Unit"
 
+    LBL_SEGMENT_COUNT = "Nombre de segments"
+    LBL_RAW_EV_SUM = "Somme brute EV"
+    INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments après décote."
+    STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
+
 
 class BacktestTexts:
     """Labels pour le module de validation historique (Sprint 6)."""
