@@ -2,18 +2,19 @@
 core/models.py
 
 Modèles de données unifiés pour le moteur de valorisation.
-Version : V9.7 — Sprint 1 Final : Restoration of Computed Dividends & Data Contracts
+Version : V13.0 — Sprint 6 : Sum-of-the-Parts & Backtesting
 
 Principes appliqués :
-- SOLID : Propriétés calculées isolées dans le modèle de données.
-- Robustesse : Gestion des valeurs nulles (None) pour les dividendes.
-- Glass Box : Traçabilité complète maintenue.
+- SOLID : Propriétés calculées isolées et modularité par segments.
+- Glass Box : Traçabilité complète maintenue pour chaque Business Unit.
+- Rigueur Pydantic : Validation stricte des contrats de données.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
+from datetime import date
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -29,7 +30,7 @@ class ValuationMode(str, Enum):
     FCFF_NORMALIZED = "FCFF Normalized (Cyclical / Industrial)"
     FCFF_REVENUE_DRIVEN = "FCFF Revenue-Driven (High Growth / Tech)"
 
-    # Approche Actionnaire (Equity Value) - NOUVEAUTÉ SPRINT 3
+    # Approche Actionnaire (Equity Value)
     FCFE_TWO_STAGE = "FCFE Two-Stage (Direct Equity)"
     DDM_GORDON_GROWTH = "Dividend Discount Model (Gordon / DDM)"
 
@@ -69,6 +70,13 @@ class AuditSeverity(str, Enum):
     INFO = "INFO"
 
 
+class SOTPMethod(str, Enum):
+    """Méthodes de valorisation par segment (ST 1.2)."""
+    DCF = "DCF"
+    MULTIPLES = "MULTIPLES"
+    ASSET_VALUE = "ASSET_VALUE"
+
+
 # ==============================================================================
 # 2. GLASS BOX — STANDARDS DE TRACABILITÉ
 # ==============================================================================
@@ -105,6 +113,11 @@ class AuditStep(BaseModel):
     evidence: str = ""
     description: str = ""
 
+
+# ==============================================================================
+# 3. MODÈLES DE SCÉNARIOS ET SOTP (ST 1.2)
+# ==============================================================================
+
 class ScenarioVariant(BaseModel):
     """Représente une variante spécifique (Bull, Base ou Bear)."""
     label: str
@@ -123,7 +136,7 @@ class ScenarioResult(BaseModel):
 class ScenarioSynthesis(BaseModel):
     """Conteneur final pour la restitution UI des scénarios."""
     variants: List[ScenarioResult] = Field(default_factory=list)
-    expected_value: float = 0.0 # Moyenne pondérée (Sum of IV * Prob)
+    expected_value: float = 0.0
     max_upside: float = 0.0
     max_downside: float = 0.0
 
@@ -136,15 +149,29 @@ class ScenarioParameters(BaseModel):
 
     @model_validator(mode='after')
     def validate_probabilities(self) -> 'ScenarioParameters':
-        """Standard Pydantic : Assure que la somme des probabilités est cohérente (100%)."""
         if self.enabled:
             total = self.bull.probability + self.base.probability + self.bear.probability
-            if not (0.98 <= total <= 1.02): # Marge de tolérance pour les flottants
-                raise ValueError("La somme des probabilités (Bull+Base+Bear) doit être égale à 1.0 (100%).")
+            if not (0.98 <= total <= 1.02):
+                raise ValueError("La somme des probabilités (Bull+Base+Bear) doit être égale à 1.0.")
         return self
 
+class BusinessUnit(BaseModel):
+    """Représente un segment d'activité d'un conglomérat (ST 1.2)."""
+    name: str
+    enterprise_value: float
+    method: SOTPMethod = SOTPMethod.DCF
+    contribution_pct: Optional[float] = None
+    calculation_trace: List[CalculationStep] = Field(default_factory=list)
+
+class SOTPParameters(BaseModel):
+    """Configuration de la valorisation par somme des parties (ST 1.2)."""
+    enabled: bool = False
+    segments: List[BusinessUnit] = Field(default_factory=list)
+    conglomerate_discount: float = 0.0  # En décimal
+
+
 # ==============================================================================
-# 3. DONNÉES FINANCIÈRES (Yahoo Source)
+# 4. DONNÉES FINANCIÈRES ET BACKTESTING (ST 1.3)
 # ==============================================================================
 
 class CompanyFinancials(BaseModel):
@@ -180,7 +207,6 @@ class CompanyFinancials(BaseModel):
     fcf_fundamental_smoothed: Optional[float] = None
 
     net_borrowing_ttm: Optional[float] = None
-
     capex: Optional[float] = None
     depreciation_and_amortization: Optional[float] = None
 
@@ -194,12 +220,26 @@ class CompanyFinancials(BaseModel):
 
     @property
     def dividends_total_calculated(self) -> float:
-        """Calcul sécurisé du montant total des dividendes versés."""
         return (self.dividend_share or 0.0) * self.shares_outstanding
+
+class HistoricalPoint(BaseModel):
+    """Résultat de valorisation à un instant T passé (ST 1.3)."""
+    valuation_date: date
+    intrinsic_value: float
+    market_price: float
+    error_pct: float
+    was_undervalued: bool
+
+class BacktestResult(BaseModel):
+    """Synthèse complète d'un backtesting (ST 1.3)."""
+    points: List[HistoricalPoint] = Field(default_factory=list)
+    mean_absolute_error: float = 0.0
+    alpha_vs_market: float = 0.0
+    model_accuracy_score: float = 0.0
 
 
 # ==============================================================================
-# 4. PARAMÈTRES DU MODÈLE (Segmentation)
+# 5. PARAMÈTRES DU MODÈLE (Segmentation)
 # ==============================================================================
 
 class CoreRateParameters(BaseModel):
@@ -268,6 +308,7 @@ class DCFParameters(BaseModel):
     growth: GrowthParameters = Field(default_factory=GrowthParameters)
     monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
     scenarios: ScenarioParameters = Field(default_factory=ScenarioParameters)
+    sotp: SOTPParameters = Field(default_factory=SOTPParameters) # Ajout SOTP
 
     def normalize_weights(self) -> None:
         w_e = self.growth.target_equity_weight or 0.0
@@ -299,7 +340,7 @@ def _decimal_guard(v: Any) -> Optional[float]:
 
 
 # ==============================================================================
-# 5. AUDIT & CONTRATS
+# 6. AUDIT & CONTRATS
 # ==============================================================================
 
 class AuditPillar(str, Enum):
@@ -358,7 +399,7 @@ class ValuationOutputContract(BaseModel):
 
 
 # ==============================================================================
-# 6. RÉSULTATS (FINAL)
+# 7. RÉSULTATS (FINAL)
 # ==============================================================================
 
 class ValuationRequest(BaseModel):
@@ -387,9 +428,15 @@ class ValuationResult(BaseModel, ABC):
     stress_test_value: Optional[float] = None
     mc_valid_ratio: Optional[float] = None
     mc_clamping_applied: Optional[bool] = None
+
+    # Extensions Sprints 4, 5 et 6
     multiples_triangulation: Optional['MultiplesValuationResult'] = None
     relative_valuation: Optional[Dict[str, float]] = None
     scenario_synthesis: Optional[ScenarioSynthesis] = None
+
+    # --- NOUVEAUTÉS SPRINT 6 ---
+    sotp_results: Optional[SOTPParameters] = None
+    backtest_report: Optional[BacktestResult] = None
 
     def model_post_init(self, __context: Any) -> None:
         if self.market_price > 0 and self.upside_pct is None:

@@ -856,3 +856,40 @@ class AuditEngineTexts:
     ENGINE_FAILURE_PREFIX = "Audit Engine Failure: {error}"
     AGGREGATION_FORMULA = "Somme(Score * Poids) * Couverture"
     FALLBACK_RATING = "Erreur"
+
+
+class SOTPTexts:
+    """Labels pour la valorisation par somme des parties (Sprint 6)."""
+    TITLE = "Analyse Sum-Of-The-Parts (SOTP)"
+    SEC_SEGMENTS = "#### 1. Définition des Business Units (Segments)"
+    SEC_ADJUSTMENTS = "#### 2. Ajustements de Conglomérat"
+
+    LBL_SEGMENT_NAME = "Nom du Segment"
+    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
+    LBL_SEGMENT_METHOD = "Méthode de Valorisation"
+    LBL_DISCOUNT = "Décote de Conglomérat (%)"
+
+    METHOD_DCF = "DCF (Flux actualisés)"
+    METHOD_MULT = "Multiples sectoriels"
+    METHOD_ASSET = "Valeur d'actif (Net Book Value)"
+
+    HELP_SOTP = "La valeur totale est la somme des EV de chaque segment moins la dette nette globale."
+    DESC_WATERFALL = "Décomposition de la valeur par Business Unit"
+
+
+class BacktestTexts:
+    """Labels pour le module de validation historique (Sprint 6)."""
+    TITLE = "Backtesting & Validation Historique"
+    SEC_CONFIG = "#### Configuration de la simulation temporelle"
+    SEC_RESULTS = "#### Analyse de la Performance du Modèle"
+
+    LBL_PERIODS = "Nombre d'années à remonter"
+    LBL_HIST_IV = "Valeur Intrinsèque Historique"
+    LBL_REAL_PRICE = "Prix de Marché Réel"
+    LBL_ERROR_GAP = "Écart (Erreur %)"
+
+    METRIC_ALPHA = "Alpha généré (vs Marché)"
+    METRIC_ACCURACY = "Précision directionnelle"
+    METRIC_MAE = "Erreur Moyenne Absolue (MAE)"
+
+    HELP_BACKTEST = "Compare l'IV calculée sur les bilans passés avec les cours réels de l'époque."
