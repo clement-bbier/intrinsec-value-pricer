@@ -272,6 +272,8 @@ class KPITexts:
     LABEL_CASH = "Trésorerie"
     LABEL_NET_DEBT = "Dette Nette"
     LABEL_INTEREST = "Charges d'Intérêts"
+    LABEL_MINORITIES = "Intérêts Minoritaires"
+    LABEL_PENSIONS = "Provisions Pensions"
 
     SUB_PERF = "Performance Opérationnelle (TTM)"
     LABEL_REV = "Chiffre d'Affaires"
