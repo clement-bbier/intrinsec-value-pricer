@@ -873,6 +873,9 @@ class SOTPTexts:
     LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
     LBL_SEGMENT_METHOD = "Méthode de Valorisation"
     LBL_DISCOUNT = "Décote de Conglomérat (%)"
+    LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise (EV)"
+    LBL_EQUITY_VALUE = "Valeur des Fonds Propres"
+    LBL_BU_DETAILS = "Détail des Business Units"
 
     METHOD_DCF = "DCF (Flux actualisés)"
     METHOD_MULT = "Multiples sectoriels"
@@ -885,6 +888,8 @@ class SOTPTexts:
     LBL_RAW_EV_SUM = "Somme brute EV"
     INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments après décote."
     STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
+
+
 
 
 class BacktestTexts:

@@ -232,6 +232,8 @@ class HistoricalPoint(BaseModel):
 
 class BacktestResult(BaseModel):
     """Synthèse complète d'un backtesting (ST 1.3)."""
+    model_config = ConfigDict(protected_namespaces=())
+
     points: List[HistoricalPoint] = Field(default_factory=list)
     mean_absolute_error: float = 0.0
     alpha_vs_market: float = 0.0

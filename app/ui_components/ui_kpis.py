@@ -27,7 +27,7 @@ from core.models import (
     ScenarioSynthesis
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
-from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts
+from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts
 
 logger = logging.getLogger(__name__)
 
@@ -115,31 +115,38 @@ def atom_audit_card(step: AuditStep) -> None:
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, _provider: Any = None) -> None:
-    """Orchestrateur des onglets post-calcul avec support Triangulation et Scénarios (V13.0)."""
+    """Orchestrateur des onglets post-calcul mis à jour (Sprint 6)."""
     st.divider()
 
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
 
-    # 1. Définition dynamique des onglets
+    # 1. Définition dynamique des étiquettes d'onglets
+    # On utilise des constantes pour garantir la correspondance t_idx
     tab_labels = [KPITexts.TAB_INPUTS, KPITexts.TAB_CALC]
 
+    # Ajout Triangulation
     if result.multiples_triangulation:
         tab_labels.append(KPITexts.SEC_E_RELATIVE)
 
-    # NOUVEAU SPRINT 5 : Ajout de l'onglet Scénarios
+    # Ajout SOTP (Sprint 6)
+    if result.params.sotp.enabled:
+        tab_labels.append(SOTPTexts.TITLE)
+
+    # Ajout Scénarios (Sprint 5)
     if result.scenario_synthesis:
         tab_labels.append(KPITexts.TAB_SCENARIOS)
 
     tab_labels.append(KPITexts.TAB_AUDIT)
 
+    # Ajout Monte Carlo
     if result.params.monte_carlo.enable_monte_carlo and mc_steps:
         tab_labels.append(KPITexts.TAB_MC)
 
+    # 2. Rendu des onglets
     tabs = st.tabs(tab_labels)
     t_idx = 0
 
-    # 2. Rendu séquentiel
     with tabs[t_idx]:
         _render_inputs_tab(result)
         t_idx += 1
@@ -154,7 +161,12 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
             _render_relative_valuation_tab(result.multiples_triangulation)
         t_idx += 1
 
-    # NOUVEAU SPRINT 5 : Rendu du contenu Scénarios
+    # Rendu SOTP (Nouveauté Sprint 6)
+    if result.params.sotp.enabled:
+        with tabs[t_idx]:
+            _render_sotp_tab(result)
+        t_idx += 1
+
     if result.scenario_synthesis:
         with tabs[t_idx]:
             _render_scenarios_tab(result.scenario_synthesis, result.financials.currency)
@@ -370,3 +382,27 @@ def _render_scenarios_tab(synthesis: ScenarioSynthesis, currency: str) -> None:
     # Message de synthèse sur l'asymétrie
     st.info(
         f"**{KPITexts.LABEL_SCENARIO_RANGE}** : {synthesis.max_downside:,.2f} à {synthesis.max_upside:,.2f} {currency}")
+
+
+def _render_sotp_tab(result: ValuationResult) -> None:
+    """Rendu de l'onglet Sum-of-the-Parts sécurisé par ui_texts (ST 4.1)."""
+    from app.ui_components.ui_charts import display_sotp_waterfall
+
+    # Titre de l'onglet
+    st.markdown(f"#### {SOTPTexts.TITLE}")
+
+    # Cascade visuelle
+    display_sotp_waterfall(result)
+
+    # Tableau de détail
+    st.divider()
+    st.caption(SOTPTexts.LBL_BU_DETAILS)
+
+    df_sotp = pd.DataFrame([
+        {
+            SOTPTexts.LBL_SEGMENT_NAME: b.name,
+            SOTPTexts.LBL_SEGMENT_VALUE: format_smart_number(b.enterprise_value, result.financials.currency),
+            SOTPTexts.LBL_SEGMENT_METHOD: b.method.value
+        } for b in result.params.sotp.segments
+    ])
+    st.table(df_sotp)

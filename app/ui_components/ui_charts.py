@@ -7,14 +7,18 @@ Standards : Altair, i18n, Zero-Depreciation.
 
 from __future__ import annotations
 
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Optional, Callable
+
+import altair as alt
 import numpy as np
 import pandas as pd
-import altair as alt
 import streamlit as st
+import plotly.graph_objects as go
 
-from app.ui_components.ui_texts import ChartTexts, KPITexts
+from app.ui_components.ui_kpis import format_smart_number
+from app.ui_components.ui_texts import ChartTexts, KPITexts, SOTPTexts
 from core.models import ValuationResult
+
 
 # ============================================================================
 # 1. HISTORIQUE DE PRIX
@@ -272,3 +276,90 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
 
     st.altair_chart((heatmap + text).properties(height=180), use_container_width=True)
     st.caption(ChartTexts.CORREL_CAPTION)
+
+
+# ============================================================================
+# 5. SOMME DES PARTIES (WATERFALL SOTP) — SPRINT 6 (ST 4.1)
+# ============================================================================
+
+def display_sotp_waterfall(result: ValuationResult) -> None:
+    """
+    Rendu Plotly d'une cascade de valorisation Sum-of-the-Parts (ST 4.1).
+    Visualise la décomposition sans aucune chaîne de caractères en dur.
+    """
+    if not result.params.sotp.enabled or not result.params.sotp.segments:
+        return
+
+    params = result.params.sotp
+    f = result.financials
+
+    # 1. Préparation des données de la cascade
+    labels = []
+    values = []
+    measures = []
+
+    # A. Ajout de chaque segment (Données relatives)
+    raw_ev_sum = 0
+    for seg in params.segments:
+        labels.append(seg.name)
+        values.append(seg.enterprise_value)
+        measures.append("relative")
+        raw_ev_sum += seg.enterprise_value
+
+    # B. Décote de conglomérat (Si applicable)
+    discount_val = - (raw_ev_sum * params.conglomerate_discount)
+    if discount_val != 0:
+        labels.append(SOTPTexts.LBL_DISCOUNT)
+        values.append(discount_val)
+        measures.append("relative")
+
+    # C. Sous-total : Valeur d'Entreprise (Somme des parties après décote)
+    labels.append(SOTPTexts.LBL_ENTERPRISE_VALUE)
+    values.append(0)
+    measures.append("total")
+
+    # D. Pont vers la Valeur Actionnariale (Equity Bridge)
+    # Utilisation des labels standardisés de KPITexts
+    bridge_data = [
+        (KPITexts.LABEL_DEBT, -f.total_debt),
+        (KPITexts.LABEL_CASH, f.cash_and_equivalents),
+        (KPITexts.LABEL_MINORITIES, -f.minority_interests),
+        (KPITexts.LABEL_PENSIONS, -f.pension_provisions)
+    ]
+
+    for lbl, val in bridge_data:
+        if val != 0:
+            labels.append(lbl)
+            values.append(val)
+            measures.append("relative")
+
+    # E. Résultat Final : Valeur des Capitaux Propres (Total final)
+    labels.append(SOTPTexts.LBL_EQUITY_VALUE)
+    values.append(0)
+    measures.append("total")
+
+    # 2. Création du graphique Plotly
+    fig = go.Figure(go.Waterfall(
+        name="SOTP",
+        orientation="v",
+        measure=measures,
+        x=labels,
+        y=values,
+        connector={"line": {"color": "rgb(63, 63, 63)"}},
+        increasing={"marker": {"color": "#2E7D32"}},
+        decreasing={"marker": {"color": "#C62828"}},
+        totals={"marker": {"color": "#1565C0"}},
+        textposition="outside",
+        # Formatage dynamique sans f-string hardcodée pour le symbole
+        text=[f"{v:,.0f}" if v != 0 else "" for v in values],
+    ))
+
+    fig.update_layout(
+        title=SOTPTexts.DESC_WATERFALL,
+        showlegend=False,
+        height=500,
+        margin=dict(t=50, b=20, l=20, r=20),
+        yaxis=dict(title=f"{KPITexts.VALUE_UNIT.format(unit=f.currency)}")
+    )
+
+    st.plotly_chart(fig, use_container_width=True)

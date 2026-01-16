@@ -136,35 +136,69 @@ def atom_bridge_smart(formula_latex: str, mode: ValuationMode) -> Dict[str, Any]
     }
 
 
-def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[TerminalValueMethod] = None) -> Dict[str, Any]:
-    """Étape 6 : Monte Carlo - Réactif à la méthode de sortie et incluant Vol Y0."""
+def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[TerminalValueMethod] = None) -> Dict[
+    str, Any]:
+    """Étape 6 : Monte Carlo - Réactif à la méthode de sortie et incluant Vol Y0 (V13.0)."""
     st.markdown(ExpertTerminalTexts.SEC_6_MC)
     enable = st.toggle(ExpertTerminalTexts.MC_CALIBRATION, value=False)
 
     if enable:
         with st.container(border=True):
+            # 1. Sélection du volume de simulations
             c_iter, _ = st.columns([2, 2])
-            sims = c_iter.select_slider(ExpertTerminalTexts.MC_ITERATIONS, options=[1000, 5000, 10000, 20000], value=5000)
+            sims = c_iter.select_slider(
+                ExpertTerminalTexts.MC_ITERATIONS,
+                options=[1000, 5000, 10000, 20000],
+                value=5000
+            )
             st.divider()
 
+            # 2. Grille de saisie des volatilités
             v_col1, v_col2 = st.columns(2)
-            v0 = v_col1.number_input(ExpertTerminalTexts.MC_VOL_BASE_FLOW, 0.0, 0.50, 0.05, "%.3f", help=ExpertTerminalTexts.MC_VOL_BASE_FLOW_HELP)
-            vb = v_col2.number_input(ExpertTerminalTexts.MC_VOL_BETA, 0.0, 1.0, 0.10, "%.3f")
-            vg = v_col1.number_input(ExpertTerminalTexts.MC_VOL_G, 0.0, 0.20, 0.02, "%.3f")
 
+            # Volatilité du flux d'ancrage (Y0)
+            v0 = v_col1.number_input(
+                ExpertTerminalTexts.MC_VOL_BASE_FLOW,
+                min_value=0.0, max_value=0.50, value=0.05, format="%.3f",
+                help=ExpertTerminalTexts.MC_VOL_BASE_FLOW_HELP
+            )
+            # Risque Systématique (Beta)
+            vb = v_col2.number_input(
+                ExpertTerminalTexts.MC_VOL_BETA,
+                min_value=0.0, max_value=1.0, value=0.10, format="%.3f"
+            )
+            # Incertitude Croissance (g)
+            vg = v_col1.number_input(
+                ExpertTerminalTexts.MC_VOL_G,
+                min_value=0.0, max_value=0.20, value=0.02, format="%.3f"
+            )
+
+            # 3. Branchement réactif selon le modèle (RIM vs Gordon)
             v_term = 0.0
             if mode == ValuationMode.RESIDUAL_INCOME_MODEL:
-                v_term = v_col2.number_input(ExpertTerminalTexts.MC_VOL_OMEGA, 0.0, 0.20, 0.05, "%.3f")
+                # Utilise la volatilité de la persistance omega
+                v_term = v_col2.number_input(
+                    ExpertTerminalTexts.MC_VOL_OMEGA,
+                    min_value=0.0, max_value=0.20, value=0.05, format="%.3f"
+                )
             elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
-                v_term = v_col2.number_input(ExpertTerminalTexts.MC_VOL_GN, 0.0, 0.05, 0.01, "%.3f")
+                # Utilise la volatilité de la croissance perpétuelle gn
+                v_term = v_col2.number_input(
+                    ExpertTerminalTexts.MC_VOL_GN,
+                    min_value=0.0, max_value=0.05, value=0.01, format="%.3f"
+                )
             else:
                 v_col2.empty()
 
             return {
-                "enable_monte_carlo": True, "num_simulations": sims,
-                "base_flow_volatility": v0, "beta_volatility": vb,
-                "growth_volatility": vg, "terminal_growth_volatility": v_term
+                "enable_monte_carlo": True,
+                "num_simulations": sims,
+                "base_flow_volatility": v0,
+                "beta_volatility": vb,
+                "growth_volatility": vg,
+                "terminal_growth_volatility": v_term
             }
+
     return {"enable_monte_carlo": False}
 
 
