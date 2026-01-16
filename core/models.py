@@ -159,6 +159,7 @@ class BusinessUnit(BaseModel):
     """Représente un segment d'activité d'un conglomérat (ST 1.2)."""
     name: str
     enterprise_value: float
+    revenue: Optional[float] = None
     method: SOTPMethod = SOTPMethod.DCF
     contribution_pct: Optional[float] = None
     calculation_trace: List[CalculationStep] = Field(default_factory=list)

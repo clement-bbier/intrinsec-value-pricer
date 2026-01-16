@@ -51,7 +51,7 @@ from core.models import (
     ValuationRequest,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig
+    MonteCarloConfig, SOTPParameters
 )
 
 # IMPORT DU RÉFÉRENTIEL TEXTUEL
@@ -344,7 +344,8 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
             enable_monte_carlo=options["enable_mc"],
             num_simulations=options["mc_sims"]
         ),
-        scenarios=ScenarioParameters(enabled=False)  # NOUVEAU : Initialisation explicite
+        scenarios=ScenarioParameters(enabled=False),
+        sotp = SOTPParameters(enabled=False)
     )
 
     request = ValuationRequest(

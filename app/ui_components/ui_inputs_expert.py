@@ -269,6 +269,7 @@ def render_sotp_section(params: DCFParameters) -> None:
             {
                 SOTPTexts.LBL_SEGMENT_NAME: bu.name,
                 SOTPTexts.LBL_SEGMENT_VALUE: bu.enterprise_value,
+                SOTPTexts.LBL_SEGMENT_REVENUE: bu.revenue,
                 SOTPTexts.LBL_SEGMENT_METHOD: bu.method.value
             }
             for bu in params.sotp.segments

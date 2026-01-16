@@ -432,6 +432,9 @@ class AuditTexts:
     EVIDENCE_ERROR = "Erreur source"
     EVIDENCE_OK = "Vérification OK"
 
+    LBL_SOTP_REVENUE_CHECK = "Réconciliation Revenus Groupe"
+    LBL_SOTP_DISCOUNT_CHECK = "Prudence Décote SOTP"
+
 
 class ChartTexts:
     """Libellés et textes pour les graphiques (ui_charts.py)."""
@@ -854,6 +857,9 @@ class AuditMessages:
     FCFE_HIGH_BORROWING = "Attention : La valorisation repose sur un fort endettement (Net Borrowing élevé)."
     DDM_PAYOUT_UNSUSTAINABLE = "Alerte : Le Payout Ratio > 100% indique un dividende non soutenable."
 
+    SOTP_REVENUE_MISMATCH = "Incohérence SOTP : écart de {gap:.1%} entre les revenus segments et le consolidé."
+    SOTP_DISCOUNT_AGGRESSIVE = "Décote de conglomérat ({val:.0%}) hors limites prudentielles (> 25%)."
+
 
 class AuditEngineTexts:
     """Messages techniques et fallbacks du moteur d'audit (audit_engine.py)."""
@@ -888,6 +894,7 @@ class SOTPTexts:
     LBL_RAW_EV_SUM = "Somme brute EV"
     INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments après décote."
     STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
+    LBL_SEGMENT_REVENUE = "Revenu du Segment"
 
 
 
