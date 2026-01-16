@@ -1,7 +1,7 @@
 """
 app/ui_components/ui_kpis.py
-RESTITUTION "GLASS BOX" HYBRIDE — VERSION V12.0 (Sprint 4 Final)
-Rôle : Affichage haute fidélité incluant la triangulation intrinsèque vs relative.
+RESTITUTION "GLASS BOX" HYBRIDE — VERSION V13.0 (Sprint 6 Final)
+Rôle : Affichage haute fidélité incluant SOTP, Scénarios et Backtesting.
 Standards : SOLID, i18n Secured (ui_texts.py), Honest Data.
 """
 
@@ -11,7 +11,7 @@ import logging
 from typing import Any, List, Optional
 
 import numpy as np
-import pandas as pd  # Ajouté pour le rendu des tables de pairs
+import pandas as pd
 import streamlit as st
 
 from core.models import (
@@ -24,10 +24,12 @@ from core.models import (
     ValuationResult,
     ValuationMode,
     MultiplesValuationResult,
-    ScenarioSynthesis
+    ScenarioSynthesis,
+    BacktestResult,
+    HistoricalPoint
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
-from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts
+from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts, BacktestTexts
 
 logger = logging.getLogger(__name__)
 
@@ -111,39 +113,38 @@ def atom_audit_card(step: AuditStep) -> None:
 
 
 # ==============================================================================
-# 2. NAVIGATION ET AGGREGATION
+# 2. NAVIGATION ET AGGREGATION (ORCHESTRATION COMPLÈTE V13.0)
 # ==============================================================================
 
 def display_valuation_details(result: ValuationResult, _provider: Any = None) -> None:
-    """Orchestrateur des onglets post-calcul mis à jour (Sprint 6)."""
+    """Orchestrateur des onglets post-calcul (Intégration SOTP & Backtest)."""
     st.divider()
 
     core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
     mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
 
-    # 1. Définition dynamique des étiquettes d'onglets
-    # On utilise des constantes pour garantir la correspondance t_idx
+    # 1. Définition dynamique des étiquettes d'onglets (Ordre Analytique)
     tab_labels = [KPITexts.TAB_INPUTS, KPITexts.TAB_CALC]
 
-    # Ajout Triangulation
     if result.multiples_triangulation:
         tab_labels.append(KPITexts.SEC_E_RELATIVE)
 
-    # Ajout SOTP (Sprint 6)
     if result.params.sotp.enabled:
         tab_labels.append(SOTPTexts.TITLE)
 
-    # Ajout Scénarios (Sprint 5)
     if result.scenario_synthesis:
         tab_labels.append(KPITexts.TAB_SCENARIOS)
 
+    # Étiquette Backtesting (ST 4.2)
+    if result.backtest_report:
+        tab_labels.append(BacktestTexts.TITLE)
+
     tab_labels.append(KPITexts.TAB_AUDIT)
 
-    # Ajout Monte Carlo
     if result.params.monte_carlo.enable_monte_carlo and mc_steps:
         tab_labels.append(KPITexts.TAB_MC)
 
-    # 2. Rendu des onglets
+    # 2. Rendu séquentiel
     tabs = st.tabs(tab_labels)
     t_idx = 0
 
@@ -161,7 +162,6 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
             _render_relative_valuation_tab(result.multiples_triangulation)
         t_idx += 1
 
-    # Rendu SOTP (Nouveauté Sprint 6)
     if result.params.sotp.enabled:
         with tabs[t_idx]:
             _render_sotp_tab(result)
@@ -170,6 +170,12 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
     if result.scenario_synthesis:
         with tabs[t_idx]:
             _render_scenarios_tab(result.scenario_synthesis, result.financials.currency)
+        t_idx += 1
+
+    # Rendu Backtesting (ST 4.2)
+    if result.backtest_report:
+        with tabs[t_idx]:
+            _render_backtest_tab(result)
         t_idx += 1
 
     with tabs[t_idx]:
@@ -182,19 +188,15 @@ def display_valuation_details(result: ValuationResult, _provider: Any = None) ->
 
 
 # ==============================================================================
-# 3. RENDU DES ONGLETS
+# 3. RENDU DES ONGLETS INDIVIDUELS
 # ==============================================================================
 
 def _render_inputs_tab(result: ValuationResult) -> None:
-    """
-    Rendu de l'onglet des données d'entrée.
-    CORRECTION : Extraction dynamique et précise du WACC ou Ke selon le modèle.
-    """
+    """Rendu de l'onglet des données d'entrée."""
     f, p = result.financials, result.params
     st.markdown(f"{KPITexts.SECTION_INPUTS_HEADER}")
     st.caption(KPITexts.SECTION_INPUTS_CAPTION)
 
-    # Section A : Identité
     with st.expander(KPITexts.SEC_A_IDENTITY.upper(), expanded=True):
         c1, c2, c3, c4 = st.columns(4)
         c1.markdown(f"**{KPITexts.LABEL_TICKER}**\n\n`{f.ticker}`")
@@ -202,7 +204,6 @@ def _render_inputs_tab(result: ValuationResult) -> None:
         c3.markdown(f"**{KPITexts.LABEL_SECTOR}**\n\n`{f.sector}`")
         c4.markdown(f"**{KPITexts.LABEL_COUNTRY}**\n\n`{f.country}`")
 
-    # Section B : Données Financières
     with st.expander(KPITexts.SEC_B_FINANCIALS.upper(), expanded=True):
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(KPITexts.LABEL_PRICE, f"{f.current_price:,.2f} {f.currency}")
@@ -210,36 +211,26 @@ def _render_inputs_tab(result: ValuationResult) -> None:
         c3.metric(KPITexts.LABEL_REV, format_smart_number(f.revenue_ttm))
         c4.metric(KPITexts.LABEL_NI, format_smart_number(f.net_income_ttm))
 
-    # Section C : Paramètres Modèle (Logique de taux corrigée)
     with st.expander(KPITexts.SEC_C_MODEL.upper(), expanded=True):
         r, g = p.rates, p.growth
-
-        # 1. Détermination du mode (Sécurité si request est None)
         is_direct_equity = result.request.mode.is_direct_equity if result.request else False
 
-        # 2. Résolution du taux d'actualisation réel utilisé
-        # On priorise les surcharges manuelles, puis les attributs spécifiques aux classes filles
         if is_direct_equity:
             label_rate = KPITexts.LABEL_KE
-            # Cherche Ke manuel ou l'attribut cost_of_equity (RIM, FCFE, DDM)
             actual_discount_rate = r.manual_cost_of_equity or getattr(result, 'cost_of_equity', None)
         else:
             label_rate = KPITexts.LABEL_WACC
-            # Cherche WACC manuel ou l'attribut wacc (FCFF)
             actual_discount_rate = r.wacc_override or getattr(result, 'wacc', None)
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(KPITexts.LABEL_RF, format_smart_number(r.risk_free_rate, is_pct=True))
-
-        # Affichage du taux résolu (WACC ou Ke) sans fallback "hardcoded"
         c2.metric(label_rate, format_smart_number(actual_discount_rate, is_pct=True))
-
         c3.metric(KPITexts.LABEL_G, format_smart_number(g.fcf_growth_rate, is_pct=True))
         c4.metric(KPITexts.LABEL_HORIZON, f"{g.projection_years} {KPITexts.UNIT_YEARS}")
 
 
 def _render_relative_valuation_tab(rel_result: MultiplesValuationResult) -> None:
-    """Tableau de bord de la cohorte sectorielle (Phase 5)."""
+    """Tableau de bord sectoriel (Sprint 4)."""
     st.markdown(f"#### {KPITexts.SEC_E_RELATIVE}")
     st.caption(KPITexts.RELATIVE_VAL_DESC)
 
@@ -251,14 +242,11 @@ def _render_relative_valuation_tab(rel_result: MultiplesValuationResult) -> None
 
     st.divider()
 
-    # Rendu de la table des pairs
     if m.peers:
         peer_list = []
         for p in m.peers:
             peer_list.append({
-                "Ticker": p.ticker,
-                "Name": p.name,
-                "Mcap": format_smart_number(p.market_cap),
+                "Ticker": p.ticker, "Name": p.name, "Mcap": format_smart_number(p.market_cap),
                 "P/E": f"{p.pe_ratio:.1f}x" if p.pe_ratio else "—",
                 "EV/EBITDA": f"{p.ev_ebitda:.1f}x" if p.ev_ebitda else "—",
                 "EV/Rev": f"{p.ev_revenue:.1f}x" if p.ev_revenue else "—"
@@ -270,8 +258,85 @@ def _render_relative_valuation_tab(rel_result: MultiplesValuationResult) -> None
             _render_smart_step(idx, step)
 
 
+def _render_sotp_tab(result: ValuationResult) -> None:
+    """Rendu de l'onglet Sum-of-the-Parts (ST 4.1)."""
+    from app.ui_components.ui_charts import display_sotp_waterfall
+
+    st.markdown(f"#### {SOTPTexts.TITLE}")
+    display_sotp_waterfall(result)
+
+    st.divider()
+    st.caption(SOTPTexts.LBL_BU_DETAILS)
+
+    df_sotp = pd.DataFrame([
+        {
+            SOTPTexts.LBL_SEGMENT_NAME: b.name,
+            SOTPTexts.LBL_SEGMENT_VALUE: format_smart_number(b.enterprise_value, result.financials.currency),
+            SOTPTexts.LBL_SEGMENT_METHOD: b.method.value
+        } for b in result.params.sotp.segments
+    ])
+    st.table(df_sotp)
+
+
+def _render_scenarios_tab(synthesis: ScenarioSynthesis, currency: str) -> None:
+    """Rendu détaillé des scénarios Bull/Base/Bear (Sprint 5)."""
+    st.markdown(f"#### {KPITexts.TAB_SCENARIOS}")
+    st.caption(KPITexts.SUB_SCENARIO_WEIGHTS)
+
+    rows = []
+    labels_map = {"Bull": ExpertTerminalTexts.LABEL_SCENARIO_BULL,
+                  "Base": ExpertTerminalTexts.LABEL_SCENARIO_BASE,
+                  "Bear": ExpertTerminalTexts.LABEL_SCENARIO_BEAR}
+
+    for v in synthesis.variants:
+        rows.append({
+            "Scénario": labels_map.get(v.label, v.label),
+            "Probabilité": f"{v.probability:.0%}",
+            "Croissance (g)": f"{v.growth_used:.2%}",
+            "Marge FCF": f"{v.margin_used:.1%}" if v.margin_used is not None and v.margin_used != 0 else ("Base"),
+            "Valeur par Action": f"{v.intrinsic_value:,.2f} {currency}"
+        })
+
+    st.table(pd.DataFrame(rows))
+    st.info(f"**{KPITexts.LABEL_SCENARIO_RANGE}** : {synthesis.max_downside:,.2f} à {synthesis.max_upside:,.2f} {currency}")
+
+
+def _render_backtest_tab(result: ValuationResult) -> None:
+    """Restitution de la validation historique (ST 4.2)."""
+    from app.ui_components.ui_charts import display_backtest_convergence_chart
+
+    st.markdown(f"#### {BacktestTexts.TITLE}")
+
+    # SÉCURITÉ : Utilisation de la clé correcte issue de ui_texts.py
+    if not result.backtest_report or not result.backtest_report.points:
+        st.warning(AuditTexts.MC_NO_DATA)
+        return
+
+    # A. Score de fiabilité historique
+    report = result.backtest_report
+    c1, c2, c3 = st.columns(3)
+    c1.metric(BacktestTexts.METRIC_MAE, f"{report.mean_absolute_error:.1%}", help=BacktestTexts.HELP_BACKTEST)
+    c2.metric(BacktestTexts.METRIC_ACCURACY, f"{report.model_accuracy_score:.1f}/100")
+
+    # B. Graphique Convergence
+    display_backtest_convergence_chart(report, result.financials.currency)
+
+    # C. Audit Trail Temporel
+    st.divider()
+    st.caption(BacktestTexts.SEC_RESULTS)
+    raw_table = []
+    for p in report.points:
+        raw_table.append({
+            "Date": p.valuation_date,
+            BacktestTexts.LBL_HIST_IV: f"{p.intrinsic_value:,.2f}",
+            BacktestTexts.LBL_REAL_PRICE: f"{p.market_price:,.2f}",
+            BacktestTexts.LBL_ERROR_GAP: f"{p.error_pct:+.1%}"
+        })
+    st.table(pd.DataFrame(raw_table))
+
+
 # ==============================================================================
-# 4. ONGLET AUDIT ET MONTE CARLO
+# 4. AUDIT ET MONTE CARLO
 # ==============================================================================
 
 def _render_reliability_report(report: Optional[AuditReport]) -> None:
@@ -308,41 +373,30 @@ def _render_monte_carlo_tab(result: ValuationResult, mc_steps: List[CalculationS
 
 
 # ==============================================================================
-# 5. WRAPPERS ET SYNTHÈSE
+# 5. WRAPPERS DE SYNTHÈSE
 # ==============================================================================
 
 def render_executive_summary(result: ValuationResult) -> None:
-    """Synthèse Exécutive Hybride avec support Valeur Espérée (Sprint 5)."""
+    """Synthèse Exécutive Institutionnelle (Sprint 6 Ready)."""
     f = result.financials
     st.subheader(KPITexts.EXEC_TITLE.format(name=f.name, ticker=f.ticker).upper())
 
-    # 1. Métriques de base (Header dynamique)
     with st.container(border=True):
         if result.scenario_synthesis:
-            # Layout à 4 colonnes : Prix | Valeur Espérée (Risque) | Valeur Réf (Base) | Audit
             c1, c2, c3, c4 = st.columns(4)
             c1.metric(KPITexts.LABEL_PRICE, f"{result.market_price:,.2f} {f.currency}")
-
-            # Valeur Espérée : Moyenne pondérée Bull/Base/Bear
             ev = result.scenario_synthesis.expected_value
             upside_ev = (ev / result.market_price) - 1
-            c2.metric(KPITexts.LABEL_EXPECTED_VALUE, f"{ev:,.2f} {f.currency}",
-                      delta=f"{upside_ev:.1%}", delta_color="normal")
-
-            # Valeur de Référence (Anchor)
+            c2.metric(KPITexts.LABEL_EXPECTED_VALUE, f"{ev:,.2f} {f.currency}", delta=f"{upside_ev:.1%}")
             c3.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}")
             c4.metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "—")
         else:
-            # Layout standard 3 colonnes (Sprint 4)
             c1, c2, c3 = st.columns(3)
             c1.metric(KPITexts.LABEL_PRICE, f"{result.market_price:,.2f} {f.currency}")
-            c2.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}",
-                      delta=f"{result.upside_pct:.1%}", delta_color="normal")
+            c2.metric(KPITexts.LABEL_IV, f"{result.intrinsic_value_per_share:,.2f} {f.currency}", delta=f"{result.upside_pct:.1%}")
             c3.metric(KPITexts.EXEC_CONFIDENCE, result.audit_report.rating if result.audit_report else "—")
 
-    # 2. Grille de Triangulation (Inchangée, Football Field Standard)
     st.markdown(f"#### {KPITexts.FOOTBALL_FIELD_TITLE}")
-
     if result.multiples_triangulation:
         rel = result.multiples_triangulation
         with st.container(border=True):
@@ -353,56 +407,3 @@ def render_executive_summary(result: ValuationResult) -> None:
             c4.metric(KPITexts.LABEL_FOOTBALL_FIELD_PRICE, f"{result.market_price:,.1f}")
     else:
         st.info(KPITexts.LABEL_MULTIPLES_UNAVAILABLE)
-
-
-def _render_scenarios_tab(synthesis: ScenarioSynthesis, currency: str) -> None:
-    """Rendu détaillé de l'analyse de scénarios déterministes (Sprint 5)."""
-    st.markdown(f"#### {KPITexts.TAB_SCENARIOS}")
-    st.caption(KPITexts.SUB_SCENARIO_WEIGHTS)
-
-    rows = []
-    # Mapping pour les labels i18n
-    labels_map = {
-        "Bull": ExpertTerminalTexts.LABEL_SCENARIO_BULL,
-        "Base": ExpertTerminalTexts.LABEL_SCENARIO_BASE,
-        "Bear": ExpertTerminalTexts.LABEL_SCENARIO_BEAR
-    }
-
-    for v in synthesis.variants:
-        rows.append({
-            "Scénario": labels_map.get(v.label, v.label),
-            "Probabilité": f"{v.probability:.0%}",
-            "Croissance (g)": f"{v.growth_used:.2%}",
-            "Marge FCF": f"{v.margin_used:.1%}" if v.margin_used is not None and v.margin_used != 0 else ("0.0%" if v.margin_used == 0 else "Base"),
-            "Valeur par Action": f"{v.intrinsic_value:,.2f} {currency}"
-        })
-
-    st.table(pd.DataFrame(rows))
-
-    # Message de synthèse sur l'asymétrie
-    st.info(
-        f"**{KPITexts.LABEL_SCENARIO_RANGE}** : {synthesis.max_downside:,.2f} à {synthesis.max_upside:,.2f} {currency}")
-
-
-def _render_sotp_tab(result: ValuationResult) -> None:
-    """Rendu de l'onglet Sum-of-the-Parts sécurisé par ui_texts (ST 4.1)."""
-    from app.ui_components.ui_charts import display_sotp_waterfall
-
-    # Titre de l'onglet
-    st.markdown(f"#### {SOTPTexts.TITLE}")
-
-    # Cascade visuelle
-    display_sotp_waterfall(result)
-
-    # Tableau de détail
-    st.divider()
-    st.caption(SOTPTexts.LBL_BU_DETAILS)
-
-    df_sotp = pd.DataFrame([
-        {
-            SOTPTexts.LBL_SEGMENT_NAME: b.name,
-            SOTPTexts.LBL_SEGMENT_VALUE: format_smart_number(b.enterprise_value, result.financials.currency),
-            SOTPTexts.LBL_SEGMENT_METHOD: b.method.value
-        } for b in result.params.sotp.segments
-    ])
-    st.table(df_sotp)

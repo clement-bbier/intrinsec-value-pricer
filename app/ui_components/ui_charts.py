@@ -16,8 +16,8 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from app.ui_components.ui_kpis import format_smart_number
-from app.ui_components.ui_texts import ChartTexts, KPITexts, SOTPTexts
-from core.models import ValuationResult
+from app.ui_components.ui_texts import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
+from core.models import ValuationResult, BacktestResult
 
 
 # ============================================================================
@@ -363,3 +363,31 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+def display_backtest_convergence_chart(backtest_report: Optional[BacktestResult], currency: str) -> None:
+    """
+    Graphique de convergence IV vs Prix Réel (ST 4.2).
+    Affiche la performance historique du modèle.
+    """
+    if not backtest_report or not backtest_report.points:
+        st.info(ChartTexts.PRICE_UNAVAILABLE.format(ticker="Backtest"))
+        return
+
+    # 1. Transformation des points en DataFrame pour Altair
+    data = []
+    for p in backtest_report.points:
+        data.append({"Date": p.valuation_date, "Type": BacktestTexts.LBL_HIST_IV, "Prix": p.intrinsic_value})
+        data.append({"Date": p.valuation_date, "Type": BacktestTexts.LBL_REAL_PRICE, "Prix": p.market_price})
+
+    df = pd.DataFrame(data)
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # 2. Création du graphique à deux lignes
+    chart = alt.Chart(df).mark_line(point=True).encode(
+        x=alt.X('Date:T', title=None),
+        y=alt.Y('Prix:Q', title=f"Valeur ({currency})", scale=alt.Scale(zero=False)),
+        color=alt.Color('Type:N', title=None, scale=alt.Scale(range=['#2E7D32', '#D32F2F'])),
+        tooltip=['Date:T', 'Type:N', alt.Tooltip('Prix:Q', format=',.2f')]
+    ).properties(height=350).interactive()
+
+    st.altair_chart(chart, use_container_width=True)
