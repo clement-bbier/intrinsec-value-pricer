@@ -29,7 +29,7 @@ from core.models import (
     MultiplesData
 )
 from infra.data_providers.base_provider import DataProvider
-from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher
+from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher, RawFinancialData
 from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.extraction_utils import calculate_historical_cagr, safe_api_call
 from infra.macro.yahoo_macro_provider import MacroContext, YahooMacroProvider
@@ -51,6 +51,7 @@ class YahooFinanceProvider(DataProvider):
         self.macro_provider = macro_provider
         self.fetcher = YahooRawFetcher()
         self.normalizer = FinancialDataNormalizer()
+        self.last_raw_data: Optional[RawFinancialData] = None
 
     # =========================================================================
     # INTERFACE PUBLIQUE (HÉRITÉE DE DATAPROVIDER)
@@ -183,8 +184,8 @@ class YahooFinanceProvider(DataProvider):
         except Exception as e: raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e)) from e
 
     def _fetch_and_normalize(self, ticker: str) -> Optional[CompanyFinancials]:
-        raw_data = self.fetcher.fetch_all(ticker)
-        return self.normalizer.normalize(raw_data)
+        self.last_raw_data = self.fetcher.fetch_historical_deep(ticker)
+        return self.normalizer.normalize(self.last_raw_data)
 
     def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> CompanyFinancials:
         if current_attempt >= self.MAX_RETRY_ATTEMPTS or any(original_ticker.upper().endswith(s) for s in self.MARKET_SUFFIXES):
@@ -216,3 +217,10 @@ class YahooFinanceProvider(DataProvider):
                 perpetual_growth_rate=float(country_data["inflation_rate"]),
                 corporate_aaa_yield=float(country_data["risk_free_rate"] + 0.01)
             )
+
+    def map_raw_to_financials(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
+        """
+        Convertit un objet Raw gelé (passé) en modèle financier standard.
+        Indispensable pour la boucle de backtesting.
+        """
+        return self.normalizer.normalize(raw)

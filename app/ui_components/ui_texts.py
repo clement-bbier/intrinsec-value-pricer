@@ -652,6 +652,9 @@ class WorkflowTexts:
     PEER_NOT_FOUND = "Multiples de marché indisponibles (Cohorte insuffisante)"
     PEER_SUCCESS = "Cohorte sectorielle finalisée avec succès."
 
+    STATUS_BACKTEST_RUN = "Simulation des valorisations historiques (Backtesting)..."
+    STATUS_BACKTEST_COMPLETE = "Validation historique terminée."
+
 class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions (diagnostics.py & exceptions.py)."""
 

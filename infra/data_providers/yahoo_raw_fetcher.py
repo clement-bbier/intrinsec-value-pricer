@@ -1,34 +1,41 @@
 """
 infra/data_providers/yahoo_raw_fetcher.py
 
-FETCHER BRUT — YAHOO FINANCE API — VERSION V11.0 (Sprint 4)
-Rôle : Appels API yfinance avec discovery de pairs et gestion des erreurs.
-Responsabilité unique : Transport de données brutes, aucune logique métier.
+FETCHER BRUT — YAHOO FINANCE API — VERSION V13.0 (Sprint 6)
+Rôle : Extraction multi-temporelle (TTM & Historique) pour Backtesting.
+Standards : SOLID (Interface Segregation), Pydantic Rigueur, safe_api_call.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 
 import pandas as pd
 import yfinance as yf
+from pydantic import BaseModel, ConfigDict, Field
 
 from infra.data_providers.extraction_utils import safe_api_call
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class RawFinancialData:
-    """Container pour les données brutes extraites de Yahoo Finance pour l'entreprise cible."""
+class RawFinancialData(BaseModel):
+    """
+    Container Pydantic pour les données brutes (ST 3.1).
+    Supporte désormais les types arbitraires pour encapsuler les DataFrames Pandas.
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     ticker: str
-    info: Dict[str, Any]
+    info: Dict[str, Any] = Field(default_factory=dict)
+
+    # États financiers annuels (Historique complet 3-4 ans pour le Backtesting)
     balance_sheet: Optional[pd.DataFrame] = None
     income_stmt: Optional[pd.DataFrame] = None
     cash_flow: Optional[pd.DataFrame] = None
+
+    # États trimestriels (Indispensables pour les calculs TTM précis)
     quarterly_income_stmt: Optional[pd.DataFrame] = None
     quarterly_cash_flow: Optional[pd.DataFrame] = None
 
@@ -44,28 +51,56 @@ class RawFinancialData:
 class YahooRawFetcher:
     """
     Fetcher bas niveau pour l'API Yahoo Finance.
-
-    Responsabilité unique : Récupérer les données brutes avec retry.
-    Il ne contient aucune logique de calcul ou de normalisation (SOLID).
+    Responsabilité unique : Acquisition multi-temporelle avec retry (SOLID).
     """
 
     def __init__(self, max_retries: int = 2):
         self.max_retries = max_retries
 
+    # =========================================================================
+    # 1. INTERFACES PUBLIQUES (Interface Segregation)
+    # =========================================================================
+
+    def fetch_ttm_snapshot(self, ticker: str) -> RawFinancialData:
+        """Récupère les données les plus récentes pour une analyse immédiate."""
+        logger.debug("[Fetcher] Snapshot TTM pour %s", ticker)
+        return self._execute_fetch(ticker, historical=False)
+
+    def fetch_historical_deep(self, ticker: str) -> RawFinancialData:
+        """
+        Récupère l'historique complet (3-4 ans) des états financiers (ST 3.1).
+        Indispensable pour comparer l'IV passée au prix réel de l'époque.
+        """
+        logger.info("[Fetcher] Deep Fetch Historique pour %s", ticker)
+        return self._execute_fetch(ticker, historical=True)
+
     def fetch_all(self, ticker: str) -> RawFinancialData:
         """
-        Récupère l'intégralité des états financiers et métadonnées pour un ticker cible.
-        Utilise safe_api_call pour isoler les défaillances de l'API yfinance.
+        Rétrocompatibilité avec les Sprints 1-5.
+        Redirige vers le Deep Fetch pour garantir la complétude des données.
         """
-        logger.debug("[Fetcher] Acquisition des données brutes cibles pour %s", ticker)
+        return self.fetch_historical_deep(ticker)
 
+    # =========================================================================
+    # 2. MOTEUR D'EXTRACTION (Cœur de la logique)
+    # =========================================================================
+
+    def _execute_fetch(self, ticker: str, historical: bool = True) -> RawFinancialData:
+        """
+        Moteur d'exécution centralisé.
+        Récupère l'intégralité des états financiers via safe_api_call.
+        """
         yt = yf.Ticker(ticker)
 
-        # Extraction isolée de chaque segment pour garantir la continuité du workflow en cas d'erreur partielle
+        # Extraction isolée de chaque segment pour garantir la continuité du workflow (V11.0 Style)
         info = safe_api_call(lambda: yt.info, f"Info/{ticker}", self.max_retries) or {}
+
+        # Note : En yfinance, .balance_sheet, .income_stmt et .cash_flow
+        # contiennent l'historique annuel par défaut (généralement 4 ans).
         bs = safe_api_call(lambda: yt.balance_sheet, f"BS/{ticker}", self.max_retries)
         is_ = safe_api_call(lambda: yt.income_stmt, f"IS/{ticker}", self.max_retries)
         cf = safe_api_call(lambda: yt.cash_flow, f"CF/{ticker}", self.max_retries)
+
         q_is = safe_api_call(lambda: yt.quarterly_income_stmt, f"QIS/{ticker}", self.max_retries)
         q_cf = safe_api_call(lambda: yt.quarterly_cash_flow, f"QCF/{ticker}", self.max_retries)
 
@@ -79,40 +114,28 @@ class YahooRawFetcher:
             quarterly_cash_flow=q_cf,
         )
 
+    # =========================================================================
+    # 3. SERVICES ANNEXES (Pairs & Historique Prix)
+    # =========================================================================
+
     def fetch_peer_multiples(self, target_ticker: str) -> List[Dict[str, Any]]:
-        """
-        Découvre les concurrents sectoriels et extrait leurs données brutes.
-        CORRECTION : Utilisation des tickers recommandés dans l'objet info.
-        """
+        """Découvre les concurrents sectoriels et extrait leurs données brutes (.info)."""
         logger.info("[Fetcher] Démarrage de la discovery des pairs pour %s", target_ticker)
 
-        # 1. Extraction des pairs via l'info 'relatedTickers' (plus fiable que recommendations)
-        # On récupère d'abord l'info de la cible si on ne l'a pas déjà
         target_yt = yf.Ticker(target_ticker)
         target_info = safe_api_call(lambda: target_yt.info, f"TargetInfo/{target_ticker}", 1)
 
-        # Yahoo stocke souvent les concurrents ici
-        peer_tickers = []
-        if target_info and "relatedTickers" in target_info:
-            peer_tickers = target_info.get("relatedTickers", [])
+        # Yahoo stocke souvent les concurrents dans 'relatedTickers'
+        peer_tickers = target_info.get("relatedTickers", []) if target_info else []
 
-        # Si vide, on tente un fallback via le secteur/industrie (Optionnel ou manuel)
         if not peer_tickers:
             logger.warning("[Fetcher] Aucun pair identifié dynamiquement pour %s", target_ticker)
             return []
 
-        # 2. Extraction brute des données .info pour chaque pair
         raw_peers_data: List[Dict[str, Any]] = []
-        for p_ticker in peer_tickers[:8]:
-            # On s'assure que p_ticker est bien une chaîne
-            if not isinstance(p_ticker, str):
-                continue
-
-            p_info = safe_api_call(
-                lambda: yf.Ticker(p_ticker).info,
-                f"PeerInfo/{p_ticker}",
-                1
-            )
+        # Limitation à 5 pour optimiser les temps de réponse API (Sprint 5)
+        for p_ticker in peer_tickers[:5]:
+            p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", 1)
             if p_info:
                 p_info["symbol"] = p_ticker
                 raw_peers_data.append(p_info)
@@ -121,20 +144,11 @@ class YahooRawFetcher:
         return raw_peers_data
 
     def fetch_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """
-        Récupère l'historique des prix pour l'affichage graphique ou l'analyse de volatilité.
-        """
+        """Récupère l'historique des prix (Indispensable pour valider l'IV historique)."""
         logger.debug("[Fetcher] Fetching price history for %s (%s)", ticker, period)
-
         try:
             yt = yf.Ticker(ticker)
-            hist = yt.history(period=period)
-
-            if hist.empty:
-                logger.warning("[Fetcher] Historique de prix vide pour %s", ticker)
-
-            return hist
-
+            return yt.history(period=period)
         except Exception as e:
-            logger.error("[Fetcher] Erreur extraction historique pour %s: %s", ticker, e)
+            logger.error("[Fetcher] Erreur extraction prix historique %s: %s", ticker, e)
             return pd.DataFrame()
