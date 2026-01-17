@@ -317,6 +317,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
                 continue
 
         logger.info("[Monte Carlo] Simulations completed | valid_results=%d/%d", len(simulated_values), num_simulations)
+
         return simulated_values
 
     def _compute_quantiles(self, simulated_values: List[float]) -> dict:

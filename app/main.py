@@ -37,7 +37,7 @@ if str(_ROOT_PATH) not in sys.path:
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design, render_terminal_header
-from app.ui.facade import render_expert_terminal, get_available_modes  # Utilisation de la Façade
+from app.ui_components import ui_inputs_expert  # Import module pour accès dynamique
 from app.workflow import run_workflow_and_display
 from core.models import (
     DCFParameters,
@@ -57,7 +57,8 @@ from core.i18n import (
     FeedbackMessages
 )
 
-# IMPORT DU REGISTRE CENTRALISÉ (DT-008) - Plus utilisé, remplacé par la Façade
+# IMPORT DU REGISTRE CENTRALISÉ (DT-008)
+from core.valuation.registry import StrategyRegistry, get_display_names
 
 # ==============================================================================
 # CONFIGURATION & LOGGING
@@ -70,8 +71,29 @@ logger = logging.getLogger(__name__)
 # REGISTRES DE CONFIGURATION (FACADE VERS REGISTRE CENTRALISÉ)
 # ==============================================================================
 
-# Utilisation de la Façade comme source de vérité pour l'UI
-VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_available_modes()
+# DT-008: Ces registres sont maintenant des facades vers le registre centralisé
+VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
+
+
+def _get_expert_ui_renderer(mode: ValuationMode) -> Optional[Callable]:
+    """
+    Récupère dynamiquement le renderer UI depuis le registre centralisé.
+    
+    DT-008: Remplace le mapping manuel EXPERT_UI_REGISTRY par
+    une résolution dynamique basée sur ui_renderer_name.
+    """
+    renderer_name = StrategyRegistry.get_ui_renderer_name(mode)
+    if renderer_name and hasattr(ui_inputs_expert, renderer_name):
+        return getattr(ui_inputs_expert, renderer_name)
+    return None
+
+
+# Backward compatibility: construit le registre legacy si nécessaire
+EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
+    mode: _get_expert_ui_renderer(mode)
+    for mode in VALUATION_DISPLAY_NAMES.keys()
+    if _get_expert_ui_renderer(mode) is not None
+}
 
 # ==============================================================================
 # CONSTANTES UI (DT-011: Centralisées dans core/config)
@@ -269,25 +291,9 @@ def _render_onboarding_guide() -> None:
     with c1:
         st.markdown(OnboardingTexts.PILOTAGE_TITLE)
         st.caption(OnboardingTexts.PILOTAGE_DESC)
-
-        # Graphique simple : Football Field
-        st.markdown("**Exemple : Football Field**")
-        import pandas as pd
-        football_data = pd.DataFrame({
-            'Méthode': ['Prix Marché', 'DCF Central', 'Peers EV/EBITDA', 'Peers P/E'],
-            'Valeur': [100, 120, 110, 115]
-        })
-        st.bar_chart(football_data.set_index('Méthode'))
-
     with c2:
         st.markdown(OnboardingTexts.MC_TITLE)
         st.caption(OnboardingTexts.MC_DESC)
-
-        # Graphique simple : Distribution Monte Carlo
-        st.markdown("**Exemple : Distribution de Valeurs**")
-        import numpy as np
-        mc_sample = np.random.normal(120, 15, 1000)
-        st.line_chart(pd.DataFrame({'Valeur': mc_sample}))
 
     st.divider()
 
@@ -303,31 +309,6 @@ def _render_onboarding_guide() -> None:
 
     st.divider()
 
-    # --- SECTION D : EXEMPLES VISUELS ---
-    st.subheader("Exemples Visuels")
-
-    # Waterfall SOTP
-    st.markdown("**Waterfall Sum-of-the-Parts (SOTP)**")
-    st.caption("Décomposition de la valeur par segments d'activité")
-
-    sotp_waterfall = pd.DataFrame({
-        'Segment': ['Segment A', 'Segment B', 'Segment C', 'Décote Holding'],
-        'Valeur': [80, 60, 40, -20]
-    })
-    st.bar_chart(sotp_waterfall.set_index('Segment'))
-
-    # Scénarios
-    st.markdown("**Analyse de Scénarios Bull/Base/Bear**")
-    st.caption("Impact des hypothèses sur la valorisation")
-
-    scenarios_data = pd.DataFrame({
-        'Scénario': ['Bear Case', 'Base Case', 'Bull Case'],
-        'Valorisation': [90, 120, 150]
-    })
-    st.line_chart(scenarios_data.set_index('Scénario'))
-
-    st.divider()
-
     # --- FOOTER : DIAGNOSTIC ---
     st.markdown(f"**{OnboardingTexts.DIAGNOSTIC_HEADER}**")
     d1, d2, d3 = st.columns(3)
@@ -337,16 +318,16 @@ def _render_onboarding_guide() -> None:
 
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
-    """Gère l'affichage via la Façade Expert."""
+    """Gère l'affichage et le lancement en mode Expert."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    # Appel direct à la Façade qui délègue à la Factory
-    request = render_expert_terminal(mode, ticker)
-
-    if request:
-        _set_active_request(request)
+    render_func = EXPERT_UI_REGISTRY.get(mode)
+    if render_func:
+        request = render_func(ticker)
+        if request:
+            _set_active_request(request)
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:

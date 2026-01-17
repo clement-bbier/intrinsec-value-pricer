@@ -18,31 +18,31 @@ from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 class PeerMultiplesTab(ResultTabBase):
     """Onglet de triangulation par multiples."""
-    
+
     TAB_ID = "peer_multiples"
     LABEL = "Valorisation Relative"
     ICON = ""
     ORDER = 4
     IS_CORE = False
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si des multiples sont disponibles."""
         return (
             result.multiples_data is not None
             and result.multiples_data.peer_count > 0
         )
-    
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Affiche la valorisation par multiples."""
         md = result.multiples_data
-        
+
         st.markdown("**VALORISATION PAR COMPARABLES**")
         st.caption(f"Panel de {md.peer_count} sociétés comparables")
-        
+
         # Tableau des multiples
         with st.container(border=True):
             st.markdown("**Multiples du Panel**")
-            
+
             multiples_df = pd.DataFrame({
                 "Multiple": ["EV/EBITDA", "EV/EBIT", "P/E", "P/B"],
                 "Médiane": [
@@ -58,28 +58,28 @@ class PeerMultiplesTab(ResultTabBase):
                     f"{result.financials.pb_ratio:.1f}x" if result.financials.pb_ratio else "—",
                 ],
             })
-            
+
             st.dataframe(multiples_df, hide_index=True, use_container_width=True)
-        
+
         # Valeurs implicites
         if md.implied_value_ev_ebitda or md.implied_value_pe:
             with st.container(border=True):
                 st.markdown("**Valeurs Implicites par Action**")
-                
+
                 col1, col2 = st.columns(2)
-                
+
                 if md.implied_value_ev_ebitda:
                     col1.metric(
                         "Via EV/EBITDA",
                         format_smart_number(md.implied_value_ev_ebitda, result.financials.currency)
                     )
-                
+
                 if md.implied_value_pe:
                     col2.metric(
                         "Via P/E",
                         format_smart_number(md.implied_value_pe, result.financials.currency)
                     )
-    
+
     def get_display_label(self) -> str:
         """Label sans icône."""
         return self.LABEL

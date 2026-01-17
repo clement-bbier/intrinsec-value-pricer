@@ -235,14 +235,10 @@ class ExpertTerminalBase(ABC):
 
     def _render_optional_features(self) -> None:
         """
-        Section : Fonctionnalités optionnelles (UI Progressive).
+        Section : Fonctionnalités optionnelles.
 
-        Implémente le mode "Expert Avancé" avec st.expander pour
-        cacher les options complexes aux utilisateurs novices.
-
-        Logique :
-        - Options simples (Peers) : Toujours visibles
-        - Options complexes (MC, Scénarios, SOTP) : Dans expander "Expert Avancé"
+        Affiche les expanders pour Monte Carlo, Scénarios, Peers, SOTP.
+        Met à jour les attributs internes (_scenarios, _manual_peers, etc.)
         """
         from app.ui.expert_terminals.shared_widgets import (
             widget_monte_carlo,
@@ -252,51 +248,27 @@ class ExpertTerminalBase(ABC):
             build_dcf_parameters,
         )
 
-        # === OPTIONS SIMPLES (Toujours visibles) ===
-        # Peer Triangulation - Utile même pour débutants
+        # Monte Carlo
+        if self.SHOW_MONTE_CARLO:
+            terminal_method = self._collected_data.get("terminal_method")
+            mc_data = widget_monte_carlo(self.MODE, terminal_method)
+            self._collected_data.update(mc_data)
+
+        # Peer Triangulation
         if self.SHOW_PEER_TRIANGULATION:
             peer_data = widget_peer_triangulation()
             self._collected_data.update(peer_data)
             self._manual_peers = peer_data.get("manual_peers")
 
-        # === MODE EXPERT AVANCÉ (Expander) ===
-        has_advanced_features = (
-            self.SHOW_MONTE_CARLO or
-            self.SHOW_SCENARIOS or
-            self.SHOW_SOTP
-        )
+        # Scénarios
+        if self.SHOW_SCENARIOS:
+            self._scenarios = widget_scenarios(self.MODE)
 
-        if has_advanced_features:
-            with st.expander("Mode Expert Avancé", expanded=False):
-                st.caption(
-                    "Options avancées pour analyses sophistiquées. "
-                    "À utiliser avec précaution par les analystes expérimentés."
-                )
-                st.divider()
-
-                # Monte Carlo - Simulation stochastique
-                if self.SHOW_MONTE_CARLO:
-                    st.markdown("**Simulation Monte Carlo**")
-                    st.caption("Quantifie l'incertitude via simulations probabilistes")
-                    terminal_method = self._collected_data.get("terminal_method")
-                    mc_data = widget_monte_carlo(self.MODE, terminal_method)
-                    self._collected_data.update(mc_data)
-                    st.divider()
-
-                # Scénarios - Analyse déterministe
-                if self.SHOW_SCENARIOS:
-                    st.markdown("**Analyse de Scénarios**")
-                    st.caption("Valorisation sous différents scénarios économiques")
-                    self._scenarios = widget_scenarios(self.MODE)
-                    st.divider()
-
-                # SOTP - Sum-of-the-Parts
-                if self.SHOW_SOTP:
-                    st.markdown("**Sum-of-the-Parts (SOTP)**")
-                    st.caption("Valorisation segmentée par business units")
-                    # SOTP requiert un objet DCFParameters existant
-                    # On le créera au moment de la construction de la requête
-                    pass
+        # SOTP (modification in-place des paramètres)
+        if self.SHOW_SOTP:
+            # SOTP requiert un objet DCFParameters existant
+            # On le créera au moment de la construction de la requête
+            pass
 
     def _render_submit(self) -> Optional[ValuationRequest]:
         """
