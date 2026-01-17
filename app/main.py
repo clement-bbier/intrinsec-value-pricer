@@ -37,7 +37,7 @@ if str(_ROOT_PATH) not in sys.path:
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design, render_terminal_header
-from app.ui.expert_terminals.factory import ExpertTerminalFactory  # Nouveau système factory
+from app.ui.facade import render_expert_terminal, get_available_modes  # Utilisation de la Façade
 from app.workflow import run_workflow_and_display
 from core.models import (
     DCFParameters,
@@ -57,8 +57,7 @@ from core.i18n import (
     FeedbackMessages
 )
 
-# IMPORT DU REGISTRE CENTRALISÉ (DT-008)
-from core.valuation.registry import StrategyRegistry, get_display_names
+# IMPORT DU REGISTRE CENTRALISÉ (DT-008) - Plus utilisé, remplacé par la Façade
 
 # ==============================================================================
 # CONFIGURATION & LOGGING
@@ -71,30 +70,8 @@ logger = logging.getLogger(__name__)
 # REGISTRES DE CONFIGURATION (FACADE VERS REGISTRE CENTRALISÉ)
 # ==============================================================================
 
-# DT-008: Ces registres sont maintenant des facades vers le registre centralisé
-VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
-
-
-def _get_expert_ui_renderer(mode: ValuationMode) -> Optional[Callable]:
-    """
-    Récupère dynamiquement le renderer UI depuis la factory.
-
-    Migration DT-008: Utilise maintenant ExpertTerminalFactory au lieu
-    de l'ancien système ui_inputs_expert.
-    """
-    try:
-        terminal = ExpertTerminalFactory.create_terminal(mode)
-        return lambda: terminal.render()  # Lambda pour compatibilité avec l'interface existante
-    except Exception:
-        return None
-
-
-# Backward compatibility: construit le registre legacy si nécessaire
-EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
-    mode: _get_expert_ui_renderer(mode)
-    for mode in VALUATION_DISPLAY_NAMES.keys()
-    if _get_expert_ui_renderer(mode) is not None
-}
+# Utilisation de la Façade comme source de vérité pour l'UI
+VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_available_modes()
 
 # ==============================================================================
 # CONSTANTES UI (DT-011: Centralisées dans core/config)
@@ -319,16 +296,16 @@ def _render_onboarding_guide() -> None:
 
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
-    """Gère l'affichage et le lancement en mode Expert."""
+    """Gère l'affichage via la Façade Expert."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    render_func = EXPERT_UI_REGISTRY.get(mode)
-    if render_func:
-        request = render_func(ticker)
-        if request:
-            _set_active_request(request)
+    # Appel direct à la Façade qui délègue à la Factory
+    request = render_expert_terminal(mode, ticker)
+
+    if request:
+        _set_active_request(request)
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:

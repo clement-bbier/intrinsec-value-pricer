@@ -29,27 +29,41 @@ from core.models import ValuationMode, ValuationRequest, ValuationResult
 
 def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[ValuationRequest]:
     """
-    Affiche le terminal expert et retourne la requete si soumise.
-    
-    Cette fonction est le point d'entree pour la nouvelle architecture.
-    Elle delegue a la factory qui cree le bon terminal.
-    
+    Point d'entree unifie pour tous les terminaux experts.
+
+    Utilise la Factory pour creer le bon terminal puis le rend.
+    Inclut logging pour debuggage.
+
     Parameters
     ----------
     mode : ValuationMode
         Le mode de valorisation selectionne.
     ticker : str
         Le symbole boursier.
-    
+
     Returns
     -------
     Optional[ValuationRequest]
         La requete si le formulaire est soumis, None sinon.
     """
-    from app.ui.expert_terminals import create_expert_terminal
-    
-    terminal = create_expert_terminal(mode, ticker)
-    return terminal.render()
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        logger.debug(f"[Facade] Creation terminal {mode.value} pour {ticker}")
+        from app.ui.expert_terminals import create_expert_terminal
+
+        terminal = create_expert_terminal(mode, ticker)
+        logger.debug(f"[Facade] Terminal cree: {type(terminal).__name__}")
+
+        result = terminal.render()
+        logger.debug(f"[Facade] Rendu termine, request: {result is not None}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"[Facade] Erreur rendu terminal {mode.value}: {str(e)}")
+        return None
 
 
 def render_results(result: ValuationResult, **kwargs: Any) -> None:
@@ -96,6 +110,20 @@ def get_mode_descriptions():
     """
     from app.ui.expert_terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_descriptions()
+
+
+def get_available_modes() -> Dict[ValuationMode, str]:
+    """
+    Retourne les modes disponibles avec leurs noms d'affichage.
+
+    Utilise la Factory comme source de verite pour les modes supportes.
+
+    Returns
+    -------
+    Dict[ValuationMode, str]
+        Mapping mode -> nom d'affichage.
+    """
+    return ExpertTerminalFactory.get_mode_display_names()
 
 
 # ==============================================================================
