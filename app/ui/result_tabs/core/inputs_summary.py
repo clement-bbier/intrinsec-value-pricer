@@ -85,13 +85,13 @@ class InputsSummaryTab(ResultTabBase):
             
             params_data = {
                 "Années de projection": p.projection_years,
-                "Taux sans risque (Rf)": f"{p.rates.risk_free_rate:.2%}" if p.rates.risk_free_rate else "Auto",
-                "Prime de risque marché": f"{p.rates.market_risk_premium:.2%}" if p.rates.market_risk_premium else "Auto",
-                "Croissance Phase 1": f"{p.growth.fcf_growth_rate:.2%}" if p.growth.fcf_growth_rate else "Auto",
-                "Croissance perpétuelle (g)": f"{p.growth.perpetual_growth_rate:.2%}" if p.growth.perpetual_growth_rate else "Auto",
+                KPITexts.PARAM_RF: f"{p.rates.risk_free_rate:.2%}" if p.rates.risk_free_rate else "Auto",
+                KPITexts.PARAM_MRP: f"{p.rates.market_risk_premium:.2%}" if p.rates.market_risk_premium else "Auto",
+                KPITexts.PARAM_GROWTH_PHASE1: f"{p.growth.fcf_growth_rate:.2%}" if p.growth.fcf_growth_rate else "Auto",
+                KPITexts.PARAM_GROWTH_PERP: f"{p.growth.perpetual_growth_rate:.2%}" if p.growth.perpetual_growth_rate else "Auto",
             }
-            
-            st.table(pd.DataFrame(params_data.items(), columns=["Paramètre", "Valeur"]))
+
+            st.table(pd.DataFrame(params_data.items(), columns=[KPITexts.PARAM_LABEL, KPITexts.PARAM_VALUE]))
     
     @staticmethod
     def _format_number(value: float) -> str:

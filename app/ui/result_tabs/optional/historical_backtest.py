@@ -76,10 +76,10 @@ class HistoricalBacktestTab(ResultTabBase):
                 periods_data = []
                 for period in bt.periods:
                     periods_data.append({
-                        "Date": period.date.strftime("%Y-%m"),
-                        "Valeur Prédite": f"{period.predicted_value:,.2f}",
-                        "Valeur Réelle": f"{period.actual_value:,.2f}",
-                        "Erreur": f"{period.error_pct:+.1%}",
+                        KPITexts.COL_DATE: period.date.strftime("%Y-%m"),
+                        KPITexts.COL_PREDICTED: f"{period.predicted_value:,.2f}",
+                        KPITexts.COL_ACTUAL: f"{period.actual_value:,.2f}",
+                        KPITexts.COL_ERROR: f"{period.error_pct:+.1%}",
                         "Verdict": "OK" if abs(period.error_pct) < 0.20 else "ECART",
                     })
                 

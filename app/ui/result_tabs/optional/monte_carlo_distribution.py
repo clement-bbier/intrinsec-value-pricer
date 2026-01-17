@@ -61,31 +61,31 @@ class MonteCarloDistributionTab(ResultTabBase):
             from app.ui.result_tabs.components.step_renderer import render_calculation_step
             for idx, step in enumerate(mc_steps, start=1):
                 render_calculation_step(idx, step)
-            col4.metric("Coef. Variation", f"{mc.cv:.1%}")
+            col4.metric(KPITexts.METRIC_CV, f"{mc.cv:.1%}")
         
         # Percentiles
         with st.container(border=True):
-            st.markdown("**Intervalles de Confiance**")
-            
+            st.markdown(f"**{KPITexts.TITLE_CI}**")
+
             col1, col2, col3 = st.columns(3)
-            
-            col1.metric("P5 (Bear)", format_smart_number(mc.percentile_5, currency))
-            col2.metric("P50 (Base)", format_smart_number(mc.percentile_50, currency))
-            col3.metric("P95 (Bull)", format_smart_number(mc.percentile_95, currency))
+
+            col1.metric(KPITexts.METRIC_P5, format_smart_number(mc.percentile_5, currency))
+            col2.metric(KPITexts.METRIC_P50, format_smart_number(mc.percentile_50, currency))
+            col3.metric(KPITexts.METRIC_P95, format_smart_number(mc.percentile_95, currency))
         
         # Probabilités
         with st.container(border=True):
-            st.markdown("**Analyse de Probabilité**")
-            
+            st.markdown(f"**{KPITexts.TITLE_PROBA_ANALYSIS}**")
+
             current_price = result.financials.current_price
-            
+
             col1, col2 = st.columns(2)
             col1.metric(
-                "P(Valeur > Prix actuel)",
+                KPITexts.PROBA_ABOVE_CURRENT,
                 f"{mc.prob_above_current:.1%}"
             )
             col2.metric(
-                "P(Upside > 20%)",
+                KPITexts.PROBA_UPSIDE_20,
                 f"{mc.prob_upside_20pct:.1%}" if hasattr(mc, 'prob_upside_20pct') else "—"
             )
         
@@ -106,7 +106,7 @@ class MonteCarloDistributionTab(ResultTabBase):
                     x=current_price,
                     line_dash="dash",
                     line_color="red",
-                    annotation_text="Prix actuel"
+                    annotation_text=KPITexts.CHART_ANNOTATION_CURRENT
                 )
                 
                 # Ligne de la valeur intrinsèque
@@ -114,11 +114,11 @@ class MonteCarloDistributionTab(ResultTabBase):
                     x=result.intrinsic_value,
                     line_dash="solid",
                     line_color="green",
-                    annotation_text="Valeur DCF"
+                    annotation_text=KPITexts.CHART_ANNOTATION_DCF
                 )
                 
                 fig.update_layout(
-                    title="Distribution des Valeurs Intrinsèques",
+                    title=KPITexts.CHART_TITLE_DISTRIBUTION,
                     xaxis_title=f"Valeur par action ({currency})",
                     yaxis_title="Fréquence",
                     showlegend=False,

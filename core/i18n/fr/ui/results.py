@@ -6,6 +6,46 @@ Textes des onglets de resultats.
 
 class KPITexts:
     """Labels et titres pour l'affichage des resultats (Glass Box)."""
+
+    # === NOUVELLES CONSTANTES POUR RESULT TABS ===
+    # Inputs Summary
+    PARAM_RF = "Taux sans risque (R_f)"
+    PARAM_MRP = "Prime de risque marché"
+    PARAM_GROWTH_PHASE1 = "Croissance Phase 1"
+    PARAM_GROWTH_PERP = "Croissance perpétuelle (g)"
+    PARAM_TV_MULT = "Multiple de sortie"
+    PARAM_LABEL = "Paramètre"
+    PARAM_VALUE = "Valeur"
+
+    # Peer Multiples
+    COL_TICKER = "Ticker"
+    COL_NAME = "Name"
+    COL_MCAP = "Mcap"
+    COL_PE_RATIO = "P/E"
+    COL_EV_EBITDA = "EV/EBITDA"
+    COL_EV_REVENUE = "EV/Rev"
+    VAL_VIA_EV_EBITDA = "Via EV/EBITDA"
+    VAL_VIA_PE = "Via P/E"
+    VAL_IMPLIED_VALUES = "Valeurs Implicites par Action"
+
+    # Monte Carlo
+    METRIC_CV = "Coef. Variation"
+    METRIC_P5 = "P5 (Bear)"
+    METRIC_P50 = "P50 (Base)"
+    METRIC_P95 = "P95 (Bull)"
+    TITLE_CI = "Intervalles de Confiance"
+    TITLE_PROBA_ANALYSIS = "Analyse de Probabilité"
+    PROBA_ABOVE_CURRENT = "P(Valeur > Prix actuel)"
+    PROBA_UPSIDE_20 = "P(Upside > 20%)"
+    CHART_ANNOTATION_CURRENT = "Prix actuel"
+    CHART_ANNOTATION_DCF = "Valeur DCF"
+    CHART_TITLE_DISTRIBUTION = "Distribution des Valeurs Intrinsèques"
+
+    # Historical Backtest
+    COL_DATE = "Date"
+    COL_PREDICTED = "Valeur Prédite"
+    COL_ACTUAL = "Valeur Réelle"
+    COL_ERROR = "Erreur"
     
     # Onglets
     TAB_INPUTS = "Donnees d'Entree"

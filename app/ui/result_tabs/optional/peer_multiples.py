@@ -57,12 +57,12 @@ class PeerMultiplesTab(ResultTabBase):
         if m.peers:
             peer_list = []
             for p in m.peers:
-                peer_list.append({
-                    "Ticker": p.ticker, "Name": p.name, "Mcap": format_smart_number(p.market_cap),
-                    "P/E": f"{p.pe_ratio:.1f}x" if p.pe_ratio else "—",
-                    "EV/EBITDA": f"{p.ev_ebitda:.1f}x" if p.ev_ebitda else "—",
-                    "EV/Rev": f"{p.ev_revenue:.1f}x" if p.ev_revenue else "—"
-                })
+            peer_list.append({
+                KPITexts.COL_TICKER: p.ticker, KPITexts.COL_NAME: p.name, KPITexts.COL_MCAP: format_smart_number(p.market_cap),
+                KPITexts.COL_PE_RATIO: f"{p.pe_ratio:.1f}x" if p.pe_ratio else "—",
+                KPITexts.COL_EV_EBITDA: f"{p.ev_ebitda:.1f}x" if p.ev_ebitda else "—",
+                KPITexts.COL_EV_REVENUE: f"{p.ev_revenue:.1f}x" if p.ev_revenue else "—"
+            })
             st.dataframe(pd.DataFrame(peer_list), hide_index=True, use_container_width=True)
 
         with st.expander(KPITexts.TAB_CALC, expanded=False):
@@ -85,19 +85,19 @@ class PeerMultiplesTab(ResultTabBase):
         # Valeurs implicites
         if md.implied_value_ev_ebitda or md.implied_value_pe:
             with st.container(border=True):
-                st.markdown("**Valeurs Implicites par Action**")
-                
+                st.markdown(f"**{KPITexts.VAL_IMPLIED_VALUES}**")
+
                 col1, col2 = st.columns(2)
-                
+
                 if md.implied_value_ev_ebitda:
                     col1.metric(
-                        "Via EV/EBITDA",
+                        KPITexts.VAL_VIA_EV_EBITDA,
                         format_smart_number(md.implied_value_ev_ebitda, result.financials.currency)
                     )
-                
+
                 if md.implied_value_pe:
                     col2.metric(
-                        "Via P/E",
+                        KPITexts.VAL_VIA_PE,
                         format_smart_number(md.implied_value_pe, result.financials.currency)
                     )
     
