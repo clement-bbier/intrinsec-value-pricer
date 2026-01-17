@@ -16,7 +16,8 @@ from core.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
     TraceHypothesis, ValuationResult
 )
-from app.ui_components.ui_texts import CalculationErrors
+# DT-001/002: Import depuis core.i18n
+from core.i18n import CalculationErrors
 
 logger = logging.getLogger(__name__)
 

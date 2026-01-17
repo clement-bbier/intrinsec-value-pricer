@@ -34,7 +34,9 @@ from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.extraction_utils import calculate_historical_cagr, safe_api_call
 from infra.macro.yahoo_macro_provider import MacroContext, YahooMacroProvider
 from infra.ref_data.country_matrix import get_country_context
-from app.ui_components.ui_texts import StrategySources, WorkflowTexts
+# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui_components
+from core.i18n import StrategySources, WorkflowTexts
+from core.config import PeerDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +72,10 @@ class YahooFinanceProvider(DataProvider):
     def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
         Orchestration de la cohorte avec limitation stricte pour la performance (Sprint 5).
-        Utilise ui_texts.py pour la transparence et le monitoring.
+        DT-012: Constante centralisée dans core/config.
         """
-        # Constante de performance : On limite à 5 pairs pour éviter le Rate Limiting
-        _MAX_PEERS_ANALYSIS = 5
+        # Constante centralisée (DT-012)
+        _MAX_PEERS_ANALYSIS = PeerDefaults.MAX_PEERS_ANALYSIS
 
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
             raw_peers = []

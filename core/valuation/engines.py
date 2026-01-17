@@ -1,10 +1,13 @@
 """
 core/valuation/engines.py
 
-ROUTEUR CENTRAL DES MOTEURS DE VALORISATION — VERSION V10.0 (Sprint 3 Final)
+ROUTEUR CENTRAL DES MOTEURS DE VALORISATION — VERSION V11.0 (DT-007 Resolution)
 Responsabilités : Orchestration, Routage, Wrapper Monte Carlo et Reverse DCF.
 Architecture : Grade-A avec support intégral FCFF (Firm) et Direct Equity (Actionnaire).
-Standards : SOLID, Pydantic, Audit-Integrated, i18n.
+Standards : SOLID, Pydantic, Audit-Integrated, i18n, Centralized Registry.
+
+Note DT-007: Le registre manuel STRATEGY_REGISTRY a été remplacé par
+le registre centralisé dans core/valuation/registry.py
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import logging
 import traceback
 from typing import Dict, Type, Optional
 
-from app.ui_components.ui_texts import DiagnosticTexts
+from core.i18n import DiagnosticTexts
 from core.exceptions import (
     ValuationException,
     DiagnosticEvent,
@@ -30,39 +33,28 @@ from core.models import (
     MultiplesData
 )
 from core.valuation.strategies.abstract import ValuationStrategy
-from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
-from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-from core.valuation.strategies.dcf_growth import RevenueBasedStrategy
-from core.valuation.strategies.rim_banks import RIMBankingStrategy
-from core.valuation.strategies.graham_value import GrahamNumberStrategy
-
-# NOUVEAUTÉS SPRINT 3 : Stratégies Direct Equity
-from core.valuation.strategies.dcf_equity import FCFEStrategy
-from core.valuation.strategies.dcf_dividend import DividendDiscountStrategy
-
 from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+
+# Import du registre centralisé (DT-007)
+from core.valuation.registry import get_strategy, StrategyRegistry
 
 logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
-# 1. REGISTRE DES STRATÉGIES (FACTORY MAP)
+# 1. REGISTRE DES STRATÉGIES (FACADE VERS REGISTRE CENTRALISÉ)
 # ==============================================================================
 
-STRATEGY_REGISTRY: Dict[ValuationMode, Type[ValuationStrategy]] = {
-    # Approche Entité (Firm Value - WACC Based)
-    ValuationMode.FCFF_TWO_STAGE: StandardFCFFStrategy,
-    ValuationMode.FCFF_NORMALIZED: FundamentalFCFFStrategy,
-    ValuationMode.FCFF_REVENUE_DRIVEN: RevenueBasedStrategy,
+# Backward compatibility: STRATEGY_REGISTRY pointe vers le registre centralisé
+# Note: Ce dict est généré dynamiquement depuis le registre centralisé
+def _build_legacy_registry() -> Dict[ValuationMode, Type[ValuationStrategy]]:
+    """Construit le registre legacy depuis le registre centralisé."""
+    return {
+        mode: meta.strategy_cls 
+        for mode, meta in StrategyRegistry.get_all_modes().items()
+    }
 
-    # Approche Actionnaire (Direct Equity - Ke Based) - Sprint 3
-    ValuationMode.FCFE_TWO_STAGE: FCFEStrategy,
-    ValuationMode.DDM_GORDON_GROWTH: DividendDiscountStrategy,
-
-    # Autres Modèles (RIM & Graham)
-    ValuationMode.RESIDUAL_INCOME_MODEL: RIMBankingStrategy,
-    ValuationMode.GRAHAM_1974_REVISED: GrahamNumberStrategy,
-}
+STRATEGY_REGISTRY = _build_legacy_registry()
 
 
 # ==============================================================================
@@ -81,9 +73,9 @@ def run_valuation(
     logger.info(f"[Engine] Initialisation {request.mode.value} pour {request.ticker}")
 
     # =========================================================================
-    # A. RÉCUPÉRATION DE LA STRATÉGIE PRINCIPALE
+    # A. RÉCUPÉRATION DE LA STRATÉGIE PRINCIPALE (via registre centralisé)
     # =========================================================================
-    strategy_cls = STRATEGY_REGISTRY.get(request.mode)
+    strategy_cls = get_strategy(request.mode)
     if not strategy_cls:
         raise _raise_unknown_strategy(request.mode)
 

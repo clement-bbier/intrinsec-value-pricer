@@ -11,12 +11,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, TYPE_CHECKING
 from pydantic import BaseModel
 
-# Imports i18n pour la transparence Glass Box
-from app.ui_components.ui_texts import (
-    StrategyInterpretations,
-    KPITexts,
-    RegistryTexts
-)
+# DT-001/002: Import depuis core.i18n
+from core.i18n import StrategyInterpretations, KPITexts, RegistryTexts
 
 if TYPE_CHECKING:
     from core.models import CompanyFinancials, DCFParameters

@@ -16,7 +16,7 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from app.ui_components.ui_kpis import format_smart_number
-from app.ui_components.ui_texts import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
+from core.i18n import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
 from core.models import ValuationResult, BacktestResult
 
 

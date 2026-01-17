@@ -8,7 +8,8 @@ Standards : SOLID, Glass Box, i18n Secured.
 
 from typing import List, Tuple
 from core.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
-from app.ui_components.ui_texts import SOTPTexts, RegistryTexts, KPITexts
+# DT-001/002: Import depuis core.i18n
+from core.i18n import SOTPTexts, RegistryTexts, KPITexts
 
 
 def run_sotp_valuation(

@@ -2,12 +2,15 @@
 app/main.py
 
 POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Version :  V10.0 — Sprint 3 : Expansion Analytique (DDM & FCFE)
+Version : V11.0 — DT-008 Resolution (Centralized Registry)
 
 Principes appliqués :
 - Conservation intégrale de la logique V9.1
-- Extension via EXPERT_UI_REGISTRY (Open/Closed Principle)
+- Registre centralisé (DT-007/008/009) au lieu de registres manuels
 - Support de la nouvelle segmentation Direct Equity
+
+Note DT-008: Les registres VALUATION_DISPLAY_NAMES et EXPERT_UI_REGISTRY
+sont maintenant générés depuis core/valuation/registry.py
 """
 
 from __future__ import annotations
@@ -34,15 +37,7 @@ if str(_ROOT_PATH) not in sys.path:
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design, render_terminal_header
-from app.ui_components.ui_inputs_expert import (
-    render_expert_fcff_standard,
-    render_expert_fcff_fundamental,
-    render_expert_fcff_growth,
-    render_expert_rim,
-    render_expert_graham,
-    render_expert_fcfe,  
-    render_expert_ddm    
-)
+from app.ui_components import ui_inputs_expert  # Import module pour accès dynamique
 from app.workflow import run_workflow_and_display
 from core.models import (
     DCFParameters,
@@ -55,12 +50,15 @@ from core.models import (
 )
 
 # IMPORT DU RÉFÉRENTIEL TEXTUEL
-from app.ui_components.ui_texts import (
+from core.i18n import (
     CommonTexts,
     SidebarTexts,
     OnboardingTexts,
     FeedbackMessages
 )
+
+# IMPORT DU REGISTRE CENTRALISÉ (DT-008)
+from core.valuation.registry import StrategyRegistry, get_display_names
 
 # ==============================================================================
 # CONFIGURATION & LOGGING
@@ -70,41 +68,47 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# REGISTRES DE CONFIGURATION (Alignés sur ui_texts)
+# REGISTRES DE CONFIGURATION (FACADE VERS REGISTRE CENTRALISÉ)
 # ==============================================================================
 
-VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = {
-    ValuationMode.FCFF_TWO_STAGE: "FCFF Standard",
-    ValuationMode.FCFF_NORMALIZED:  "FCFF Fundamental",
-    ValuationMode.FCFF_REVENUE_DRIVEN:  "FCFF Growth",
-    ValuationMode.FCFE_TWO_STAGE: "FCFE Direct Equity",
-    ValuationMode.DDM_GORDON_GROWTH: "DDM Dividendes",
-    ValuationMode.RESIDUAL_INCOME_MODEL: "RIM Residual Income",
-    ValuationMode.GRAHAM_1974_REVISED: "Graham",
+# DT-008: Ces registres sont maintenant des facades vers le registre centralisé
+VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
+
+
+def _get_expert_ui_renderer(mode: ValuationMode) -> Optional[Callable]:
+    """
+    Récupère dynamiquement le renderer UI depuis le registre centralisé.
+    
+    DT-008: Remplace le mapping manuel EXPERT_UI_REGISTRY par
+    une résolution dynamique basée sur ui_renderer_name.
+    """
+    renderer_name = StrategyRegistry.get_ui_renderer_name(mode)
+    if renderer_name and hasattr(ui_inputs_expert, renderer_name):
+        return getattr(ui_inputs_expert, renderer_name)
+    return None
+
+
+# Backward compatibility: construit le registre legacy si nécessaire
+EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
+    mode: _get_expert_ui_renderer(mode)
+    for mode in VALUATION_DISPLAY_NAMES.keys()
+    if _get_expert_ui_renderer(mode) is not None
 }
 
-EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable[[str], Optional[ValuationRequest]]] = {
-    ValuationMode.FCFF_TWO_STAGE: render_expert_fcff_standard,
-    ValuationMode.FCFF_NORMALIZED: render_expert_fcff_fundamental,
-    ValuationMode.FCFF_REVENUE_DRIVEN: render_expert_fcff_growth,
-    ValuationMode.FCFE_TWO_STAGE: render_expert_fcfe,       
-    ValuationMode.DDM_GORDON_GROWTH: render_expert_ddm,     
-    ValuationMode.RESIDUAL_INCOME_MODEL: render_expert_rim,
-    ValuationMode.GRAHAM_1974_REVISED: render_expert_graham,
-}
+# ==============================================================================
+# CONSTANTES UI (DT-011: Centralisées dans core/config)
+# ==============================================================================
 
-# ==============================================================================
-# CONSTANTES UI
-# ==============================================================================
+from core.config import MonteCarloDefaults, SystemDefaults
 
 _DEFAULT_TICKER = CommonTexts.DEFAULT_TICKER
-_DEFAULT_PROJECTION_YEARS = 5
-_MIN_PROJECTION_YEARS = 1
-_MAX_PROJECTION_YEARS = 15
-_MIN_MC_SIMULATIONS = 100
-_MAX_MC_SIMULATIONS = 20000
-_DEFAULT_MC_SIMULATIONS = 5000
-_MC_SIMULATIONS_STEP = 200
+_DEFAULT_PROJECTION_YEARS = SystemDefaults.DEFAULT_PROJECTION_YEARS
+_MIN_PROJECTION_YEARS = SystemDefaults.MIN_PROJECTION_YEARS
+_MAX_PROJECTION_YEARS = SystemDefaults.MAX_PROJECTION_YEARS
+_MIN_MC_SIMULATIONS = MonteCarloDefaults.MIN_SIMULATIONS
+_MAX_MC_SIMULATIONS = MonteCarloDefaults.MAX_SIMULATIONS
+_DEFAULT_MC_SIMULATIONS = MonteCarloDefaults.DEFAULT_SIMULATIONS
+_MC_SIMULATIONS_STEP = MonteCarloDefaults.STEP_SIMULATIONS
 
 
 # ==============================================================================

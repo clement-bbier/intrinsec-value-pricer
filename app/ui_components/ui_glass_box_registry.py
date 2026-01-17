@@ -7,7 +7,7 @@ Architecture : Alignement strict sur le Pipeline V1.1 et les Stratégies Sprint 
 
 from __future__ import annotations
 from typing import Any, Dict
-from app.ui_components.ui_texts import RegistryTexts
+from core.i18n import RegistryTexts
 
 # ==============================================================================
 # REGISTRE UNIFIÉ DES MÉTADONNÉES

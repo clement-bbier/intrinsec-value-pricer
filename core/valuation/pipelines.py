@@ -24,9 +24,8 @@ from core.computation.financial_math import (
 )
 from core.computation.growth import FlowProjector, ProjectionOutput
 from core.exceptions import CalculationError, ModelDivergenceError
-from app.ui_components.ui_texts import (
-    RegistryTexts, StrategyInterpretations, CalculationErrors, KPITexts
-)
+# DT-001/002: Import depuis core.i18n
+from core.i18n import RegistryTexts, StrategyInterpretations, CalculationErrors, KPITexts
 
 logger = logging.getLogger(__name__)
 

@@ -39,12 +39,16 @@ def test_wacc_calculation_coherence(sample_financials, sample_params):
 def test_manual_zero_sovereignty(sample_financials, sample_params):
     """
     Vérifie que le 0.0 manuel écrase la valeur automatique (Yahoo).
+    
+    Architecture V9.0 : Les surcharges manuelles sont dans sample_params.growth
+    (ex: manual_total_debt, manual_cash, etc.)
     """
-    sample_financials.total_debt = 5000  # Yahoo dit 5000
-    sample_params.manual_total_debt = 0.0  # L'expert dit 0
+    sample_financials.total_debt = 5_000_000  # Yahoo dit 5M
+    sample_params.growth.manual_total_debt = 0.0  # L'expert dit 0
 
     ctx = calculate_wacc(sample_financials, sample_params)
 
     # Si le patch fonctionne, wd (weight of debt) doit être exactement 0
     assert ctx.weight_debt == 0.0
-    assert ctx.method == "MARKET"  # Ou le mode de calcul utilisé
+    # Note: La methode retournee contient "Marche" ou "Marché" selon l'encodage
+    assert "Marche" in ctx.method or "Marché" in ctx.method or ctx.method == "MARKET"

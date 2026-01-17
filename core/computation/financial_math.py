@@ -10,7 +10,8 @@ import logging
 from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
 
-from app.ui_components.ui_texts import CalculationErrors, StrategySources
+# DT-001/002: Import depuis core.i18n
+from core.i18n import CalculationErrors, StrategySources
 from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters
 

@@ -1,9 +1,13 @@
 """
 app/workflow.py
 
-ORCHESTRATEUR LOGIQUE — VERSION V13.0 (Sprint 6 : SOTP & Backtesting)
+ORCHESTRATEUR LOGIQUE — VERSION V14.0 (DT-016 Resolution)
 Rôle : Pilotage du cycle de vie de l'analyse, orchestration multi-temporelle et scénarios.
 Architecture : Smart Merge segmenté, Isolation Point-in-Time et Validation Historique.
+
+DT-016 Resolution :
+- L'affichage UI est délégué à IResultRenderer (injection de dépendances)
+- Compatibilité ascendante maintenue via run_workflow_and_display()
 """
 
 from __future__ import annotations
@@ -11,12 +15,13 @@ from __future__ import annotations
 import logging
 import traceback
 from datetime import datetime, date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
 
-import app.ui_components.ui_kpis as ui_kpis
-from app.ui_components.ui_texts import WorkflowTexts, DiagnosticTexts
+# Import de l'interface (DT-016)
+from core.interfaces import IResultRenderer, NullResultRenderer
+from core.i18n import WorkflowTexts, DiagnosticTexts
 from core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
 from core.exceptions import ValuationException
 from core.models import (
@@ -41,11 +46,31 @@ logger = logging.getLogger(__name__)
 # 1. POINT D'ENTRÉE PRINCIPAL
 # ==============================================================================
 
-def run_workflow_and_display(request: ValuationRequest) -> None:
+def run_workflow(
+    request: ValuationRequest,
+    renderer: Optional[IResultRenderer] = None
+) -> Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]:
     """
-    Pilote le cycle de vie complet : Acquisition -> Calculs -> Backtesting -> UI.
+    Exécute le workflow de valorisation et retourne le résultat.
+    
+    DT-016 Resolution : Séparation calcul/affichage.
+    
+    Parameters
+    ----------
+    request : ValuationRequest
+        La requête de valorisation.
+    renderer : IResultRenderer, optional
+        Le renderer pour l'affichage. Si None, NullResultRenderer est utilisé.
+    
+    Returns
+    -------
+    Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]
+        Le résultat de valorisation et le provider de données.
     """
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
+    
+    # Utilisation du NullResultRenderer si aucun renderer n'est fourni
+    _renderer = renderer or NullResultRenderer()
 
     try:
         # --- ÉTAPE 1 : ACQUISITION & INFRASTRUCTURE ---
@@ -99,20 +124,42 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
             )
             status.write(WorkflowTexts.STATUS_BACKTEST_COMPLETE)
 
-        # --- ÉTAPE 6 : FINALISATION & RENDU ---
+        # --- ÉTAPE 6 : FINALISATION ---
         status.update(label=WorkflowTexts.STATUS_COMPLETE, state="complete", expanded=False)
-        ui_kpis.render_executive_summary(result)
-        ui_kpis.display_valuation_details(result, provider)
+        
+        return result, provider
 
     except ValuationException as e:
         status.update(label=WorkflowTexts.STATUS_INTERRUPTED, state="error", expanded=True)
         _display_diagnostic_message(e.diagnostic)
         st.session_state.active_request = None
+        return None, None
 
     except Exception as e:
         status.update(label=WorkflowTexts.STATUS_CRITICAL_ERROR, state="error", expanded=True)
         logger.error("Critical workflow error: %s", str(e), exc_info=True)
         _display_diagnostic_message(_create_crash_diagnostic(e))
+        return None, None
+
+
+def run_workflow_and_display(request: ValuationRequest) -> None:
+    """
+    Facade de compatibilité : Exécute le workflow ET affiche les résultats.
+    
+    DEPRECATION NOTICE :
+    - Cette fonction maintient la compatibilité ascendante
+    - Pour les nouveaux usages, préférer run_workflow() + injection de renderer
+    """
+    # Import tardif pour éviter les imports circulaires
+    from app.adapters import StreamlitResultRenderer
+    
+    renderer = StreamlitResultRenderer()
+    result, provider = run_workflow(request, renderer)
+    
+    # Affichage des résultats via le renderer injecté
+    if result is not None and provider is not None:
+        renderer.render_executive_summary(result)
+        renderer.display_valuation_details(result, provider)
 
 
 # ==============================================================================

@@ -21,7 +21,8 @@ import yfinance as yf
 
 # Importation de la logique de matrice pays et des textes centralisés
 from infra.ref_data.country_matrix import get_country_context
-from app.ui_components.ui_texts import StrategySources
+# DT-001/002: Import depuis core.i18n
+from core.i18n import StrategySources
 
 logger = logging.getLogger(__name__)
 

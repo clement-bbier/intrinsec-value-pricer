@@ -7,7 +7,8 @@ Audit-Grade : Ajout du registre normatif des événements financiers.
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Any, List
-from app.ui_components.ui_texts import DiagnosticTexts # Centralisation i18n
+# DT-001/002: Import depuis core.i18n
+from core.i18n import DiagnosticTexts
 
 class SeverityLevel(Enum):
     """Niveau de gravité du diagnostic."""

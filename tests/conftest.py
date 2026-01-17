@@ -1,14 +1,41 @@
+"""
+tests/conftest.py
+Fixtures partagées pour toute la suite de tests.
+
+Ces fixtures fournissent des données de test réutilisables.
+Elles sont automatiquement disponibles dans tous les fichiers de test.
+"""
+
 import pytest
 from core.models import (
     CompanyFinancials,
     DCFParameters,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig
+    MonteCarloConfig,
+    ValuationMode,
+    InputSource,
+    ValuationRequest,
+    SOTPParameters,
+    ScenarioParameters,
 )
+
+
+# =============================================================================
+# FIXTURES DE DONNÉES FINANCIÈRES
+# =============================================================================
 
 @pytest.fixture
 def sample_financials():
+    """
+    Fixture de données financières complètes pour les tests.
+    
+    Représente une entreprise Tech typique avec :
+    - Prix actuel : 100 USD
+    - Market Cap : 100M USD
+    - FCF : 10M USD (yield 10%)
+    - Levier modéré (20M dette)
+    """
     return CompanyFinancials(
         ticker="TEST",
         currency="USD",
@@ -23,12 +50,61 @@ def sample_financials():
         beta=1.2,
         fcf_last=10_000_000,
         fcf_fundamental_smoothed=9_500_000,
-        source_fcf="ttm"
+        # Champs optionnels pour tests Graham/DDM/RIM
+        # Note: Noms de champs selon le modèle réel
+        eps_ttm=5.0,
+        book_value_per_share=30.0,
+        dividend_share=2.0,  # Pas dividend_per_share
+        revenue_ttm=100_000_000,
+        net_income_ttm=15_000_000,
     )
+
+
+@pytest.fixture
+def sample_financials_minimal():
+    """Fixture avec le minimum de données requis."""
+    return CompanyFinancials(
+        ticker="MIN",
+        currency="USD",
+        current_price=50.0,
+        shares_outstanding=500_000,
+    )
+
+
+@pytest.fixture
+def sample_financials_bank():
+    """Fixture pour tests de valorisation bancaire (RIM)."""
+    return CompanyFinancials(
+        ticker="BANK",
+        currency="USD",
+        sector="Financial Services",
+        industry="Banks",
+        country="United States",
+        current_price=45.0,
+        shares_outstanding=2_000_000,
+        total_debt=0,  # Les banques ont une structure différente
+        cash_and_equivalents=100_000_000,
+        beta=1.1,
+        eps_ttm=4.5,
+        book_value_per_share=40.0,
+        net_income_ttm=9_000_000,
+    )
+
+
+# =============================================================================
+# FIXTURES DE PARAMÈTRES
+# =============================================================================
 
 @pytest.fixture
 def sample_params():
-    """Fixture mise à jour pour l'architecture segmentée V9.0."""
+    """
+    Fixture de paramètres DCF standard.
+    
+    Architecture segmentée V9.0+ avec :
+    - Rf = 4%, MRP = 5% → Ke ≈ 10%
+    - Croissance FCF = 5%, g terminal = 2%
+    - Monte Carlo désactivé
+    """
     return DCFParameters(
         rates=CoreRateParameters(
             risk_free_rate=0.04,
@@ -45,5 +121,98 @@ def sample_params():
         ),
         monte_carlo=MonteCarloConfig(
             enable_monte_carlo=False
-        )
+        ),
+        sotp=SOTPParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
     )
+
+
+@pytest.fixture
+def sample_params_monte_carlo():
+    """Fixture avec Monte Carlo activé (petit échantillon pour tests)."""
+    return DCFParameters(
+        rates=CoreRateParameters(
+            risk_free_rate=0.04,
+            market_risk_premium=0.05,
+        ),
+        growth=GrowthParameters(
+            fcf_growth_rate=0.05,
+            perpetual_growth_rate=0.02,
+            projection_years=5,
+        ),
+        monte_carlo=MonteCarloConfig(
+            enable_monte_carlo=True,
+            num_simulations=100,  # Petit pour tests rapides
+        ),
+        sotp=SOTPParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
+    )
+
+
+@pytest.fixture
+def sample_params_pessimistic():
+    """Fixture de paramètres pessimistes."""
+    return DCFParameters(
+        rates=CoreRateParameters(
+            risk_free_rate=0.05,
+            market_risk_premium=0.07,  # MRP élevé
+            cost_of_debt=0.08,
+            tax_rate=0.30,
+        ),
+        growth=GrowthParameters(
+            fcf_growth_rate=0.02,  # Croissance faible
+            perpetual_growth_rate=0.01,
+            projection_years=5,
+        ),
+        monte_carlo=MonteCarloConfig(enable_monte_carlo=False),
+        sotp=SOTPParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
+    )
+
+
+# =============================================================================
+# FIXTURES DE REQUÊTES
+# =============================================================================
+
+@pytest.fixture
+def sample_request_auto(sample_params):
+    """Requête de valorisation mode Auto."""
+    return ValuationRequest(
+        ticker="TEST",
+        projection_years=5,
+        mode=ValuationMode.FCFF_TWO_STAGE,
+        input_source=InputSource.AUTO,
+        manual_params=sample_params,
+    )
+
+
+@pytest.fixture
+def sample_request_expert(sample_params):
+    """Requête de valorisation mode Expert."""
+    return ValuationRequest(
+        ticker="TEST",
+        projection_years=5,
+        mode=ValuationMode.FCFF_TWO_STAGE,
+        input_source=InputSource.MANUAL,
+        manual_params=sample_params,
+    )
+
+
+# =============================================================================
+# FIXTURES UTILITAIRES
+# =============================================================================
+
+@pytest.fixture
+def all_valuation_modes():
+    """Liste de tous les modes de valorisation."""
+    return list(ValuationMode)
+
+
+@pytest.fixture
+def dcf_modes():
+    """Modes DCF uniquement."""
+    return [
+        ValuationMode.FCFF_TWO_STAGE,
+        ValuationMode.FCFF_NORMALIZED,
+        ValuationMode.FCFF_REVENUE_DRIVEN,
+    ]

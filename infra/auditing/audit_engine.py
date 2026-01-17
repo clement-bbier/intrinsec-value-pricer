@@ -1,8 +1,11 @@
 """
 infra/auditing/audit_engine.py
-Audit Engine — VERSION V13.0 (Sprint 6 Final)
+Audit Engine — VERSION V14.0 (DT-009 Resolution)
 Rôle : Routage dynamique et Audit d'intégrité SOTP (Conglomérat).
-Standards : SOLID, Zéro Hardcoding (ui_texts.py).
+Standards : SOLID, Zéro Hardcoding, Centralized Registry.
+
+Note DT-009: Le mapping manuel AuditorFactory a été remplacé par
+le registre centralisé dans core/valuation/registry.py
 """
 
 from __future__ import annotations
@@ -14,35 +17,28 @@ from core.models import (
     AuditPillar, AuditPillarScore, AuditScoreBreakdown, InputSource,
     AuditStep, AuditSeverity
 )
-from app.ui_components.ui_texts import (
+from core.i18n import (
     AuditEngineTexts,
     AuditCategories,
     AuditMessages,
     AuditTexts
 )
+from core.config import AuditThresholds, AuditWeights
 
 logger = logging.getLogger(__name__)
 
+
 class AuditorFactory:
-    """Fabrique de routage des auditeurs par mode de valorisation (Sprint 6 Ready)."""
+    """
+    Fabrique de routage des auditeurs par mode de valorisation.
+    
+    DT-009: Utilise maintenant le registre centralisé au lieu d'un mapping manuel.
+    """
     @staticmethod
     def get_auditor(mode: ValuationMode):
-        from infra.auditing.auditors import (
-            DCFAuditor, RIMAuditor, GrahamAuditor,
-            StandardValuationAuditor, FCFEAuditor, DDMAuditor
-        )
-
-        mapping = {
-            ValuationMode.FCFF_TWO_STAGE: DCFAuditor,
-            ValuationMode.FCFF_NORMALIZED: DCFAuditor,
-            ValuationMode.FCFF_REVENUE_DRIVEN: DCFAuditor,
-            ValuationMode.FCFE_TWO_STAGE: FCFEAuditor,
-            ValuationMode.DDM_GORDON_GROWTH: DDMAuditor,
-            ValuationMode.RESIDUAL_INCOME_MODEL: RIMAuditor,
-            ValuationMode.GRAHAM_1974_REVISED: GrahamAuditor,
-        }
-
-        return mapping.get(mode, StandardValuationAuditor)()
+        # Import depuis le registre centralisé (DT-009)
+        from core.valuation.registry import get_auditor
+        return get_auditor(mode)
 
 class AuditEngine:
     """
@@ -137,20 +133,20 @@ class AuditEngine:
         if not p.segments:
             return steps
 
-        # TEST 1 : Réconciliation des Revenus
+        # TEST 1 : Réconciliation des Revenus (DT-010: seuils centralisés)
         seg_revenues = [s.revenue for s in p.segments if s.revenue is not None]
         if len(seg_revenues) == len(p.segments) and f.revenue_ttm and f.revenue_ttm > 0:
             gap = abs(sum(seg_revenues) - f.revenue_ttm) / f.revenue_ttm
             steps.append(AuditStep(
                 step_key="SOTP_REVENUE_CHECK",
                 label=AuditTexts.LBL_SOTP_REVENUE_CHECK,
-                verdict=gap < 0.05, # Tolérance 5%
-                severity=AuditSeverity.WARNING if gap < 0.15 else AuditSeverity.ERROR,
+                verdict=gap < AuditThresholds.SOTP_REVENUE_GAP_WARNING,
+                severity=AuditSeverity.WARNING if gap < AuditThresholds.SOTP_REVENUE_GAP_ERROR else AuditSeverity.CRITICAL,
                 evidence=AuditMessages.SOTP_REVENUE_MISMATCH.format(gap=gap)
             ))
 
-        # TEST 2 : Prudence de la Décote
-        if p.conglomerate_discount > 0.25:
+        # TEST 2 : Prudence de la Décote (DT-010: seuil centralisé)
+        if p.conglomerate_discount > AuditThresholds.SOTP_DISCOUNT_MAX:
             steps.append(AuditStep(
                 step_key="SOTP_DISCOUNT_CHECK",
                 label=AuditTexts.LBL_SOTP_DISCOUNT_CHECK,
@@ -200,18 +196,26 @@ class AuditEngine:
             pillar_breakdown=None, block_monte_carlo=True, critical_warning=True
         )
 
-# PONDÉRATIONS STANDARDS
-MODE_WEIGHTS = {
-    InputSource.AUTO: {
-        AuditPillar.DATA_CONFIDENCE: 0.30,
-        AuditPillar.ASSUMPTION_RISK: 0.30,
-        AuditPillar.MODEL_RISK: 0.25,
-        AuditPillar.METHOD_FIT: 0.15,
-    },
-    InputSource.MANUAL: {
-        AuditPillar.DATA_CONFIDENCE: 0.10,
-        AuditPillar.ASSUMPTION_RISK: 0.50,
-        AuditPillar.MODEL_RISK: 0.20,
-        AuditPillar.METHOD_FIT: 0.20,
+# PONDÉRATIONS STANDARDS (DT-013: Facade vers constantes centralisées)
+# Note: Les valeurs sont définies dans core/config/constants.py
+def _build_mode_weights() -> Dict[InputSource, Dict[AuditPillar, float]]:
+    """Construit le mapping depuis les constantes centralisées."""
+    auto_weights = AuditWeights.AUTO
+    manual_weights = AuditWeights.MANUAL
+    
+    return {
+        InputSource.AUTO: {
+            AuditPillar.DATA_CONFIDENCE: auto_weights["DATA_CONFIDENCE"],
+            AuditPillar.ASSUMPTION_RISK: auto_weights["ASSUMPTION_RISK"],
+            AuditPillar.MODEL_RISK: auto_weights["MODEL_RISK"],
+            AuditPillar.METHOD_FIT: auto_weights["METHOD_FIT"],
+        },
+        InputSource.MANUAL: {
+            AuditPillar.DATA_CONFIDENCE: manual_weights["DATA_CONFIDENCE"],
+            AuditPillar.ASSUMPTION_RISK: manual_weights["ASSUMPTION_RISK"],
+            AuditPillar.MODEL_RISK: manual_weights["MODEL_RISK"],
+            AuditPillar.METHOD_FIT: manual_weights["METHOD_FIT"],
+        }
     }
-}
+
+MODE_WEIGHTS = _build_mode_weights()

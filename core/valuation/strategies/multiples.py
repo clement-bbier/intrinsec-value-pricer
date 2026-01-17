@@ -15,7 +15,8 @@ from core.computation.financial_math import (
     calculate_price_from_ev_multiple,
     calculate_triangulated_price
 )
-from app.ui_components.ui_texts import StrategyInterpretations
+# DT-001/002: Import depuis core.i18n
+from core.i18n import StrategyInterpretations
 
 class MarketMultiplesStrategy(ValuationStrategy):
     """Implémente la triangulation par multiples comparables."""

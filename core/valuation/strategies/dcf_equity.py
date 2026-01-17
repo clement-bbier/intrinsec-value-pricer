@@ -16,8 +16,8 @@ from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
 from core.computation.financial_math import calculate_fcfe_reconstruction
 
-# Import des constantes de texte pour i18n
-from app.ui_components.ui_texts import (
+# DT-001/002: Import depuis core.i18n
+from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
     CalculationErrors,

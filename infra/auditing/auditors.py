@@ -15,7 +15,9 @@ from core.models import (
     EquityDCFValuationResult, AuditLog, AuditPillar, AuditPillarScore,
     InputSource, DCFParameters, AuditStep, AuditSeverity
 )
-from app.ui_components.ui_texts import AuditMessages, AuditCategories
+# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui_components
+from core.i18n import AuditMessages, AuditCategories
+from core.config import AuditPenalties, AuditThresholds
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +35,11 @@ class IValuationAuditor(ABC):
         pass
 
 class BaseAuditor(IValuationAuditor):
-    # Seuils de pénalités normatifs
-    PENALTY_CRITICAL = 100.0
-    PENALTY_HIGH = 35.0
-    PENALTY_MEDIUM = 15.0
-    PENALTY_LOW = 5.0
+    # Seuils de pénalités centralisés (DT-010)
+    PENALTY_CRITICAL = AuditPenalties.CRITICAL
+    PENALTY_HIGH = AuditPenalties.HIGH
+    PENALTY_MEDIUM = AuditPenalties.MEDIUM
+    PENALTY_LOW = AuditPenalties.LOW
 
     def __init__(self):
         self._audit_steps: List[AuditStep] = []
@@ -74,26 +76,26 @@ class BaseAuditor(IValuationAuditor):
         f = result.financials
         is_expert = result.request.input_source == InputSource.MANUAL if result.request else False
 
-        # Test 1 : Beta
+        # Test 1 : Beta (DT-010: seuils centralisés)
         penalty = self.add_audit_step(
             key="AUDIT_DATA_BETA",
             value=f.beta,
-            threshold="0.4 - 3.0",
+            threshold=f"{AuditThresholds.BETA_MIN} - {AuditThresholds.BETA_MAX}",
             severity=AuditSeverity.WARNING,
-            condition=(f.beta is not None and 0.4 <= f.beta <= 3.0),
+            condition=(f.beta is not None and AuditThresholds.BETA_MIN <= f.beta <= AuditThresholds.BETA_MAX),
             penalty=self.PENALTY_MEDIUM if not is_expert else 0.0
         )
         score -= penalty
 
-        # Test 2 : Solvabilité (ICR)
+        # Test 2 : Solvabilité (ICR) (DT-010: seuil centralisé)
         ebit = f.ebit_ttm or 0.0
         icr = ebit / f.interest_expense if f.interest_expense > 0 else 0.0
         penalty = self.add_audit_step(
             key="AUDIT_DATA_ICR",
             value=round(icr, 2),
-            threshold="> 1.5",
+            threshold=f"> {AuditThresholds.ICR_MIN}",
             severity=AuditSeverity.WARNING,
-            condition=(icr > 1.5 or f.interest_expense == 0),
+            condition=(icr > AuditThresholds.ICR_MIN or f.interest_expense == 0),
             penalty=self.PENALTY_MEDIUM
         )
         score -= penalty

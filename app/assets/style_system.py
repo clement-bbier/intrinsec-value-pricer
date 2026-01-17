@@ -5,7 +5,7 @@ Rôle : Centraliser le CSS et les composants visuels de structure (Action 1.1).
 """
 
 import streamlit as st
-from app.ui_components.ui_texts import CommonTexts, LegalTexts
+from core.i18n import CommonTexts, LegalTexts
 
 # ==============================================================================
 # 1. DESIGN SYSTEM (CSS COPIÉ MOT POUR MOT)

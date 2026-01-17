@@ -1,6 +1,10 @@
 """
 core/exceptions.py
 Exceptions typées transportant des diagnostics structurés.
+
+Version : V2.0 — DT-001/002/020/021 Resolution
+- Migration des imports vers core.i18n
+- Amélioration des messages d'erreur pédagogiques
 """
 
 import logging
@@ -11,7 +15,8 @@ from core.diagnostics import (
     DiagnosticDomain,
     DiagnosticRegistry
 )
-from app.ui_components.ui_texts import DiagnosticTexts # Import central
+# DT-001/002: Import depuis core.i18n au lieu de app.ui_components
+from core.i18n import DiagnosticTexts
 
 logger = logging.getLogger(__name__)
 

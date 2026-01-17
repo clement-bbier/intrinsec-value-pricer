@@ -12,9 +12,8 @@ from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, Tr
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
-from app.ui_components.ui_texts import (
-    RegistryTexts, StrategyInterpretations, CalculationErrors, StrategySources, KPITexts
-)
+# DT-001/002: Import depuis core.i18n
+from core.i18n import RegistryTexts, StrategyInterpretations, CalculationErrors, StrategySources, KPITexts
 
 logger = logging.getLogger(__name__)
 

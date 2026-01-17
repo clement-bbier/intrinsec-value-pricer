@@ -1,0 +1,91 @@
+"""
+core/models/company.py
+Donnees financieres de l'entreprise.
+"""
+
+from datetime import date
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class CompanyFinancials(BaseModel):
+    """Contrat de donnees financier unifie."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # Identite
+    ticker: str
+    name: str = "Unknown"
+    currency: str
+    sector: str = "Unknown"
+    industry: str = "Unknown"
+    country: str = "Unknown"
+    
+    # Marche
+    current_price: float
+    shares_outstanding: float
+    beta: float = 1.0
+
+    # Bilan
+    total_debt: float = 0.0
+    cash_and_equivalents: float = 0.0
+    minority_interests: float = 0.0
+    pension_provisions: float = 0.0
+    book_value: float = 0.0
+    book_value_per_share: Optional[float] = None
+
+    # Compte de resultat
+    revenue_ttm: Optional[float] = None
+    ebitda_ttm: Optional[float] = None
+    ebit_ttm: Optional[float] = None
+    net_income_ttm: Optional[float] = None
+    interest_expense: float = 0.0
+    eps_ttm: Optional[float] = None
+
+    # Flux
+    dividend_share: Optional[float] = None
+    fcf_last: Optional[float] = None
+    fcf_fundamental_smoothed: Optional[float] = None
+    net_borrowing_ttm: Optional[float] = None
+    capex: Optional[float] = None
+    depreciation_and_amortization: Optional[float] = None
+
+    @property
+    def market_cap(self) -> float:
+        """Capitalisation boursiere."""
+        return self.current_price * self.shares_outstanding
+
+    @property
+    def net_debt(self) -> float:
+        """Dette nette."""
+        return self.total_debt - self.cash_and_equivalents
+
+    @property
+    def dividends_total_calculated(self) -> float:
+        """Dividendes totaux calcules."""
+        return (self.dividend_share or 0.0) * self.shares_outstanding
+
+    # Alias pour compatibilite
+    @property
+    def fcf(self) -> Optional[float]:
+        """Alias pour fcf_last."""
+        return self.fcf_last
+
+
+class HistoricalPoint(BaseModel):
+    """Resultat de valorisation a un instant T passe (Backtest)."""
+    valuation_date: date
+    intrinsic_value: float
+    market_price: float
+    error_pct: float
+    was_undervalued: bool
+
+
+class BacktestResult(BaseModel):
+    """Synthese complete d'un backtesting."""
+    model_config = ConfigDict(protected_namespaces=())
+
+    points: List[HistoricalPoint] = Field(default_factory=list)
+    mean_absolute_error: float = 0.0
+    alpha_vs_market: float = 0.0
+    model_accuracy_score: float = 0.0

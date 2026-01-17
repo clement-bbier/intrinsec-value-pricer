@@ -1,0 +1,66 @@
+"""
+core/models/audit.py
+Modeles pour le systeme d'audit.
+"""
+
+from typing import Dict, List, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from core.models.enums import AuditPillar, InputSource
+from core.models.glass_box import AuditStep
+
+
+class AuditPillarScore(BaseModel):
+    """Score d'un pilier d'audit."""
+    pillar: AuditPillar
+    score: float = 0.0
+    weight: float = 0.0
+    contribution: float = 0.0
+    diagnostics: List[str] = Field(default_factory=list)
+    check_count: int = 0
+
+
+class AuditScoreBreakdown(BaseModel):
+    """Decomposition du score par pilier."""
+    pillars: Dict[AuditPillar, AuditPillarScore]
+    aggregation_formula: str
+    total_score: float = 0.0
+
+
+class AuditLog(BaseModel):
+    """Entree de log d'audit."""
+    category: str
+    severity: str
+    message: str
+    penalty: float
+
+
+class AuditReport(BaseModel):
+    """Rapport d'audit complet."""
+    global_score: float
+    rating: str
+    audit_mode: Union[InputSource, str]
+    audit_depth: int = 0
+    audit_coverage: float = 0.0
+    audit_steps: List[AuditStep] = Field(default_factory=list)
+    pillar_breakdown: Optional[AuditScoreBreakdown] = None
+    logs: List[AuditLog] = Field(default_factory=list)
+    breakdown: Dict[str, float] = Field(default_factory=dict)
+    block_monte_carlo: bool = False
+    critical_warning: bool = False
+
+
+class ValuationOutputContract(BaseModel):
+    """Contrat de sortie pour validation."""
+    model_config = ConfigDict(frozen=True)
+    
+    has_params: bool
+    has_projection: bool
+    has_terminal_value: bool
+    has_intrinsic_value: bool
+    has_audit: bool
+
+    def is_valid(self) -> bool:
+        """Verifie si le contrat est satisfait."""
+        return all([self.has_params, self.has_intrinsic_value, self.has_audit])

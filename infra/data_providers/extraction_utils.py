@@ -1,18 +1,25 @@
 """
 infra/data_providers/extraction_utils.py
 
-OUTILS D'EXTRACTION & SÉCURITÉ API — VERSION V8.1
+OUTILS D'EXTRACTION & SÉCURITÉ API — VERSION V9.0 (DT-022 Resolution)
 Rôle :  Normalisation et extraction robuste des données yfinance.
 Architecture :  Honest Data avec propagation stricte des None.
+
+DT-022 : Ajout du support timeout sur les appels API.
 """
 
 from __future__ import annotations
 
 import logging
 import time
+import signal
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Callable, List, Optional, Tuple
 
 import pandas as pd
+
+from core.config import PeerDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +58,70 @@ DEBT_ISSUANCE_KEYS: List[str] = ["Issuance Of Debt", "Long Term Debt Issuance", 
 DEBT_REPAYMENT_KEYS: List[str] = ["Repayment Of Debt", "Long Term Debt Payments", "Net Long Term Debt"]
 
 # ==============================================================================
-# 2. SÉCURITÉ API (RETRY PATTERN)
+# 2. SÉCURITÉ API (RETRY PATTERN + TIMEOUT) — DT-022 Resolution
 # ==============================================================================
 
-def safe_api_call(func: Callable, context: str = "API", max_retries: int = 3) -> Any:
+def safe_api_call(
+    func: Callable,
+    context: str = "API",
+    max_retries: int = 3,
+    timeout_seconds: Optional[float] = None
+) -> Any:
     """
-    Exécute une fonction API avec backoff exponentiel.
-    Garantit la résilience face aux instabilités réseau de yfinance.
+    Exécute une fonction API avec backoff exponentiel et timeout optionnel.
+    
+    DT-022 Resolution : Ajout du support timeout pour éviter les blocages.
+    
+    Parameters
+    ----------
+    func : Callable
+        La fonction à exécuter.
+    context : str
+        Contexte pour les logs (ex: "PeerInfo/AAPL").
+    max_retries : int
+        Nombre maximum de tentatives (défaut: 3).
+    timeout_seconds : float, optional
+        Timeout en secondes. Si None, utilise PeerDefaults.API_TIMEOUT_SECONDS.
+    
+    Returns
+    -------
+    Any
+        Le résultat de la fonction ou None en cas d'échec.
+    
+    Notes
+    -----
+    Le timeout utilise ThreadPoolExecutor pour une compatibilité cross-platform.
+    """
+    _timeout = timeout_seconds or PeerDefaults.API_TIMEOUT_SECONDS
+    
+    for i in range(max_retries):
+        try:
+            # Exécution avec timeout via ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(func)
+                try:
+                    return future.result(timeout=_timeout)
+                except FuturesTimeoutError:
+                    logger.warning(
+                        f"[{context}] Timeout après {_timeout}s (tentative {i + 1}/{max_retries})."
+                    )
+                    continue
+        except Exception as e:
+            wait = 0.5 * (2 ** i)
+            logger.warning(
+                f"[{context}] Tentative {i + 1}/{max_retries} échouée : {e}. Pause {wait}s."
+            )
+            time.sleep(wait)
+
+    logger.error(f"[{context}] Échec définitif après {max_retries} tentatives.")
+    return None
+
+
+def safe_api_call_simple(func: Callable, context: str = "API", max_retries: int = 3) -> Any:
+    """
+    Version simplifiée sans timeout (pour les appels rapides).
+    
+    Compatibilité ascendante avec l'ancienne signature.
     """
     for i in range(max_retries):
         try:

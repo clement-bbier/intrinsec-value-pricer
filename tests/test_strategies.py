@@ -3,7 +3,7 @@ from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
 from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
 from core.exceptions import CalculationError
-from app.ui_components.ui_texts import CalculationErrors
+from core.i18n import CalculationErrors
 
 def test_standard_strategy_execution(sample_financials, sample_params):
     """Vérifie que la stratégie Standard s'exécute avec les segments V9."""

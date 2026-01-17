@@ -29,7 +29,7 @@ from core.models import (
     HistoricalPoint
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
-from app.ui_components.ui_texts import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts, BacktestTexts
+from core.i18n import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts, BacktestTexts
 
 logger = logging.getLogger(__name__)
 

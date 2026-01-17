@@ -21,7 +21,7 @@ from core.models import (
     BusinessUnit,
     SOTPMethod
 )
-from app.ui_components.ui_texts import ExpertTerminalTexts, SOTPTexts
+from core.i18n import ExpertTerminalTexts, SOTPTexts
 
 
 # ==============================================================================
