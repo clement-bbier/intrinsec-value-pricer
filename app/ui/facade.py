@@ -26,6 +26,7 @@ from typing import Optional, Dict, Any
 
 from core.models import ValuationMode, ValuationRequest, ValuationResult
 from app.ui.expert_terminals import ExpertTerminalFactory
+from app.ui.result_tabs import ResultTabOrchestrator
 
 
 def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[ValuationRequest]:
@@ -70,10 +71,10 @@ def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[Valuati
 def render_results(result: ValuationResult, **kwargs: Any) -> None:
     """
     Affiche les resultats de valorisation.
-
+    
     Cette fonction orchestre l'affichage de tous les onglets
     de resultats (core + optional).
-
+    
     Parameters
     ----------
     result : ValuationResult
