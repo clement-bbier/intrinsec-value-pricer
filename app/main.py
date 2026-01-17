@@ -269,9 +269,25 @@ def _render_onboarding_guide() -> None:
     with c1:
         st.markdown(OnboardingTexts.PILOTAGE_TITLE)
         st.caption(OnboardingTexts.PILOTAGE_DESC)
+
+        # Graphique simple : Football Field
+        st.markdown("**Exemple : Football Field**")
+        import pandas as pd
+        football_data = pd.DataFrame({
+            'Méthode': ['Prix Marché', 'DCF Central', 'Peers EV/EBITDA', 'Peers P/E'],
+            'Valeur': [100, 120, 110, 115]
+        })
+        st.bar_chart(football_data.set_index('Méthode'))
+
     with c2:
         st.markdown(OnboardingTexts.MC_TITLE)
         st.caption(OnboardingTexts.MC_DESC)
+
+        # Graphique simple : Distribution Monte Carlo
+        st.markdown("**Exemple : Distribution de Valeurs**")
+        import numpy as np
+        mc_sample = np.random.normal(120, 15, 1000)
+        st.line_chart(pd.DataFrame({'Valeur': mc_sample}))
 
     st.divider()
 
@@ -284,6 +300,31 @@ def _render_onboarding_guide() -> None:
     with g2:
         st.markdown(OnboardingTexts.TRACE_TITLE)
         st.caption(OnboardingTexts.TRACE_DESC)
+
+    st.divider()
+
+    # --- SECTION D : EXEMPLES VISUELS ---
+    st.subheader("Exemples Visuels")
+
+    # Waterfall SOTP
+    st.markdown("**Waterfall Sum-of-the-Parts (SOTP)**")
+    st.caption("Décomposition de la valeur par segments d'activité")
+
+    sotp_waterfall = pd.DataFrame({
+        'Segment': ['Segment A', 'Segment B', 'Segment C', 'Décote Holding'],
+        'Valeur': [80, 60, 40, -20]
+    })
+    st.bar_chart(sotp_waterfall.set_index('Segment'))
+
+    # Scénarios
+    st.markdown("**Analyse de Scénarios Bull/Base/Bear**")
+    st.caption("Impact des hypothèses sur la valorisation")
+
+    scenarios_data = pd.DataFrame({
+        'Scénario': ['Bear Case', 'Base Case', 'Bull Case'],
+        'Valorisation': [90, 120, 150]
+    })
+    st.line_chart(scenarios_data.set_index('Scénario'))
 
     st.divider()
 
