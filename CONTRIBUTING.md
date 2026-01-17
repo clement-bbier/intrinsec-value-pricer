@@ -8,6 +8,42 @@ Ce manifeste definit les standards de qualite et de maintenabilite pour l'applic
 
 ## Standards Obligatoires
 
+### 0. Imports : En Haut des Fichiers (Obligatoire)
+
+Tous les imports doivent être regroupés en haut du fichier, après le header de fichier :
+
+```python
+"""
+path/to/file.py
+[Header de fichier...]
+"""
+
+from __future__ import annotations
+
+# Imports standard library
+import logging
+from typing import Dict, Optional, Any
+
+# Imports tiers (third-party)
+import streamlit as st
+import pandas as pd
+
+# Imports locaux (local)
+from core.models import ValuationMode, ValuationRequest
+from app.ui.expert_terminals import ExpertTerminalFactory
+
+# Code...
+```
+
+**Règles :**
+- `__future__` imports en premier
+- Imports standard library
+- Imports tiers (séparés par une ligne vide)
+- Imports locaux (séparés par une ligne vide)
+- Imports relatifs avec `from` préférés aux imports absolus
+- Éviter les imports avec `*` (sauf exceptions justifiées)
+- Imports locaux seulement si nécessaire pour éviter dépendances circulaires
+
 ### 1. Style de Docstring : Format Google Style (Obligatoire)
 
 Toutes les fonctions, classes et methodes doivent utiliser le format Google Style :

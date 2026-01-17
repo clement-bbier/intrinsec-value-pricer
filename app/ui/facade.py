@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import Optional, Dict, Any
 
 from core.models import ValuationMode, ValuationRequest, ValuationResult
+from app.ui.expert_terminals import ExpertTerminalFactory
 
 
 def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[ValuationRequest]:
@@ -69,10 +70,10 @@ def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[Valuati
 def render_results(result: ValuationResult, **kwargs: Any) -> None:
     """
     Affiche les resultats de valorisation.
-    
+
     Cette fonction orchestre l'affichage de tous les onglets
     de resultats (core + optional).
-    
+
     Parameters
     ----------
     result : ValuationResult
@@ -80,8 +81,6 @@ def render_results(result: ValuationResult, **kwargs: Any) -> None:
     **kwargs
         Arguments supplementaires (provider, etc.).
     """
-    from app.ui.result_tabs import ResultTabOrchestrator
-    
     orchestrator = ResultTabOrchestrator()
     orchestrator.render(result, **kwargs)
 
@@ -95,7 +94,6 @@ def get_available_modes():
     Dict[ValuationMode, str]
         Mapping mode -> nom d'affichage.
     """
-    from app.ui.expert_terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_display_names()
 
 
@@ -108,7 +106,6 @@ def get_mode_descriptions():
     Dict[ValuationMode, str]
         Mapping mode -> description.
     """
-    from app.ui.expert_terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_descriptions()
 
 
@@ -123,7 +120,6 @@ def get_available_modes() -> Dict[ValuationMode, str]:
     Dict[ValuationMode, str]
         Mapping mode -> nom d'affichage.
     """
-    from app.ui.expert_terminals.factory import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_display_names()
 
 
