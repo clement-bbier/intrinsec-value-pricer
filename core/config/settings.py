@@ -146,7 +146,7 @@ CONFIG_REGISTRY: Dict[str, Any] = {
     "simulation": SIMULATION_CONFIG,
     "audit": AUDIT_CONFIG,
     "system": SYSTEM_CONFIG,
-    "valuation": VALORIZATION_CONFIG,
+    "valuation": VALUATION_CONFIG,
 }
 
 

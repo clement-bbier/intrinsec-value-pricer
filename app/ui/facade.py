@@ -22,50 +22,34 @@ La migration se fait progressivement :
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 from core.models import ValuationMode, ValuationRequest, ValuationResult
-from app.ui.expert_terminals import ExpertTerminalFactory
-from app.ui.result_tabs import ResultTabOrchestrator
 
 
 def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[ValuationRequest]:
     """
-    Point d'entree unifie pour tous les terminaux experts.
-
-    Utilise la Factory pour creer le bon terminal puis le rend.
-    Inclut logging pour debuggage.
-
+    Affiche le terminal expert et retourne la requete si soumise.
+    
+    Cette fonction est le point d'entree pour la nouvelle architecture.
+    Elle delegue a la factory qui cree le bon terminal.
+    
     Parameters
     ----------
     mode : ValuationMode
         Le mode de valorisation selectionne.
     ticker : str
         Le symbole boursier.
-
+    
     Returns
     -------
     Optional[ValuationRequest]
         La requete si le formulaire est soumis, None sinon.
     """
-    import logging
-    logger = logging.getLogger(__name__)
-
-    try:
-        logger.debug(f"[Facade] Creation terminal {mode.value} pour {ticker}")
-        from app.ui.expert_terminals import create_expert_terminal
-
-        terminal = create_expert_terminal(mode, ticker)
-        logger.debug(f"[Facade] Terminal cree: {type(terminal).__name__}")
-
-        result = terminal.render()
-        logger.debug(f"[Facade] Rendu termine, request: {result is not None}")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"[Facade] Erreur rendu terminal {mode.value}: {str(e)}")
-        return None
+    from app.ui.expert_terminals import create_expert_terminal
+    
+    terminal = create_expert_terminal(mode, ticker)
+    return terminal.render()
 
 
 def render_results(result: ValuationResult, **kwargs: Any) -> None:
@@ -82,6 +66,8 @@ def render_results(result: ValuationResult, **kwargs: Any) -> None:
     **kwargs
         Arguments supplementaires (provider, etc.).
     """
+    from app.ui.result_tabs import ResultTabOrchestrator
+    
     orchestrator = ResultTabOrchestrator()
     orchestrator.render(result, **kwargs)
 
@@ -95,6 +81,7 @@ def get_available_modes():
     Dict[ValuationMode, str]
         Mapping mode -> nom d'affichage.
     """
+    from app.ui.expert_terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_display_names()
 
 
@@ -107,24 +94,58 @@ def get_mode_descriptions():
     Dict[ValuationMode, str]
         Mapping mode -> description.
     """
+    from app.ui.expert_terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_descriptions()
 
 
-def get_available_modes() -> Dict[ValuationMode, str]:
-    """
-    Retourne les modes disponibles avec leurs noms d'affichage.
-
-    Utilise la Factory comme source de verite pour les modes supportes.
-
-    Returns
-    -------
-    Dict[ValuationMode, str]
-        Mapping mode -> nom d'affichage.
-    """
-    return ExpertTerminalFactory.get_mode_display_names()
-
-
 # ==============================================================================
-# MIGRATION COMPLETED — Les fonctions legacy ont été supprimées
-# Le nouveau système utilise ExpertTerminalFactory directement
+# BACKWARD COMPATIBILITY — Re-exports depuis ui_inputs_expert.py
+# Ces fonctions seront depreciees dans une version future.
 # ==============================================================================
+
+def safe_factory_params(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.shared_widgets.build_dcf_parameters"""
+    from app.ui_components.ui_inputs_expert import safe_factory_params as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_standard_fcff_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.fcff_standard_terminal"""
+    from app.ui_components.ui_inputs_expert import render_standard_fcff_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_fundamental_fcff_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.fcff_normalized_terminal"""
+    from app.ui_components.ui_inputs_expert import render_fundamental_fcff_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_growth_fcff_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.fcff_growth_terminal"""
+    from app.ui_components.ui_inputs_expert import render_growth_fcff_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_fcfe_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.fcfe_terminal"""
+    from app.ui_components.ui_inputs_expert import render_fcfe_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_ddm_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.ddm_terminal"""
+    from app.ui_components.ui_inputs_expert import render_ddm_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_rim_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.rim_bank_terminal"""
+    from app.ui_components.ui_inputs_expert import render_rim_inputs as _legacy
+    return _legacy(*args, **kwargs)
+
+
+def render_graham_inputs(*args, **kwargs):
+    """Deprecated: Use app.ui.expert_terminals.graham_value_terminal"""
+    from app.ui_components.ui_inputs_expert import render_graham_inputs as _legacy
+    return _legacy(*args, **kwargs)

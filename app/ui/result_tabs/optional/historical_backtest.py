@@ -2,7 +2,6 @@
 app/ui/result_tabs/optional/historical_backtest.py
 Onglet — Backtest Historique
 
-Migration depuis ui_kpis.py._render_backtest_tab()
 Visible uniquement si un backtest a été exécuté.
 """
 
@@ -12,74 +11,53 @@ import streamlit as st
 import pandas as pd
 
 from core.models import ValuationResult
-from core.i18n import BacktestTexts, AuditTexts
 from app.ui.base import ResultTabBase
 
 
 class HistoricalBacktestTab(ResultTabBase):
-    """
-    Onglet de validation historique.
-
-    Migration exacte de _render_backtest_tab() depuis ui_kpis.py
-    pour garantir l'identicité fonctionnelle.
-    """
-
+    """Onglet de validation historique."""
+    
     TAB_ID = "historical_backtest"
-    LABEL = BacktestTexts.TITLE
+    LABEL = "Backtest"
     ICON = ""
     ORDER = 7
     IS_CORE = False
-
+    
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si backtest disponible."""
-        return result.backtest_report is not None
-
+        return (
+            result.backtest_result is not None
+            and len(result.backtest_result.periods) > 0
+        )
+    
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Affiche les résultats du backtest.
-
-        Suit exactement la même logique que _render_backtest_tab dans ui_kpis.py.
-        """
-        from app.ui_components.ui_charts import display_backtest_convergence_chart
-
-        st.markdown(f"#### {BacktestTexts.TITLE}")
-
-        # SÉCURITÉ : Utilisation de la clé correcte issue de ui_texts.py
-        if not result.backtest_report or not result.backtest_report.points:
-            st.warning(AuditTexts.MC_NO_DATA)
-            return
-
-        # A. Score de fiabilité historique
-        report = result.backtest_report
-        c1, c2, c3 = st.columns(3)
-        c1.metric(BacktestTexts.METRIC_MAE, f"{report.mean_absolute_error:.1%}", help=BacktestTexts.HELP_BACKTEST)
-        c2.metric(BacktestTexts.METRIC_ACCURACY, f"{report.model_accuracy_score:.1f}/100")
-
-        # B. Graphique de convergence
-        st.markdown(f"**{BacktestTexts.SECTION_CONVERGENCE}**")
-        display_backtest_convergence_chart(result)
-
-        # C. Tableau détaillé
-        st.markdown(f"**{BacktestTexts.SECTION_DETAILS}**")
-        df = pd.DataFrame([
-            {
-                BacktestTexts.COL_DATE: p.date.strftime("%Y-%m-%d"),
-                BacktestTexts.COL_PREDICTED: f"{p.predicted_value:,.2f}",
-                BacktestTexts.COL_ACTUAL: f"{p.actual_price:,.2f}",
-                BacktestTexts.COL_ERROR: f"{p.prediction_error:.1%}"
-            } for p in report.points
-        ])
-        st.dataframe(df, use_container_width=True)
+        """Affiche les résultats du backtest."""
+        bt = result.backtest_result
+        
+        st.markdown("**VALIDATION HISTORIQUE**")
+        st.caption("Performance du modèle sur les périodes passées")
+        
+        # Métriques globales
+        with st.container(border=True):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            col1.metric("Périodes testées", bt.periods_count)
+            col2.metric("Hit Rate", f"{bt.hit_rate:.0%}")
+            col3.metric("Erreur Médiane", f"{bt.median_error:.1%}")
+            col4.metric("MAE", f"{bt.mae:.1%}")
+        
+        # Détail par période
+        if bt.periods:
             with st.container(border=True):
                 st.markdown("**Détail par Période**")
                 
                 periods_data = []
                 for period in bt.periods:
                     periods_data.append({
-                        KPITexts.COL_DATE: period.date.strftime("%Y-%m"),
-                        KPITexts.COL_PREDICTED: f"{period.predicted_value:,.2f}",
-                        KPITexts.COL_ACTUAL: f"{period.actual_value:,.2f}",
-                        KPITexts.COL_ERROR: f"{period.error_pct:+.1%}",
+                        "Date": period.date.strftime("%Y-%m"),
+                        "Valeur Prédite": f"{period.predicted_value:,.2f}",
+                        "Valeur Réelle": f"{period.actual_value:,.2f}",
+                        "Erreur": f"{period.error_pct:+.1%}",
                         "Verdict": "OK" if abs(period.error_pct) < 0.20 else "ECART",
                     })
                 

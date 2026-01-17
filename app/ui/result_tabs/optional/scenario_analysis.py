@@ -2,7 +2,6 @@
 app/ui/result_tabs/optional/scenario_analysis.py
 Onglet — Analyse de Scénarios (Bull/Base/Bear)
 
-Migration depuis ui_kpis.py._render_scenarios_tab()
 Visible uniquement si les scénarios sont activés.
 """
 
@@ -12,56 +11,43 @@ import streamlit as st
 import pandas as pd
 
 from core.models import ValuationResult
-from core.i18n import KPITexts, ExpertTerminalTexts
 from app.ui.base import ResultTabBase
+from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 
 class ScenarioAnalysisTab(ResultTabBase):
-    """
-    Onglet d'analyse de scénarios.
-
-    Migration exacte de _render_scenarios_tab() depuis ui_kpis.py
-    pour garantir l'identicité fonctionnelle.
-    """
-
+    """Onglet d'analyse de scénarios."""
+    
     TAB_ID = "scenario_analysis"
-    LABEL = KPITexts.TAB_SCENARIOS
+    LABEL = "Scénarios"
     ICON = ""
     ORDER = 6
     IS_CORE = False
-
+    
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si scénarios disponibles."""
-        return result.scenario_synthesis is not None
-
+        return (
+            result.scenarios is not None
+            and len(result.scenarios) > 0
+        )
+    
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Affiche l'analyse de scénarios.
-
-        Suit exactement la même logique que _render_scenarios_tab dans ui_kpis.py.
-        """
-        synthesis = result.scenario_synthesis
+        """Affiche l'analyse de scénarios."""
+        scenarios = result.scenarios
         currency = result.financials.currency
-
-        st.markdown(f"#### {KPITexts.TAB_SCENARIOS}")
-        st.caption(KPITexts.SUB_SCENARIO_WEIGHTS)
-
-        rows = []
-        labels_map = {"Bull": ExpertTerminalTexts.LABEL_SCENARIO_BULL,
-                      "Base": ExpertTerminalTexts.LABEL_SCENARIO_BASE,
-                      "Bear": ExpertTerminalTexts.LABEL_SCENARIO_BEAR}
-
-        for v in synthesis.variants:
-            rows.append({
-                "Scénario": labels_map.get(v.label, v.label),
-                "Probabilité": f"{v.probability:.0%}",
-                "Croissance (g)": f"{v.growth_used:.2%}",
-                "Marge FCF": f"{v.margin_used:.1%}" if v.margin_used is not None and v.margin_used != 0 else ("Base"),
-                "Valeur par Action": f"{v.intrinsic_value:,.2f} {currency}"
-            })
-
-        st.table(pd.DataFrame(rows))
-        st.info(f"**{KPITexts.LABEL_SCENARIO_RANGE}** : {synthesis.max_downside:,.2f} à {synthesis.max_upside:,.2f} {currency}")
+        
+        st.markdown("**ANALYSE DE SCÉNARIOS**")
+        st.caption("Valorisation sous différentes hypothèses de croissance")
+        
+        # Tableau des scénarios
+        with st.container(border=True):
+            scenario_data = []
+            for name, scenario in scenarios.items():
+                scenario_data.append({
+                    "Scénario": name.upper(),
+                    "Probabilité": f"{scenario.probability:.0%}",
+                    "Croissance": f"{scenario.growth_rate:.1%}",
+                    "Valeur/Action": format_smart_number(scenario.intrinsic_value, currency),
                     "Upside": f"{scenario.upside_pct:+.1%}",
                 })
             

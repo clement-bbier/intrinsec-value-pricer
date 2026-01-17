@@ -316,7 +316,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
                 continue
 
-        logger.info("[Monte Carlo] Simulations completed | valid_results=%d/%d", len(simulated_values), mc.num_simulations)
+        logger.info("[Monte Carlo] Simulations completed | valid_results=%d/%d", len(simulated_values), num_simulations)
         return simulated_values
 
     def _compute_quantiles(self, simulated_values: List[float]) -> dict:
