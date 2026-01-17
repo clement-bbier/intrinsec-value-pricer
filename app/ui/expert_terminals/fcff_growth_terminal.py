@@ -19,8 +19,8 @@ from app.ui.expert_terminals.shared_widgets import widget_peer_multiples
 class FCFFGrowthTerminal(ExpertTerminalBase):
     """Terminal pour valorisation Revenue-Driven."""
     
-    MODE = ValuationMode.REVENUE_DRIVEN
-    DISPLAY_NAME = "FCFF Revenue-Driven"
+    MODE = ValuationMode.FCFF_GROWTH
+    DISPLAY_NAME = "DCF - Revenue-Driven Growth"
     DESCRIPTION = "Valorisation par les revenus avec convergence des marges vers maturite"
     ICON = ""
     

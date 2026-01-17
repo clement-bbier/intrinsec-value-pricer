@@ -22,7 +22,7 @@ class TestFullValuationPipeline:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -46,10 +46,10 @@ class TestFullValuationPipeline:
         # sample_financials a déjà eps_ttm, book_value_per_share, etc.
         
         modes_to_test = [
-            ValuationMode.FCFF_TWO_STAGE,
+            ValuationMode.FCFF_STANDARD,
             ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.FCFF_REVENUE_DRIVEN,
-            ValuationMode.GRAHAM_1974_REVISED,
+            ValuationMode.FCFF_GROWTH,
+            ValuationMode.GRAHAM,
         ]
         
         for mode in modes_to_test:
@@ -81,7 +81,7 @@ class TestAuditAfterValuation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -98,7 +98,7 @@ class TestAuditAfterValuation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -115,7 +115,7 @@ class TestAuditAfterValuation:
         request_auto = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         result_auto = run_valuation(request_auto, sample_financials, sample_params)
@@ -124,7 +124,7 @@ class TestAuditAfterValuation:
         request_manual = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
         )
         result_manual = run_valuation(request_manual, sample_financials, sample_params)
@@ -174,7 +174,7 @@ class TestMonteCarloIntegration:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         

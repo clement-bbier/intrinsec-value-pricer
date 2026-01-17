@@ -32,8 +32,8 @@ class TestRegistrySynchronization:
         for mode in ValuationMode:
             # Vérifier que les modes principaux ont un nom
             if mode in [
-                ValuationMode.FCFF_TWO_STAGE,
-                ValuationMode.GRAHAM_1974_REVISED,
+                ValuationMode.FCFF_STANDARD,
+                ValuationMode.GRAHAM,
             ]:
                 assert mode in names, f"{mode} n'a pas de display_name"
     
@@ -66,8 +66,8 @@ class TestUIRegistryIntegration:
         assert len(VALUATION_DISPLAY_NAMES) >= 7
         
         # Vérifier quelques noms attendus
-        assert ValuationMode.FCFF_TWO_STAGE in VALUATION_DISPLAY_NAMES
-        assert "FCFF" in VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_TWO_STAGE]
+        assert ValuationMode.FCFF_STANDARD in VALUATION_DISPLAY_NAMES
+        assert "DCF" in VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_STANDARD]
 
 
 class TestAuditFactoryIntegration:
@@ -79,8 +79,8 @@ class TestAuditFactoryIntegration:
         from core.valuation.registry import get_auditor
         
         # Les deux méthodes doivent retourner le même type
-        factory_auditor = AuditorFactory.get_auditor(ValuationMode.FCFF_TWO_STAGE)
-        registry_auditor = get_auditor(ValuationMode.FCFF_TWO_STAGE)
+        factory_auditor = AuditorFactory.get_auditor(ValuationMode.FCFF_STANDARD)
+        registry_auditor = get_auditor(ValuationMode.FCFF_STANDARD)
         
         assert type(factory_auditor) == type(registry_auditor)
     
@@ -93,30 +93,30 @@ class TestAuditFactoryIntegration:
         
         # FCFF modes → DCFAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.FCFF_TWO_STAGE), 
+            AuditorFactory.get_auditor(ValuationMode.FCFF_STANDARD), 
             DCFAuditor
         )
         
         # RIM → RIMAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.RESIDUAL_INCOME_MODEL), 
+            AuditorFactory.get_auditor(ValuationMode.RIM), 
             RIMAuditor
         )
         
         # Graham → GrahamAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.GRAHAM_1974_REVISED), 
+            AuditorFactory.get_auditor(ValuationMode.GRAHAM), 
             GrahamAuditor
         )
         
         # FCFE → FCFEAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.FCFE_TWO_STAGE), 
+            AuditorFactory.get_auditor(ValuationMode.FCFE), 
             FCFEAuditor
         )
         
         # DDM → DDMAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.DDM_GORDON_GROWTH), 
+            AuditorFactory.get_auditor(ValuationMode.DDM), 
             DDMAuditor
         )

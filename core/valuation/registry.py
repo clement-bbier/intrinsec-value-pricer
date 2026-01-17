@@ -18,7 +18,7 @@ Usage :
     from core.valuation.registry import register_strategy, get_strategy, get_auditor
     
     @register_strategy(
-        mode=ValuationMode.FCFF_TWO_STAGE,
+        mode=ValuationMode.FCFF_STANDARD,
         auditor_cls=DCFAuditor,
         ui_renderer="render_expert_fcff_standard"
     )
@@ -178,10 +178,10 @@ def register_strategy(
     
     Usage:
         @register_strategy(
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             auditor="DCFAuditor",
             ui_renderer="render_expert_fcff_standard",
-            display_name="FCFF Standard"
+            display_name="DCF - Free Cash Flow to Firm"
         )
         class StandardFCFFStrategy(ValuationStrategy):
             ...
@@ -258,13 +258,13 @@ def _register_all_strategies() -> None:
     from core.valuation.strategies.rim_banks import RIMBankingStrategy
     from core.valuation.strategies.graham_value import GrahamNumberStrategy
     
-    # Approche Entité (Firm Value - WACC Based)
+    # Approche Entite (Firm Value - WACC Based)
     StrategyRegistry.register(
-        mode=ValuationMode.FCFF_TWO_STAGE,
+        mode=ValuationMode.FCFF_STANDARD,
         strategy_cls=StandardFCFFStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_standard",
-        display_name="FCFF Standard"
+        display_name="DCF - Free Cash Flow to Firm"
     )
     
     StrategyRegistry.register(
@@ -272,49 +272,49 @@ def _register_all_strategies() -> None:
         strategy_cls=FundamentalFCFFStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_fundamental",
-        display_name="FCFF Fundamental"
+        display_name="DCF - Normalized Free Cash Flow"
     )
     
     StrategyRegistry.register(
-        mode=ValuationMode.FCFF_REVENUE_DRIVEN,
+        mode=ValuationMode.FCFF_GROWTH,
         strategy_cls=RevenueBasedStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_growth",
-        display_name="FCFF Growth"
+        display_name="DCF - Revenue-Driven Growth"
     )
     
     # Approche Actionnaire (Direct Equity - Ke Based)
     StrategyRegistry.register(
-        mode=ValuationMode.FCFE_TWO_STAGE,
+        mode=ValuationMode.FCFE,
         strategy_cls=FCFEStrategy,
         auditor_cls_name="FCFEAuditor",
         ui_renderer_name="render_expert_fcfe",
-        display_name="FCFE Direct Equity"
+        display_name="DCF - Free Cash Flow to Equity"
     )
     
     StrategyRegistry.register(
-        mode=ValuationMode.DDM_GORDON_GROWTH,
+        mode=ValuationMode.DDM,
         strategy_cls=DividendDiscountStrategy,
         auditor_cls_name="DDMAuditor",
         ui_renderer_name="render_expert_ddm",
-        display_name="DDM Dividendes"
+        display_name="Dividend Discount Model"
     )
     
-    # Autres Modèles (RIM & Graham)
+    # Autres Modeles (RIM & Graham)
     StrategyRegistry.register(
-        mode=ValuationMode.RESIDUAL_INCOME_MODEL,
+        mode=ValuationMode.RIM,
         strategy_cls=RIMBankingStrategy,
         auditor_cls_name="RIMAuditor",
         ui_renderer_name="render_expert_rim",
-        display_name="RIM Residual Income"
+        display_name="Residual Income Model"
     )
     
     StrategyRegistry.register(
-        mode=ValuationMode.GRAHAM_1974_REVISED,
+        mode=ValuationMode.GRAHAM,
         strategy_cls=GrahamNumberStrategy,
         auditor_cls_name="GrahamAuditor",
         ui_renderer_name="render_expert_graham",
-        display_name="Graham"
+        display_name="Graham Intrinsic Value"
     )
     
     logger.info(f"[Registry] {len(StrategyRegistry._strategies)} stratégies enregistrées")

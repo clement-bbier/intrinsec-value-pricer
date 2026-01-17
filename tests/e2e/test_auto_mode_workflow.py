@@ -25,7 +25,7 @@ class TestAutoModeWorkflow:
         request = ValuationRequest(
             ticker="AAPL",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
             manual_params=sample_params,
         )
@@ -49,9 +49,9 @@ class TestAutoModeWorkflow:
         sample_financials.book_value_per_share = 30.0
         
         modes = [
-            ValuationMode.FCFF_TWO_STAGE,
+            ValuationMode.FCFF_STANDARD,
             ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.GRAHAM_1974_REVISED,
+            ValuationMode.GRAHAM,
         ]
         
         for mode in modes:
@@ -79,7 +79,7 @@ class TestAutoModeOutputValidation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -103,7 +103,7 @@ class TestAutoModeOutputValidation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -133,7 +133,7 @@ class TestAutoModeErrorHandling:
         request = ValuationRequest(
             ticker="",  # Vide mais accepté par Pydantic
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -152,7 +152,7 @@ class TestAutoModeErrorHandling:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         

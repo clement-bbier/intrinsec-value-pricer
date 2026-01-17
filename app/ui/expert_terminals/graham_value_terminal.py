@@ -20,8 +20,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
     """Terminal pour le Graham Number."""
     
     MODE = ValuationMode.GRAHAM
-    DISPLAY_NAME = "Graham Number"
-    DESCRIPTION = "Formule classique de Benjamin Graham (1974)"
+    DISPLAY_NAME = "Graham Intrinsic Value"
+    DESCRIPTION = "Formule classique de Benjamin Graham"
     ICON = ""
     
     # Graham n'utilise pas ces sections

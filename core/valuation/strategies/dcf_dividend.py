@@ -79,7 +79,7 @@ class DividendDiscountStrategy(ValuationStrategy):
         # Le mode DDM_GORDON_GROWTH active le Ke (CAPM) et bypass l'Equity Bridge
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.DDM_GORDON_GROWTH,
+            mode=ValuationMode.DDM,
             glass_box_enabled=self.glass_box_enabled
         )
 

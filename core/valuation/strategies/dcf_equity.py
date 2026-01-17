@@ -64,7 +64,7 @@ class FCFEStrategy(ValuationStrategy):
         # Le mode FCFE_TWO_STAGE garantit l'usage du Ke et l'absence d'Equity Bridge
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.FCFE_TWO_STAGE,
+            mode=ValuationMode.FCFE,
             glass_box_enabled=self.glass_box_enabled
         )
 

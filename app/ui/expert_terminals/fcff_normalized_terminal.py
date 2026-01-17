@@ -20,7 +20,7 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
     """Terminal pour FCFF avec normalisation."""
     
     MODE = ValuationMode.FCFF_NORMALIZED
-    DISPLAY_NAME = "FCFF Normalise"
+    DISPLAY_NAME = "DCF - Normalized Free Cash Flow"
     DESCRIPTION = "DCF avec lissage du FCF pour les entreprises cycliques"
     ICON = ""
     

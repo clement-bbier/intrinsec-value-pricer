@@ -21,7 +21,7 @@ class FCFETerminal(ExpertTerminalBase):
     """Terminal pour FCFE."""
     
     MODE = ValuationMode.FCFE
-    DISPLAY_NAME = "FCFE (Equity Direct)"
+    DISPLAY_NAME = "DCF - Free Cash Flow to Equity"
     DESCRIPTION = "Flux disponibles pour les actionnaires, actualises au Ke"
     ICON = ""
     

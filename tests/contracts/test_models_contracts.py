@@ -111,13 +111,13 @@ class TestValuationRequestContract:
         request = ValuationRequest(
             ticker="AAPL",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
         assert request.ticker == "AAPL"
         assert request.projection_years == 5
-        assert request.mode == ValuationMode.FCFF_TWO_STAGE
+        assert request.mode == ValuationMode.FCFF_STANDARD
 
 
 class TestValuationModeContract:
@@ -129,13 +129,13 @@ class TestValuationModeContract:
         
         # Ces modes DOIVENT exister
         expected_modes = [
-            "FCFF_TWO_STAGE",
+            "FCFF_STANDARD",
             "FCFF_NORMALIZED",
-            "FCFF_REVENUE_DRIVEN",
-            "FCFE_TWO_STAGE",
-            "DDM_GORDON_GROWTH",
-            "RESIDUAL_INCOME_MODEL",
-            "GRAHAM_1974_REVISED",
+            "FCFF_GROWTH",
+            "FCFE",
+            "DDM",
+            "RIM",
+            "GRAHAM",
         ]
         
         actual_modes = [m.name for m in ValuationMode]

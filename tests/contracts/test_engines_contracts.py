@@ -41,7 +41,7 @@ class TestRunValuationContract:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -68,13 +68,13 @@ class TestStrategyRegistryContract:
         from core.models import ValuationMode
         
         expected_modes = [
-            ValuationMode.FCFF_TWO_STAGE,
+            ValuationMode.FCFF_STANDARD,
             ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.FCFF_REVENUE_DRIVEN,
-            ValuationMode.FCFE_TWO_STAGE,
-            ValuationMode.DDM_GORDON_GROWTH,
-            ValuationMode.RESIDUAL_INCOME_MODEL,
-            ValuationMode.GRAHAM_1974_REVISED,
+            ValuationMode.FCFF_GROWTH,
+            ValuationMode.FCFE,
+            ValuationMode.DDM,
+            ValuationMode.RIM,
+            ValuationMode.GRAHAM,
         ]
         
         for mode in expected_modes:
@@ -119,7 +119,7 @@ class TestCentralizedRegistryContract:
         from core.valuation.strategies.abstract import ValuationStrategy
         from core.models import ValuationMode
         
-        strategy_cls = get_strategy(ValuationMode.FCFF_TWO_STAGE)
+        strategy_cls = get_strategy(ValuationMode.FCFF_STANDARD)
         
         assert strategy_cls is not None
         assert issubclass(strategy_cls, ValuationStrategy)
@@ -129,7 +129,7 @@ class TestCentralizedRegistryContract:
         from core.valuation.registry import get_auditor
         from core.models import ValuationMode
         
-        auditor = get_auditor(ValuationMode.FCFF_TWO_STAGE)
+        auditor = get_auditor(ValuationMode.FCFF_STANDARD)
         
         assert auditor is not None
         assert hasattr(auditor, "audit_pillars")

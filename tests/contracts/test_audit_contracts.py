@@ -51,7 +51,7 @@ class TestAuditEngineContract:
         result.request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -85,16 +85,16 @@ class TestAuditorFactoryContract:
         from core.models import ValuationMode
         
         # DCF modes → DCFAuditor
-        for mode in [ValuationMode.FCFF_TWO_STAGE, ValuationMode.FCFF_NORMALIZED]:
+        for mode in [ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_NORMALIZED]:
             auditor = AuditorFactory.get_auditor(mode)
             assert isinstance(auditor, DCFAuditor), f"{mode} devrait utiliser DCFAuditor"
         
         # RIM → RIMAuditor
-        auditor = AuditorFactory.get_auditor(ValuationMode.RESIDUAL_INCOME_MODEL)
+        auditor = AuditorFactory.get_auditor(ValuationMode.RIM)
         assert isinstance(auditor, RIMAuditor)
         
         # Graham → GrahamAuditor
-        auditor = AuditorFactory.get_auditor(ValuationMode.GRAHAM_1974_REVISED)
+        auditor = AuditorFactory.get_auditor(ValuationMode.GRAHAM)
         assert isinstance(auditor, GrahamAuditor)
 
 

@@ -10,31 +10,31 @@ class ValuationMode(str, Enum):
     """Modes de valorisation disponibles."""
     
     # Approche Entite (Firm Value)
-    FCFF_TWO_STAGE = "FCFF Two-Stage (Damodaran)"
-    FCFF_NORMALIZED = "FCFF Normalized (Cyclical / Industrial)"
-    FCFF_REVENUE_DRIVEN = "FCFF Revenue-Driven (High Growth / Tech)"
+    FCFF_STANDARD = "DCF - Free Cash Flow to Firm"
+    FCFF_NORMALIZED = "DCF - Normalized Free Cash Flow"
+    FCFF_GROWTH = "DCF - Revenue-Driven Growth"
 
     # Approche Actionnaire (Equity Value)
-    FCFE_TWO_STAGE = "FCFE Two-Stage (Direct Equity)"
-    DDM_GORDON_GROWTH = "Dividend Discount Model (Gordon / DDM)"
+    FCFE = "DCF - Free Cash Flow to Equity"
+    DDM = "Dividend Discount Model"
 
     # Autres Modeles
-    RESIDUAL_INCOME_MODEL = "Residual Income Model (Penman)"
-    GRAHAM_1974_REVISED = "Graham Intrinsic Value (1974 Revised)"
+    RIM = "Residual Income Model"
+    GRAHAM = "Graham Intrinsic Value"
 
     @property
     def supports_monte_carlo(self) -> bool:
         """Indique si le mode supporte les simulations Monte Carlo."""
-        return self != ValuationMode.GRAHAM_1974_REVISED
+        return self != ValuationMode.GRAHAM
 
     @property
     def is_direct_equity(self) -> bool:
         """Determine si le modele calcule directement la valeur actionnariale."""
         return self in [
-            ValuationMode.FCFE_TWO_STAGE,
-            ValuationMode.DDM_GORDON_GROWTH,
-            ValuationMode.RESIDUAL_INCOME_MODEL,
-            ValuationMode.GRAHAM_1974_REVISED
+            ValuationMode.FCFE,
+            ValuationMode.DDM,
+            ValuationMode.RIM,
+            ValuationMode.GRAHAM
         ]
 
 

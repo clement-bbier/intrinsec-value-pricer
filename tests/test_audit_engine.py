@@ -36,7 +36,7 @@ def test_audit_critical_wacc_g_proximity(sample_financials, sample_params):
         result.request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO
         )
         
@@ -82,7 +82,7 @@ def test_audit_manual_mode_trust(sample_financials, sample_params):
     result.request = ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_TWO_STAGE,
+        mode=ValuationMode.FCFF_STANDARD,
         input_source=InputSource.MANUAL  # Mode Expert
     )
 

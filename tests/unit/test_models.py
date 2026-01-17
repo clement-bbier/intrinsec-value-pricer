@@ -119,7 +119,7 @@ class TestValuationRequest:
         request = ValuationRequest(
             ticker="MSFT",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -133,7 +133,7 @@ class TestValuationRequest:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.AUTO,
         )
         
@@ -148,10 +148,10 @@ class TestValuationMode:
         from core.models import ValuationMode
         
         # Les modes DCF supportent généralement Monte Carlo
-        assert ValuationMode.FCFF_TWO_STAGE.supports_monte_carlo is True
+        assert ValuationMode.FCFF_STANDARD.supports_monte_carlo is True
         
         # Graham ne supporte pas Monte Carlo
-        assert ValuationMode.GRAHAM_1974_REVISED.supports_monte_carlo is False
+        assert ValuationMode.GRAHAM.supports_monte_carlo is False
     
     def test_mode_values_are_strings(self):
         """Les valeurs sont des chaînes descriptives."""

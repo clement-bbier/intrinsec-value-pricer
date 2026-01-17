@@ -38,9 +38,9 @@ class ExpertTerminalFactory:
     
     # Registre des terminaux disponibles
     _REGISTRY: Dict[ValuationMode, Type[ExpertTerminalBase]] = {
-        ValuationMode.FCFF_TWO_STAGE: FCFFStandardTerminal,
+        ValuationMode.FCFF_STANDARD: FCFFStandardTerminal,
         ValuationMode.FCFF_NORMALIZED: FCFFNormalizedTerminal,
-        ValuationMode.REVENUE_DRIVEN: FCFFGrowthTerminal,
+        ValuationMode.FCFF_GROWTH: FCFFGrowthTerminal,
         ValuationMode.FCFE: FCFETerminal,
         ValuationMode.DDM: DDMTerminal,
         ValuationMode.RIM: RIMBankTerminal,

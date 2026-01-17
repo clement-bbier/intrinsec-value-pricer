@@ -175,7 +175,7 @@ def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[Termin
 
             # 3. Branchement réactif selon le modèle (RIM vs Gordon)
             v_term = 0.0
-            if mode == ValuationMode.RESIDUAL_INCOME_MODEL:
+            if mode == ValuationMode.RIM:
                 # Utilise la volatilité de la persistance omega
                 v_term = v_col2.number_input(
                     ExpertTerminalTexts.MC_VOL_OMEGA,
@@ -226,21 +226,21 @@ def atom_scenario_configuration(mode: ValuationMode) -> ScenarioParameters:
             c1, c2, c3 = st.columns(3)
             p_bull = c1.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_PROBA} (Bull)", 0.0, 100.0, 25.0, 5.0, key="sc_p_bull") / 100
             g_bull = c2.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_GROWTH} (Bull)", value=None, format="%.3f", key="sc_g_bull")
-            m_bull = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Bull)", value=None, format="%.2f", key="sc_m_bull") if mode == ValuationMode.FCFF_REVENUE_DRIVEN else None
+            m_bull = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Bull)", value=None, format="%.2f", key="sc_m_bull") if mode == ValuationMode.FCFF_GROWTH else None
 
         # Base
         with st.expander(ExpertTerminalTexts.LABEL_SCENARIO_BASE, expanded=True):
             c1, c2, c3 = st.columns(3)
             p_base = c1.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_PROBA} (Base)", 0.0, 100.0, 50.0, 5.0, key="sc_p_base") / 100
             g_base = c2.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_GROWTH} (Base)", value=None, format="%.3f", key="sc_g_base")
-            m_base = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Base)", value=None, format="%.2f", key="sc_m_base") if mode == ValuationMode.FCFF_REVENUE_DRIVEN else None
+            m_base = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Base)", value=None, format="%.2f", key="sc_m_base") if mode == ValuationMode.FCFF_GROWTH else None
 
         # Bear
         with st.expander(ExpertTerminalTexts.LABEL_SCENARIO_BEAR, expanded=True):
             c1, c2, c3 = st.columns(3)
             p_bear = c1.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_PROBA} (Bear)", 0.0, 100.0, 25.0, 5.0, key="sc_p_bear") / 100
             g_bear = c2.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_GROWTH} (Bear)", value=None, format="%.3f", key="sc_g_bear")
-            m_bear = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Bear)", value=None, format="%.2f", key="sc_m_bear") if mode == ValuationMode.FCFF_REVENUE_DRIVEN else None
+            m_bear = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Bear)", value=None, format="%.2f", key="sc_m_bear") if mode == ValuationMode.FCFF_GROWTH else None
 
         if abs((p_bull + p_base + p_bear) - 1.0) > 0.001:
             st.warning(ExpertTerminalTexts.HELP_SCENARIO_PROBA)
@@ -315,19 +315,19 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     all_data = {"manual_fcf_base": fcf_base, "projection_years": n_years, "fcf_growth_rate": g_rate}
-    all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_TWO_STAGE))
+    all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_STANDARD))
     tv_data = atom_terminal_dcf(r"TV_n = f(FCF_n, g_n, WACC)")
     all_data.update(tv_data)
-    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_TWO_STAGE))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_TWO_STAGE, tv_data.get("terminal_method")))
+    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_STANDARD))
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_STANDARD, tv_data.get("terminal_method")))
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.FCFF_TWO_STAGE)
+    scenarios = atom_scenario_configuration(ValuationMode.FCFF_STANDARD)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_STANDARD, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None
 
 
@@ -380,19 +380,19 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     all_data = {"manual_fcf_base": rev_base, "projection_years": n_years, "fcf_growth_rate": g_rev, "target_fcf_margin": m_target}
-    all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_REVENUE_DRIVEN))
+    all_data.update(atom_discount_rate_smart(ValuationMode.FCFF_GROWTH))
     tv_data = atom_terminal_dcf(r"TV_n = f(FCF_n, g_n, WACC)")
     all_data.update(tv_data)
-    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_REVENUE_DRIVEN))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_REVENUE_DRIVEN, tv_data.get("terminal_method")))
+    all_data.update(atom_bridge_smart(r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}", ValuationMode.FCFF_GROWTH))
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFF_GROWTH, tv_data.get("terminal_method")))
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.FCFF_REVENUE_DRIVEN)
+    scenarios = atom_scenario_configuration(ValuationMode.FCFF_GROWTH)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", use_container_width=True):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_REVENUE_DRIVEN, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_GROWTH, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None
 
 
@@ -414,19 +414,19 @@ def render_expert_fcfe(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     all_data = {"manual_fcf_base": fcfe_base, "manual_net_borrowing": net_borrowing, "projection_years": n_years, "fcf_growth_rate": g_rate}
-    all_data.update(atom_discount_rate_smart(ValuationMode.FCFE_TWO_STAGE))
+    all_data.update(atom_discount_rate_smart(ValuationMode.FCFE))
     tv_data = atom_terminal_dcf(r"TV_n = \begin{cases} \dfrac{FCFE_n(1+g_n)}{k_e - g_n} & \text{(Gordon)} \\ FCFE_n \times \text{Multiple} & \text{(Exit)} \end{cases}")
     all_data.update(tv_data)
-    all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.FCFE_TWO_STAGE))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFE_TWO_STAGE, tv_data.get("terminal_method")))
+    all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.FCFE))
+    all_data.update(atom_monte_carlo_smart(ValuationMode.FCFE, tv_data.get("terminal_method")))
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.FCFE_TWO_STAGE)
+    scenarios = atom_scenario_configuration(ValuationMode.FCFE)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_FCFE.format(ticker=ticker), type="primary", use_container_width=True):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFE_TWO_STAGE, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFE, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None
 
 
@@ -446,19 +446,19 @@ def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     all_data = {"manual_dividend_base": d0_base, "projection_years": n_years, "fcf_growth_rate": g_rate}
-    all_data.update(atom_discount_rate_smart(ValuationMode.DDM_GORDON_GROWTH))
+    all_data.update(atom_discount_rate_smart(ValuationMode.DDM))
     tv_data = atom_terminal_dcf(r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}")
     all_data.update(tv_data)
-    all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.DDM_GORDON_GROWTH))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.DDM_GORDON_GROWTH, tv_data.get("terminal_method")))
+    all_data.update(atom_bridge_smart(r"P = \frac{\text{Equity Value}}{\text{Actions}}", ValuationMode.DDM))
+    all_data.update(atom_monte_carlo_smart(ValuationMode.DDM, tv_data.get("terminal_method")))
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.DDM_GORDON_GROWTH)
+    scenarios = atom_scenario_configuration(ValuationMode.DDM)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_DDM.format(ticker=ticker), type="primary", use_container_width=True):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.DDM_GORDON_GROWTH, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.DDM, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None
 
 
@@ -480,18 +480,18 @@ def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     all_data = {"manual_book_value": bv, "manual_fcf_base": ni, "projection_years": n_years, "fcf_growth_rate": g_ni}
-    all_data.update(atom_discount_rate_smart(ValuationMode.RESIDUAL_INCOME_MODEL))
+    all_data.update(atom_discount_rate_smart(ValuationMode.RIM))
     all_data.update(atom_terminal_rim(r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"))
-    all_data.update(atom_bridge_smart(r"P = \dfrac{\text{Equity Value}}{\text{Actions}}", ValuationMode.RESIDUAL_INCOME_MODEL))
-    all_data.update(atom_monte_carlo_smart(ValuationMode.RESIDUAL_INCOME_MODEL))
+    all_data.update(atom_bridge_smart(r"P = \dfrac{\text{Equity Value}}{\text{Actions}}", ValuationMode.RIM))
+    all_data.update(atom_monte_carlo_smart(ValuationMode.RIM))
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.RESIDUAL_INCOME_MODEL)
+    scenarios = atom_scenario_configuration(ValuationMode.RIM)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", use_container_width=True):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RESIDUAL_INCOME_MODEL, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RIM, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None
 
 
@@ -513,11 +513,11 @@ def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
     st.divider()
 
     manual_peers = atom_peer_selection()
-    scenarios = atom_scenario_configuration(ValuationMode.GRAHAM_1974_REVISED)
+    scenarios = atom_scenario_configuration(ValuationMode.GRAHAM)
 
     if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", use_container_width=True):
         all_data = {"manual_fcf_base": eps, "fcf_growth_rate": g_lt, "corporate_aaa_yield": yield_aaa, "tax_rate": tau, "projection_years": 1, "enable_monte_carlo": False}
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
-        return ValuationRequest(ticker=ticker, projection_years=1, mode=ValuationMode.GRAHAM_1974_REVISED, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
+        return ValuationRequest(ticker=ticker, projection_years=1, mode=ValuationMode.GRAHAM, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
     return None

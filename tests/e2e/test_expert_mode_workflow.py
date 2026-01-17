@@ -24,7 +24,7 @@ class TestExpertModeWorkflow:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=7,  # Horizon personnalisé
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
             manual_params=sample_params,
         )
@@ -45,7 +45,7 @@ class TestExpertModeWorkflow:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
         )
         
@@ -76,7 +76,7 @@ class TestExpertModeScenarios:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
         )
         
@@ -97,7 +97,7 @@ class TestExpertModeScenarios:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
         )
         
@@ -135,7 +135,7 @@ class TestExpertModeValidation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             input_source=InputSource.MANUAL,
             manual_params=sample_params,
         )

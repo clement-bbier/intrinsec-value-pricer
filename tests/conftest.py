@@ -180,7 +180,7 @@ def sample_request_auto(sample_params):
     return ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_TWO_STAGE,
+        mode=ValuationMode.FCFF_STANDARD,
         input_source=InputSource.AUTO,
         manual_params=sample_params,
     )
@@ -192,7 +192,7 @@ def sample_request_expert(sample_params):
     return ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_TWO_STAGE,
+        mode=ValuationMode.FCFF_STANDARD,
         input_source=InputSource.MANUAL,
         manual_params=sample_params,
     )
@@ -212,7 +212,7 @@ def all_valuation_modes():
 def dcf_modes():
     """Modes DCF uniquement."""
     return [
-        ValuationMode.FCFF_TWO_STAGE,
+        ValuationMode.FCFF_STANDARD,
         ValuationMode.FCFF_NORMALIZED,
-        ValuationMode.FCFF_REVENUE_DRIVEN,
+        ValuationMode.FCFF_GROWTH,
     ]

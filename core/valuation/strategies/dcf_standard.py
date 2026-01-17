@@ -41,7 +41,7 @@ class StandardFCFFStrategy(ValuationStrategy):
         # 2. Exécution du Pipeline Unifié
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.FCFF_TWO_STAGE,
+            mode=ValuationMode.FCFF_STANDARD,
             glass_box_enabled=self.glass_box_enabled
         )
 

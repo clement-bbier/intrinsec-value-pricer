@@ -41,7 +41,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         # 2. Exécution du Pipeline Unifié (avec le projecteur spécifique Growth)
         pipeline = DCFCalculationPipeline(
             projector=MarginConvergenceProjector(),
-            mode=ValuationMode.FCFF_REVENUE_DRIVEN,
+            mode=ValuationMode.FCFF_GROWTH,
             glass_box_enabled=self.glass_box_enabled
         )
 

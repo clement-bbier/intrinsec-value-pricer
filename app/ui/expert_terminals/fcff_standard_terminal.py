@@ -20,8 +20,8 @@ from app.ui.expert_terminals.shared_widgets import widget_projection_years, widg
 class FCFFStandardTerminal(ExpertTerminalBase):
     """Terminal pour la valorisation FCFF Two-Stage classique."""
     
-    MODE = ValuationMode.FCFF_TWO_STAGE
-    DISPLAY_NAME = "FCFF Two-Stage"
+    MODE = ValuationMode.FCFF_STANDARD
+    DISPLAY_NAME = "DCF - Free Cash Flow to Firm"
     DESCRIPTION = "DCF classique : flux actualises au WACC puis valeur terminale"
     ICON = ""
     
