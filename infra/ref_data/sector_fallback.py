@@ -37,10 +37,10 @@ def _load_sector_multiples() -> Dict[str, Any]:
     try:
         with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
             _SECTOR_MULTIPLES_CACHE = yaml.safe_load(f)
-            logger.info(f"[SectorFallback] Chargé {len(_SECTOR_MULTIPLES_CACHE)} secteurs.")
+            logger.info(f"[SectorFallback] Sectors loaded | count={len(_SECTOR_MULTIPLES_CACHE)}")
             return _SECTOR_MULTIPLES_CACHE
     except Exception as e:
-        logger.error(f"[SectorFallback] Erreur de chargement : {e}")
+        logger.error(f"[SectorFallback] Loading failed | error={e}")
         return {"default": {
             "pe_ratio": 18.0,
             "ev_ebitda": 12.0,

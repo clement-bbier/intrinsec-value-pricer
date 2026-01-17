@@ -1,28 +1,30 @@
 """
 app/ui/base/expert_terminal.py
+
 CLASSE ABSTRAITE — Terminal Expert de Saisie
 
 Pattern : Template Method (GoF)
+Style : Numpy docstrings
+Principes : SOLID (Single Responsibility, Open/Closed)
 
-Chaque terminal expert hérite de cette classe et implémente
-uniquement les parties spécifiques à son modèle de valorisation.
+Workflow du Template Method :
+    1. render_header()           - Titre + description du modèle
+    2. render_model_inputs()     - SPÉCIFIQUE (abstract) - flux de base
+    3. render_discount_rate()    - Coût du capital (WACC ou Ke)
+    4. render_terminal_value()   - Méthode de sortie
+    5. render_equity_bridge()    - Ajustements EV -> Equity
+    6. render_optional_features()- Monte Carlo, Scénarios, SOTP
+    7. render_submit()           - Bouton de lancement
 
-Workflow du Template :
-┌─────────────────────────────────────────────────┐
-│  1. render_header()      - Titre + description  │
-│  2. render_model_inputs() - SPÉCIFIQUE (abstract)│
-│  3. render_discount_rate() - WACC ou Ke         │
-│  4. render_growth_assumptions() - Croissance    │
-│  5. render_terminal_value() - Sortie            │
-│  6. render_optional_features() - Monte Carlo... │
-│  7. render_submit() - Bouton de lancement       │
-└─────────────────────────────────────────────────┘
+Note : Chaque terminal hérite de cette classe et implémente uniquement
+       les parties spécifiques à son modèle de valorisation via les hooks.
 """
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import streamlit as st
 
@@ -32,54 +34,86 @@ from core.models import (
     ValuationMode,
     ValuationRequest,
     TerminalValueMethod,
+    ScenarioParameters,
 )
 from core.i18n import ExpertTerminalTexts
+
+logger = logging.getLogger(__name__)
 
 
 class ExpertTerminalBase(ABC):
     """
     Classe abstraite définissant le squelette d'un terminal expert.
-    
+
+    Cette classe implémente le pattern Template Method pour standardiser
+    le workflow de saisie tout en permettant la personnalisation par modèle.
+
     Attributes
     ----------
     MODE : ValuationMode
         Le mode de valorisation (à définir dans chaque sous-classe).
     DISPLAY_NAME : str
-        Nom affiché dans l'UI.
+        Nom affiché dans l'UI pour ce modèle.
     DESCRIPTION : str
-        Description courte du modèle.
+        Description courte du modèle et de son cas d'usage.
     ICON : str
-        Emoji représentant le modèle.
-    
-    Example
-    -------
+        Icône (vide par défaut, style sobre institutionnel).
+
+    Class Attributes (Configuration)
+    ---------------------------------
+    SHOW_DISCOUNT_SECTION : bool
+        Afficher la section coût du capital (default: True).
+    SHOW_TERMINAL_SECTION : bool
+        Afficher la section valeur terminale (default: True).
+    SHOW_BRIDGE_SECTION : bool
+        Afficher la section equity bridge (default: True).
+    SHOW_MONTE_CARLO : bool
+        Afficher l'option Monte Carlo (default: True).
+    SHOW_SCENARIOS : bool
+        Afficher l'option scénarios (default: True).
+    SHOW_SOTP : bool
+        Afficher l'option Sum-of-the-Parts (default: False).
+    SHOW_PEER_TRIANGULATION : bool
+        Afficher l'option triangulation par peers (default: True).
+
+    Examples
+    --------
     >>> class DDMTerminal(ExpertTerminalBase):
     ...     MODE = ValuationMode.DDM
     ...     DISPLAY_NAME = "Dividend Discount Model"
-    ...     DESCRIPTION = "Valorisation par les dividendes futurs"
-    ...     ICON = "💰"
+    ...     DESCRIPTION = "Valorisation par les dividendes futurs actualisés"
+    ...
+    ...     def render_model_inputs(self) -> Dict[str, Any]:
+    ...         dividend = st.number_input("Dividende annuel D0")
+    ...         return {"manual_dividend_base": dividend}
     """
-    
+
     # ══════════════════════════════════════════════════════════════════════════
     # ATTRIBUTS DE CLASSE — À surcharger dans chaque terminal
     # ══════════════════════════════════════════════════════════════════════════
-    
+
     MODE: ValuationMode = None
     DISPLAY_NAME: str = "Terminal Expert"
     DESCRIPTION: str = ""
-    ICON: str = ""  # Style sobre, pas d'emojis
-    
-    # Options de rendu (peuvent être surchargées)
+    ICON: str = ""  # Style institutionnel sobre
+
+    # Options de rendu (peuvent être surchargées par sous-classe)
     SHOW_DISCOUNT_SECTION: bool = True
-    SHOW_GROWTH_SECTION: bool = True
     SHOW_TERMINAL_SECTION: bool = True
+    SHOW_BRIDGE_SECTION: bool = True
     SHOW_MONTE_CARLO: bool = True
-    SHOW_SCENARIOS: bool = False
-    
+    SHOW_SCENARIOS: bool = True
+    SHOW_SOTP: bool = False
+    SHOW_PEER_TRIANGULATION: bool = True
+
+    # Formules LaTeX par défaut (peuvent être surchargées)
+    TERMINAL_VALUE_FORMULA: str = r"TV_n = f(FCF_n, g_n, WACC)"
+    BRIDGE_FORMULA: str = r"P = \dfrac{V_0 - \text{Debt} + \text{Cash}}{\text{Actions}}"
+
     def __init__(self, ticker: str):
         """
-        Initialise le terminal.
-        
+        Initialise le terminal expert.
+
         Parameters
         ----------
         ticker : str
@@ -87,225 +121,250 @@ class ExpertTerminalBase(ABC):
         """
         self.ticker = ticker
         self._collected_data: Dict[str, Any] = {}
-    
+        self._scenarios: Optional[ScenarioParameters] = None
+        self._manual_peers: Optional[List[str]] = None
+
+        logger.debug(
+            "Terminal %s initialized for ticker=%s",
+            self.__class__.__name__,
+            ticker
+        )
+
     # ══════════════════════════════════════════════════════════════════════════
     # TEMPLATE METHOD — Point d'entrée principal
     # ══════════════════════════════════════════════════════════════════════════
-    
+
     def render(self) -> Optional[ValuationRequest]:
         """
         Exécute le rendu complet du terminal (Template Method).
-        
+
+        Cette méthode orchestre l'ensemble du workflow de saisie en appelant
+        les différentes étapes dans l'ordre défini.
+
         Returns
         -------
         Optional[ValuationRequest]
-            La requête si le formulaire est soumis, None sinon.
+            La requête de valorisation si le formulaire est soumis,
+            None sinon (l'utilisateur n'a pas cliqué sur le bouton).
         """
-        # Étape 1 : Header
+        # Étape 1 : Header avec titre et description
         self._render_header()
-        
+
         # Étape 2 : Inputs spécifiques au modèle (ABSTRACT)
         model_data = self.render_model_inputs()
         self._collected_data.update(model_data or {})
-        
-        # Étape 3 : Coût du capital (optionnel selon le modèle)
+
+        # Étape 3 : Coût du capital (WACC ou Ke)
         if self.SHOW_DISCOUNT_SECTION:
-            discount_data = self.render_discount_rate()
+            discount_data = self._render_discount_rate()
             self._collected_data.update(discount_data or {})
-        
-        # Étape 4 : Croissance (optionnel)
-        if self.SHOW_GROWTH_SECTION:
-            growth_data = self.render_growth_assumptions()
-            self._collected_data.update(growth_data or {})
-        
-        # Étape 5 : Valeur terminale (optionnel)
+
+        # Étape 4 : Valeur terminale
         if self.SHOW_TERMINAL_SECTION:
-            terminal_data = self.render_terminal_value()
+            terminal_data = self._render_terminal_value()
             self._collected_data.update(terminal_data or {})
-        
-        # Étape 6 : Fonctionnalités optionnelles
-        optional_data = self.render_optional_features()
-        self._collected_data.update(optional_data or {})
-        
-        # Étape 7 : Soumission
+
+        # Étape 5 : Equity Bridge
+        if self.SHOW_BRIDGE_SECTION:
+            bridge_data = self._render_equity_bridge()
+            self._collected_data.update(bridge_data or {})
+
+        # Étape 6 : Fonctionnalités optionnelles (expanders)
+        self._render_optional_features()
+
+        # Étape 7 : Bouton de soumission
         return self._render_submit()
-    
+
     # ══════════════════════════════════════════════════════════════════════════
-    # MÉTHODES CONCRÈTES — Comportement par défaut
+    # MÉTHODES CONCRÈTES — Comportement par défaut (peuvent être surchargées)
     # ══════════════════════════════════════════════════════════════════════════
-    
+
     def _render_header(self) -> None:
-        """Affiche le header du terminal."""
-        st.markdown(f"### {self.ICON} {self.DISPLAY_NAME}")
+        """
+        Affiche le header du terminal.
+
+        Inclut le titre du modèle, l'icône optionnelle, et une description.
+        """
+        title = f"{self.ICON} {self.DISPLAY_NAME}" if self.ICON else self.DISPLAY_NAME
+        st.subheader(title)
+
         if self.DESCRIPTION:
             st.caption(self.DESCRIPTION)
+
         st.divider()
-    
-    def render_discount_rate(self) -> Dict[str, Any]:
+
+    def _render_discount_rate(self) -> Dict[str, Any]:
         """
-        Section 3 : Coût du capital.
-        
-        Affiche WACC (Firm-Level) ou Ke (Equity-Level) selon le modèle.
+        Section : Coût du capital.
+
+        Utilise le widget partagé pour collecter les taux.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Paramètres de taux collectés.
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_3_CAPITAL}**")
-        
-        is_equity = self.MODE.is_direct_equity if self.MODE else False
-        
-        if is_equity:
-            st.latex(r"k_e = R_f + \beta \times ERP")
-        else:
-            st.latex(r"WACC = \frac{E}{V} k_e + \frac{D}{V} k_d (1-\tau)")
-        
-        col1, col2 = st.columns(2)
-        
-        rf = col1.number_input(
-            ExpertTerminalTexts.INP_RF,
-            min_value=0.0, max_value=0.20, value=None,
-            format="%.3f", help="Taux sans risque (ex: OAT 10 ans)"
+        from app.ui.expert_terminals.shared_widgets import widget_cost_of_capital
+        return widget_cost_of_capital(self.MODE)
+
+    def _render_terminal_value(self) -> Dict[str, Any]:
+        """
+        Section : Valeur terminale.
+
+        Affiche le widget approprié selon le type de modèle.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Paramètres de valeur terminale.
+        """
+        from app.ui.expert_terminals.shared_widgets import widget_terminal_value_dcf
+        return widget_terminal_value_dcf(self.TERMINAL_VALUE_FORMULA)
+
+    def _render_equity_bridge(self) -> Dict[str, Any]:
+        """
+        Section : Ajustements de structure (Equity Bridge).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Paramètres de bridge (dette, cash, actions, etc.)
+        """
+        from app.ui.expert_terminals.shared_widgets import widget_equity_bridge
+        return widget_equity_bridge(self.BRIDGE_FORMULA, self.MODE)
+
+    def _render_optional_features(self) -> None:
+        """
+        Section : Fonctionnalités optionnelles.
+
+        Affiche les expanders pour Monte Carlo, Scénarios, Peers, SOTP.
+        Met à jour les attributs internes (_scenarios, _manual_peers, etc.)
+        """
+        from app.ui.expert_terminals.shared_widgets import (
+            widget_monte_carlo,
+            widget_scenarios,
+            widget_peer_triangulation,
+            widget_sotp,
+            build_dcf_parameters,
         )
-        beta = col2.number_input(
-            ExpertTerminalTexts.INP_BETA,
-            min_value=0.0, max_value=5.0, value=None,
-            format="%.2f", help="Beta levered"
-        )
-        mrp = col1.number_input(
-            ExpertTerminalTexts.INP_MRP,
-            min_value=0.0, max_value=0.15, value=None,
-            format="%.3f", help="Prime de risque marché"
-        )
-        
-        result = {
-            "risk_free_rate": rf,
-            "manual_beta": beta,
-            "market_risk_premium": mrp,
-        }
-        
-        # Paramètres WACC supplémentaires
-        if not is_equity:
-            kd = col2.number_input(
-                ExpertTerminalTexts.INP_KD,
-                min_value=0.0, max_value=0.20, value=None,
-                format="%.3f", help="Coût de la dette avant impôt"
-            )
-            tax = col1.number_input(
-                ExpertTerminalTexts.INP_TAX,
-                min_value=0.0, max_value=0.50, value=None,
-                format="%.2f", help="Taux d'imposition effectif"
-            )
-            result.update({"cost_of_debt": kd, "tax_rate": tax})
-        
-        st.divider()
-        return result
-    
-    def render_growth_assumptions(self) -> Dict[str, Any]:
-        """Section 4 : Hypothèses de croissance."""
-        st.markdown(f"**{ExpertTerminalTexts.SEC_4_GROWTH}**")
-        
-        col1, col2 = st.columns(2)
-        
-        growth = col1.number_input(
-            ExpertTerminalTexts.INP_FCF_GROWTH,
-            min_value=-0.30, max_value=0.50, value=None,
-            format="%.3f", help="Croissance phase 1"
-        )
-        perpetual = col2.number_input(
-            ExpertTerminalTexts.INP_PERP_G,
-            min_value=0.0, max_value=0.04, value=0.02,
-            format="%.3f", help="Croissance perpétuelle (≤ inflation LT)"
-        )
-        
-        st.divider()
-        return {"fcf_growth_rate": growth, "perpetual_growth_rate": perpetual}
-    
-    def render_terminal_value(self) -> Dict[str, Any]:
-        """Section 5 : Valeur terminale."""
-        st.markdown(f"**{ExpertTerminalTexts.SEC_5_TERMINAL}**")
-        
-        method = st.radio(
-            ExpertTerminalTexts.LBL_TV_METHOD,
-            options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
-            format_func=lambda x: "Gordon Growth Model" if x == TerminalValueMethod.GORDON_GROWTH else "Exit Multiple",
-            horizontal=True
-        )
-        
-        exit_mult = None
-        if method == TerminalValueMethod.EXIT_MULTIPLE:
-            exit_mult = st.number_input(
-                ExpertTerminalTexts.INP_EXIT_MULT,
-                min_value=3.0, max_value=25.0, value=10.0,
-                format="%.1f", help="Multiple EV/EBITDA de sortie"
-            )
-        
-        st.divider()
-        return {"terminal_method": method, "exit_multiple": exit_mult}
-    
-    def render_optional_features(self) -> Dict[str, Any]:
-        """Section 6 : Monte Carlo, Scénarios, etc."""
-        result = {}
-        
+
+        # Monte Carlo
         if self.SHOW_MONTE_CARLO:
-            from app.ui.expert_terminals.shared_widgets import widget_monte_carlo
-            result.update(widget_monte_carlo())
-        
+            terminal_method = self._collected_data.get("terminal_method")
+            mc_data = widget_monte_carlo(self.MODE, terminal_method)
+            self._collected_data.update(mc_data)
+
+        # Peer Triangulation
+        if self.SHOW_PEER_TRIANGULATION:
+            peer_data = widget_peer_triangulation()
+            self._collected_data.update(peer_data)
+            self._manual_peers = peer_data.get("manual_peers")
+
+        # Scénarios
         if self.SHOW_SCENARIOS:
-            from app.ui.expert_terminals.shared_widgets import widget_scenarios
-            result.update(widget_scenarios())
-        
-        return result
-    
+            self._scenarios = widget_scenarios(self.MODE)
+
+        # SOTP (modification in-place des paramètres)
+        if self.SHOW_SOTP:
+            # SOTP requiert un objet DCFParameters existant
+            # On le créera au moment de la construction de la requête
+            pass
+
     def _render_submit(self) -> Optional[ValuationRequest]:
-        """Bouton de soumission."""
+        """
+        Bouton de soumission.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            La requête si le bouton est cliqué, None sinon.
+        """
         st.markdown("---")
-        
-        if st.button(
-            ExpertTerminalTexts.BTN_CALCULATE,
-            type="primary",
-            use_container_width=True
-        ):
+
+        button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
+
+        if st.button(button_label, type="primary", use_container_width=True):
+            logger.info(
+                "Valuation request submitted: ticker=%s, mode=%s",
+                self.ticker,
+                self.MODE.value if self.MODE else "N/A"
+            )
             return self._build_request()
-        
+
         return None
-    
+
     # ══════════════════════════════════════════════════════════════════════════
     # MÉTHODE ABSTRAITE — À implémenter par chaque terminal
     # ══════════════════════════════════════════════════════════════════════════
-    
+
     @abstractmethod
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Section 2 : Inputs spécifiques au modèle.
-        
+        Section : Inputs spécifiques au modèle.
+
         Cette méthode DOIT être implémentée par chaque terminal.
-        Elle contient les widgets propres au type de valorisation.
-        
+        Elle contient les widgets propres au type de valorisation
+        (flux de base, paramètres spécifiques, etc.)
+
         Returns
         -------
         Dict[str, Any]
             Données collectées spécifiques au modèle.
+
+        Notes
+        -----
+        Les clés retournées doivent correspondre aux attributs attendus
+        par DCFParameters.from_legacy() ou être gérées par le terminal.
         """
         pass
-    
+
     # ══════════════════════════════════════════════════════════════════════════
     # CONSTRUCTION DE LA REQUÊTE
     # ══════════════════════════════════════════════════════════════════════════
-    
+
     def _build_request(self) -> ValuationRequest:
-        """Construit la ValuationRequest finale."""
+        """
+        Construit la ValuationRequest finale.
+
+        Assemble les données collectées, construit les paramètres DCF,
+        et crée la requête pour le moteur de valorisation.
+
+        Returns
+        -------
+        ValuationRequest
+            Requête complète prête pour l'exécution.
+        """
         from app.ui.expert_terminals.shared_widgets import build_dcf_parameters
-        
+
         params = build_dcf_parameters(self._collected_data)
-        
+
+        # Injection des scénarios si configurés
+        if self._scenarios is not None:
+            params.scenarios = self._scenarios
+
+        projection_years = self._collected_data.get("projection_years", 5)
+
         return ValuationRequest(
             ticker=self.ticker,
             mode=self.MODE,
-            projection_years=self._collected_data.get("projection_years", 5),
+            projection_years=projection_years,
             input_source=InputSource.MANUAL,
             manual_params=params,
-            options=self._build_options()
+            options=self._build_options(),
         )
-    
+
     def _build_options(self) -> Dict[str, Any]:
-        """Options additionnelles pour la requête."""
+        """
+        Construit les options additionnelles pour la requête.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Options incluant peers, enable flags, etc.
+        """
         return {
-            "enable_peer_multiples": self._collected_data.get("enable_peer_multiples", True),
+            "manual_peers": self._manual_peers,
+            "enable_peer_multiples": self._collected_data.get(
+                "enable_peer_multiples", True
+            ),
         }

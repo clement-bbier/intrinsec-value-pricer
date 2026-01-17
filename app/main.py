@@ -37,7 +37,7 @@ if str(_ROOT_PATH) not in sys.path:
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design, render_terminal_header
-from app.ui_components import ui_inputs_expert  # Import module pour accès dynamique
+from app.ui.expert_terminals.factory import ExpertTerminalFactory  # Nouveau système factory
 from app.workflow import run_workflow_and_display
 from core.models import (
     DCFParameters,
@@ -77,15 +77,16 @@ VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
 def _get_expert_ui_renderer(mode: ValuationMode) -> Optional[Callable]:
     """
-    Récupère dynamiquement le renderer UI depuis le registre centralisé.
-    
-    DT-008: Remplace le mapping manuel EXPERT_UI_REGISTRY par
-    une résolution dynamique basée sur ui_renderer_name.
+    Récupère dynamiquement le renderer UI depuis la factory.
+
+    Migration DT-008: Utilise maintenant ExpertTerminalFactory au lieu
+    de l'ancien système ui_inputs_expert.
     """
-    renderer_name = StrategyRegistry.get_ui_renderer_name(mode)
-    if renderer_name and hasattr(ui_inputs_expert, renderer_name):
-        return getattr(ui_inputs_expert, renderer_name)
-    return None
+    try:
+        terminal = ExpertTerminalFactory.create_terminal(mode)
+        return lambda: terminal.render()  # Lambda pour compatibilité avec l'interface existante
+    except Exception:
+        return None
 
 
 # Backward compatibility: construit le registre legacy si nécessaire

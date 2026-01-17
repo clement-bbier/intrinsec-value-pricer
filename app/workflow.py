@@ -150,16 +150,26 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
     - Cette fonction maintient la compatibilité ascendante
     - Pour les nouveaux usages, préférer run_workflow() + injection de renderer
     """
-    # Import tardif pour éviter les imports circulaires
-    from app.adapters import StreamlitResultRenderer
-    
-    renderer = StreamlitResultRenderer()
-    result, provider = run_workflow(request, renderer)
-    
-    # Affichage des résultats via le renderer injecté
+    # Migration progressive : support des deux systèmes (legacy + nouveau)
+    # TODO: Une fois testé, basculer définitivement vers ResultTabOrchestrator
+
+    result, provider = run_workflow(request, NullResultRenderer())
+
+    # Affichage des résultats
     if result is not None and provider is not None:
-        renderer.render_executive_summary(result)
-        renderer.display_valuation_details(result, provider)
+        # Nouveau système (enrichissement)
+        try:
+            from app.ui.result_tabs.orchestrator import ResultTabOrchestrator
+            orchestrator = ResultTabOrchestrator()
+            orchestrator.render(result, provider=provider)
+            logger.info("[Workflow] Nouveau système ResultTabOrchestrator utilisé avec succès")
+        except Exception as e:
+            # Fallback vers l'ancien système (compatibilité)
+            logger.warning(f"[Workflow] Fallback vers ancien système: {str(e)}")
+            from app.adapters import StreamlitResultRenderer
+            renderer = StreamlitResultRenderer()
+            renderer.render_executive_summary(result)
+            renderer.display_valuation_details(result, provider)
 
 
 # ==============================================================================

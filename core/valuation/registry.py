@@ -122,7 +122,7 @@ class StrategyRegistry:
             display_name=display_name or mode.value
         )
         cls._strategies[mode] = metadata
-        logger.debug(f"[Registry] Stratégie enregistrée: {mode.value}")
+        logger.debug(f"[Registry] Strategy registered | mode={mode.value}")
     
     @classmethod
     def get_strategy_cls(cls, mode: ValuationMode) -> Optional[Type["ValuationStrategy"]]:
@@ -317,7 +317,7 @@ def _register_all_strategies() -> None:
         display_name="Graham Intrinsic Value"
     )
     
-    logger.info(f"[Registry] {len(StrategyRegistry._strategies)} stratégies enregistrées")
+    logger.info(f"[Registry] Strategies loaded | count={len(StrategyRegistry._strategies)}")
 
 
 # Auto-enregistrement au chargement du module

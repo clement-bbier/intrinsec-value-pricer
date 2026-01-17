@@ -114,10 +114,10 @@ def run_valuation(
                 rel_strategy = MarketMultiplesStrategy(multiples_data=multiples_data)
                 result.multiples_triangulation = rel_strategy.execute(financials, params)
 
-                logger.info(f"[Engine] Triangulation sectorielle finalisée avec {len(multiples_data.peers)} pairs.")
+                logger.info(f"[Engine] Peer triangulation completed | peers_count={len(multiples_data.peers)}")
             except Exception as e:
                 # Sécurité "Honest Data" : l'échec des pairs ne doit pas bloquer l'analyse principale
-                logger.warning(f"[Engine] Échec non critique de la triangulation : {str(e)}")
+                logger.warning(f"[Engine] Non-critical peer triangulation failure | error={str(e)}")
                 result.multiples_triangulation = None
         else:
             result.multiples_triangulation = None
@@ -130,7 +130,7 @@ def run_valuation(
         # 4. Validation du contrat de sortie (SOLID)
         strategy.verify_output_contract(result)
 
-        logger.info(f"[Engine] Valorisation terminée. Score Audit: {result.audit_report.global_score:.1f}")
+        logger.info(f"[Engine] Valuation completed | audit_score={result.audit_report.global_score:.1f}")
         return result
 
     except ValuationException:
@@ -141,7 +141,7 @@ def run_valuation(
         raise _handle_calculation_error(ce)
     except Exception as e:
         # Capture des défaillances imprévues (Système)
-        logger.error(f"Erreur critique moteur : {str(e)}")
+        logger.error(f"[Engine] Critical engine error | error={str(e)}")
         raise _handle_system_crash(e)
 
 # ==============================================================================

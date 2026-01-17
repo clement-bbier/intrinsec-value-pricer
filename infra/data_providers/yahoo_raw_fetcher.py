@@ -120,7 +120,7 @@ class YahooRawFetcher:
 
     def fetch_peer_multiples(self, target_ticker: str) -> List[Dict[str, Any]]:
         """Découvre les concurrents sectoriels et extrait leurs données brutes (.info)."""
-        logger.info("[Fetcher] Démarrage de la discovery des pairs pour %s", target_ticker)
+        logger.info("[Fetcher] Peer discovery started | target=%s", target_ticker)
 
         target_yt = yf.Ticker(target_ticker)
         target_info = safe_api_call(lambda: target_yt.info, f"TargetInfo/{target_ticker}", 1)
@@ -150,5 +150,5 @@ class YahooRawFetcher:
             yt = yf.Ticker(ticker)
             return yt.history(period=period)
         except Exception as e:
-            logger.error("[Fetcher] Erreur extraction prix historique %s: %s", ticker, e)
+            logger.error("[Fetcher] Historical price extraction failed | ticker=%s, error=%s", ticker, e)
             return pd.DataFrame()

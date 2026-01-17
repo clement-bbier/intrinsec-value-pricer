@@ -113,6 +113,6 @@ class FCFEStrategy(ValuationStrategy):
         fcfe_calculated = calculate_fcfe_reconstruction(ni=ni, adjustments=adj, net_borrowing=nb)
 
         if fcfe_calculated <= 0:
-            logger.warning("[Strategy] FCFE reconstruit négatif pour %s", financials.ticker)
+            logger.warning("[Strategy] Negative reconstructed FCFE | ticker=%s", financials.ticker)
 
         return ni, adj, nb, fcfe_calculated, StrategySources.YAHOO_TTM_SIMPLE

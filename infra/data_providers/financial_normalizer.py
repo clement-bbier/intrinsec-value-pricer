@@ -110,7 +110,7 @@ class FinancialDataNormalizer:
                     logger.info(DiagnosticTexts.DATA_PEER_SKIP_MSG.format(ticker=ticker))
 
             except (ValidationError, TypeError, ValueError):
-                logger.debug(f"[Normalizer] Données illisibles pour le pair {ticker}, passage.")
+                logger.debug(f"[Normalizer] Unreadable data skipped | peer={ticker}")
                 continue
 
         # 3. Calcul des médianes robustes

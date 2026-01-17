@@ -316,6 +316,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
                 continue
 
+        logger.info("[Monte Carlo] Simulations completed | valid_results=%d/%d", len(simulated_values), mc.num_simulations)
         return simulated_values
 
     def _compute_quantiles(self, simulated_values: List[float]) -> dict:
@@ -385,7 +386,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             )
 
         except (ValueError, RuntimeError) as e:
-            logger.error("Erreur calcul sensibilité Rho: %s", e)
+            logger.error("[Monte Carlo] Rho sensitivity calculation failed | error=%s", e)
 
     def _run_stress_test(
         self,
@@ -418,4 +419,4 @@ class MonteCarloGenericStrategy(ValuationStrategy):
             )
 
         except (CalculationError, ModelDivergenceError, ValueError) as e:
-            logger.error("Erreur calcul Stress Test: %s", e)
+            logger.error("[Monte Carlo] Stress test calculation failed | error=%s", e)

@@ -109,11 +109,11 @@ def safe_api_call(
         except Exception as e:
             wait = 0.5 * (2 ** i)
             logger.warning(
-                f"[{context}] Tentative {i + 1}/{max_retries} échouée : {e}. Pause {wait}s."
+                f"[{context}] Retry attempt failed | attempt={i + 1}/{max_retries}, error={e}, wait={wait}s"
             )
             time.sleep(wait)
 
-    logger.error(f"[{context}] Échec définitif après {max_retries} tentatives.")
+    logger.error(f"[{context}] All retries exhausted | max_retries={max_retries}")
     return None
 
 
@@ -128,10 +128,10 @@ def safe_api_call_simple(func: Callable, context: str = "API", max_retries: int 
             return func()
         except Exception as e:
             wait = 0.5 * (2 ** i)
-            logger.warning(f"[{context}] Tentative {i + 1}/{max_retries} échouée : {e}. Pause {wait}s.")
+            logger.warning(f"[{context}] Retry attempt failed | attempt={i + 1}/{max_retries}, error={e}, wait={wait}s")
             time.sleep(wait)
 
-    logger.error(f"[{context}] Échec définitif après {max_retries} tentatives.")
+    logger.error(f"[{context}] All retries exhausted | max_retries={max_retries}")
     return None
 
 

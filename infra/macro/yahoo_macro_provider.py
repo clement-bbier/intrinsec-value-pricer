@@ -90,7 +90,7 @@ class YahooMacroProvider:
             data = self._fetch_history_robust(yt)
 
             if data.empty:
-                logger.warning(f"[Macro] Aucune donnée pour {ticker}.")
+                logger.warning(f"[Macro] No data available | ticker={ticker}")
                 return None
 
             # Normalisation temporelle
@@ -114,7 +114,7 @@ class YahooMacroProvider:
             return series
 
         except Exception as e:
-            logger.error(f"[Macro] Erreur critique chargement {ticker}: {e}")
+            logger.error(f"[Macro] Critical loading error | ticker={ticker}, error={e}")
             return None
 
     def _estimate_aaa_yield(self, risk_free_rate: float) -> float:
