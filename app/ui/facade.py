@@ -22,7 +22,7 @@ La migration se fait progressivement :
 
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Optional, Dict, Any
 
 from core.models import ValuationMode, ValuationRequest, ValuationResult
 
@@ -123,6 +123,7 @@ def get_available_modes() -> Dict[ValuationMode, str]:
     Dict[ValuationMode, str]
         Mapping mode -> nom d'affichage.
     """
+    from app.ui.expert_terminals.factory import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_display_names()
 
 
