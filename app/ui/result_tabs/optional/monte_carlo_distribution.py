@@ -2,52 +2,65 @@
 app/ui/result_tabs/optional/monte_carlo_distribution.py
 Onglet — Distribution Monte Carlo
 
+Migration depuis ui_kpis.py._render_monte_carlo_tab()
 Visible uniquement si une simulation Monte Carlo a été exécutée.
 """
 
-from typing import Any
+from typing import Any, List
 
 import streamlit as st
-import numpy as np
 
-from core.models import ValuationResult
+from core.models import ValuationResult, CalculationStep
+from core.i18n import AuditTexts
 from app.ui.base import ResultTabBase
-from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 
 class MonteCarloDistributionTab(ResultTabBase):
-    """Onglet des résultats Monte Carlo."""
-    
+    """
+    Onglet des résultats Monte Carlo.
+
+    Migration exacte de _render_monte_carlo_tab() depuis ui_kpis.py
+    pour garantir l'identicité fonctionnelle.
+    """
+
     TAB_ID = "monte_carlo"
-    LABEL = "Monte Carlo"
+    LABEL = AuditTexts.MC_TITLE
     ICON = ""
     ORDER = 8
     IS_CORE = False
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si Monte Carlo exécuté."""
         return (
-            result.monte_carlo_result is not None
-            and result.monte_carlo_result.simulations_count > 0
+            result.params.monte_carlo.enable_monte_carlo
+            and result.simulation_results is not None
         )
-    
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche la distribution Monte Carlo."""
-        mc = result.monte_carlo_result
-        currency = result.financials.currency
-        
-        st.markdown("**SIMULATION MONTE CARLO**")
-        st.caption(f"{mc.simulations_count:,} simulations exécutées")
-        
-        # Statistiques de distribution
-        with st.container(border=True):
-            st.markdown("**Statistiques de Distribution**")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            col1.metric("Moyenne", format_smart_number(mc.mean_value, currency))
-            col2.metric("Médiane", format_smart_number(mc.median_value, currency))
-            col3.metric("Écart-type", format_smart_number(mc.std_value, currency))
+        """
+        Affiche la distribution Monte Carlo.
+
+        Suit exactement la même logique que _render_monte_carlo_tab dans ui_kpis.py.
+        """
+        # Extraire les étapes MC des étapes de calcul
+        mc_steps = [s for s in result.calculation_trace if s.step_key.startswith("MC_")]
+
+        from app.ui_components.ui_charts import display_simulation_chart
+        if not result.simulation_results: return
+
+        st.markdown(AuditTexts.MC_TITLE)
+        q = result.quantiles or {}
+        c1, c2, c3 = st.columns(3)
+        c1.metric(AuditTexts.MC_MEDIAN, f"{q.get('P50', 0.0):,.2f}")
+        c2.metric(AuditTexts.MC_TAIL_RISK, f"{q.get('P10', 0.0):,.2f}")
+        c3.metric("VALID RATIO", f"{getattr(result, 'mc_valid_ratio', 0):.1%}")
+
+        display_simulation_chart(result.simulation_results, result.market_price, result.financials.currency)
+
+        with st.expander(AuditTexts.MC_AUDIT_STOCH):
+            from app.ui.result_tabs.components.step_renderer import render_calculation_step
+            for idx, step in enumerate(mc_steps, start=1):
+                render_calculation_step(idx, step)
             col4.metric("Coef. Variation", f"{mc.cv:.1%}")
         
         # Percentiles
