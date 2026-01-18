@@ -39,6 +39,9 @@ class StrategyFormulas:
     # === PROJECTION ===
     FCF_PROJECTION = r"FCF_t = FCF_0 \times (1+g)^t"
 
+    # === TERMINAL VALUE ===
+    TERMINAL_EXIT_MULTIPLE = r"TV = EBITDA_n \times Multiple"
+
     # === BASE VALUES ===
     FCF_BASE = r"FCF_0"
     REVENUE_BASE = r"Rev_0"
@@ -57,9 +60,13 @@ class StrategyFormulas:
 
     # === FCFE ===
     FCFE_RECONSTRUCTION = r"FCFE = NI + \text{NonCashAdj} + \text{Net Borrowing}"
+    FCFE_EQUITY_VALUE = r"\text{Equity Value}"
 
     # === DIVIDEND ===
     DIVIDEND_BASE = r"D_0 \times \text{Shares}"
+
+    # === PROJECTION ===
+    FLOW_PROJECTION = r"Flow_t = Flow_{t-1} \times (1+g)"
 
     # === PAYOUT ===
     PAYOUT_RATIO = r"Payout = \frac{Div_{TTM}}{EPS_{TTM}}"

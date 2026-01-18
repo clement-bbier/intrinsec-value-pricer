@@ -7,7 +7,7 @@ Architecture : Alignement strict sur le Pipeline V1.1 et les Stratégies Sprint 
 
 from __future__ import annotations
 from typing import Any, Dict
-from core.i18n import RegistryTexts
+from core.i18n import RegistryTexts, StrategyFormulas
 
 # ==============================================================================
 # REGISTRE UNIFIÉ DES MÉTADONNÉES
@@ -22,13 +22,13 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # --- Taux d'actualisation ---
     "WACC_CALC": {
         "label": RegistryTexts.DCF_WACC_L,
-        "formula": r"WACC = w_e \cdot k_e + w_d \cdot [k_d \cdot (1-\tau)]",
+        "formula": StrategyFormulas.WACC,
         "unit": "%",
         "description": RegistryTexts.DCF_WACC_D
     },
     "KE_CALC": {
         "label": RegistryTexts.DCF_KE_L,
-        "formula": r"k_e = R_f + \beta \times MRP",
+        "formula": StrategyFormulas.CAPM,
         "unit": "%",
         "description": RegistryTexts.DCF_KE_D
     },
@@ -36,19 +36,19 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # --- Flux de base (Ancrages) ---
     "FCF_BASE": {
         "label": RegistryTexts.DCF_FCF_BASE_L,
-        "formula": r"FCF_0",
+        "formula": StrategyFormulas.FCF_BASE,
         "unit": "currency",
         "description": RegistryTexts.DCF_FCF_BASE_D
     },
     "FCFE_BASE_SELECTION": {
         "label": RegistryTexts.FCFE_BASE_L,
-        "formula": r"FCFE = FCFF - Int(1-\tau) + \Delta Debt",
+        "formula": StrategyFormulas.FCFE_RECONSTRUCTION,
         "unit": "currency",
         "description": RegistryTexts.FCFE_BASE_D
     },
     "DDM_BASE_SELECTION": {
         "label": RegistryTexts.DDM_BASE_L,
-        "formula": r"D_0",
+        "formula": StrategyFormulas.DIVIDEND_BASE,
         "unit": "currency/share",
         "description": RegistryTexts.DDM_BASE_D
     },
@@ -56,19 +56,19 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # --- Projection et Terminal Value ---
     "FCF_PROJ": {
         "label": RegistryTexts.DCF_PROJ_L,
-        "formula": r"Flow_t = Flow_{t-1} \times (1+g)",
+        "formula": StrategyFormulas.FCF_PROJECTION,
         "unit": "currency",
         "description": RegistryTexts.DCF_PROJ_D
     },
     "TV_GORDON": {
         "label": RegistryTexts.DCF_TV_GORDON_L,
-        "formula": r"TV = \frac{Flow_n \times (1+g_n)}{r - g_n}",
+        "formula": StrategyFormulas.GORDON,
         "unit": "currency",
         "description": RegistryTexts.DCF_TV_GORDON_D
     },
     "TV_MULTIPLE": {
         "label": RegistryTexts.DCF_TV_MULT_L,
-        "formula": r"TV = EBITDA_n \times Multiple",
+        "formula": StrategyFormulas.TERMINAL_EXIT_MULTIPLE,
         "unit": "currency",
         "description": RegistryTexts.DCF_TV_MULT_D
     },
@@ -76,25 +76,25 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # --- Synthèse de Valeur ---
     "NPV_CALC": {
         "label": RegistryTexts.DCF_EV_L,
-        "formula": r"PV = \sum \frac{Flow_t}{(1+r)^t} + \frac{TV}{(1+r)^n}",
+        "formula": StrategyFormulas.NPV,
         "unit": "currency",
         "description": RegistryTexts.DCF_EV_D
     },
     "EQUITY_BRIDGE": {
         "label": RegistryTexts.DCF_BRIDGE_L,
-        "formula": r"P = V_0 - Debt + Cash - Min. - Prov.",
+        "formula": StrategyFormulas.EQUITY_BRIDGE,
         "unit": "currency",
         "description": RegistryTexts.DCF_BRIDGE_D
     },
     "EQUITY_DIRECT": {
         "label": RegistryTexts.DCF_BRIDGE_L,
-        "formula": r"\text{Equity Value}",
+        "formula": StrategyFormulas.FCFE_EQUITY_VALUE,
         "unit": "currency",
         "description": "Valeur directe des fonds propres issue de l'actualisation."
     },
     "VALUE_PER_SHARE": {
         "label": RegistryTexts.DCF_IV_L,
-        "formula": r"IV = \frac{Equity\_Value}{Shares}",
+        "formula": StrategyFormulas.VALUE_PER_SHARE,
         "unit": "currency/share",
         "description": RegistryTexts.DCF_IV_D
     },
@@ -102,15 +102,74 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # ==========================================================================
     # 2. AUTRES MODÈLES (RIM, GRAHAM)
     # ==========================================================================
+
+    # --- RIM Banking ---
+    "RIM_BV_INITIAL": {
+        "label": RegistryTexts.RIM_BV_L,
+        "formula": StrategyFormulas.BV_BASE,
+        "unit": "currency",
+        "description": RegistryTexts.RIM_BV_D
+    },
+    "RIM_KE_CALC": {
+        "label": RegistryTexts.RIM_KE_L,
+        "formula": StrategyFormulas.CAPM,
+        "unit": "%",
+        "description": RegistryTexts.RIM_KE_D
+    },
+    "RIM_PAYOUT": {
+        "label": RegistryTexts.RIM_PAYOUT_L,
+        "formula": StrategyFormulas.PAYOUT_RATIO,
+        "unit": "%",
+        "description": RegistryTexts.RIM_PAYOUT_D
+    },
+    "RIM_RI_SUM": {
+        "label": RegistryTexts.RIM_RI_L,
+        "formula": StrategyFormulas.RI_SUM,
+        "unit": "currency",
+        "description": RegistryTexts.RIM_RI_D
+    },
+    "RIM_TV_OHLSON": {
+        "label": RegistryTexts.RIM_TV_L,
+        "formula": StrategyFormulas.RIM_PERSISTENCE,
+        "unit": "currency",
+        "description": RegistryTexts.RIM_TV_D
+    },
+    "RIM_FINAL_IV": {
+        "label": RegistryTexts.RIM_IV_L,
+        "formula": StrategyFormulas.RIM_FINAL,
+        "unit": "currency",
+        "description": RegistryTexts.RIM_IV_D
+    },
+
+    # --- Graham Number ---
+    "GRAHAM_EPS_BASE": {
+        "label": RegistryTexts.GRAHAM_EPS_L,
+        "formula": StrategyFormulas.EPS_BASE,
+        "unit": "currency",
+        "description": RegistryTexts.GRAHAM_EPS_D
+    },
+    "GRAHAM_MULTIPLIER": {
+        "label": RegistryTexts.GRAHAM_MULT_L,
+        "formula": StrategyFormulas.GRAHAM_MULTIPLIER,
+        "unit": "ratio",
+        "description": RegistryTexts.GRAHAM_MULT_D
+    },
+    "GRAHAM_FINAL": {
+        "label": RegistryTexts.GRAHAM_IV_L,
+        "formula": StrategyFormulas.GRAHAM_VALUE,
+        "unit": "currency",
+        "description": RegistryTexts.GRAHAM_IV_D
+    },
+
     "CORE_RIM_RI": {
         "label": RegistryTexts.RIM_RI_L,
-        "formula": r"RI_t = NI_t - (k_e \times BV_{t-1})",
+        "formula": StrategyFormulas.RIM_RESIDUAL_INCOME,
         "unit": "currency",
         "description": RegistryTexts.RIM_RI_D
     },
     "CORE_GRAHAM_IV": {
         "label": RegistryTexts.GRAHAM_IV_L,
-        "formula": r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}",
+        "formula": StrategyFormulas.GRAHAM_VALUE,
         "unit": "currency",
         "description": RegistryTexts.GRAHAM_IV_D
     },
