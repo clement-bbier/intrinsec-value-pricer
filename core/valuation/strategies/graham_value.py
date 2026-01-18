@@ -41,7 +41,6 @@ class GrahamNumberStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> GrahamValuationResult:
         """Exécute la stratégie via les segments Rates et Growth."""
-        logger.info("[Strategy] Graham 1974 Revised | ticker=%s", financials.ticker)
 
         r = params.rates
         g = params.growth

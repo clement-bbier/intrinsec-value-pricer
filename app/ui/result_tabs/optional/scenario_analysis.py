@@ -23,6 +23,10 @@ from typing import Any
 
 import streamlit as st
 import pandas as pd
+import numpy as np
+
+# Supprimer l'avertissement de dépréciation pandas
+pd.set_option('future.no_silent_downcasting', True)
 
 from core.models import ValuationResult
 from app.ui.base import ResultTabBase
@@ -129,13 +133,16 @@ class ScenarioAnalysisTab(ResultTabBase):
 
             df = pd.DataFrame(scenario_data)
 
+            # Traitement des données pour robustesse
+            df['Marge FCF'] = df['Marge FCF'].fillna(np.nan).infer_objects(copy=False)
+
             # Configuration des colonnes avec formatage Streamlit
             column_config = {
-                "Probabilité": st.column_config.NumberColumn(format="%.0%"),
-                "Croissance": st.column_config.NumberColumn(format="%.1%"),
-                "Marge FCF": st.column_config.NumberColumn(format="%.1%"),
+                "Probabilité": st.column_config.NumberColumn(format="%.0f%%"),
+                "Croissance": st.column_config.NumberColumn(format="%.1f%%"),
+                "Marge FCF": st.column_config.NumberColumn(format="%.1f%%"),
                 "Valeur/Action": st.column_config.NumberColumn(format=f"%.2f {currency}"),
-                "Upside": st.column_config.NumberColumn(format="+%.1%"),
+                "Upside": st.column_config.NumberColumn(format="%.1f%%"),  # Format sans signe + pour éviter les crashes
             }
 
             st.dataframe(df, hide_index=True, width='stretch', column_config=column_config)

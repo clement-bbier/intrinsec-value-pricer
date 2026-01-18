@@ -24,8 +24,6 @@ class FundamentalFCFFStrategy(ValuationStrategy):
     economic_domain = "Cyclical / Industrial firms"
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
-        logger.info("[Strategy] FCFF Normalized | ticker=%s", financials.ticker)
-
         # 1. Sélection et validation du flux normalisé
         fcf_base, source = self._select_normalized_fcf(financials, params)
         if fcf_base <= 0:

@@ -24,8 +24,6 @@ class StandardFCFFStrategy(ValuationStrategy):
     economic_domain = "Mature firms / Stable cash-flows"
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
-        logger.info("[Strategy] FCFF Two-Stage | ticker=%s", financials.ticker)
-
         # 1. Sélection du flux de base
         fcf_base, source = self._select_base_fcf(financials, params)
 

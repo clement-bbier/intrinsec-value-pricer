@@ -39,8 +39,6 @@ class FCFEStrategy(ValuationStrategy):
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> EquityDCFValuationResult:
         """Exécute la valorisation FCFE via le Pipeline Unifié (Sync V11.0)."""
-        logger.info("[Strategy] FCFE Clean Walk | ticker=%s", financials.ticker)
-
         # =====================================================================
         # 1. RECONSTRUCTION DU FLUX ACTIONNAIRE (CLEAN WALK)
         # =====================================================================

@@ -48,7 +48,6 @@ class RIMBankingStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> RIMValuationResult:
         """Exécute la séquence RIM avec traçabilité Glass Box intégrale."""
-        logger.info("[Strategy] RIM Banking | ticker=%s", financials.ticker)
 
         # Raccourcis vers les segments V9
         r = params.rates

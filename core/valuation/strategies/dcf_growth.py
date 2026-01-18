@@ -24,8 +24,6 @@ class RevenueBasedStrategy(ValuationStrategy):
     economic_domain = "Growth firms / Revenue-driven"
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> DCFValuationResult:
-        logger.info("[Strategy] Revenue-Driven FCFF | ticker=%s", financials.ticker)
-
         # 1. Ancrage revenus
         rev_base = self._select_revenue_base(financials, params)
 

@@ -47,7 +47,6 @@ class DividendDiscountStrategy(ValuationStrategy):
         Exécute la valorisation DDM via le Pipeline Unifié (Sync V11.0).
         Note : Utilise la masse totale des dividendes pour assurer la cohérence du calcul final par action.
         """
-        logger.info("[Strategy] Dividend Discount Model | ticker=%s", financials.ticker)
 
         # =====================================================================
         # 1. DÉTERMINATION DU DIVIDENDE DE DÉPART (D_0)

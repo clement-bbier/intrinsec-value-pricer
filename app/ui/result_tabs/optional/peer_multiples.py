@@ -124,7 +124,7 @@ class PeerMultiplesTab(ResultTabBase):
                     f"{md.median_pb:.1f}x" if md.median_pb else "—",
                 ],
                 "Cible": [
-                    f"{result.financials.ev_ebitda:.1f}x" if hasattr(result.financials, 'ev_ebitda') and result.financials.ev_ebitda else "—",
+                    f"{result.financials.ev_ebitda_ratio:.1f}x" if result.financials.ev_ebitda_ratio else "—",
                     "—",
                     f"{result.financials.pe_ratio:.1f}x" if result.financials.pe_ratio else "—",
                     f"{result.financials.pb_ratio:.1f}x" if result.financials.pb_ratio else "—",

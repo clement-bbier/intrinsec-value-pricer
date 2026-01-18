@@ -289,6 +289,10 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         """Boucle de simulation avec isolation profonde et perturbation Y0."""
         simulated_values = []
 
+        # Silence total durant la simulation
+        original_level = logger.level
+        logger.setLevel(logging.WARNING)
+
         for i in range(num_simulations):
             try:
                 # 1. Mise à jour du beta
@@ -317,6 +321,9 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
             except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
                 continue
+
+        # Restaurer le niveau de log
+        logger.setLevel(original_level)
 
         logger.info("[Monte Carlo] Simulations completed | valid_results=%d/%d", len(simulated_values), num_simulations)
 

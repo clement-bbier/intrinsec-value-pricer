@@ -71,6 +71,30 @@ class CompanyFinancials(BaseModel):
         """Alias pour fcf_last."""
         return self.fcf_last
 
+    @property
+    def pe_ratio(self) -> Optional[float]:
+        """Ratio cours/benefice (P/E)."""
+        if (self.eps_ttm is not None and self.eps_ttm > 0 and
+            self.current_price is not None and self.current_price > 0):
+            return self.current_price / self.eps_ttm
+        return None
+
+    @property
+    def pb_ratio(self) -> Optional[float]:
+        """Ratio cours/valeur comptable (P/B)."""
+        if (self.book_value_per_share is not None and self.book_value_per_share > 0 and
+            self.current_price is not None and self.current_price > 0):
+            return self.current_price / self.book_value_per_share
+        return None
+
+    @property
+    def ev_ebitda_ratio(self) -> Optional[float]:
+        """Ratio valeur entreprise/EBITDA (EV/EBITDA)."""
+        if (self.ebitda_ttm is not None and self.ebitda_ttm > 0 and
+            self.market_cap is not None and self.market_cap > 0):
+            return self.market_cap / self.ebitda_ttm
+        return None
+
 
 class HistoricalPoint(BaseModel):
     """Resultat de valorisation a un instant T passe (Backtest)."""
