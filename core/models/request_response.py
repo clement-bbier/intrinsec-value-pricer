@@ -146,8 +146,17 @@ class MultiplesData(BaseModel):
     peers: List[PeerMetric] = Field(default_factory=list)
     median_pe: float = 0.0
     median_ev_ebitda: float = 0.0
+    median_ev_ebit: float = 0.0
+    median_pb: float = 0.0
     median_ev_rev: float = 0.0
+    implied_value_ev_ebitda: float = 0.0
+    implied_value_pe: float = 0.0
     source: str = "Yahoo Finance"
+
+    @property
+    def peer_count(self) -> int:
+        """Nombre de sociétés comparables dans le panel."""
+        return len(self.peers)
 
 
 class MultiplesValuationResult(ValuationResult):

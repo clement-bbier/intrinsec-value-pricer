@@ -107,7 +107,7 @@ class MonteCarloDistributionTab(ResultTabBase):
                 height=300
             )
 
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width='stretch')
 
         except ImportError:
             st.info("Graphique non disponible (installer altair pour visualiser la distribution).")

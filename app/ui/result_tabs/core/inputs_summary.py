@@ -48,7 +48,9 @@ class InputsSummaryTab(ResultTabBase):
                     "Prix actuel": f"{f.current_price:,.2f}",
                     "Market Cap": self._format_number(f.market_cap),
                 }
-                st.table(pd.DataFrame(data_left.items(), columns=["Métrique", "Valeur"]))
+                df_left = pd.DataFrame(data_left.items(), columns=["Métrique", "Valeur"])
+                df_left["Valeur"] = df_left["Valeur"].astype(str)
+                st.table(df_left)
             
             with col2:
                 data_right = {
@@ -57,7 +59,9 @@ class InputsSummaryTab(ResultTabBase):
                     "FCF TTM": self._format_number(f.fcf),
                     "Beta": f"{f.beta:.2f}" if f.beta else "—",
                 }
-                st.table(pd.DataFrame(data_right.items(), columns=["Métrique", "Valeur"]))
+                df_right = pd.DataFrame(data_right.items(), columns=["Métrique", "Valeur"])
+                df_right["Valeur"] = df_right["Valeur"].astype(str)
+                st.table(df_right)
         
         # Section 2 : Parametres de Valorisation
         with st.container(border=True):
@@ -70,8 +74,10 @@ class InputsSummaryTab(ResultTabBase):
                 "Croissance Phase 1": f"{p.growth.fcf_growth_rate:.2%}" if p.growth.fcf_growth_rate else "Auto",
                 "Croissance perpétuelle (g)": f"{p.growth.perpetual_growth_rate:.2%}" if p.growth.perpetual_growth_rate else "Auto",
             }
-            
-            st.table(pd.DataFrame(params_data.items(), columns=["Paramètre", "Valeur"]))
+
+            df_params = pd.DataFrame(params_data.items(), columns=["Paramètre", "Valeur"])
+            df_params["Valeur"] = df_params["Valeur"].astype(str)
+            st.table(df_params)
     
     @staticmethod
     def _format_number(value: float) -> str:

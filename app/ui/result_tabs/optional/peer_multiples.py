@@ -1,23 +1,63 @@
 """
 app/ui/result_tabs/optional/peer_multiples.py
-Onglet — Valorisation Relative (Multiples de Comparables)
 
-Visible uniquement si des données de peers sont disponibles.
+ONGLET — VALORISATION RELATIVE (MULTIPLES DE COMPARABLES)
+
+Rôle : Affichage de la triangulation sectorielle par multiples
+Pattern : ResultTabBase (Template Method)
+Style : Numpy docstrings
+
+Version : V1.1 — DT-018 Resolution (Correction peer_count)
+Risques financiers : Affichage de valorisations relatives, pas de calculs
+
+Dépendances critiques :
+- streamlit >= 1.28.0
+- core.models.ValuationResult.multiples_triangulation
+- core.models.MultiplesData.peer_count
+
+Visible uniquement si multiples_triangulation contient des peers.
+Présente : médianes sectorielles, valeurs implicites, triangulation.
 """
+
+from __future__ import annotations
 
 from typing import Any
 
 import streamlit as st
 import pandas as pd
 
-from core.models import ValuationResult, MultiplesData
+from core.models import ValuationResult
 from core.i18n import KPITexts
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 
 class PeerMultiplesTab(ResultTabBase):
-    """Onglet de triangulation par multiples."""
+    """
+    Onglet de valorisation relative par comparables.
+
+    Affiche la triangulation sectorielle avec les multiples médians
+    des sociétés comparables et les valeurs implicites calculées.
+
+    Attributes
+    ----------
+    TAB_ID : str
+        Identifiant unique "peer_multiples".
+    LABEL : str
+        Label affiché "Valorisation Relative".
+    ICON : str
+        Icône vide (style sobre).
+    ORDER : int
+        Position d'affichage (4ème onglet).
+    IS_CORE : bool
+        False - onglet optionnel (visible si triangulation disponible).
+
+    Notes
+    -----
+    Utilise result.multiples_triangulation.multiples_data pour accéder aux données.
+    Présente les médianes sectorielles et valeurs implicites.
+    Calcule automatiquement les écarts avec la société cible.
+    """
 
     TAB_ID = "peer_multiples"
     LABEL = "Valorisation Relative"
@@ -26,18 +66,50 @@ class PeerMultiplesTab(ResultTabBase):
     IS_CORE = False
 
     def is_visible(self, result: ValuationResult) -> bool:
-        """Visible si des multiples sont disponibles."""
+        """
+        Détermine si l'onglet doit être affiché.
+
+        Vérifie la présence de données de triangulation avec peers.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            Résultat de valorisation à analyser.
+
+        Returns
+        -------
+        bool
+            True si multiples_triangulation existe et contient des peers.
+        """
         return (
             result.multiples_triangulation is not None
-            and result.multiples_triangulation.multiples_data.peer_count > 0
+            and len(result.multiples_triangulation.multiples_data.peers) > 0
         )
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche la valorisation par multiples."""
+        """
+        Affiche la valorisation relative par comparables.
+
+        Présente les multiples médians du secteur et les valeurs implicites
+        de la société cible selon ces multiples.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            Résultat contenant multiples_triangulation avec les données peers.
+        **kwargs : Any
+            Paramètres additionnels (non utilisés).
+
+        Notes
+        -----
+        Compare les multiples de la société cible avec les médianes sectorielles.
+        Calcule les valeurs implicites par action via différents multiples.
+        Présente un tableau synthétique des écarts.
+        """
         md = result.multiples_triangulation.multiples_data
 
         st.markdown("**VALORISATION PAR COMPARABLES**")
-        st.caption(f"Panel de {md.peer_count} sociétés comparables")
+        st.caption(f"Panel de {len(md.peers)} sociétés comparables")
 
         # Tableau des multiples
         with st.container(border=True):
@@ -58,6 +130,9 @@ class PeerMultiplesTab(ResultTabBase):
                     f"{result.financials.pb_ratio:.1f}x" if result.financials.pb_ratio else "—",
                 ],
             })
+
+            # Forcer les colonnes formatées en string pour éviter les erreurs Arrow
+            multiples_df = multiples_df.astype({"Médiane": "string", "Cible": "string"})
 
             st.dataframe(multiples_df, hide_index=True, width='stretch')
 
@@ -81,5 +156,12 @@ class PeerMultiplesTab(ResultTabBase):
                     )
 
     def get_display_label(self) -> str:
-        """Label sans icône."""
+        """
+        Retourne le label d'affichage de l'onglet.
+
+        Returns
+        -------
+        str
+            Label "Valorisation Relative".
+        """
         return self.LABEL

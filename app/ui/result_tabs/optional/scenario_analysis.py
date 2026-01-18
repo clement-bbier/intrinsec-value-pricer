@@ -120,15 +120,25 @@ class ScenarioAnalysisTab(ResultTabBase):
 
                 scenario_data.append({
                     "Scénario": scenario.label.upper(),
-                    "Probabilité": f"{scenario.probability:.0%}",
-                    "Croissance": f"{scenario.growth_used:.1%}",
-                    "Marge FCF": f"{scenario.margin_used:.1%}" if scenario.margin_used and scenario.margin_used != 0 else "Base",
-                    "Valeur/Action": format_smart_number(scenario.intrinsic_value, currency),
-                    "Upside": f"{upside_pct:+.1%}",
+                    "Probabilité": scenario.probability,  # Valeur brute float
+                    "Croissance": scenario.growth_used,   # Valeur brute float
+                    "Marge FCF": scenario.margin_used if scenario.margin_used and scenario.margin_used != 0 else None,  # Valeur brute ou None
+                    "Valeur/Action": scenario.intrinsic_value,  # Valeur brute float
+                    "Upside": upside_pct,  # Valeur brute float
                 })
 
             df = pd.DataFrame(scenario_data)
-            st.dataframe(df, hide_index=True, width='stretch')
+
+            # Configuration des colonnes avec formatage Streamlit
+            column_config = {
+                "Probabilité": st.column_config.NumberColumn(format="%.0%"),
+                "Croissance": st.column_config.NumberColumn(format="%.1%"),
+                "Marge FCF": st.column_config.NumberColumn(format="%.1%"),
+                "Valeur/Action": st.column_config.NumberColumn(format=f"%.2f {currency}"),
+                "Upside": st.column_config.NumberColumn(format="+%.1%"),
+            }
+
+            st.dataframe(df, hide_index=True, width='stretch', column_config=column_config)
 
         # Valeur pondérée
         expected_value = scenario_synthesis.expected_value
