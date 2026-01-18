@@ -128,7 +128,7 @@ from app.ui.expert_terminals import ExpertTerminalFactory
 
 ---
 
-### 1. Docstrings : Google Style (Obligatoire)
+### 1. Docstrings : Numpy Style (Obligatoire)
 
 Toutes les fonctions, classes et méthodes doivent être documentées de manière explicite, pédagogique et testable.
 
@@ -154,7 +154,7 @@ path/to/file.py
 
 Version : V[X.Y] — [DT-XXX] Resolution
 Pattern : [Factory | Strategy | etc.]
-Style : Google / Numpy docstrings
+Style : Numpy Style docstrings
 
 [RISQUES FINANCIERS]
 - Mauvaise hypothèse => valorisation incorrecte
