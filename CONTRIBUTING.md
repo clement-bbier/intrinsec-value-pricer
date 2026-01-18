@@ -297,10 +297,3 @@ API_KEY = os.getenv("YAHOO_FINANCE_API_KEY")
 **Dernière mise à jour : 2026-01-17**
 
 ```
-
----
-
-Si tu veux, prochain step possible :
-- version **encore plus institutionnelle (CFA / McKinsey tone)**  
-- ou une **version “commentée pédagogique”** pour onboard un dev junior  
-- ou un **README utilisateur aligné avec ce manifeste**
