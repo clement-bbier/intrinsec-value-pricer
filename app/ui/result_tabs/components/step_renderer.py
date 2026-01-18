@@ -43,7 +43,12 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
         with col2:
             st.caption(KPITexts.APP_NUMERIC)
             if step.numerical_substitution:
-                st.code(step.numerical_substitution, language="text")
+                # Améliorer l'affichage des substitutions longues
+                if len(step.numerical_substitution) > 80:
+                    # Pour les longues substitutions, utiliser une police plus petite
+                    st.markdown(f"<div style='font-size: 0.85em; font-family: monospace; white-space: pre-wrap;'>{step.numerical_substitution}</div>", unsafe_allow_html=True)
+                else:
+                    st.code(step.numerical_substitution, language="text")
             else:
                 st.markdown("*—*")
         

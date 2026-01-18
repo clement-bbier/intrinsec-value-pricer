@@ -6,6 +6,7 @@ Rôle : Application des médianes sectorielles aux fondamentaux de l'entreprise.
 
 from typing import Dict, Optional
 from core.valuation.strategies.abstract import ValuationStrategy
+from app.ui.result_tabs.components.kpi_cards import format_smart_number
 from core.models import (
     CompanyFinancials, DCFParameters, MultiplesValuationResult,
     MultiplesData, TraceHypothesis
@@ -15,8 +16,8 @@ from core.computation.financial_math import (
     calculate_price_from_ev_multiple,
     calculate_triangulated_price
 )
-# DT-001/002: Import depuis core.i18n
-from core.i18n import StrategyInterpretations
+# Import depuis core.i18n
+from core.i18n import StrategyInterpretations, StrategyFormulas
 
 class MarketMultiplesStrategy(ValuationStrategy):
     """Implémente la triangulation par multiples comparables."""
@@ -58,22 +59,34 @@ class MarketMultiplesStrategy(ValuationStrategy):
 
     def _record_steps(self, f, m, signals, final_iv):
         """Enregistre les étapes avec les clés de traduction."""
+        ni_formatted = format_smart_number(f.net_income_ttm)
+        shares_formatted = f"{f.shares_outstanding:,.0f}"
+        sub_pe = f"({ni_formatted} × {m.median_pe:.1f}) / {shares_formatted}"
+
         self.add_step(
             step_key="RELATIVE_PE", result=signals["P/E"],
-            label="Multiples P/E", theoretical_formula="P = (NI * P/E) / Shares",
-            numerical_substitution=f"({f.net_income_ttm:,.0f} * {m.median_pe:.1f}) / {f.shares_outstanding:,.0f}",
+            label="Multiples P/E", theoretical_formula=r"P/E = \frac{Price}{EPS}",
+            numerical_substitution=sub_pe,
             interpretation=StrategyInterpretations.RELATIVE_PE.format(val=m.median_pe)
         )
+        ebitda_formatted = format_smart_number(f.ebitda_ttm)
+        ev_ebitda_formatted = f"{m.median_ev_ebitda:.1f}"
+        sub_ebitda = f"({ebitda_formatted} × {ev_ebitda_formatted}) / {f.shares_outstanding:,.0f}"
+
         self.add_step(
             step_key="RELATIVE_EBITDA", result=signals["EV/EBITDA"],
-            label="Multiples EV/EBITDA", theoretical_formula="P = (EV_bridge) / Shares",
-            numerical_substitution=f"({f.ebitda_ttm:,.0f} * {m.median_ev_ebitda:.1f} - ...) / ...",
+            label="Multiples EV/EBITDA", theoretical_formula=r"EV/EBITDA = \frac{Enterprise\ Value}{EBITDA}",
+            numerical_substitution=sub_ebitda,
             interpretation=StrategyInterpretations.RELATIVE_EBITDA.format(val=m.median_ev_ebitda)
         )
+        valid_signals = [s for s in signals.values() if s > 0]
+        num_signals = len(valid_signals)
+        sub_triangulation = StrategyInterpretations.TRIANGULATION_SUB.format(count=num_signals)
+
         self.add_step(
             step_key="TRIANGULATION", result=final_iv,
-            label="Synthèse Triangulée", theoretical_formula="Average(Signals)",
-            numerical_substitution=f"Mean of {len([s for s in signals.values() if s > 0])} valid signals",
+            label="Synthèse Triangulée", theoretical_formula=r"IV = \frac{\sum Signals}{N}",
+            numerical_substitution=sub_triangulation,
             interpretation=StrategyInterpretations.TRIANGULATION_FINAL,
             hypotheses=[TraceHypothesis(name="Peers", value=", ".join([p.ticker for p in m.peers]), source="Yahoo")]
         )

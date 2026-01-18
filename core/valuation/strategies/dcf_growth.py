@@ -12,8 +12,8 @@ from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, Va
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import MarginConvergenceProjector
-# DT-001/002: Import depuis core.i18n
-from core.i18n import RegistryTexts, StrategyInterpretations, CalculationErrors, KPITexts
+# Import depuis core.i18n
+from core.i18n import RegistryTexts, StrategyInterpretations, StrategyFormulas, CalculationErrors, KPITexts
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         self.add_step(
             step_key="GROWTH_REV_BASE",
             label=RegistryTexts.GROWTH_REV_BASE_L,
-            theoretical_formula=r"Rev_0",
+            theoretical_formula=StrategyFormulas.REVENUE_BASE,
             result=rev_base,
             numerical_substitution=KPITexts.SUB_REV_BASE.format(val=rev_base),
             interpretation=StrategyInterpretations.GROWTH_REV

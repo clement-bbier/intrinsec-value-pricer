@@ -14,10 +14,11 @@ from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, GrahamValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
-# DT-001/002: Import depuis core.i18n
+# Import depuis core.i18n
 from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
+    StrategyFormulas,
     CalculationErrors,
     StrategySources,
     KPITexts
@@ -54,7 +55,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         self.add_step(
             step_key="GRAHAM_EPS_BASE",
             label=RegistryTexts.GRAHAM_EPS_L,
-            theoretical_formula=r"EPS",
+            theoretical_formula=StrategyFormulas.EPS_BASE,
             result=eps,
             numerical_substitution=KPITexts.SUB_EPS_GRAHAM.format(val=eps, src=source_eps),
             interpretation=StrategyInterpretations.GRAHAM_EPS
@@ -71,7 +72,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         self.add_step(
             step_key="GRAHAM_MULTIPLIER",
             label=RegistryTexts.GRAHAM_MULT_L,
-            theoretical_formula=r"M = 8.5 + 2g",
+            theoretical_formula=StrategyFormulas.GRAHAM_MULTIPLIER,
             result=growth_multiplier,
             numerical_substitution=KPITexts.SUB_GRAHAM_MULT.format(g=g_display),
             interpretation=StrategyInterpretations.GRAHAM_MULT
@@ -89,7 +90,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         self.add_step(
             step_key="GRAHAM_FINAL",
             label=RegistryTexts.GRAHAM_IV_L,
-            theoretical_formula=r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}",
+            theoretical_formula=StrategyFormulas.GRAHAM_VALUE,
             result=intrinsic_value,
             numerical_substitution=f"({eps:.2f} × {growth_multiplier:.2f} × 4.4) / {y_display:.2f}",
             interpretation=StrategyInterpretations.GRAHAM_IV

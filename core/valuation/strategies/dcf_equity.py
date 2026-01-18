@@ -16,10 +16,11 @@ from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
 from core.computation.financial_math import calculate_fcfe_reconstruction
 
-# DT-001/002: Import depuis core.i18n
+# Import depuis core.i18n
 from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
+    StrategyFormulas,
     CalculationErrors,
     StrategySources,
     KPITexts
@@ -48,7 +49,7 @@ class FCFEStrategy(ValuationStrategy):
         self.add_step(
             step_key="FCFE_BASE_SELECTION",
             label=RegistryTexts.FCFE_BASE_L,
-            theoretical_formula=r"FCFE = NI + \text{NonCashAdj} + \text{Net Borrowing}",
+            theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
             result=fcfe_base,
             numerical_substitution=KPITexts.SUB_FCFE_WALK.format(
                 ni=ni, adj=adj, nb=nb, total=fcfe_base

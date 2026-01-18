@@ -24,8 +24,9 @@ from core.computation.financial_math import (
 )
 from core.computation.growth import FlowProjector, ProjectionOutput
 from core.exceptions import CalculationError, ModelDivergenceError
-# DT-001/002: Import depuis core.i18n
-from core.i18n import RegistryTexts, StrategyInterpretations, CalculationErrors, KPITexts
+# Import depuis core.i18n
+from core.i18n import RegistryTexts, StrategyInterpretations, StrategyFormulas, CalculationErrors, KPITexts
+from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 logger = logging.getLogger(__name__)
 
@@ -58,17 +59,40 @@ class DCFCalculationPipeline:
             discount_rate = calculate_cost_of_equity(financials, params)
             rate_key = "KE_CALC"
             rate_label = RegistryTexts.DCF_KE_L
-            interp_rate = KPITexts.SUB_KE_LABEL.format(val=discount_rate)
+
+            # Substitution détaillée pour CAPM
+            r = params.rates
+            rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
+            mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
+            beta = r.manual_beta if r.manual_beta is not None else (financials.beta or 1.0)
+
+            if r.manual_cost_of_equity is not None:
+                sub_rate = StrategySources.MANUAL_OVERRIDE.format(wacc=discount_rate)
+            else:
+                sub_rate = f"{rf:.1%} + {beta:.2f} × {mrp:.1%}"
+
+            formula_rate = StrategyFormulas.CAPM
             wacc_ctx = None
         else:
             wacc_breakdown = calculate_wacc(financials, params)
             discount_rate = wacc_override if wacc_override is not None else wacc_breakdown.wacc
             rate_key = "WACC_CALC"
             rate_label = RegistryTexts.DCF_WACC_L
-            interp_rate = StrategyInterpretations.WACC.format(wacc=discount_rate)
+
+            # Substitution détaillée pour WACC
+            if wacc_override is not None:
+                sub_rate = StrategySources.MANUAL_OVERRIDE.format(wacc=discount_rate)
+            else:
+                we = wacc_breakdown.weight_equity
+                wd = wacc_breakdown.weight_debt
+                ke = wacc_breakdown.cost_of_equity
+                kd = wacc_breakdown.cost_of_debt_after_tax
+                sub_rate = f"{we:.1%} × {ke:.1%} + {wd:.1%} × {kd:.1%}"
+
+            formula_rate = StrategyFormulas.WACC
             wacc_ctx = wacc_breakdown
 
-        self._add_step(rate_key, discount_rate, interp_rate, label=rate_label, theoretical_formula=r"r")
+        self._add_step(rate_key, discount_rate, sub_rate, label=rate_label, theoretical_formula=formula_rate)
 
         # 2. Phase de Projection (Sync: FCF_PROJ)
         proj_output = self.projector.project(base_value, financials, params)
@@ -118,6 +142,35 @@ class DCFCalculationPipeline:
     def _add_step(self, step_key: str, result: float, numerical_substitution: str,
                   label: str = "", theoretical_formula: str = "", interpretation: str = "",
                   hypotheses: Optional[List[TraceHypothesis]] = None) -> None:
+        """
+        Ajoute une étape de calcul à la trace Glass Box.
+
+        Cette méthode centralise l'ajout d'étapes de calcul pour assurer la transparence
+        et l'auditabilité complète du processus de valorisation.
+
+        Parameters
+        ----------
+        step_key : str
+            Clé unique identifiant l'étape (doit correspondre au registre Glass Box).
+        result : float
+            Résultat numérique de l'étape de calcul.
+        numerical_substitution : str
+            Substitution numérique détaillée montrant les vraies valeurs utilisées
+            dans le calcul (formatées avec format_smart_number).
+        label : str, optional
+            Libellé d'affichage de l'étape (par défaut step_key).
+        theoretical_formula : str, optional
+            Formule LaTeX théorique (provenant de StrategyFormulas).
+        interpretation : str, optional
+            Interprétation pédagogique de l'étape (provenant de StrategyInterpretations).
+        hypotheses : Optional[List[TraceHypothesis]], optional
+            Hypothèses associées à l'étape pour l'audit.
+
+        Notes
+        -----
+        Cette méthode ne fait rien si glass_box_enabled est False.
+        Les étapes sont automatiquement numérotées séquentiellement.
+        """
         if not self.glass_box_enabled: return
         self.calculation_trace.append(CalculationStep(
             step_id=len(self.calculation_trace) + 1,
@@ -150,16 +203,20 @@ class DCFCalculationPipeline:
                 raise ModelDivergenceError(p_growth, discount_rate)
             tv = calculate_terminal_value_gordon(flows[-1], discount_rate, p_growth)
             key_tv = "TV_GORDON"
-            sub_tv = f"({flows[-1]:,.0f} × {1 + p_growth:.3f}) / ({discount_rate:.4f} - {p_growth:.4f})"
+            fcf_last = format_smart_number(flows[-1])
+            sub_tv = f"({fcf_last} × (1 + {p_growth:.1%})) / ({discount_rate:.1%} - {p_growth:.1%})"
             label_tv = RegistryTexts.DCF_TV_GORDON_L
+            formula_tv = StrategyFormulas.GORDON
         else:
             exit_m = g.exit_multiple_value or 12.0
             tv = calculate_terminal_value_exit_multiple(flows[-1], exit_m)
             key_tv = "TV_MULTIPLE"
-            sub_tv = f"{flows[-1]:,.0f} × {exit_m:.1f}"
+            fcf_last = format_smart_number(flows[-1])
+            sub_tv = f"{fcf_last} × {exit_m:.1f}"
             label_tv = RegistryTexts.DCF_TV_MULT_L
+            formula_tv = StrategyFormulas.TERMINAL_MULTIPLE
 
-        self._add_step(key_tv, tv, sub_tv, label_tv, interpretation=StrategyInterpretations.TV)
+        self._add_step(key_tv, tv, sub_tv, label_tv, theoretical_formula=formula_tv, interpretation=StrategyInterpretations.TV)
         return tv, key_tv
 
     def _compute_npv_logic(self, flows, tv, rate, params) -> tuple:
@@ -171,7 +228,10 @@ class DCFCalculationPipeline:
 
         # Distinction EV (Entity) vs Total Equity (Direct)
         label = RegistryTexts.DCF_EV_L if not self.mode.is_direct_equity else "Total Equity Value"
-        self._add_step("NPV_CALC", final_value, f"{sum_pv:,.0f} + {pv_tv:,.0f}", label=label, theoretical_formula=r"PV = \sum PV(Flows) + PV(TV)")
+        sum_pv_formatted = format_smart_number(sum_pv)
+        pv_tv_formatted = format_smart_number(pv_tv)
+        sub_npv = f"{sum_pv_formatted} + {pv_tv_formatted}"
+        self._add_step("NPV_CALC", final_value, sub_npv, label=label, theoretical_formula=StrategyFormulas.NPV)
         return factors, sum_pv, pv_tv, final_value
 
     def _compute_bridge_by_level(self, val: float, financials: CompanyFinancials, params: DCFParameters, is_equity_level: bool) -> tuple:
@@ -190,12 +250,21 @@ class DCFCalculationPipeline:
 
         equity_val = val - debt + cash - minorities - pensions
 
+        # Formatage automatique des montants
+        ev_formatted = format_smart_number(val)
+        debt_formatted = format_smart_number(debt)
+        cash_formatted = format_smart_number(cash)
+        minorities_formatted = format_smart_number(minorities)
+        pensions_formatted = format_smart_number(pensions)
+
+        sub_bridge = f"{ev_formatted} - {debt_formatted} + {cash_formatted} - {minorities_formatted} - {pensions_formatted}"
+
         self._add_step(
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
-            theoretical_formula=r"Equity = EV - Debt + Cash - Min - Prov",
+            theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
             result=equity_val,
-            numerical_substitution=f"{val:,.0f} - {debt:,.0f} + {cash:,.0f} - {minorities:,.0f} - {pensions:,.0f}",
+            numerical_substitution=sub_bridge,
             interpretation=StrategyInterpretations.BRIDGE
         )
         return equity_val, shares
@@ -205,7 +274,13 @@ class DCFCalculationPipeline:
         if shares <= 0:
             raise CalculationError(CalculationErrors.INVALID_SHARES)
         iv_share = equity_val / shares
-        self._add_step("VALUE_PER_SHARE", iv_share, f"{equity_val:,.0f} / {shares:,.0f}", RegistryTexts.DCF_IV_L,
+
+        equity_formatted = format_smart_number(equity_val)
+        shares_formatted = f"{shares:,.0f}"
+        sub_iv = f"{equity_formatted} / {shares_formatted}"
+
+        self._add_step("VALUE_PER_SHARE", iv_share, sub_iv, RegistryTexts.DCF_IV_L,
+                       theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                        interpretation=StrategyInterpretations.IV.format(ticker=financials.ticker))
         return iv_share
 

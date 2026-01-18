@@ -21,10 +21,11 @@ from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters, RIMValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
-# DT-001/002: Import depuis core.i18n
+# Import depuis core.i18n
 from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
+    StrategyFormulas,
     CalculationErrors,
     StrategySources,
     KPITexts
@@ -61,7 +62,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_BV_INITIAL",
             label=RegistryTexts.RIM_BV_L,
-            theoretical_formula=r"BV_0",
+            theoretical_formula=StrategyFormulas.BV_BASE,
             result=bv_per_share,
             numerical_substitution=KPITexts.SUB_BV_BASE.format(val=bv_per_share, src=src_bv),
             interpretation=RegistryTexts.RIM_BV_D
@@ -75,7 +76,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_KE_CALC",
             label=RegistryTexts.RIM_KE_L,
-            theoretical_formula=r"k_e = R_f + \beta \times MRP",
+            theoretical_formula=StrategyFormulas.CAPM,
             result=ke,
             numerical_substitution=sub_ke,
             interpretation=StrategyInterpretations.WACC.format(wacc=ke)
@@ -92,7 +93,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_PAYOUT",
             label=RegistryTexts.RIM_PAYOUT_L,
-            theoretical_formula=r"Payout = \frac{Div_{TTM}}{EPS_{TTM}}",
+            theoretical_formula=StrategyFormulas.PAYOUT_RATIO,
             result=payout_ratio,
             numerical_substitution=KPITexts.SUB_PAYOUT.format(
                 div=div_per_share,
@@ -117,7 +118,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_RI_SUM",
             label=RegistryTexts.RIM_RI_L,
-            theoretical_formula=r"\sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}{(1+k_e)^t}",
+            theoretical_formula=StrategyFormulas.RI_SUM,
             result=discounted_ri_sum,
             numerical_substitution=KPITexts.SUB_SUM_RI.format(val=discounted_ri_sum),
             interpretation=RegistryTexts.RIM_RI_D
@@ -137,7 +138,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_FINAL_IV",
             label=RegistryTexts.RIM_IV_L,
-            theoretical_formula=r"IV = BV_0 + \sum PV(RI) + PV(TV)",
+            theoretical_formula=StrategyFormulas.RIM_FINAL,
             result=iv,
             numerical_substitution=KPITexts.SUB_RIM_FINAL.format(
                 bv=bv_per_share,
@@ -222,7 +223,7 @@ class RIMBankingStrategy(ValuationStrategy):
         self.add_step(
             step_key="RIM_TV_OHLSON",
             label=RegistryTexts.RIM_TV_L,
-            theoretical_formula=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
+            theoretical_formula=StrategyFormulas.RIM_PERSISTENCE,
             result=discounted_tv,
             numerical_substitution=KPITexts.SUB_RIM_TV.format(sub_tv=sub_tv_math, factor=last_df),
             interpretation=StrategyInterpretations.RIM_TV

@@ -11,8 +11,9 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, TYPE_CHECKING
 from pydantic import BaseModel
 
-# DT-001/002: Import depuis core.i18n
-from core.i18n import StrategyInterpretations, KPITexts, RegistryTexts
+# Import depuis core.i18n
+from core.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts
+from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 if TYPE_CHECKING:
     from core.models import CompanyFinancials, DCFParameters
@@ -78,8 +79,10 @@ class SimpleFlowProjector(FlowProjector):
 
         # Génération de la trace Glass Box
         # Utilisation des clés i18n centralisées
-        formula = r"FCF_t = FCF_0 \times (1+g)^t"
-        sub = f"{base_value:,.0f} × (1 + {g.fcf_growth_rate or 0:.3f})^{g.projection_years}"
+        formula = StrategyFormulas.FCF_PROJECTION
+        base_formatted = format_smart_number(base_value)
+        growth_rate = g.fcf_growth_rate or 0.0
+        sub = f"{base_formatted} × (1 + {growth_rate:.1%})^{g.projection_years}"
         interp = StrategyInterpretations.PROJ.format(
             years=g.projection_years,
             g=g.fcf_growth_rate or 0

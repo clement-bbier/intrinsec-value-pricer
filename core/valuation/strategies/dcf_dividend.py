@@ -20,10 +20,11 @@ from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
 
-# DT-001/002: Import depuis core.i18n
+# Import depuis core.i18n
 from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
+    StrategyFormulas,
     CalculationErrors,
     StrategySources,
     KPITexts
@@ -66,7 +67,7 @@ class DividendDiscountStrategy(ValuationStrategy):
             step_key="DDM_BASE_SELECTION",
             label=RegistryTexts.DDM_BASE_L,
             # On clarifie dans la formule que l'on travaille sur la masse totale
-            theoretical_formula=r"D_0 \times \text{Shares}",
+            theoretical_formula=StrategyFormulas.DIVIDEND_BASE,
             result=total_dividend_mass,
             numerical_substitution=f"{d0_per_share:,.2f} \times {financials.shares_outstanding:,.0f} = {total_dividend_mass:,.0f}",
             interpretation=StrategyInterpretations.DDM_LOGIC

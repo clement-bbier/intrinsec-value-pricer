@@ -19,6 +19,7 @@ from core.i18n.fr.backend.audit import (
 from core.i18n.fr.backend.strategies import (
     StrategySources,
     StrategyInterpretations,
+    StrategyFormulas,
 )
 
 from core.i18n.fr.backend.registry import RegistryTexts
@@ -32,5 +33,6 @@ __all__ = [
     "AuditEngineTexts",
     "StrategySources",
     "StrategyInterpretations",
+    "StrategyFormulas",
     "RegistryTexts",
 ]

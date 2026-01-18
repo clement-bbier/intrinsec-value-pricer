@@ -22,6 +22,77 @@ class StrategySources:
     MACRO_API_ERROR = "Matrix Fallback (API Error)"
 
 
+class StrategyFormulas:
+    """Formules LaTeX standardisées pour toutes les méthodes de valorisation."""
+
+    # === COÛT DU CAPITAL ===
+    CAPM = r"K_e = R_f + \beta \times ERP"
+    WACC = r"WACC = \frac{V_E}{V_E + V_D} \times K_e + \frac{V_D}{V_E + V_D} \times K_d \times (1 - T_c)"
+
+    # === VALEUR TERMINALE ===
+    GORDON = r"TV_n = \frac{FCF_n \times (1 + g_\infty)}{WACC - g_\infty}"
+    TERMINAL_MULTIPLE = r"TV_n = FCF_n \times Multiple"
+
+    # === GROWTH MARGIN ===
+    GROWTH_MARGIN_CONV = r"FCF_t = Rev_t \times [Margin_0 + (Margin_n - Margin_0) \times \frac{t}{n}]"
+
+    # === PROJECTION ===
+    FCF_PROJECTION = r"FCF_t = FCF_0 \times (1+g)^t"
+
+    # === BASE VALUES ===
+    FCF_BASE = r"FCF_0"
+    REVENUE_BASE = r"Rev_0"
+    EPS_BASE = r"EPS"
+    BV_BASE = r"BV_0"
+    FCF_NORMALIZED = r"FCF_{norm}"
+
+    # === TRIANGULATION ===
+    TRIANGULATION_AVERAGE = r"IV = \frac{\sum Signals}{N}"
+
+    # === MONTE CARLO ===
+    MC_VALID_RATIO = r"\frac{N_{valid}}{N_{total}}"
+    MC_MEDIAN = r"Median(IV_i)"
+    MC_SENSITIVITY = r"\frac{\partial P50}{\partial \rho}"
+    MC_STRESS = r"f(g \to 0, \beta \to 1.5)"
+
+    # === FCFE ===
+    FCFE_RECONSTRUCTION = r"FCFE = NI + \text{NonCashAdj} + \text{Net Borrowing}"
+
+    # === DIVIDEND ===
+    DIVIDEND_BASE = r"D_0 \times \text{Shares}"
+
+    # === PAYOUT ===
+    PAYOUT_RATIO = r"Payout = \frac{Div_{TTM}}{EPS_{TTM}}"
+
+    # === SUM RI ===
+    RI_SUM = r"\sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}{(1+k_e)^t}"
+
+    # === FINAL VALUES ===
+    RIM_FINAL = r"IV = BV_0 + \sum PV(RI) + PV(TV)"
+
+    # === VALEUR ACTUELLE NETTE ===
+    NPV = r"PV = \sum_{t=1}^{n} \frac{FCF_t}{(1 + r)^t} + \frac{TV_n}{(1 + r)^n}"
+
+    # === AUTRES FORMULES ===
+    EQUITY_BRIDGE = r"Equity = EV - Debt + Cash - Minority - Provisions"
+    VALUE_PER_SHARE = r"IV = \frac{Equity}{Shares\ Outstanding}"
+
+    # === MONTE CARLO ===
+    MC_VOLATILITY_MATRIX = r"\sigma = [\sigma_\beta, \sigma_g, \sigma_{Y_0}]"
+
+    # === RELATIFS ===
+    PE_MULTIPLE = r"P/E = \frac{Price}{EPS}"
+    EV_EBITDA_MULTIPLE = r"EV/EBITDA = \frac{Enterprise\ Value}{EBITDA}"
+
+    # === RIM BANKS ===
+    RIM_RESIDUAL_INCOME = r"RI_t = NI_t - (K_e \times BV_{t-1})"
+    RIM_PERSISTENCE = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
+
+    # === GRAHAM ===
+    GRAHAM_MULTIPLIER = r"M = 8.5 + 2g"
+    GRAHAM_VALUE = r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}"
+
+
 class StrategyInterpretations:
     """Notes pedagogiques dynamiques generees par les strategies (Glass Box)."""
     
@@ -69,4 +140,5 @@ class StrategyInterpretations:
 
     RELATIVE_PE = r"Valeur basee sur le multiple P/E median du secteur ({val:.1f}x)."
     RELATIVE_EBITDA = r"Valeur basee sur le multiple EV/EBITDA median ({val:.1f}x)."
+    TRIANGULATION_SUB = "Moyenne de {count} signaux valides"
     TRIANGULATION_FINAL = "Valeur hybride obtenue par la moyenne des methodes relatives."

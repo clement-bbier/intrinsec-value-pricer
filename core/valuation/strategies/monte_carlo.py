@@ -28,7 +28,7 @@ from core.exceptions import (
 from core.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
 from core.valuation.strategies.abstract import ValuationStrategy
 
-# DT-001/002: Import depuis core.i18n
+# Import depuis core.i18n
 from core.i18n import (
     RegistryTexts,
     StrategyInterpretations,
@@ -101,8 +101,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self.add_step(
             step_key="MC_CONFIG",
             label=RegistryTexts.MC_INIT_L,
-            # Ajout de sigma_Y0 dans la formule théorique pour la transparence
-            theoretical_formula=r"\sigma_{\beta}, \sigma_g, \sigma_{g_n}, \sigma_{Y_0}, \rho",
+            # Notation matricielle pour les volatilités
+            theoretical_formula=r"\sigma = [\sigma_\beta, \sigma_g, \sigma_{Y_0}]",
             result=1.0,
             numerical_substitution=KPITexts.MC_CONFIG_SUB.format(
                 sims=num_simulations,

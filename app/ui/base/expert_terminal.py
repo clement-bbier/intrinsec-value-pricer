@@ -279,7 +279,7 @@ class ExpertTerminalBase(ABC):
         Optional[ValuationRequest]
             La requête si le bouton est cliqué, None sinon.
         """
-        st.markdown("---")
+        st.divider()
 
         button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
 

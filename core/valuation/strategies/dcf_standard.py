@@ -12,8 +12,8 @@ from core.models import CompanyFinancials, DCFParameters, DCFValuationResult, Va
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector
-# DT-001/002: Import depuis core.i18n
-from core.i18n import RegistryTexts, CalculationErrors, StrategySources, KPITexts
+# Import depuis core.i18n
+from core.i18n import RegistryTexts, StrategyFormulas, CalculationErrors, StrategySources, KPITexts
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class StandardFCFFStrategy(ValuationStrategy):
         self.add_step(
             step_key="FCF_BASE_SELECTION",
             label=RegistryTexts.DCF_FCF_BASE_L,
-            theoretical_formula=r"FCF_0",
+            theoretical_formula=StrategyFormulas.FCF_BASE,
             result=fcf_base,
             numerical_substitution=KPITexts.SUB_FCF_BASE.format(val=fcf_base, src=source),
             interpretation=RegistryTexts.DCF_FCF_BASE_D
