@@ -19,6 +19,7 @@ from core.computation.statistics import (
     generate_independent_samples,
     generate_multivariate_samples,
 )
+from core.config.settings import SIMULATION_CONFIG
 from core.exceptions import (
     CalculationError,
     ModelDivergenceError,
@@ -45,12 +46,13 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     Désormais aligné sur la segmentation Rates / Growth / MonteCarloConfig.
     """
 
-    DEFAULT_SIMULATIONS = 5000
-    MIN_VALID_RATIO = 0.20
-    GROWTH_SAFETY_MARGIN = 0.015  # Marge de sécurité (1.5%) sous le WACC
-    SENSITIVITY_SIMULATIONS = 1000
-    MAX_IV_FILTER = 100_000.0
-    DEFAULT_WACC_FALLBACK = 0.08
+    # Configuration centralisée (Sprint 4)
+    DEFAULT_SIMULATIONS = SIMULATION_CONFIG.default_simulations
+    MIN_VALID_RATIO = SIMULATION_CONFIG.min_valid_ratio
+    GROWTH_SAFETY_MARGIN = SIMULATION_CONFIG.growth_safety_margin
+    SENSITIVITY_SIMULATIONS = SIMULATION_CONFIG.sensitivity_simulations
+    MAX_IV_FILTER = SIMULATION_CONFIG.max_iv_filter
+    DEFAULT_WACC_FALLBACK = SIMULATION_CONFIG.default_wacc_fallback
 
     def __init__(
         self,

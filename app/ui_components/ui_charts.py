@@ -59,7 +59,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
         title=ChartTexts.PRICE_HISTORY_TITLE.format(ticker=ticker)
     ).interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width='stretch')
 
 
 # ============================================================================
@@ -92,7 +92,7 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
     if market_price > 0:
         layers.append(alt.Chart(pd.DataFrame({'x': [market_price]})).mark_rule(color="#D32F2F", strokeWidth=2, strokeDash=[5, 2]).encode(x='x'))
 
-    st.altair_chart(alt.layer(*layers).properties(height=320), use_container_width=True)
+    st.altair_chart(alt.layer(*layers).properties(height=320), width='stretch')
 
     st.markdown(f"""
     {ChartTexts.SIM_SUMMARY_TITLE.format(count=len(values))}
@@ -186,7 +186,7 @@ def display_football_field(result: ValuationResult) -> None:
 
     final_chart = alt.layer(bars, ticks, price_rule, price_label).properties(height=250)
 
-    st.altair_chart(final_chart, use_container_width=True)
+    st.altair_chart(final_chart, width='stretch')
 
 
 # ============================================================================
@@ -247,7 +247,7 @@ def display_sensitivity_heatmap(
         color=alt.condition(alt.datum.Valeur > df['Valeur'].quantile(0.5), alt.value('white'), alt.value('black'))
     )
 
-    st.altair_chart((heatmap + text).properties(height=350), use_container_width=True)
+    st.altair_chart((heatmap + text).properties(height=350), width='stretch')
 
 
 def display_correlation_heatmap(rho: float = -0.30) -> None:
@@ -274,7 +274,7 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
         color=alt.condition((alt.datum.Val > 0.5) | (alt.datum.Val < -0.5), alt.value('white'), alt.value('black'))
     )
 
-    st.altair_chart((heatmap + text).properties(height=180), use_container_width=True)
+    st.altair_chart((heatmap + text).properties(height=180), width='stretch')
     st.caption(ChartTexts.CORREL_CAPTION)
 
 
@@ -362,7 +362,7 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
         yaxis=dict(title=f"{KPITexts.VALUE_UNIT.format(unit=f.currency)}")
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 def display_backtest_convergence_chart(backtest_report: Optional[BacktestResult], currency: str) -> None:
     """
@@ -390,4 +390,4 @@ def display_backtest_convergence_chart(backtest_report: Optional[BacktestResult]
         tooltip=['Date:T', 'Type:N', alt.Tooltip('Prix:Q', format=',.2f')]
     ).properties(height=350).interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width='stretch')

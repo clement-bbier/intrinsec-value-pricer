@@ -59,7 +59,7 @@ class PeerMultiplesTab(ResultTabBase):
                 ],
             })
 
-            st.dataframe(multiples_df, hide_index=True, use_container_width=True)
+            st.dataframe(multiples_df, hide_index=True, width='stretch')
 
         # Valeurs implicites
         if md.implied_value_ev_ebitda or md.implied_value_pe:

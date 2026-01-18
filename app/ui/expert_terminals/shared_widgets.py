@@ -34,7 +34,7 @@ from core.models import (
     SOTPParameters,
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
-from core.config import MonteCarloDefaults, SystemDefaults
+from core.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -469,8 +469,11 @@ def widget_monte_carlo(
         col_iter, _ = st.columns([2, 2])
         sims = col_iter.select_slider(
             ExpertTerminalTexts.MC_ITERATIONS,
-            options=[1000, 5000, 10000, 20000],
-            value=MonteCarloDefaults.DEFAULT_SIMULATIONS,
+            options=[SIMULATION_CONFIG.min_simulations,
+                    SIMULATION_CONFIG.default_simulations,
+                    10000,
+                    SIMULATION_CONFIG.max_simulations],
+            value=SIMULATION_CONFIG.default_simulations,
             help=ExpertTerminalTexts.HELP_MC_SIMS
         )
         st.divider()
@@ -766,7 +769,7 @@ def widget_sotp(params: DCFParameters) -> None:
         edited_df = st.data_editor(
             pd.DataFrame(current_data),
             num_rows="dynamic",
-            use_container_width=True,
+            width='stretch',
             key="sotp_editor",
             column_config={
                 SOTPTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(
@@ -828,13 +831,13 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
     via DCFParameters.from_legacy().
     """
     defaults = {
-        "projection_years": SystemDefaults.DEFAULT_PROJECTION_YEARS,
+        "projection_years": VALUATION_CONFIG.default_projection_years,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,
         "enable_monte_carlo": False,
-        "num_simulations": MonteCarloDefaults.DEFAULT_SIMULATIONS,
+        "num_simulations": SIMULATION_CONFIG.default_simulations,
         "base_flow_volatility": 0.05,
-        "beta_volatility": 0.10,
-        "growth_volatility": 0.02,
+        "beta_volatility": SIMULATION_CONFIG.default_volatility_beta,
+        "growth_volatility": SIMULATION_CONFIG.default_volatility_growth,
     }
 
     # Fusion avec filtrage des None

@@ -62,7 +62,7 @@ class HistoricalBacktestTab(ResultTabBase):
                     })
                 
                 df = pd.DataFrame(periods_data)
-                st.dataframe(df, hide_index=True, use_container_width=True)
+                st.dataframe(df, hide_index=True, width='stretch')
     
     def get_display_label(self) -> str:
         return self.LABEL

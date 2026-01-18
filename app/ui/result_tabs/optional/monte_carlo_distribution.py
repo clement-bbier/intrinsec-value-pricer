@@ -112,7 +112,7 @@ class MonteCarloDistributionTab(ResultTabBase):
                     template="plotly_white"
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
                 
             except ImportError:
                 st.info("Installer plotly pour afficher l'histogramme.")

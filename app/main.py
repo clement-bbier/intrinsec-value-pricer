@@ -323,11 +323,21 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    render_func = EXPERT_UI_REGISTRY.get(mode)
-    if render_func:
-        request = render_func(ticker)
+    # Sprint 2: Utilisation de la factory pour les terminaux isolés
+    try:
+        from app.ui.expert_terminals.factory import create_expert_terminal
+        terminal = create_expert_terminal(mode, ticker)
+        request = terminal.render()
         if request:
             _set_active_request(request)
+    except Exception as e:
+        st.error(f"Erreur lors de la création du terminal expert: {e}")
+        # Fallback vers l'ancien système si nécessaire
+        render_func = EXPERT_UI_REGISTRY.get(mode)
+        if render_func:
+            request = render_func(ticker)
+            if request:
+                _set_active_request(request)
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
@@ -394,7 +404,7 @@ def main() -> None:
             launch_analysis = st.button(
                 CommonTexts.RUN_BUTTON,
                 type="primary",
-                use_container_width=True,
+                width='stretch',
             )
 
         _render_sidebar_footer()

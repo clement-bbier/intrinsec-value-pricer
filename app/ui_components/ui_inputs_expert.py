@@ -22,6 +22,7 @@ from core.models import (
     SOTPMethod
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
+from core.config.settings import SIMULATION_CONFIG
 
 
 # ==============================================================================
@@ -37,10 +38,10 @@ def safe_factory_params(all_data: Dict[str, Any]) -> DCFParameters:
         "projection_years": 5,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,
         "enable_monte_carlo": False,
-        "num_simulations": 5000,
+        "num_simulations": SIMULATION_CONFIG.default_simulations,
         "base_flow_volatility": 0.05,
-        "beta_volatility": 0.10,
-        "growth_volatility": 0.02
+        "beta_volatility": SIMULATION_CONFIG.default_volatility_beta,
+        "growth_volatility": SIMULATION_CONFIG.default_volatility_growth
     }
     # Fusion des données UI avec les valeurs par défaut
     full_data = {**base_defaults, **{k: v for k, v in all_data.items() if v is not None}}
@@ -92,11 +93,11 @@ def atom_terminal_dcf(formula_latex: str) -> Dict[str, Any]:
 
     c1, _ = st.columns(2)
     if method == TerminalValueMethod.GORDON_GROWTH:
-        gn = c1.number_input(ExpertTerminalTexts.INP_GN, min_value=0.0, max_value=0.05, value=None, format="%.3f")
+        gn = c1.number_input(ExpertTerminalTexts.INP_PERP_G, min_value=0.0, max_value=0.05, value=None, format="%.3f")
         st.divider()
         return {"terminal_method": method, "perpetual_growth_rate": gn}
     else:
-        exit_m = c1.number_input(ExpertTerminalTexts.INP_EXIT_M, min_value=0.0, max_value=100.0, value=None, format="%.1f")
+        exit_m = c1.number_input(ExpertTerminalTexts.INP_EXIT_MULT, min_value=0.0, max_value=100.0, value=None, format="%.1f")
         st.divider()
         return {"terminal_method": method, "exit_multiple_value": exit_m}
 
@@ -148,8 +149,11 @@ def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[Termin
             c_iter, _ = st.columns([2, 2])
             sims = c_iter.select_slider(
                 ExpertTerminalTexts.MC_ITERATIONS,
-                options=[1000, 5000, 10000, 20000],
-                value=5000
+                options=[SIMULATION_CONFIG.min_simulations,
+                        SIMULATION_CONFIG.default_simulations,
+                        10000,
+                        SIMULATION_CONFIG.max_simulations],
+                value=SIMULATION_CONFIG.default_simulations
             )
             st.divider()
 
@@ -165,7 +169,7 @@ def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[Termin
             # Risque Systématique (Beta)
             vb = v_col2.number_input(
                 ExpertTerminalTexts.MC_VOL_BETA,
-                min_value=0.0, max_value=1.0, value=0.10, format="%.3f"
+                min_value=0.0, max_value=1.0, value=SIMULATION_CONFIG.default_volatility_beta, format="%.3f"
             )
             # Incertitude Croissance (g)
             vg = v_col1.number_input(
@@ -205,7 +209,7 @@ def atom_monte_carlo_smart(mode: ValuationMode, terminal_method: Optional[Termin
 def atom_peer_selection() -> List[str]:
     """Étape 7 : Sélection manuelle des pairs pour la triangulation (Sprint 4)."""
     st.markdown(ExpertTerminalTexts.SEC_7_PEERS)
-    raw_input = st.text_input(ExpertTerminalTexts.INP_MANUAL_PEERS, placeholder="ex: AAPL, MSFT, GOOG", help=ExpertTerminalTexts.INP_MANUAL_PEERS_HELP)
+    raw_input = st.text_input(ExpertTerminalTexts.INP_MANUAL_PEERS, placeholder="ex: AAPL, MSFT, GOOG", help=ExpertTerminalTexts.HELP_MANUAL_PEERS)
     st.divider()
     if not raw_input: return []
     return [t.strip().upper() for t in raw_input.split(",") if t.strip()]
@@ -279,7 +283,7 @@ def render_sotp_section(params: DCFParameters) -> None:
             current_data = [{SOTPTexts.LBL_SEGMENT_NAME: "Segment A", SOTPTexts.LBL_SEGMENT_VALUE: 0.0, SOTPTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value}]
 
         edited_df = st.data_editor(
-            pd.DataFrame(current_data), num_rows="dynamic", use_container_width=True, key="sotp_editor",
+            pd.DataFrame(current_data), num_rows="dynamic", width='stretch', key="sotp_editor",
             column_config={
                 SOTPTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(format="%.2f"),
                 SOTPTexts.LBL_SEGMENT_METHOD: st.column_config.SelectboxColumn(options=[m.value for m in SOTPMethod])
@@ -324,7 +328,7 @@ def render_expert_fcff_standard(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.FCFF_STANDARD)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_STANDARD, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -342,7 +346,7 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
 
     st.markdown(ExpertTerminalTexts.SEC_2_PROJ_FUND)
     c1, c2 = st.columns(2)
-    n_years = c1.slider(ExpertTerminalTexts.SLIDER_CYCLE_YEARS, 3, 15, 5)
+    n_years = c1.slider(ExpertTerminalTexts.SLIDER_PROJ_YEARS, 3, 15, 5)
     g_rate = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G, -0.20, 0.30, value=None, format="%.3f")
     st.divider()
 
@@ -356,7 +360,7 @@ def render_expert_fcff_fundamental(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.FCFF_NORMALIZED)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_FUND.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_NORMALIZED, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -389,7 +393,7 @@ def render_expert_fcff_growth(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.FCFF_GROWTH)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_GROWTH.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFF_GROWTH, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -404,7 +408,7 @@ def render_expert_fcfe(ticker: str) -> Optional[ValuationRequest]:
     st.markdown(ExpertTerminalTexts.SEC_1_FCFE_BASE)
     c1, c2 = st.columns(2)
     fcfe_base = c1.number_input(ExpertTerminalTexts.INP_FCFE_BASE, value=None, format="%.0f")
-    net_borrowing = c2.number_input(ExpertTerminalTexts.INP_NET_BORROWING, value=None, format="%.0f", help=ExpertTerminalTexts.INP_NET_BORROWING_HELP)
+    net_borrowing = c2.number_input(ExpertTerminalTexts.INP_NET_BORROWING, value=None, format="%.0f", help=ExpertTerminalTexts.HELP_NET_BORROWING)
     st.divider()
 
     st.markdown(ExpertTerminalTexts.SEC_2_PROJ)
@@ -423,7 +427,7 @@ def render_expert_fcfe(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.FCFE)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_FCFE.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_FCFE.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.FCFE, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -436,7 +440,7 @@ def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
     st.latex(r"P = \sum_{t=1}^{n} \frac{D_0(1+g)^t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}")
 
     st.markdown(ExpertTerminalTexts.SEC_1_DDM_BASE)
-    d0_base = st.number_input(ExpertTerminalTexts.INP_DIVIDEND_BASE, value=None, format="%.2f", help=ExpertTerminalTexts.INP_DIVIDEND_BASE_HELP)
+    d0_base = st.number_input(ExpertTerminalTexts.INP_DIVIDEND_BASE, value=None, format="%.2f", help=ExpertTerminalTexts.HELP_DIVIDEND_BASE)
     st.divider()
 
     st.markdown(ExpertTerminalTexts.SEC_2_PROJ)
@@ -455,7 +459,7 @@ def render_expert_ddm(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.DDM)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_DDM.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_DDM.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.DDM, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -488,7 +492,7 @@ def render_expert_rim(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.RIM)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_RIM.format(ticker=ticker), type="primary", width='stretch'):
         params = safe_factory_params(all_data)
         params.scenarios = scenarios
         return ValuationRequest(ticker=ticker, projection_years=n_years, mode=ValuationMode.RIM, input_source=InputSource.MANUAL, manual_params=params, options={"manual_peers": manual_peers})
@@ -503,7 +507,7 @@ def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
     st.markdown(ExpertTerminalTexts.SEC_1_GRAHAM_BASE)
     c1, c2 = st.columns(2)
     eps = c1.number_input(ExpertTerminalTexts.INP_EPS_NORM, value=None, format="%.2f")
-    g_lt = c2.number_input(ExpertTerminalTexts.INP_GROWTH_G_SIMPLE, 0.0, 0.20, value=None, format="%.3f")
+    g_lt = c2.number_input(ExpertTerminalTexts.INP_GROWTH_LT, 0.0, 0.20, value=None, format="%.3f")
     st.divider()
 
     st.markdown(ExpertTerminalTexts.SEC_2_GRAHAM)
@@ -515,7 +519,7 @@ def render_expert_graham(ticker: str) -> Optional[ValuationRequest]:
     manual_peers = atom_peer_selection()
     scenarios = atom_scenario_configuration(ValuationMode.GRAHAM)
 
-    if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", use_container_width=True):
+    if st.button(ExpertTerminalTexts.BTN_VALUATE_GRAHAM.format(ticker=ticker), type="primary", width='stretch'):
         all_data = {"manual_fcf_base": eps, "fcf_growth_rate": g_lt, "corporate_aaa_yield": yield_aaa, "tax_rate": tau, "projection_years": 1, "enable_monte_carlo": False}
         params = safe_factory_params(all_data)
         params.scenarios = scenarios

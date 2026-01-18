@@ -52,7 +52,7 @@ class ScenarioAnalysisTab(ResultTabBase):
                 })
             
             df = pd.DataFrame(scenario_data)
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width='stretch')
         
         # Valeur pondérée
         if hasattr(result, 'weighted_intrinsic_value') and result.weighted_intrinsic_value:

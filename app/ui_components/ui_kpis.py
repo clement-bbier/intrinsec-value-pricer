@@ -30,6 +30,7 @@ from core.models import (
 )
 from app.ui_components.ui_glass_box_registry import get_step_metadata
 from core.i18n import KPITexts, AuditTexts, ExpertTerminalTexts, SOTPTexts, BacktestTexts
+# Force reload of KPITexts to ensure SUB_SCENARIO_WEIGHTS is available
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +252,7 @@ def _render_relative_valuation_tab(rel_result: MultiplesValuationResult) -> None
                 "EV/EBITDA": f"{p.ev_ebitda:.1f}x" if p.ev_ebitda else "—",
                 "EV/Rev": f"{p.ev_revenue:.1f}x" if p.ev_revenue else "—"
             })
-        st.dataframe(pd.DataFrame(peer_list), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(peer_list), hide_index=True, width='stretch')
 
     with st.expander(KPITexts.TAB_CALC, expanded=False):
         for idx, step in enumerate(rel_result.calculation_trace, start=1):
@@ -281,7 +282,9 @@ def _render_sotp_tab(result: ValuationResult) -> None:
 def _render_scenarios_tab(synthesis: ScenarioSynthesis, currency: str) -> None:
     """Rendu détaillé des scénarios Bull/Base/Bear (Sprint 5)."""
     st.markdown(f"#### {KPITexts.TAB_SCENARIOS}")
-    st.caption(KPITexts.SUB_SCENARIO_WEIGHTS)
+    # Utilisation sécurisée de SUB_SCENARIO_WEIGHTS avec fallback
+    scenario_weights_text = getattr(KPITexts, 'SUB_SCENARIO_WEIGHTS', "Ponderation des scenarios selon leur probabilite")
+    st.caption(scenario_weights_text)
 
     rows = []
     labels_map = {"Bull": ExpertTerminalTexts.LABEL_SCENARIO_BULL,

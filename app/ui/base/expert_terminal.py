@@ -283,7 +283,7 @@ class ExpertTerminalBase(ABC):
 
         button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
 
-        if st.button(button_label, type="primary", use_container_width=True):
+        if st.button(button_label, type="primary", width='stretch'):
             logger.info(
                 "Valuation request submitted: ticker=%s, mode=%s",
                 self.ticker,

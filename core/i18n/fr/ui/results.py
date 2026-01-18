@@ -143,6 +143,7 @@ class KPITexts:
     LBL_SCENARIO_G = "Croissance (g)"
     LBL_SCENARIO_MARGIN = "Marge FCF"
     LBL_SCENARIO_VAL = "Valeur par Action"
+    SUB_SCENARIO_WEIGHTS = "Ponderation des scenarios selon leur probabilite"
 
     # Labels additionnels
     LABEL_NET_BORROWING = "Variation Dette Nette"
@@ -180,6 +181,7 @@ class AuditTexts:
     MC_DOWNSIDE = "Downside Risk (IV < Prix)"
     MC_MEDIAN = "Mediane (P50)"
     MC_TAIL_RISK = "Risque de Queue (P10)"
+    MC_AUDIT_STOCH = "Audit des Etapes Stochastiques"
     MC_NO_DATA = "Donnees non disponibles."
 
     # SOTP
@@ -203,6 +205,7 @@ class ChartTexts:
     SIM_SUMMARY_P50 = "Valeur centrale (P50)"
     SIM_SUMMARY_PRICE = "Prix de marche"
     SIM_SUMMARY_CI = "Intervalle de confiance (P10-P90)"
+    SIM_SUMMARY_PROB = "({prob}%)"
 
     # Sensibilite
     SENS_TITLE = "Sensibilite (WACC / Croissance)"

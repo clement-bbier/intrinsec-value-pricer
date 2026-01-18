@@ -52,7 +52,7 @@ class SOTPBreakdownTab(ResultTabBase):
                 })
             
             df = pd.DataFrame(segments_data)
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width='stretch')
         
         # Synthèse
         with st.container(border=True):

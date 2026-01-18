@@ -42,6 +42,12 @@ class MonteCarloSimulationConfig:
     min_valid_ratio: float = 0.80
     max_clamping_ratio: float = 0.10
 
+    # Paramètres de sécurité
+    growth_safety_margin: float = 0.015
+    sensitivity_simulations: int = 1000
+    max_iv_filter: float = 100_000.0
+    default_wacc_fallback: float = 0.08
+
     # Timeout
     timeout_seconds: int = 30
 
