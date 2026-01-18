@@ -175,7 +175,7 @@ def register_strategy(
 ) -> Callable[[Type["ValuationStrategy"]], Type["ValuationStrategy"]]:
     """
     Décorateur pour enregistrer automatiquement une stratégie.
-    
+
     Usage:
         @register_strategy(
             mode=ValuationMode.FCFF_STANDARD,
@@ -185,14 +185,21 @@ def register_strategy(
         )
         class StandardFCFFStrategy(ValuationStrategy):
             ...
-    
-    Args:
-        mode: Le mode de valorisation associé
-        auditor: Nom de la classe d'auditeur (str pour éviter les imports circulaires)
-        ui_renderer: Nom de la fonction de rendu Expert UI
-        display_name: Nom affiché dans l'interface
-    
-    Returns:
+
+    Parameters
+    ----------
+    mode : ValuationMode
+        Le mode de valorisation associé
+    auditor : str, default "DCFAuditor"
+        Nom de la classe d'auditeur (str pour éviter les imports circulaires)
+    ui_renderer : Optional[str], default None
+        Nom de la fonction de rendu Expert UI
+    display_name : Optional[str], default None
+        Nom affiché dans l'interface
+
+    Returns
+    -------
+    Callable[[Type["ValuationStrategy"]], Type["ValuationStrategy"]]
         Le décorateur qui enregistre la classe
     """
     def decorator(cls: Type["ValuationStrategy"]) -> Type["ValuationStrategy"]:
