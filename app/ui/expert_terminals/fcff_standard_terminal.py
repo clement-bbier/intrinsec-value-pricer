@@ -1,17 +1,27 @@
 """
 app/ui/expert_terminals/fcff_standard_terminal.py
 
-Terminal Expert — FCFF Two-Stage Standard
+TERMINAL EXPERT — FCFF TWO-STAGE STANDARD
 
-Cas d'usage : Entreprises matures avec FCF positif et stable.
+Rôle : Valorisation d'entreprises matures avec FCF stable
+Pattern : Template Method (hérite de ExpertTerminalBase)
+Style : Numpy docstrings
+
+Version : V1.0 — ST-2.1
+Risques financiers : Calculs de valorisation, sensibilité aux inputs
+
+Dépendances critiques :
+- streamlit >= 1.28.0
+- core.models.ValuationMode.FCFF_STANDARD
+- app.ui.base.ExpertTerminalBase
+
+Cas d'usage : Entreprises matures avec FCF positif et stable
 Flux : Free Cash Flow to Firm (avant service de la dette)
 Actualisation : WACC (Weighted Average Cost of Capital)
-Niveau : Enterprise Value -> Equity Value via Bridge
+Niveau : Enterprise Value → Equity Value via Bridge
 
 Formule principale :
     V0 = Σ(FCFt / (1+WACC)^t) + TVn / (1+WACC)^n
-
-Style : Numpy docstrings
 """
 
 from typing import Dict, Any

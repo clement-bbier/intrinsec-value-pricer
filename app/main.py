@@ -37,7 +37,7 @@ if str(_ROOT_PATH) not in sys.path:
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design, render_terminal_header
-from app.ui_components import ui_inputs_expert  # Import module pour accès dynamique
+# Module ui_inputs_expert supprimé - terminaux déplacés vers app/ui/expert_terminals/
 from app.workflow import run_workflow_and_display
 from core.models import (
     DCFParameters,
@@ -75,25 +75,10 @@ logger = logging.getLogger(__name__)
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
 
-def _get_expert_ui_renderer(mode: ValuationMode) -> Optional[Callable]:
-    """
-    Récupère dynamiquement le renderer UI depuis le registre centralisé.
-    
-    DT-008: Remplace le mapping manuel EXPERT_UI_REGISTRY par
-    une résolution dynamique basée sur ui_renderer_name.
-    """
-    renderer_name = StrategyRegistry.get_ui_renderer_name(mode)
-    if renderer_name and hasattr(ui_inputs_expert, renderer_name):
-        return getattr(ui_inputs_expert, renderer_name)
-    return None
+# Fonction supprimée - terminaux déplacés vers app/ui/expert_terminals/
 
 
-# Backward compatibility: construit le registre legacy si nécessaire
-EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
-    mode: _get_expert_ui_renderer(mode)
-    for mode in VALUATION_DISPLAY_NAMES.keys()
-    if _get_expert_ui_renderer(mode) is not None
-}
+# Registre legacy supprimé - terminaux déplacés vers app/ui/expert_terminals/
 
 # ==============================================================================
 # CONSTANTES UI (DT-011: Centralisées dans core/config)
@@ -324,20 +309,11 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
         return
 
     # Sprint 2: Utilisation de la factory pour les terminaux isolés
-    try:
-        from app.ui.expert_terminals.factory import create_expert_terminal
-        terminal = create_expert_terminal(mode, ticker)
-        request = terminal.render()
-        if request:
-            _set_active_request(request)
-    except Exception as e:
-        st.error(f"Erreur lors de la création du terminal expert: {e}")
-        # Fallback vers l'ancien système si nécessaire
-        render_func = EXPERT_UI_REGISTRY.get(mode)
-        if render_func:
-            request = render_func(ticker)
-            if request:
-                _set_active_request(request)
+    from app.ui.expert_terminals.factory import create_expert_terminal
+    terminal = create_expert_terminal(mode, ticker)
+    request = terminal.render()
+    if request:
+        _set_active_request(request)
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:

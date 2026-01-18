@@ -1,12 +1,29 @@
 """
 app/ui/result_tabs/orchestrator.py
-ORCHESTRATEUR — Gestion des onglets de résultats.
+
+ORCHESTRATEUR — GESTION CENTRALISÉE DES ONGLET DE RÉSULTATS
+
+Rôle : Coordination et rendu des onglets de résultats post-calcul
+Pattern : Mediator (GoF) + Factory Method
+Style : Numpy docstrings
+
+Version : V1.0 — ST-2.2
+Risques financiers : Coordination d'affichage, pas de calculs
+
+Dépendances critiques :
+- streamlit >= 1.28.0
+- core.models.ValuationResult
+- app.ui.base.ResultTabBase
 
 Responsabilités :
 1. Collecter tous les onglets (core + optional)
-2. Filtrer selon la visibilité
-3. Trier par ordre de priorité
-4. Rendre avec st.tabs()
+2. Filtrer selon la visibilité (conditions métier)
+3. Trier par ordre de priorité (ORDER attribute)
+4. Rendre avec st.tabs() et gestion d'erreurs
+
+Architecture :
+- Core tabs : Toujours visibles (executive, inputs, calculation, audit)
+- Optional tabs : Conditionnels (multiples, sotp, scenarios, backtest, mc)
 """
 
 from __future__ import annotations
@@ -19,6 +36,7 @@ from core.models import ValuationResult
 from app.ui.base import ResultTabBase
 
 # Import des onglets core
+from app.ui.result_tabs.core.executive_summary import ExecutiveSummaryTab
 from app.ui.result_tabs.core.inputs_summary import InputsSummaryTab
 from app.ui.result_tabs.core.calculation_proof import CalculationProofTab
 from app.ui.result_tabs.core.audit_report import AuditReportTab
@@ -33,22 +51,49 @@ from app.ui.result_tabs.optional.monte_carlo_distribution import MonteCarloDistr
 
 class ResultTabOrchestrator:
     """
-    Orchestre l'affichage des onglets de résultats.
-    
-    L'orchestrateur :
-    1. Instancie tous les onglets disponibles
-    2. Filtre ceux qui sont visibles
-    3. Les affiche dans l'ordre défini
-    
-    Usage
-    -----
+    Orchestrateur centralisé des onglets de résultats.
+
+    Implémente le pattern Mediator pour coordonner l'affichage des différents
+    onglets de résultats. Gère le cycle de vie complet : instanciation,
+    filtrage, tri et rendu avec gestion d'erreurs.
+
+    Attributes
+    ----------
+    _ALL_TABS : List[type]
+        Liste ordonnée des classes d'onglets (core + optional).
+    _tabs : List[ResultTabBase]
+        Instances des onglets après instanciation.
+
+    Class Attributes
+    ----------------
+    Core tabs (toujours visibles) :
+        - ExecutiveSummaryTab (résumé exécutif)
+        - InputsSummaryTab (récapitulatif inputs)
+        - CalculationProofTab (preuve de calcul)
+        - AuditReportTab (rapport d'audit)
+
+    Optional tabs (conditionnels) :
+        - PeerMultiplesTab (triangulation sectorielle)
+        - SOTPBreakdownTab (décomposition SOTP)
+        - ScenarioAnalysisTab (analyse scénarios)
+        - HistoricalBacktestTab (backtest historique)
+        - MonteCarloDistributionTab (distribution MC)
+
+    Examples
+    --------
     >>> orchestrator = ResultTabOrchestrator()
-    >>> orchestrator.render(result, provider=provider)
+    >>> orchestrator.render(result, provider=data_provider)
+
+    Notes
+    -----
+    L'ordre d'affichage est déterminé par l'attribut ORDER de chaque onglet.
+    Les erreurs dans un onglet n'affectent pas les autres onglets.
     """
     
     # Tous les onglets disponibles (dans l'ordre souhaité)
     _ALL_TABS: List[type] = [
         # Core (toujours visibles)
+        ExecutiveSummaryTab,
         InputsSummaryTab,
         CalculationProofTab,
         AuditReportTab,
