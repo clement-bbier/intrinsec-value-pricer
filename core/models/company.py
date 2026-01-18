@@ -7,6 +7,7 @@ from datetime import date
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+from core.config.constants import ModelDefaults
 
 
 class CompanyFinancials(BaseModel):
@@ -24,14 +25,14 @@ class CompanyFinancials(BaseModel):
     # Marche
     current_price: float
     shares_outstanding: float
-    beta: float = 1.0
+    beta: float = ModelDefaults.DEFAULT_BETA
 
     # Bilan
-    total_debt: float = 0.0
-    cash_and_equivalents: float = 0.0
-    minority_interests: float = 0.0
-    pension_provisions: float = 0.0
-    book_value: float = 0.0
+    total_debt: float = ModelDefaults.DEFAULT_TOTAL_DEBT
+    cash_and_equivalents: float = ModelDefaults.DEFAULT_CASH_EQUIVALENTS
+    minority_interests: float = ModelDefaults.DEFAULT_MINORITY_INTERESTS
+    pension_provisions: float = ModelDefaults.DEFAULT_PENSION_PROVISIONS
+    book_value: float = ModelDefaults.DEFAULT_BOOK_VALUE
     book_value_per_share: Optional[float] = None
 
     # Compte de resultat
@@ -39,7 +40,7 @@ class CompanyFinancials(BaseModel):
     ebitda_ttm: Optional[float] = None
     ebit_ttm: Optional[float] = None
     net_income_ttm: Optional[float] = None
-    interest_expense: float = 0.0
+    interest_expense: float = ModelDefaults.DEFAULT_INTEREST_EXPENSE
     eps_ttm: Optional[float] = None
 
     # Flux

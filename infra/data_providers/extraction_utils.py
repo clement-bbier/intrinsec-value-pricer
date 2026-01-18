@@ -20,6 +20,7 @@ from typing import Any, Callable, List, Optional, Tuple
 import pandas as pd
 
 from core.config import PeerDefaults
+from core.config.constants import DataExtractionDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ DEBT_REPAYMENT_KEYS: List[str] = ["Repayment Of Debt", "Long Term Debt Payments"
 def safe_api_call(
     func: Callable,
     context: str = "API",
-    max_retries: int = 3,
+    max_retries: int = DataExtractionDefaults.MAX_RETRY_ATTEMPTS,
     timeout_seconds: Optional[float] = None
 ) -> Any:
     """
@@ -107,7 +108,7 @@ def safe_api_call(
                     )
                     continue
         except Exception as e:
-            wait = 0.5 * (2 ** i)
+            wait = DataExtractionDefaults.RETRY_DELAY_BASE * (2 ** i)
             logger.warning(
                 f"[{context}] Retry attempt failed | attempt={i + 1}/{max_retries}, error={e}, wait={wait}s"
             )
@@ -127,7 +128,7 @@ def safe_api_call_simple(func: Callable, context: str = "API", max_retries: int 
         try:
             return func()
         except Exception as e:
-            wait = 0.5 * (2 ** i)
+            wait = DataExtractionDefaults.RETRY_DELAY_BASE * (2 ** i)
             logger.warning(f"[{context}] Retry attempt failed | attempt={i + 1}/{max_retries}, error={e}, wait={wait}s")
             time.sleep(wait)
 
@@ -193,7 +194,7 @@ def get_simple_annual_fcf(cashflow_df: pd.DataFrame) -> Optional[float]:
     return ocf + capex
 
 
-def calculate_historical_cagr(income_stmt: pd.DataFrame, metric: str = "Free Cash Flow", years: int = 3) -> Optional[float]:
+def calculate_historical_cagr(income_stmt: pd.DataFrame, metric: str = "Free Cash Flow", years: int = DataExtractionDefaults.HISTORICAL_CAGR_YEARS) -> Optional[float]:
     """
     Calcule le CAGR historique d'une métrique.
     """
@@ -229,6 +230,6 @@ def normalize_currency_and_price(info: dict) -> Tuple[str, float]:
 
     if currency == "GBp":
         currency = "GBP"
-        price /= 100.0
+        price /= DataExtractionDefaults.PRICE_FORMAT_MULTIPLIER
 
     return currency, float(price)

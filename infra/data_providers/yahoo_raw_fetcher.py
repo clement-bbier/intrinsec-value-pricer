@@ -16,6 +16,7 @@ import yfinance as yf
 from pydantic import BaseModel, ConfigDict, Field
 
 from infra.data_providers.extraction_utils import safe_api_call
+from core.config.constants import DataExtractionDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class YahooRawFetcher:
     Responsabilité unique : Acquisition multi-temporelle avec retry (SOLID).
     """
 
-    def __init__(self, max_retries: int = 2):
+    def __init__(self, max_retries: int = DataExtractionDefaults.YAHOO_RAW_MAX_RETRIES):
         self.max_retries = max_retries
 
     # =========================================================================

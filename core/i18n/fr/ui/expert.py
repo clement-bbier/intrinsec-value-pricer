@@ -198,6 +198,14 @@ class ExpertTerminalTexts:
     LBL_PEERS_SELECTED = "Peers selectionnes : {peers}"
 
     # ==========================================================================
+    # FORMULES MATHÉMATIQUES (LATEX)
+    # ==========================================================================
+    FORMULA_KE_EQUITY = r"k_e = R_f + \beta \times MRP"
+    FORMULA_WACC_FIRM = r"WACC = w_e [R_f + \beta(MRP)] + w_d [k_d(1-\tau)]"
+    FORMULA_GORDON_GROWTH = r"TV = \frac{FCF_{n+1}}{WACC - g_n}"
+    FORMULA_EXIT_MULTIPLE = r"TV = FCF_{n+1} \times Multiple_{exit}"
+
+    # ==========================================================================
     # NOTES ET CAPTIONS
     # ==========================================================================
     NOTE_GRAHAM = "Formule de Graham : approximation historique. A utiliser comme screening, pas comme valorisation definitive."

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from core.models.enums import SOTPMethod
 from core.models.glass_box import CalculationStep
+from core.config.constants import ModelDefaults
 
 
 class ScenarioVariant(BaseModel):
@@ -16,7 +17,7 @@ class ScenarioVariant(BaseModel):
     label: str
     growth_rate: Optional[float] = None
     target_fcf_margin: Optional[float] = None
-    probability: float = 0.333
+    probability: float = ModelDefaults.DEFAULT_PROBABILITY
 
 
 class ScenarioResult(BaseModel):
@@ -31,9 +32,9 @@ class ScenarioResult(BaseModel):
 class ScenarioSynthesis(BaseModel):
     """Conteneur final pour la restitution UI des scenarios."""
     variants: List[ScenarioResult] = Field(default_factory=list)
-    expected_value: float = 0.0
-    max_upside: float = 0.0
-    max_downside: float = 0.0
+    expected_value: float = ModelDefaults.DEFAULT_EXPECTED_VALUE
+    max_upside: float = ModelDefaults.DEFAULT_MAX_UPSIDE
+    max_downside: float = ModelDefaults.DEFAULT_MAX_DOWNSIDE
 
 
 class ScenarioParameters(BaseModel):
@@ -66,4 +67,4 @@ class SOTPParameters(BaseModel):
     """Configuration de la valorisation par somme des parties (SOTP)."""
     enabled: bool = False
     segments: List[BusinessUnit] = Field(default_factory=list)
-    conglomerate_discount: float = 0.0
+    conglomerate_discount: float = ModelDefaults.DEFAULT_CONGLOMERATE_DISCOUNT

@@ -35,6 +35,7 @@ from core.models import (
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
 from core.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG
+from core.config.constants import UIWidgetDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,9 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 def widget_projection_years(
-    default: int = 5,
-    min_years: int = 3,
-    max_years: int = 15,
+    default: int = UIWidgetDefaults.DEFAULT_PROJECTION_YEARS,
+    min_years: int = UIWidgetDefaults.MIN_PROJECTION_YEARS,
+    max_years: int = UIWidgetDefaults.MAX_PROJECTION_YEARS,
     key: Optional[str] = None
 ) -> int:
     """
@@ -80,8 +81,8 @@ def widget_projection_years(
 
 def widget_growth_rate(
     label: str = None,
-    min_val: float = -0.50,
-    max_val: float = 1.0,
+    min_val: float = UIWidgetDefaults.MIN_GROWTH_RATE,
+    max_val: float = UIWidgetDefaults.MAX_GROWTH_RATE,
     default: Optional[float] = None,
     key: Optional[str] = None
 ) -> Optional[float]:

@@ -23,6 +23,7 @@ from core.models import (
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
 from core.config.settings import SIMULATION_CONFIG
+from core.i18n import ExpertTerminalTexts
 
 
 # ==============================================================================
@@ -57,9 +58,9 @@ def atom_discount_rate_smart(mode: ValuationMode) -> Dict[str, Any]:
     st.markdown(ExpertTerminalTexts.SEC_3_CAPITAL)
 
     if mode.is_direct_equity:
-        st.latex(r"k_e = R_f + \beta \times MRP")
+        st.latex(ExpertTerminalTexts.FORMULA_KE_EQUITY)
     else:
-        st.latex(r"WACC = w_e [R_f + \beta(MRP)] + w_d [k_d(1-\tau)]")
+        st.latex(ExpertTerminalTexts.FORMULA_WACC_FIRM)
 
     manual_price = st.number_input(ExpertTerminalTexts.INP_PRICE_WEIGHTS, min_value=0.0, max_value=10000.0, value=None, format="%.2f")
 

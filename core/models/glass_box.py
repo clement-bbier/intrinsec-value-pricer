@@ -11,6 +11,7 @@ from typing import Any, List, Optional, Union
 from pydantic import BaseModel, Field
 
 from core.models.enums import AuditSeverity
+from core.config.constants import ModelDefaults
 
 
 class TraceHypothesis(BaseModel):
@@ -24,24 +25,24 @@ class TraceHypothesis(BaseModel):
 
 class CalculationStep(BaseModel):
     """Etape de calcul documentee (Glass Box)."""
-    step_id: int = 0
+    step_id: int = ModelDefaults.DEFAULT_STEP_ID
     step_key: str = ""
     label: str = ""
     theoretical_formula: str = ""
     hypotheses: List[TraceHypothesis] = Field(default_factory=list)
     numerical_substitution: str = ""
-    result: float = 0.0
+    result: float = ModelDefaults.DEFAULT_RESULT_VALUE
     unit: str = ""
     interpretation: str = ""
 
 
 class AuditStep(BaseModel):
     """Etape d'audit avec verdict."""
-    step_id: int = 0
+    step_id: int = ModelDefaults.DEFAULT_STEP_ID
     step_key: str = ""
     label: str = ""
     rule_formula: str = ""
-    indicator_value: Union[float, str] = 0.0
+    indicator_value: Union[float, str] = ModelDefaults.DEFAULT_INDICATOR_VALUE
     threshold_value: Union[float, str, None] = None
     severity: AuditSeverity = AuditSeverity.INFO
     verdict: bool = True

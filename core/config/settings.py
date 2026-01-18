@@ -24,10 +24,13 @@ from typing import Dict, Any
 class MonteCarloSimulationConfig:
     """Configuration complète des simulations Monte Carlo."""
 
-    # Paramètres de base
-    default_simulations: int = 5000
-    min_simulations: int = 1000
-    max_simulations: int = 20000
+    # Import depuis constants.py pour éviter la duplication
+    from core.config.constants import MonteCarloDefaults
+
+    # Paramètres de base (migration depuis constants.py)
+    default_simulations: int = MonteCarloDefaults.DEFAULT_SIMULATIONS
+    min_simulations: int = MonteCarloDefaults.MIN_SIMULATIONS
+    max_simulations: int = MonteCarloDefaults.MAX_SIMULATIONS
 
     # Paramètres de corrélation
     default_rho: float = -0.30

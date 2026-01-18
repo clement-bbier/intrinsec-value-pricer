@@ -14,6 +14,7 @@ from core.models.dcf_inputs import DCFParameters
 from core.models.glass_box import CalculationStep
 from core.models.audit import AuditReport, ValuationOutputContract
 from core.models.scenarios import ScenarioSynthesis, SOTPParameters
+from core.config.constants import ModelDefaults
 
 
 class ValuationRequest(BaseModel):
@@ -144,13 +145,13 @@ class PeerMetric(BaseModel):
 class MultiplesData(BaseModel):
     """Synthese sectorielle pour la triangulation."""
     peers: List[PeerMetric] = Field(default_factory=list)
-    median_pe: float = 0.0
-    median_ev_ebitda: float = 0.0
-    median_ev_ebit: float = 0.0
-    median_pb: float = 0.0
-    median_ev_rev: float = 0.0
-    implied_value_ev_ebitda: float = 0.0
-    implied_value_pe: float = 0.0
+    median_pe: float = ModelDefaults.DEFAULT_MEDIAN_PE
+    median_ev_ebitda: float = ModelDefaults.DEFAULT_MEDIAN_EV_EBITDA
+    median_ev_ebit: float = ModelDefaults.DEFAULT_MEDIAN_EV_EBIT
+    median_pb: float = ModelDefaults.DEFAULT_MEDIAN_PB
+    median_ev_rev: float = ModelDefaults.DEFAULT_MEDIAN_EV_REV
+    implied_value_ev_ebitda: float = ModelDefaults.DEFAULT_IMPLIED_VALUE_EV_EBITDA
+    implied_value_pe: float = ModelDefaults.DEFAULT_IMPLIED_VALUE_PE
     source: str = "Yahoo Finance"
 
     @property
@@ -161,9 +162,9 @@ class MultiplesData(BaseModel):
 
 class MultiplesValuationResult(ValuationResult):
     """Resultat de valorisation par multiples."""
-    pe_based_price: float = 0.0
-    ebitda_based_price: float = 0.0
-    rev_based_price: float = 0.0
+    pe_based_price: float = ModelDefaults.DEFAULT_PE_BASED_PRICE
+    ebitda_based_price: float = ModelDefaults.DEFAULT_EBITDA_BASED_PRICE
+    rev_based_price: float = ModelDefaults.DEFAULT_REV_BASED_PRICE
     multiples_data: MultiplesData
 
     def build_output_contract(self) -> ValuationOutputContract:

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from core.i18n import CalculationErrors, StrategySources
 from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters
+from core.config.constants import ValuationEngineDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +22,8 @@ logger = logging.getLogger(__name__)
 # TABLES DE RÉFÉRENCE (DAMODARAN SYNTHETIC RATINGS)
 # ==============================================================================
 
-SPREADS_LARGE_CAP = [
-    (8.5, 0.0045), (6.5, 0.0060), (5.5, 0.0077), (4.25, 0.0085),
-    (3.0, 0.0095), (2.5, 0.0120), (2.25, 0.0155), (2.0, 0.0183),
-    (1.75, 0.0261), (1.5, 0.0300), (1.25, 0.0442), (0.8, 0.0728),
-    (0.65, 0.1010), (0.2, 0.1550), (-999, 0.1900)
-]
-
-SPREADS_SMALL_MID_CAP = [
-    (12.5, 0.0045), (9.5, 0.0060), (7.5, 0.0077), (6.0, 0.0085),
-    (4.5, 0.0095), (4.0, 0.0120), (3.5, 0.0155), (3.0, 0.0183),
-    (2.5, 0.0261), (2.0, 0.0300), (1.5, 0.0442), (1.25, 0.0728),
-    (0.8, 0.1010), (0.5, 0.1550), (-999, 0.1900)
-]
+SPREADS_LARGE_CAP = ValuationEngineDefaults.SPREADS_LARGE_CAP
+SPREADS_SMALL_MID_CAP = ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
 
 @dataclass
 class WACCBreakdown:

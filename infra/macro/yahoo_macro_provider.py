@@ -61,7 +61,8 @@ class YahooMacroProvider:
         # Cache indexé par Ticker (et non par devise) pour éviter les collisions
         self._rf_cache: Dict[str, pd.Series] = {}
         # Spread par défaut AAA corporate (70 bps)
-        self.DEFAULT_AAA_SPREAD = 0.0070
+        from core.config.constants import MacroDefaults
+        self.DEFAULT_AAA_SPREAD = MacroDefaults.DEFAULT_AAA_SPREAD
 
     def _fetch_history_robust(self, ticker_obj: yf.Ticker) -> pd.DataFrame:
         """Récupère l'historique avec résilience sur les périodes (Fix yfinance)."""
@@ -126,8 +127,8 @@ class YahooMacroProvider:
             date: datetime,
             currency: str,
             country_name: Optional[str] = None,
-            base_mrp: float = 0.05,
-            base_g_inf: float = 0.02,
+            base_mrp: float = MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM,
+            base_g_inf: float = MacroDefaults.DEFAULT_INFLATION_RATE,
     ) -> Optional[MacroContext]:
         """
         Génère le contexte macro complet avec une hiérarchie de décision :
@@ -151,7 +152,7 @@ class YahooMacroProvider:
             source_label = StrategySources.MACRO_CURRENCY_FALLBACK.format(ticker=ticker)
 
         # 2. ACQUISITION DU TAUX (Rf)
-        rf_value = 0.04 if currency != "EUR" else 0.027 # Fallback système ultime
+        rf_value = MacroDefaults.FALLBACK_RISK_FREE_RATE_USD if currency != "EUR" else MacroDefaults.FALLBACK_RISK_FREE_RATE_EUR
         rf_series = self._load_risk_free_series(ticker)
 
         if rf_series is not None:

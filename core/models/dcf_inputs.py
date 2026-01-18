@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.models.enums import TerminalValueMethod
 from core.models.scenarios import ScenarioParameters, SOTPParameters
+from core.config.constants import ModelDefaults
 
 
 def _decimal_guard(v: Any) -> Optional[float]:
@@ -44,8 +45,8 @@ class CoreRateParameters(BaseModel):
 class GrowthParameters(BaseModel):
     """Parametres de croissance et projections."""
     fcf_growth_rate: Optional[float] = None
-    projection_years: int = 5
-    high_growth_years: int = 0
+    projection_years: int = ModelDefaults.DEFAULT_PROJECTION_YEARS
+    high_growth_years: int = ModelDefaults.DEFAULT_HIGH_GROWTH_YEARS
     terminal_method: TerminalValueMethod = TerminalValueMethod.GORDON_GROWTH
     perpetual_growth_rate: Optional[float] = None
     exit_multiple_value: Optional[float] = None

@@ -9,14 +9,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.models.enums import AuditPillar, InputSource
 from core.models.glass_box import AuditStep
+from core.config.constants import ModelDefaults
 
 
 class AuditPillarScore(BaseModel):
     """Score d'un pilier d'audit."""
     pillar: AuditPillar
-    score: float = 0.0
-    weight: float = 0.0
-    contribution: float = 0.0
+    score: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
+    weight: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
+    contribution: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
     diagnostics: List[str] = Field(default_factory=list)
     check_count: int = 0
 
