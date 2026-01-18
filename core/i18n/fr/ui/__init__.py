@@ -9,6 +9,7 @@ from core.i18n.fr.ui.common import (
     FeedbackMessages,
     LegalTexts,
     TooltipsTexts,
+    UIMessages,
 )
 
 from core.i18n.fr.ui.sidebar import SidebarTexts
@@ -32,6 +33,7 @@ __all__ = [
     "FeedbackMessages",
     "LegalTexts",
     "TooltipsTexts",
+    "UIMessages",
     "SidebarTexts",
     "ExpertTerminalTexts",
     "KPITexts",

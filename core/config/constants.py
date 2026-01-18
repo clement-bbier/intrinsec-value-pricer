@@ -323,6 +323,7 @@ class GrowthCalculationDefaults:
 
     # Margins
     DEFAULT_MARGIN: float = 0.0
+    DEFAULT_FCF_MARGIN_TARGET: float = 0.20  # Marge FCF cible par défaut
 
     # Years
     DEFAULT_HIGH_GROWTH_YEARS: int = 0
@@ -333,6 +334,33 @@ class GrowthCalculationDefaults:
     # Sustainable growth rate calculation
     MIN_RETENTION_RATE: float = 0.0
     MAX_RETENTION_RATE: float = 1.0
+
+
+# ==============================================================================
+# 11. CONSTANTES TECHNIQUES ET VALIDATION
+# ==============================================================================
+
+@dataclass(frozen=True)
+class TechnicalDefaults:
+    """Constantes techniques pour calculs et validations."""
+
+    # Tolérances numériques
+    NUMERICAL_TOLERANCE: float = 0.001  # Tolérance pour comparaisons flottantes
+    PROBABILITY_TOLERANCE: float = 0.001  # Tolérance pour validation des probabilités
+
+    # Seuils de validation
+    BACKTEST_ERROR_THRESHOLD: float = 0.20  # 20% seuil d'erreur acceptable
+    VALUATION_CONVERGENCE_THRESHOLD: float = 0.5  # 0.5 unité monétaire pour convergence
+
+    # Ratios d'audit
+    BORROWING_RATIO_MAX: float = 0.5  # Ratio emprunt/NI maximum
+    GROWTH_AUDIT_THRESHOLD: float = 0.20  # Seuil d'audit pour croissance
+
+    # Conversions
+    PERCENTAGE_MULTIPLIER: float = 100.0  # Pour conversions % ↔ décimales
+
+    # Yield AAA par défaut (Graham)
+    DEFAULT_AAA_YIELD: float = 0.044  # 4.4% yield AAA par défaut
 
 
 # ==============================================================================
@@ -447,4 +475,5 @@ __all__ = [
     "ModelDefaults",
     "UIWidgetDefaults",
     "GrowthCalculationDefaults",
+    "TechnicalDefaults",
 ]

@@ -17,7 +17,7 @@ from core.models import (
 )
 # Migration DT-001/002: Import depuis core.i18n au lieu de app.ui_components
 from core.i18n import AuditMessages, AuditCategories
-from core.config import AuditPenalties, AuditThresholds
+from core.config import AuditPenalties, AuditThresholds, TechnicalDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ class DCFAuditor(BaseAuditor):
         g_val = p.growth.fcf_growth_rate or 0.0
         score -= self.add_audit_step(
             key="AUDIT_MODEL_GLIM", value=f"{g_val:.2%}", threshold="< 20%",
-            severity=AuditSeverity.WARNING, condition=(g_val <= 0.20), penalty=self.PENALTY_HIGH
+            severity=AuditSeverity.WARNING, condition=(g_val <= TechnicalDefaults.GROWTH_AUDIT_THRESHOLD), penalty=self.PENALTY_HIGH
         )
         pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=4)
 
@@ -236,10 +236,10 @@ class FCFEAuditor(BaseAuditor):
             penalty = self.PENALTY_CRITICAL if borrowing_risk > 0 else 0.0
         else:
             borrowing_ratio = net_borrowing / ni
-            penalty = self.PENALTY_HIGH if borrowing_ratio > 0.5 else 0.0
+            penalty = self.PENALTY_HIGH if borrowing_ratio > TechnicalDefaults.BORROWING_RATIO_MAX else 0.0
         score -= self.add_audit_step(
-            key="AUDIT_FCFE_BORROWING", value=round(borrowing_ratio, 2), threshold="< 0.5x NI",
-            severity=AuditSeverity.WARNING, condition=(borrowing_ratio < 0.5), penalty=self.PENALTY_HIGH
+            key="AUDIT_FCFE_BORROWING", value=round(borrowing_ratio, 2), threshold=f"< {TechnicalDefaults.BORROWING_RATIO_MAX}x NI",
+            severity=AuditSeverity.WARNING, condition=(borrowing_ratio < TechnicalDefaults.BORROWING_RATIO_MAX), penalty=self.PENALTY_HIGH
         )
         pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=1)
 

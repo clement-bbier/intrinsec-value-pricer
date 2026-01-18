@@ -13,7 +13,7 @@ from typing import Any, List
 import streamlit as st
 
 from core.models import ValuationResult, CalculationStep
-from core.i18n import KPITexts
+from core.i18n import KPITexts, UIMessages
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.step_renderer import render_calculation_step
 
@@ -34,7 +34,7 @@ class CalculationProofTab(ResultTabBase):
         core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
         
         if not core_steps:
-            st.info("Aucune étape de calcul disponible.")
+            st.info(UIMessages.NO_CALCULATION_STEPS)
             return
         
         st.markdown(f"**{KPITexts.TAB_CALC}**")

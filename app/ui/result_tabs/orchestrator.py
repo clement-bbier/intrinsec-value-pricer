@@ -34,6 +34,7 @@ import streamlit as st
 
 from core.models import ValuationResult
 from app.ui.base import ResultTabBase
+from core.i18n import UIMessages
 
 # Import des onglets core
 from app.ui.result_tabs.core.executive_summary import ExecutiveSummaryTab
@@ -124,7 +125,7 @@ class ResultTabOrchestrator:
         visible_tabs = [tab for tab in self._tabs if tab.is_visible(result)]
         
         if not visible_tabs:
-            st.warning("Aucun onglet à afficher.")
+            st.warning(UIMessages.NO_TABS_TO_DISPLAY)
             return
         
         # Trier par ordre de priorité

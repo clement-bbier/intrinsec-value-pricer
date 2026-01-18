@@ -80,3 +80,14 @@ class LegalTexts:
 class TooltipsTexts:
     """Infobulles et aides contextuelles pour le mode Expert."""
     pass
+
+
+class UIMessages:
+    """Messages d'information et d'erreur de l'interface utilisateur."""
+
+    # Messages d'information
+    NO_VALID_PERIOD_DATA = "Aucune donnée de période valide trouvée."
+    CHART_UNAVAILABLE = "Graphique non disponible (installer altair pour visualiser la distribution)."
+    NO_CALCULATION_STEPS = "Aucune étape de calcul disponible."
+    NO_DETAILED_TESTS = "Aucun test détaillé disponible."
+    NO_TABS_TO_DISPLAY = "Aucun onglet à afficher."

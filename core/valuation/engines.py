@@ -17,6 +17,7 @@ import traceback
 from typing import Dict, Type, Optional
 
 from core.i18n import DiagnosticTexts
+from core.config.constants import TechnicalDefaults
 from core.exceptions import (
     ValuationException,
     DiagnosticEvent,
@@ -223,8 +224,8 @@ def run_reverse_dcf(
             result = strategy.execute(financials, test_params)
             iv = result.intrinsic_value_per_share
 
-            # Seuil de convergence (0.5 unité monétaire)
-            if abs(iv - market_price) < 0.5:
+            # Seuil de convergence (TechnicalDefaults.VALUATION_CONVERGENCE_THRESHOLD unité monétaire)
+            if abs(iv - market_price) < TechnicalDefaults.VALUATION_CONVERGENCE_THRESHOLD:
                 return mid
 
             if iv < market_price:

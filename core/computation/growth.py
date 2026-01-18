@@ -14,6 +14,7 @@ from pydantic import BaseModel
 # Import depuis core.i18n
 from core.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
+from core.config.constants import GrowthCalculationDefaults
 
 if TYPE_CHECKING:
     from core.models import CompanyFinancials, DCFParameters
@@ -118,7 +119,7 @@ class MarginConvergenceProjector(FlowProjector):
             curr_margin = financials.fcf_last / rev_base
 
         # Marge cible (segment growth)
-        target_margin = g.target_fcf_margin if g.target_fcf_margin is not None else 0.20
+        target_margin = g.target_fcf_margin if g.target_fcf_margin is not None else GrowthCalculationDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         # Projection du Chiffre d'Affaires et des FCF (Convergence)
         projected_fcfs = []

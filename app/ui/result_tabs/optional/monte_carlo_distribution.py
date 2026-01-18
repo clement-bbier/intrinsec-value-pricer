@@ -13,6 +13,7 @@ import numpy as np
 from core.models import ValuationResult
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
+from core.i18n import UIMessages
 
 
 class MonteCarloDistributionTab(ResultTabBase):
@@ -110,7 +111,7 @@ class MonteCarloDistributionTab(ResultTabBase):
             st.altair_chart(chart, width='stretch')
 
         except ImportError:
-            st.info("Graphique non disponible (installer altair pour visualiser la distribution).")
+            st.info(UIMessages.CHART_UNAVAILABLE)
     
     def get_display_label(self) -> str:
         return self.LABEL

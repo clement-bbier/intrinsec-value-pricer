@@ -23,6 +23,7 @@ from core.models import (
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
 from core.config.settings import SIMULATION_CONFIG
+from core.config.constants import TechnicalDefaults
 from core.i18n import ExpertTerminalTexts
 
 
@@ -247,7 +248,7 @@ def atom_scenario_configuration(mode: ValuationMode) -> ScenarioParameters:
             g_bear = c2.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_GROWTH} (Bear)", value=None, format="%.3f", key="sc_g_bear")
             m_bear = c3.number_input(f"{ExpertTerminalTexts.INP_SCENARIO_MARGIN} (Bear)", value=None, format="%.2f", key="sc_m_bear") if mode == ValuationMode.FCFF_GROWTH else None
 
-        if abs((p_bull + p_base + p_bear) - 1.0) > 0.001:
+        if abs((p_bull + p_base + p_bear) - 1.0) > TechnicalDefaults.PROBABILITY_TOLERANCE:
             st.warning(ExpertTerminalTexts.HELP_SCENARIO_PROBA)
 
     return ScenarioParameters(

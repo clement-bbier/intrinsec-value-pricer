@@ -10,7 +10,7 @@ from typing import Any
 import streamlit as st
 
 from core.models import ValuationResult, AuditReport, AuditStep, AuditSeverity
-from core.i18n import AuditTexts
+from core.i18n import AuditTexts, UIMessages
 from app.ui.base import ResultTabBase
 
 
@@ -57,7 +57,7 @@ class AuditReportTab(ResultTabBase):
         st.markdown("**Detail des Tests**")
         
         if not report.audit_steps:
-            st.info("Aucun test détaillé disponible.")
+            st.info(UIMessages.NO_DETAILED_TESTS)
             return
         
         # Trier : échecs en premier

@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 from app.ui_components.ui_kpis import format_smart_number
 from core.i18n import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
 from core.models import ValuationResult, BacktestResult
+from core.config.constants import TechnicalDefaults
 
 
 # ============================================================================
@@ -215,7 +216,7 @@ def display_sensitivity_heatmap(
         for dg in growth_steps:
             r = base_rate + dr
             g = base_growth + dg
-            if r <= g + 0.001: continue
+            if r <= g + TechnicalDefaults.NUMERICAL_TOLERANCE: continue
             try:
                 val = calculator_func(r, g)
                 if val and val > 0:

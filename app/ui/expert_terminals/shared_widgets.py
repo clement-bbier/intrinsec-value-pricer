@@ -35,7 +35,7 @@ from core.models import (
 )
 from core.i18n import ExpertTerminalTexts, SOTPTexts
 from core.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG
-from core.config.constants import UIWidgetDefaults
+from core.config.constants import UIWidgetDefaults, TechnicalDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -688,7 +688,7 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
 
         # Validation des probabilités
         total_prob = p_bull + p_base + p_bear
-        if abs(total_prob - 1.0) > 0.001:
+        if abs(total_prob - 1.0) > TechnicalDefaults.PROBABILITY_TOLERANCE:
             st.warning(
                 f"Somme des probabilites = {total_prob:.0%}. "
                 "Doit etre egale a 100%."

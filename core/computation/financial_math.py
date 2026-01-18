@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from core.i18n import CalculationErrors, StrategySources
 from core.exceptions import CalculationError
 from core.models import CompanyFinancials, DCFParameters
-from core.config.constants import ValuationEngineDefaults
+from core.config.constants import ValuationEngineDefaults, TechnicalDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
     """Formule Révisée de Graham (1974)."""
-    y = aaa_yield if (aaa_yield and aaa_yield > 0) else 0.044
+    y = aaa_yield if (aaa_yield and aaa_yield > 0) else TechnicalDefaults.DEFAULT_AAA_YIELD
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
 def calculate_rim_vectors(current_bv: float, ke: float, earnings: List[float], payout: float) -> Tuple[List[float], List[float]]:

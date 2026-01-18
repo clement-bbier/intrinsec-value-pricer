@@ -28,6 +28,8 @@ import pandas as pd
 
 from core.models import ValuationResult
 from app.ui.base import ResultTabBase
+from core.config.constants import TechnicalDefaults
+from core.i18n import UIMessages
 
 
 class HistoricalBacktestTab(ResultTabBase):
@@ -140,14 +142,14 @@ class HistoricalBacktestTab(ResultTabBase):
                         "Valeur Prédite": f"{point.intrinsic_value:,.2f}",
                         "Prix Marché": f"{point.market_price:,.2f}",
                         "Erreur": f"{point.error_pct:+.1%}",
-                        "Verdict": "OK" if abs(point.error_pct) < 0.20 else "ÉCART",
+                        "Verdict": "OK" if abs(point.error_pct) < TechnicalDefaults.BACKTEST_ERROR_THRESHOLD else "ÉCART",
                     })
 
                 if periods_data:
                     df = pd.DataFrame(periods_data)
                     st.dataframe(df, hide_index=True, width='stretch')
                 else:
-                    st.info("Aucune donnée de période valide trouvée.")
+                    st.info(UIMessages.NO_VALID_PERIOD_DATA)
 
     def get_display_label(self) -> str:
         """
