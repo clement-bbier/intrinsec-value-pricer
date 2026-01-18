@@ -28,13 +28,13 @@ class PeerMultiplesTab(ResultTabBase):
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si des multiples sont disponibles."""
         return (
-            result.multiples_data is not None
-            and result.multiples_data.peer_count > 0
+            result.multiples_triangulation is not None
+            and result.multiples_triangulation.multiples_data.peer_count > 0
         )
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Affiche la valorisation par multiples."""
-        md = result.multiples_data
+        md = result.multiples_triangulation.multiples_data
 
         st.markdown("**VALORISATION PAR COMPARABLES**")
         st.caption(f"Panel de {md.peer_count} sociétés comparables")

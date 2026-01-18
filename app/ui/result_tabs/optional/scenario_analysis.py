@@ -1,8 +1,22 @@
 """
 app/ui/result_tabs/optional/scenario_analysis.py
-Onglet — Analyse de Scénarios (Bull/Base/Bear)
 
-Visible uniquement si les scénarios sont activés.
+ONGLET — ANALYSE DE SCÉNARIOS (BULL/BASE/BEAR)
+
+Rôle : Affichage des résultats de valorisation sous différents scénarios
+Pattern : ResultTabBase (Template Method)
+Style : Numpy docstrings
+
+Version : V2.0 — ST-2.2 (Correction interface scenario_synthesis)
+Risques financiers : Affichage de valorisations alternatives, pas de calculs
+
+Dépendances critiques :
+- streamlit >= 1.28.0
+- core.models.ValuationResult.scenario_synthesis
+- core.models.scenarios.ScenarioSynthesis
+
+Visible uniquement si scenario_synthesis contient des variants.
+Présente : tableau comparatif, valeurs pondérées, upside par scénario.
 """
 
 from typing import Any
@@ -16,7 +30,32 @@ from app.ui.result_tabs.components.kpi_cards import format_smart_number
 
 
 class ScenarioAnalysisTab(ResultTabBase):
-    """Onglet d'analyse de scénarios."""
+    """
+    Onglet d'analyse de scénarios déterministes.
+
+    Présente les résultats de valorisation sous différents scénarios
+    (Bull/Base/Bear) avec probabilités, valeurs intrinsèques et
+    calculs d'upside par rapport au prix de marché.
+
+    Attributes
+    ----------
+    TAB_ID : str
+        Identifiant unique "scenario_analysis".
+    LABEL : str
+        Label affiché "Scénarios".
+    ICON : str
+        Icône vide (style sobre).
+    ORDER : int
+        Position d'affichage (6ème onglet).
+    IS_CORE : bool
+        False - onglet optionnel (visible si scénarios présents).
+
+    Notes
+    -----
+    Utilise result.scenario_synthesis pour accéder aux données.
+    Calcule automatiquement l'upside par rapport au prix de marché.
+    Présente la valeur pondérée selon les probabilités des scénarios.
+    """
     
     TAB_ID = "scenario_analysis"
     LABEL = "Scénarios"
@@ -25,46 +64,87 @@ class ScenarioAnalysisTab(ResultTabBase):
     IS_CORE = False
     
     def is_visible(self, result: ValuationResult) -> bool:
-        """Visible si scénarios disponibles."""
+        """
+        Détermine si l'onglet doit être affiché.
+
+        Vérifie la présence de données de scénarios dans le résultat.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            Résultat de valorisation à analyser.
+
+        Returns
+        -------
+        bool
+            True si scenario_synthesis existe et contient des variants.
+        """
         return (
-            result.scenarios is not None
-            and len(result.scenarios) > 0
+            result.scenario_synthesis is not None
+            and len(result.scenario_synthesis.variants) > 0
         )
     
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche l'analyse de scénarios."""
-        scenarios = result.scenarios
+        """
+        Affiche l'analyse complète des scénarios déterministes.
+
+        Présente un tableau comparatif de tous les scénarios calculés
+        avec leurs caractéristiques et valeurs, plus la synthèse pondérée.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            Résultat contenant scenario_synthesis avec les variants.
+        **kwargs : Any
+            Paramètres additionnels (non utilisés).
+
+        Notes
+        -----
+        Calcule l'upside de chaque scénario par rapport au prix de marché.
+        Utilise expected_value pour la valorisation pondérée.
+        Gère les cas où market_price pourrait être nul.
+        """
+        scenario_synthesis = result.scenario_synthesis
         currency = result.financials.currency
-        
+
         st.markdown("**ANALYSE DE SCÉNARIOS**")
         st.caption("Valorisation sous différentes hypothèses de croissance")
-        
+
         # Tableau des scénarios
         with st.container(border=True):
             scenario_data = []
-            for name, scenario in scenarios.items():
+            for scenario in scenario_synthesis.variants:
+                # Calcul de l'upside par rapport au prix de marché
+                market_price = result.financials.current_price or 0.0
+                upside_pct = ((scenario.intrinsic_value - market_price) / market_price) if market_price > 0 else 0.0
+
                 scenario_data.append({
-                    "Scénario": name.upper(),
+                    "Scénario": scenario.label.upper(),
                     "Probabilité": f"{scenario.probability:.0%}",
-                    "Croissance": f"{scenario.growth_rate:.1%}",
+                    "Croissance": f"{scenario.growth_used:.1%}",
+                    "Marge FCF": f"{scenario.margin_used:.1%}" if scenario.margin_used and scenario.margin_used != 0 else "Base",
                     "Valeur/Action": format_smart_number(scenario.intrinsic_value, currency),
-                    "Upside": f"{scenario.upside_pct:+.1%}",
+                    "Upside": f"{upside_pct:+.1%}",
                 })
-            
+
             df = pd.DataFrame(scenario_data)
             st.dataframe(df, hide_index=True, width='stretch')
-        
+
         # Valeur pondérée
-        if hasattr(result, 'weighted_intrinsic_value') and result.weighted_intrinsic_value:
+        expected_value = scenario_synthesis.expected_value
+        if expected_value > 0:
+            market_price = result.financials.current_price or 0.0
+            weighted_upside = ((expected_value - market_price) / market_price) if market_price > 0 else 0.0
+
             with st.container(border=True):
                 col1, col2 = st.columns(2)
                 col1.metric(
                     "Valeur Pondérée",
-                    format_smart_number(result.weighted_intrinsic_value, currency)
+                    format_smart_number(expected_value, currency)
                 )
                 col2.metric(
                     "Upside Pondéré",
-                    f"{result.weighted_upside_pct:+.1%}" if hasattr(result, 'weighted_upside_pct') else "—"
+                    f"{weighted_upside:+.1%}"
                 )
     
     def get_display_label(self) -> str:

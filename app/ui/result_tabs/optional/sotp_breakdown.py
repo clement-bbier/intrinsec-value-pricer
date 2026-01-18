@@ -27,13 +27,13 @@ class SOTPBreakdownTab(ResultTabBase):
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible si SOTP disponible."""
         return (
-            result.sotp_result is not None
-            and len(result.sotp_result.segments) > 0
+            result.sotp_results is not None
+            and len(result.sotp_results.segments) > 0
         )
     
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Affiche la décomposition SOTP."""
-        sotp = result.sotp_result
+        sotp = result.sotp_results
         currency = result.financials.currency
         
         st.markdown("**VALORISATION PAR SEGMENTS**")
