@@ -15,7 +15,7 @@ class TestAutoModeWorkflow:
     
     def test_complete_auto_workflow_mocked(self, sample_financials, sample_params):
         """Workflow Auto complet avec données mockées."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import (
             ValuationRequest, ValuationMode, InputSource, 
             DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
@@ -41,7 +41,7 @@ class TestAutoModeWorkflow:
     
     def test_workflow_handles_different_modes(self, sample_financials, sample_params):
         """Le workflow gère tous les modes de valorisation."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Préparer données supplémentaires
@@ -73,7 +73,7 @@ class TestAutoModeOutputValidation:
     
     def test_output_has_all_required_fields(self, sample_financials, sample_params):
         """La sortie contient tous les champs requis pour l'affichage."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
@@ -97,7 +97,7 @@ class TestAutoModeOutputValidation:
     
     def test_output_values_are_reasonable(self, sample_financials, sample_params):
         """Les valeurs de sortie sont dans des plages raisonnables."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
@@ -141,9 +141,9 @@ class TestAutoModeErrorHandling:
     
     def test_extreme_parameters_handled(self, sample_financials, sample_params):
         """Paramètres extrêmes sont gérés sans crash."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
-        from core.exceptions import CalculationError, ValuationException
+        from src.exceptions import CalculationError, ValuationException
         
         # Paramètres extrêmes mais valides
         sample_params.growth.perpetual_growth_rate = 0.001  # Très faible

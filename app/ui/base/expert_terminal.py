@@ -36,7 +36,7 @@ from src.domain.models import (
     TerminalValueMethod,
     ScenarioParameters,
 )
-from core.i18n import ExpertTerminalTexts
+from src.i18n import ExpertTerminalTexts
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class ExpertTerminalBase(ABC):
         Dict[str, Any]
             Paramètres de taux collectés.
         """
-        from app.ui.expert_terminals.shared_widgets import widget_cost_of_capital
+        from app.ui.expert.terminals.shared_widgets import widget_cost_of_capital
         return widget_cost_of_capital(self.MODE)
 
     def _render_terminal_value(self) -> Dict[str, Any]:
@@ -218,7 +218,7 @@ class ExpertTerminalBase(ABC):
         Dict[str, Any]
             Paramètres de valeur terminale.
         """
-        from app.ui.expert_terminals.shared_widgets import widget_terminal_value_dcf
+        from app.ui.expert.terminals.shared_widgets import widget_terminal_value_dcf
         return widget_terminal_value_dcf(self.TERMINAL_VALUE_FORMULA)
 
     def _render_equity_bridge(self) -> Dict[str, Any]:
@@ -230,7 +230,7 @@ class ExpertTerminalBase(ABC):
         Dict[str, Any]
             Paramètres de bridge (dette, cash, actions, etc.)
         """
-        from app.ui.expert_terminals.shared_widgets import widget_equity_bridge
+        from app.ui.expert.terminals.shared_widgets import widget_equity_bridge
         return widget_equity_bridge(self.BRIDGE_FORMULA, self.MODE)
 
     def _render_optional_features(self) -> None:
@@ -240,7 +240,7 @@ class ExpertTerminalBase(ABC):
         Affiche les expanders pour Monte Carlo, Scénarios, Peers, SOTP.
         Met à jour les attributs internes (_scenarios, _manual_peers, etc.)
         """
-        from app.ui.expert_terminals.shared_widgets import (
+        from app.ui.expert.terminals.shared_widgets import (
             widget_monte_carlo,
             widget_scenarios,
             widget_peer_triangulation,
@@ -334,7 +334,7 @@ class ExpertTerminalBase(ABC):
         ValuationRequest
             Requête complète prête pour l'exécution.
         """
-        from app.ui.expert_terminals.shared_widgets import build_dcf_parameters
+        from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
 
         params = build_dcf_parameters(self._collected_data)
 

@@ -46,7 +46,7 @@ def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[Valuati
     Optional[ValuationRequest]
         La requete si le formulaire est soumis, None sinon.
     """
-    from app.ui.expert_terminals import create_expert_terminal
+    from app.ui.expert.terminals import create_expert_terminal
 
     terminal = create_expert_terminal(mode, ticker)
     return terminal.render()
@@ -66,7 +66,7 @@ def render_results(result: ValuationResult, **kwargs: Any) -> None:
     **kwargs
         Arguments supplementaires (provider, etc.).
     """
-    from app.ui.result_tabs import ResultTabOrchestrator
+    from app.ui.results import ResultTabOrchestrator
 
     orchestrator = ResultTabOrchestrator()
     orchestrator.render(result, **kwargs)
@@ -81,7 +81,7 @@ def get_available_modes():
     Dict[ValuationMode, str]
         Mapping mode -> nom d'affichage.
     """
-    from app.ui.expert_terminals import ExpertTerminalFactory
+    from app.ui.expert.terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_display_names()
 
 
@@ -94,7 +94,7 @@ def get_mode_descriptions():
     Dict[ValuationMode, str]
         Mapping mode -> description.
     """
-    from app.ui.expert_terminals import ExpertTerminalFactory
+    from app.ui.expert.terminals import ExpertTerminalFactory
     return ExpertTerminalFactory.get_mode_descriptions()
 
 
@@ -104,48 +104,48 @@ def get_mode_descriptions():
 # ==============================================================================
 
 def safe_factory_params(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.shared_widgets.build_dcf_parameters"""
-    from app.ui_components.ui_inputs_expert import safe_factory_params as _legacy
+    """Deprecated: Use app.ui.expert.terminals.shared_widgets.build_dcf_parameters"""
+    from app.ui.components.ui_inputs_expert import safe_factory_params as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_standard_fcff_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.fcff_standard_terminal"""
-    from app.ui_components.ui_inputs_expert import render_standard_fcff_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.fcff_standard_terminal"""
+    from app.ui.components.ui_inputs_expert import render_standard_fcff_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_fundamental_fcff_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.fcff_normalized_terminal"""
-    from app.ui_components.ui_inputs_expert import render_fundamental_fcff_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.fcff_normalized_terminal"""
+    from app.ui.components.ui_inputs_expert import render_fundamental_fcff_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_growth_fcff_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.fcff_growth_terminal"""
-    from app.ui_components.ui_inputs_expert import render_growth_fcff_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.fcff_growth_terminal"""
+    from app.ui.components.ui_inputs_expert import render_growth_fcff_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_fcfe_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.fcfe_terminal"""
-    from app.ui_components.ui_inputs_expert import render_fcfe_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.fcfe_terminal"""
+    from app.ui.components.ui_inputs_expert import render_fcfe_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_ddm_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.ddm_terminal"""
-    from app.ui_components.ui_inputs_expert import render_ddm_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.ddm_terminal"""
+    from app.ui.components.ui_inputs_expert import render_ddm_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_rim_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.rim_bank_terminal"""
-    from app.ui_components.ui_inputs_expert import render_rim_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.rim_bank_terminal"""
+    from app.ui.components.ui_inputs_expert import render_rim_inputs as _legacy
     return _legacy(*args, **kwargs)
 
 
 def render_graham_inputs(*args, **kwargs):
-    """Deprecated: Use app.ui.expert_terminals.graham_value_terminal"""
-    from app.ui_components.ui_inputs_expert import render_graham_inputs as _legacy
+    """Deprecated: Use app.ui.expert.terminals.graham_value_terminal"""
+    from app.ui.components.ui_inputs_expert import render_graham_inputs as _legacy
     return _legacy(*args, **kwargs)

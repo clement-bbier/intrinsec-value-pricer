@@ -15,9 +15,9 @@ from src.domain.models import (
     EquityDCFValuationResult, AuditLog, AuditPillar, AuditPillarScore,
     InputSource, DCFParameters, AuditStep, AuditSeverity
 )
-# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui_components
-from core.i18n import AuditMessages, AuditCategories
-from core.config import AuditPenalties, AuditThresholds, TechnicalDefaults
+# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui.components
+from src.i18n import AuditMessages, AuditCategories
+from src.config import AuditPenalties, AuditThresholds, TechnicalDefaults
 
 logger = logging.getLogger(__name__)
 

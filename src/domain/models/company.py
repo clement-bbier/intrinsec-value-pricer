@@ -3,11 +3,10 @@ core/models/company.py
 Donnees financieres de l'entreprise.
 """
 
-from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
-from core.config.constants import ModelDefaults
+from src.config.constants import ModelDefaults
 
 
 class CompanyFinancials(BaseModel):
@@ -97,20 +96,3 @@ class CompanyFinancials(BaseModel):
         return None
 
 
-class HistoricalPoint(BaseModel):
-    """Resultat de valorisation a un instant T passe (Backtest)."""
-    valuation_date: date
-    intrinsic_value: float
-    market_price: float
-    error_pct: float
-    was_undervalued: bool
-
-
-class BacktestResult(BaseModel):
-    """Synthese complete d'un backtesting."""
-    model_config = ConfigDict(protected_namespaces=())
-
-    points: List[HistoricalPoint] = Field(default_factory=list)
-    mean_absolute_error: float = 0.0
-    alpha_vs_market: float = 0.0
-    model_accuracy_score: float = 0.0

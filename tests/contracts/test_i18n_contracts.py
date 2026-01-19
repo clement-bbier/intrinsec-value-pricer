@@ -16,7 +16,7 @@ class TestCoreI18nContract:
     
     def test_core_i18n_exports_main_classes(self):
         """Vérifie que core.i18n exporte les classes principales."""
-        from core.i18n import (
+        from src.i18n import (
             CommonTexts,
             SidebarTexts,
             OnboardingTexts,
@@ -33,7 +33,7 @@ class TestCoreI18nContract:
     
     def test_core_i18n_exports_audit_classes(self):
         """Vérifie que core.i18n exporte les classes d'audit."""
-        from core.i18n import (
+        from src.i18n import (
             AuditEngineTexts,
             AuditCategories,
             AuditMessages,
@@ -51,7 +51,7 @@ class TestI18nStructureContract:
     
     def test_fr_module_exports_ui_classes(self):
         """Verifie que core.i18n.fr exporte les classes UI."""
-        from core.i18n.fr import (
+        from src.i18n.fr import (
             CommonTexts,
             SidebarTexts,
             ExpertTerminalTexts,
@@ -65,7 +65,7 @@ class TestI18nStructureContract:
     
     def test_fr_module_exports_backend_classes(self):
         """Verifie que core.i18n.fr exporte les classes backend."""
-        from core.i18n.fr import (
+        from src.i18n.fr import (
             WorkflowTexts,
             DiagnosticTexts,
             CalculationErrors,
@@ -81,7 +81,7 @@ class TestCommonTextsContract:
     
     def test_required_attributes(self):
         """Vérifie les attributs obligatoires de CommonTexts."""
-        from core.i18n import CommonTexts
+        from src.i18n import CommonTexts
         
         required = [
             "APP_TITLE",
@@ -98,7 +98,7 @@ class TestDiagnosticTextsContract:
     
     def test_required_messages(self):
         """Vérifie les messages de diagnostic obligatoires."""
-        from core.i18n import DiagnosticTexts
+        from src.i18n import DiagnosticTexts
         
         required = [
             "UNKNOWN_STRATEGY_MSG",
@@ -117,7 +117,7 @@ class TestSidebarTextsContract:
     
     def test_section_headers(self):
         """Vérifie les en-têtes de section obligatoires."""
-        from core.i18n import SidebarTexts
+        from src.i18n import SidebarTexts
         
         required = [
             "SEC_1_COMPANY",

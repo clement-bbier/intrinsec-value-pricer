@@ -20,10 +20,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import streamlit as st
 
 # Import de l'interface (DT-016)
-from core.interfaces import IResultRenderer, NullResultRenderer
-from core.i18n import WorkflowTexts, DiagnosticTexts
-from core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
-from core.exceptions import ValuationException
+from src.interfaces import IResultRenderer, NullResultRenderer
+from src.i18n import WorkflowTexts, DiagnosticTexts
+from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
+from src.exceptions import ValuationException
 from src.domain.models import (
     DCFParameters,
     InputSource,
@@ -34,7 +34,7 @@ from src.domain.models import (
     BacktestResult,
     HistoricalPoint
 )
-from core.valuation.engines import run_valuation
+from src.valuation.engines import run_valuation
 from infra.auditing.backtester import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider

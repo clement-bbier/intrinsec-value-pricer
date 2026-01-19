@@ -24,8 +24,8 @@ from .enums import (
     AuditPillar,
 )
 
-# Glass Box (from core.models.glass_box)
-from core.models.glass_box import (
+# Glass Box
+from .glass_box import (
     TraceHypothesis,
     CalculationStep,
     AuditStep,
@@ -44,8 +44,6 @@ from .scenarios import (
 # Donnees Entreprise
 from .company import (
     CompanyFinancials,
-    HistoricalPoint,
-    BacktestResult,
 )
 
 # Parametres DCF
@@ -76,6 +74,8 @@ from .request_response import (
     PeerMetric,
     MultiplesData,
     MultiplesValuationResult,
+    HistoricalPoint,
+    BacktestResult,
 )
 
 
@@ -100,8 +100,6 @@ __all__ = [
     "SOTPParameters",
     # Company
     "CompanyFinancials",
-    "HistoricalPoint",
-    "BacktestResult",
     # DCF Inputs
     "CoreRateParameters",
     "GrowthParameters",
@@ -123,4 +121,6 @@ __all__ = [
     "PeerMetric",
     "MultiplesData",
     "MultiplesValuationResult",
+    "HistoricalPoint",
+    "BacktestResult",
 ]

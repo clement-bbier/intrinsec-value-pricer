@@ -17,13 +17,13 @@ class TestRunValuationContract:
     
     def test_function_exists(self):
         """Vérifie que run_valuation est importable."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         
         assert callable(run_valuation)
     
     def test_signature_parameters(self):
         """Vérifie la signature de run_valuation."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         
         sig = signature(run_valuation)
         params = list(sig.parameters.keys())
@@ -35,7 +35,7 @@ class TestRunValuationContract:
     
     def test_return_type_is_valuation_result(self, sample_financials, sample_params):
         """Vérifie que run_valuation retourne un ValuationResult."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource, ValuationResult
         
         request = ValuationRequest(
@@ -57,14 +57,14 @@ class TestStrategyRegistryContract:
     
     def test_registry_exists(self):
         """Vérifie que STRATEGY_REGISTRY est accessible."""
-        from core.valuation.engines import STRATEGY_REGISTRY
+        from src.valuation.engines import STRATEGY_REGISTRY
         
         assert isinstance(STRATEGY_REGISTRY, dict)
         assert len(STRATEGY_REGISTRY) >= 7, "Moins de 7 stratégies enregistrées"
     
     def test_all_modes_have_strategies(self):
         """Vérifie que tous les modes ont une stratégie."""
-        from core.valuation.engines import STRATEGY_REGISTRY
+        from src.valuation.engines import STRATEGY_REGISTRY
         from src.domain.models import ValuationMode
         
         expected_modes = [
@@ -86,7 +86,7 @@ class TestCentralizedRegistryContract:
     
     def test_public_api_functions(self):
         """Vérifie que les fonctions publiques sont accessibles."""
-        from core.valuation.registry import (
+        from src.valuation.registry import (
             get_strategy,
             get_auditor,
             get_display_names,
@@ -101,7 +101,7 @@ class TestCentralizedRegistryContract:
     
     def test_get_display_names_returns_dict(self):
         """Vérifie que get_display_names retourne un dict."""
-        from core.valuation.registry import get_display_names
+        from src.valuation.registry import get_display_names
         from src.domain.models import ValuationMode
         
         names = get_display_names()
@@ -115,8 +115,8 @@ class TestCentralizedRegistryContract:
     
     def test_get_strategy_returns_class(self):
         """Vérifie que get_strategy retourne une classe."""
-        from core.valuation.registry import get_strategy
-        from core.valuation.strategies.abstract import ValuationStrategy
+        from src.valuation.registry import get_strategy
+        from src.valuation.strategies.abstract import ValuationStrategy
         from src.domain.models import ValuationMode
         
         strategy_cls = get_strategy(ValuationMode.FCFF_STANDARD)
@@ -126,7 +126,7 @@ class TestCentralizedRegistryContract:
     
     def test_get_auditor_returns_instance(self):
         """Vérifie que get_auditor retourne une instance."""
-        from core.valuation.registry import get_auditor
+        from src.valuation.registry import get_auditor
         from src.domain.models import ValuationMode
         
         auditor = get_auditor(ValuationMode.FCFF_STANDARD)

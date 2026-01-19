@@ -50,7 +50,7 @@ from src.domain.models import (
 )
 
 # IMPORT DU RÉFÉRENTIEL TEXTUEL
-from core.i18n import (
+from src.i18n import (
     CommonTexts,
     SidebarTexts,
     OnboardingTexts,
@@ -58,7 +58,7 @@ from core.i18n import (
 )
 
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)
-from core.valuation.registry import StrategyRegistry, get_display_names
+from src.valuation.registry import StrategyRegistry, get_display_names
 
 # ==============================================================================
 # CONFIGURATION & LOGGING
@@ -74,6 +74,17 @@ logger = logging.getLogger(__name__)
 # DT-008: Ces registres sont maintenant des facades vers le registre centralisé
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
+# Registre des terminaux expert (maintenu pour compatibilité)
+EXPERT_UI_REGISTRY = {
+    ValuationMode.FCFF_STANDARD: "render_expert_fcff_standard",
+    ValuationMode.FCFF_NORMALIZED: "render_expert_fcff_normalized",
+    ValuationMode.FCFF_GROWTH: "render_expert_fcff_growth",
+    ValuationMode.FCFE: "render_expert_fcfe",
+    ValuationMode.DDM: "render_expert_ddm",
+    ValuationMode.RIM: "render_expert_rim",
+    ValuationMode.GRAHAM: "render_expert_graham",
+}
+
 
 # Fonction supprimée - terminaux déplacés vers app/ui/expert_terminals/
 
@@ -84,7 +95,7 @@ VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 # CONSTANTES UI (DT-011: Centralisées dans core/config)
 # ==============================================================================
 
-from core.config import MonteCarloDefaults, SystemDefaults
+from src.config import MonteCarloDefaults, SystemDefaults
 
 _DEFAULT_TICKER = CommonTexts.DEFAULT_TICKER
 _DEFAULT_PROJECTION_YEARS = SystemDefaults.DEFAULT_PROJECTION_YEARS
@@ -309,7 +320,7 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
         return
 
     # Sprint 2: Utilisation de la factory pour les terminaux isolés
-    from app.ui.expert_terminals.factory import create_expert_terminal
+    from app.ui.expert.factory import create_expert_terminal
     terminal = create_expert_terminal(mode, ticker)
     request = terminal.render()
     if request:

@@ -15,11 +15,11 @@ import streamlit as st
 import yfinance as yf
 from pydantic import ValidationError
 
-from core.computation.financial_math import (
+from src.computation.financial_math import (
     calculate_synthetic_cost_of_debt,
     calculate_sustainable_growth
 )
-from core.exceptions import ExternalServiceError, TickerNotFoundError
+from src.exceptions import ExternalServiceError, TickerNotFoundError
 from src.domain.models import (
     CompanyFinancials,
     DCFParameters,
@@ -34,9 +34,9 @@ from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.extraction_utils import calculate_historical_cagr, safe_api_call
 from infra.macro.yahoo_macro_provider import MacroContext, YahooMacroProvider
 from infra.ref_data.country_matrix import get_country_context
-# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui_components
-from core.i18n import StrategySources, WorkflowTexts
-from core.config import PeerDefaults
+# Migration DT-001/002: Import depuis core.i18n au lieu de app.ui.components
+from src.i18n import StrategySources, WorkflowTexts
+from src.config import PeerDefaults
 
 logger = logging.getLogger(__name__)
 

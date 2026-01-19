@@ -19,8 +19,8 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import pandas as pd
 
-from core.config import PeerDefaults
-from core.config.constants import DataExtractionDefaults
+from src.config import PeerDefaults
+from src.config.constants import DataExtractionDefaults
 
 logger = logging.getLogger(__name__)
 

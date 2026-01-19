@@ -16,7 +16,7 @@ import yfinance as yf
 from pydantic import BaseModel, ConfigDict, Field
 
 from infra.data_providers.extraction_utils import safe_api_call
-from core.config.constants import DataExtractionDefaults
+from src.config.constants import DataExtractionDefaults
 
 logger = logging.getLogger(__name__)
 

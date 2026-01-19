@@ -43,7 +43,7 @@ class TestAuditEngineContract:
         from src.domain.models import (
             AuditReport, ValuationRequest, ValuationMode, InputSource
         )
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         # Créer un ValuationResult via une stratégie
         strategy = StandardFCFFStrategy(glass_box_enabled=False)

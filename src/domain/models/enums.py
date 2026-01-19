@@ -1,5 +1,5 @@
 """
-core/models/enums.py
+src/domain/models/enums.py
 Enumerations du domaine de valorisation.
 """
 

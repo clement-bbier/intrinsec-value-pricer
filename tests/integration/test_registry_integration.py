@@ -15,8 +15,8 @@ class TestRegistrySynchronization:
     
     def test_central_and_legacy_registries_match(self):
         """Le registre centralisé et le legacy sont synchronisés."""
-        from core.valuation.registry import get_all_strategies
-        from core.valuation.engines import STRATEGY_REGISTRY
+        from src.valuation.registry import get_all_strategies
+        from src.valuation.engines import STRATEGY_REGISTRY
         
         central_modes = set(get_all_strategies().keys())
         legacy_modes = set(STRATEGY_REGISTRY.keys())
@@ -25,7 +25,7 @@ class TestRegistrySynchronization:
     
     def test_display_names_match_modes(self):
         """Chaque mode a un display_name."""
-        from core.valuation.registry import get_display_names
+        from src.valuation.registry import get_display_names
         
         names = get_display_names()
         
@@ -39,7 +39,7 @@ class TestRegistrySynchronization:
     
     def test_auditors_match_modes(self):
         """Chaque mode enregistré a un auditeur."""
-        from core.valuation.registry import get_auditor, get_all_strategies
+        from src.valuation.registry import get_auditor, get_all_strategies
         
         for mode in get_all_strategies().keys():
             auditor = get_auditor(mode)
@@ -76,7 +76,7 @@ class TestAuditFactoryIntegration:
     def test_factory_uses_centralized_registry(self):
         """AuditorFactory utilise le registre centralisé."""
         from infra.auditing.audit_engine import AuditorFactory
-        from core.valuation.registry import get_auditor
+        from src.valuation.registry import get_auditor
         
         # Les deux méthodes doivent retourner le même type
         factory_auditor = AuditorFactory.get_auditor(ValuationMode.FCFF_STANDARD)

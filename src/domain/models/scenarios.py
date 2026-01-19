@@ -8,8 +8,8 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, model_validator
 
 from .enums import SOTPMethod
-from core.models.glass_box import CalculationStep
-from core.config.constants import ModelDefaults
+from .glass_box import CalculationStep
+from src.config.constants import ModelDefaults
 
 
 class ScenarioVariant(BaseModel):

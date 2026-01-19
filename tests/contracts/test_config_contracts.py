@@ -16,7 +16,7 @@ class TestMonteCarloDefaultsContract:
     
     def test_constants_exist(self):
         """Vérifie que les constantes Monte Carlo existent."""
-        from core.config import MonteCarloDefaults
+        from src.config import MonteCarloDefaults
         
         assert MonteCarloDefaults.MIN_SIMULATIONS == 100
         assert MonteCarloDefaults.MAX_SIMULATIONS == 20_000
@@ -25,7 +25,7 @@ class TestMonteCarloDefaultsContract:
     
     def test_default_rho_exists(self):
         """Vérifie que le rho par défaut existe."""
-        from core.config import MonteCarloDefaults
+        from src.config import MonteCarloDefaults
         
         assert MonteCarloDefaults.DEFAULT_RHO == -0.30
 
@@ -35,7 +35,7 @@ class TestPeerDefaultsContract:
     
     def test_max_peers_exists(self):
         """Vérifie que MAX_PEERS_ANALYSIS existe."""
-        from core.config import PeerDefaults
+        from src.config import PeerDefaults
         
         assert PeerDefaults.MAX_PEERS_ANALYSIS == 5
         assert PeerDefaults.MIN_PEERS_REQUIRED == 2
@@ -46,20 +46,20 @@ class TestAuditThresholdsContract:
     
     def test_icr_threshold_exists(self):
         """Vérifie que le seuil ICR existe."""
-        from core.config import AuditThresholds
+        from src.config import AuditThresholds
         
         assert AuditThresholds.ICR_MIN == 1.5
     
     def test_beta_thresholds_exist(self):
         """Vérifie que les seuils Beta existent."""
-        from core.config import AuditThresholds
+        from src.config import AuditThresholds
         
         assert AuditThresholds.BETA_MIN == 0.4
         assert AuditThresholds.BETA_MAX == 3.0
     
     def test_sotp_thresholds_exist(self):
         """Vérifie que les seuils SOTP existent."""
-        from core.config import AuditThresholds
+        from src.config import AuditThresholds
         
         assert AuditThresholds.SOTP_REVENUE_GAP_WARNING == 0.05
         assert AuditThresholds.SOTP_DISCOUNT_MAX == 0.25
@@ -70,7 +70,7 @@ class TestAuditPenaltiesContract:
     
     def test_penalties_exist(self):
         """Vérifie que les pénalités existent."""
-        from core.config import AuditPenalties
+        from src.config import AuditPenalties
         
         assert AuditPenalties.CRITICAL == 100.0
         assert AuditPenalties.HIGH == 35.0
@@ -83,21 +83,21 @@ class TestAuditWeightsContract:
     
     def test_auto_weights_sum_to_one(self):
         """Vérifie que les poids AUTO font 100%."""
-        from core.config import AuditWeights
+        from src.config import AuditWeights
         
         total = sum(AuditWeights.AUTO.values())
         assert abs(total - 1.0) < 0.001
     
     def test_manual_weights_sum_to_one(self):
         """Vérifie que les poids MANUAL font 100%."""
-        from core.config import AuditWeights
+        from src.config import AuditWeights
         
         total = sum(AuditWeights.MANUAL.values())
         assert abs(total - 1.0) < 0.001
     
     def test_get_weights_method(self):
         """Vérifie la méthode get_weights."""
-        from core.config import AuditWeights
+        from src.config import AuditWeights
         
         auto = AuditWeights.get_weights(is_manual=False)
         manual = AuditWeights.get_weights(is_manual=True)
@@ -111,7 +111,7 @@ class TestSystemDefaultsContract:
     
     def test_projection_years_exist(self):
         """Vérifie que les constantes d'horizon existent."""
-        from core.config import SystemDefaults
+        from src.config import SystemDefaults
         
         assert SystemDefaults.DEFAULT_PROJECTION_YEARS == 5
         assert SystemDefaults.MIN_PROJECTION_YEARS == 1
@@ -119,7 +119,7 @@ class TestSystemDefaultsContract:
     
     def test_default_rates_exist(self):
         """Vérifie que les taux par défaut existent."""
-        from core.config import SystemDefaults
+        from src.config import SystemDefaults
         
         assert SystemDefaults.DEFAULT_RISK_FREE_RATE == 0.04
         assert SystemDefaults.DEFAULT_MARKET_RISK_PREMIUM == 0.05

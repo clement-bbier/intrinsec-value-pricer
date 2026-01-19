@@ -18,8 +18,8 @@ Patterns :
 """
 
 # Exports principaux
-from app.ui.expert_terminals import create_expert_terminal, ExpertTerminalFactory
-from app.ui.result_tabs import ResultTabOrchestrator
+from app.ui.expert.factory import create_expert_terminal, ExpertTerminalFactory
+from app.ui.results import ResultTabOrchestrator
 
 __all__ = [
     "create_expert_terminal",

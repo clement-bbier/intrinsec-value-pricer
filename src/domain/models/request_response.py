@@ -4,29 +4,49 @@ Requetes et resultats de valorisation.
 """
 
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .enums import ValuationMode, InputSource
-from .company import CompanyFinancials, BacktestResult
+from .company import CompanyFinancials
 from .dcf_inputs import DCFParameters
-from core.models.glass_box import CalculationStep
+from .glass_box import CalculationStep
 from .audit import AuditReport, ValuationOutputContract
 from .scenarios import ScenarioSynthesis, SOTPParameters
-from core.config.constants import ModelDefaults
+from src.config.constants import ModelDefaults
 
 
 class ValuationRequest(BaseModel):
     """Requete de valorisation."""
     model_config = ConfigDict(frozen=True)
-    
+
     ticker: str
     projection_years: int
     mode: ValuationMode
     input_source: InputSource
     manual_params: Optional[DCFParameters] = None
     options: Dict[str, Any] = Field(default_factory=dict)
+
+
+class HistoricalPoint(BaseModel):
+    """Resultat de valorisation a un instant T passe (Backtest)."""
+    valuation_date: date
+    intrinsic_value: float
+    market_price: float
+    error_pct: float
+    was_undervalued: bool
+
+
+class BacktestResult(BaseModel):
+    """Synthese complete d'un backtesting."""
+    model_config = ConfigDict(protected_namespaces=())
+
+    points: List[HistoricalPoint] = Field(default_factory=list)
+    mean_absolute_error: float = 0.0
+    alpha_vs_market: float = 0.0
+    model_accuracy_score: float = 0.0
 
 
 class ValuationResult(BaseModel, ABC):

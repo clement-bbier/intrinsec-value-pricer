@@ -13,14 +13,14 @@ class TestValuationStrategyAbstract:
     
     def test_abstract_cannot_instantiate(self):
         """La classe abstraite ne peut pas être instanciée directement."""
-        from core.valuation.strategies.abstract import ValuationStrategy
+        from src.valuation.strategies.abstract import ValuationStrategy
         
         with pytest.raises(TypeError):
             ValuationStrategy()
     
     def test_has_required_methods(self):
         """Vérifie les méthodes requises."""
-        from core.valuation.strategies.abstract import ValuationStrategy
+        from src.valuation.strategies.abstract import ValuationStrategy
         
         assert hasattr(ValuationStrategy, "execute")
         assert hasattr(ValuationStrategy, "verify_output_contract")
@@ -31,7 +31,7 @@ class TestStandardFCFFStrategy:
     
     def test_execution_returns_valid_result(self, sample_financials, sample_params):
         """L'exécution retourne un DCFValuationResult valide."""
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         from src.domain.models import DCFValuationResult
         
         strategy = StandardFCFFStrategy(glass_box_enabled=False)
@@ -44,7 +44,7 @@ class TestStandardFCFFStrategy:
     
     def test_glass_box_mode_generates_trace(self, sample_financials, sample_params):
         """Mode Glass Box génère des étapes de calcul."""
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)
@@ -55,7 +55,7 @@ class TestStandardFCFFStrategy:
     
     def test_upside_calculation(self, sample_financials, sample_params):
         """L'upside est calculé correctement."""
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=False)
         result = strategy.execute(sample_financials, sample_params)
@@ -74,7 +74,7 @@ class TestFundamentalFCFFStrategy:
     
     def test_execution_with_smoothed_fcf(self, sample_financials, sample_params):
         """Utilise le FCF lissé si disponible."""
-        from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+        from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
         from src.domain.models import ValuationResult
         
         # S'assurer que fcf_fundamental_smoothed est défini
@@ -92,7 +92,7 @@ class TestGrahamStrategy:
     
     def test_requires_eps_and_book_value(self, sample_financials, sample_params):
         """Nécessite EPS et Book Value."""
-        from core.valuation.strategies.graham_value import GrahamNumberStrategy
+        from src.valuation.strategies.graham_value import GrahamNumberStrategy
         
         # Graham a besoin de EPS et Book Value
         sample_financials.eps_ttm = 5.0
@@ -106,7 +106,7 @@ class TestGrahamStrategy:
     
     def test_graham_formula_applied(self, sample_financials, sample_params):
         """Vérifie que la formule Graham est appliquée."""
-        from core.valuation.strategies.graham_value import GrahamNumberStrategy
+        from src.valuation.strategies.graham_value import GrahamNumberStrategy
         import math
         
         sample_financials.eps_ttm = 4.0
@@ -125,8 +125,8 @@ class TestMonteCarloStrategy:
     
     def test_wraps_underlying_strategy(self, sample_financials, sample_params):
         """Monte Carlo wrappe une stratégie sous-jacente."""
-        from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         from src.domain.models import ValuationResult
         
         sample_params.monte_carlo.enable_monte_carlo = True
@@ -144,8 +144,8 @@ class TestMonteCarloStrategy:
     
     def test_generates_distribution(self, sample_financials, sample_params):
         """Monte Carlo génère une distribution de résultats."""
-        from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         sample_params.monte_carlo.enable_monte_carlo = True
         sample_params.monte_carlo.num_simulations = 100
@@ -167,7 +167,7 @@ class TestStrategyOutputContract:
     
     def test_all_strategies_return_required_fields(self, sample_financials, sample_params):
         """Toutes les stratégies retournent les champs requis."""
-        from core.valuation.registry import get_all_strategies
+        from src.valuation.registry import get_all_strategies
         from src.domain.models import ValuationResult
         
         # Note: sample_financials du conftest a déjà eps_ttm, book_value_per_share, etc.

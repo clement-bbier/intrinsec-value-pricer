@@ -13,7 +13,7 @@ class TestExpertModeWorkflow:
     
     def test_expert_can_override_parameters(self, sample_financials, sample_params):
         """L'expert peut surcharger les paramètres automatiques."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # L'expert définit ses propres paramètres
@@ -37,7 +37,7 @@ class TestExpertModeWorkflow:
     
     def test_expert_mode_uses_reduced_data_weight(self, sample_financials, sample_params):
         """Le mode Expert réduit le poids du pilier DATA_CONFIDENCE."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import (
             ValuationRequest, ValuationMode, InputSource, AuditPillar
         )
@@ -65,7 +65,7 @@ class TestExpertModeScenarios:
     
     def test_pessimistic_scenario(self, sample_financials, sample_params):
         """Scénario pessimiste avec croissance faible."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Paramètres pessimistes
@@ -86,7 +86,7 @@ class TestExpertModeScenarios:
     
     def test_optimistic_scenario(self, sample_financials, sample_params):
         """Scénario optimiste avec croissance élevée."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Paramètres optimistes
@@ -111,7 +111,7 @@ class TestExpertModeValidation:
     
     def test_manual_debt_override(self, sample_financials, sample_params):
         """L'expert peut surcharger la dette."""
-        from core.computation.financial_math import calculate_wacc
+        from src.computation.financial_math import calculate_wacc
         
         # Yahoo dit 20M de dette
         sample_financials.total_debt = 20_000_000
@@ -126,7 +126,7 @@ class TestExpertModeValidation:
     
     def test_expert_parameters_preserved(self, sample_financials, sample_params):
         """Les paramètres Expert sont préservés dans le résultat."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         custom_rate = 0.0375  # Taux personnalisé

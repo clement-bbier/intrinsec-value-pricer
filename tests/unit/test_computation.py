@@ -15,7 +15,7 @@ class TestGordonGrowthModel:
     
     def test_basic_terminal_value(self):
         """Test de base : TV = FCF * (1+g) / (WACC - g)."""
-        from core.computation.financial_math import calculate_terminal_value_gordon
+        from src.computation.financial_math import calculate_terminal_value_gordon
         
         fcf = 100
         wacc = 0.10
@@ -29,23 +29,23 @@ class TestGordonGrowthModel:
     
     def test_raises_when_wacc_equals_g(self):
         """Doit lever une erreur si WACC = g (division par zéro)."""
-        from core.computation.financial_math import calculate_terminal_value_gordon
-        from core.exceptions import CalculationError
+        from src.computation.financial_math import calculate_terminal_value_gordon
+        from src.exceptions import CalculationError
         
         with pytest.raises(CalculationError, match="Convergence impossible"):
             calculate_terminal_value_gordon(100, 0.05, 0.05)
     
     def test_raises_when_g_greater_than_wacc(self):
         """Doit lever une erreur si g > WACC (modèle diverge)."""
-        from core.computation.financial_math import calculate_terminal_value_gordon
-        from core.exceptions import CalculationError
+        from src.computation.financial_math import calculate_terminal_value_gordon
+        from src.exceptions import CalculationError
         
         with pytest.raises(CalculationError):
             calculate_terminal_value_gordon(100, 0.03, 0.05)
     
     def test_negative_fcf_returns_negative_tv(self):
         """Un FCF négatif donne une TV négative."""
-        from core.computation.financial_math import calculate_terminal_value_gordon
+        from src.computation.financial_math import calculate_terminal_value_gordon
         
         tv = calculate_terminal_value_gordon(-100, 0.10, 0.02)
         
@@ -57,7 +57,7 @@ class TestWACCCalculation:
     
     def test_basic_wacc(self, sample_financials, sample_params):
         """Test de base du calcul WACC."""
-        from core.computation.financial_math import calculate_wacc
+        from src.computation.financial_math import calculate_wacc
         
         ctx = calculate_wacc(sample_financials, sample_params)
         
@@ -67,7 +67,7 @@ class TestWACCCalculation:
     
     def test_weights_sum_to_one(self, sample_financials, sample_params):
         """Les poids Equity + Debt doivent faire 100%."""
-        from core.computation.financial_math import calculate_wacc
+        from src.computation.financial_math import calculate_wacc
         
         ctx = calculate_wacc(sample_financials, sample_params)
         
@@ -76,7 +76,7 @@ class TestWACCCalculation:
     
     def test_weights_in_valid_range(self, sample_financials, sample_params):
         """Chaque poids doit être entre 0 et 1."""
-        from core.computation.financial_math import calculate_wacc
+        from src.computation.financial_math import calculate_wacc
         
         ctx = calculate_wacc(sample_financials, sample_params)
         
@@ -85,7 +85,7 @@ class TestWACCCalculation:
     
     def test_zero_debt_gives_100_percent_equity(self, sample_financials, sample_params):
         """Sans dette, le poids Equity doit être 100%."""
-        from core.computation.financial_math import calculate_wacc
+        from src.computation.financial_math import calculate_wacc
         
         sample_financials.total_debt = 0
         sample_financials.interest_expense = 0
@@ -102,7 +102,7 @@ class TestCAPMCostOfEquity:
     def test_capm_formula(self):
         """Ke = Rf + Beta * MRP."""
         # La vraie fonction s'appelle calculate_cost_of_equity_capm
-        from core.computation.financial_math import calculate_cost_of_equity_capm
+        from src.computation.financial_math import calculate_cost_of_equity_capm
         
         rf = 0.04  # 4%
         beta = 1.2
@@ -116,7 +116,7 @@ class TestCAPMCostOfEquity:
     
     def test_zero_beta_gives_risk_free_rate(self):
         """Beta = 0 → Ke = Rf."""
-        from core.computation.financial_math import calculate_cost_of_equity_capm
+        from src.computation.financial_math import calculate_cost_of_equity_capm
         
         rf = 0.04
         ke = calculate_cost_of_equity_capm(rf, 0.0, 0.05)
@@ -125,7 +125,7 @@ class TestCAPMCostOfEquity:
     
     def test_beta_one_gives_market_return(self):
         """Beta = 1 → Ke = Rf + MRP."""
-        from core.computation.financial_math import calculate_cost_of_equity_capm
+        from src.computation.financial_math import calculate_cost_of_equity_capm
         
         rf = 0.04
         mrp = 0.05

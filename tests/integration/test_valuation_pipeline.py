@@ -14,7 +14,7 @@ class TestFullValuationPipeline:
     
     def test_fcff_standard_full_pipeline(self, sample_financials, sample_params):
         """Pipeline complet FCFF Standard."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import (
             ValuationRequest, ValuationMode, InputSource, ValuationResult
         )
@@ -37,7 +37,7 @@ class TestFullValuationPipeline:
     
     def test_all_modes_complete_pipeline(self, sample_financials, sample_params):
         """Tous les modes passent par le pipeline complet."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import (
             ValuationRequest, ValuationMode, InputSource
         )
@@ -75,7 +75,7 @@ class TestAuditAfterValuation:
     
     def test_audit_report_has_score(self, sample_financials, sample_params):
         """Le rapport d'audit contient un score global."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
@@ -92,7 +92,7 @@ class TestAuditAfterValuation:
     
     def test_audit_report_has_rating(self, sample_financials, sample_params):
         """Le rapport d'audit contient une notation."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
@@ -108,7 +108,7 @@ class TestAuditAfterValuation:
     
     def test_manual_mode_affects_audit_weights(self, sample_financials, sample_params):
         """Le mode MANUAL change les pondérations d'audit."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Mode AUTO
@@ -139,7 +139,7 @@ class TestGlassBoxIntegration:
     
     def test_glass_box_generates_calculation_trace(self, sample_financials, sample_params):
         """Le mode Glass Box génère des étapes de calcul."""
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)
@@ -150,7 +150,7 @@ class TestGlassBoxIntegration:
     
     def test_calculation_trace_has_labels(self, sample_financials, sample_params):
         """Chaque étape de calcul a un label."""
-        from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)
@@ -165,7 +165,7 @@ class TestMonteCarloIntegration:
     
     def test_monte_carlo_with_engine(self, sample_financials, sample_params):
         """Monte Carlo fonctionne via le moteur principal."""
-        from core.valuation.engines import run_valuation
+        from src.valuation.engines import run_valuation
         from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         sample_params.monte_carlo.enable_monte_carlo = True

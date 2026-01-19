@@ -17,13 +17,13 @@ from src.domain.models import (
     AuditPillar, AuditPillarScore, AuditScoreBreakdown, InputSource,
     AuditStep, AuditSeverity
 )
-from core.i18n import (
+from src.i18n import (
     AuditEngineTexts,
     AuditCategories,
     AuditMessages,
     AuditTexts
 )
-from core.config import AuditThresholds, AuditWeights
+from src.config import AuditThresholds, AuditWeights
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class AuditorFactory:
     @staticmethod
     def get_auditor(mode: ValuationMode):
         # Import depuis le registre centralisé (DT-009)
-        from core.valuation.registry import get_auditor
+        from src.valuation.registry import get_auditor
         return get_auditor(mode)
 
 class AuditEngine:

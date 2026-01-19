@@ -14,7 +14,7 @@ from typing import Optional
 import pandas as pd
 
 # DT-001/002: Import depuis core.i18n
-from core.i18n import DiagnosticTexts
+from src.i18n import DiagnosticTexts
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 
 logger = logging.getLogger(__name__)

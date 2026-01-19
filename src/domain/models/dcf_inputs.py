@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from .enums import TerminalValueMethod
 from .scenarios import ScenarioParameters, SOTPParameters
-from core.config.constants import ModelDefaults
+from src.config.constants import ModelDefaults
 
 
 def _decimal_guard(v: Any) -> Optional[float]:

@@ -14,7 +14,7 @@ Dépendances critiques :
 - streamlit >= 1.28.0
 - core.interfaces.IUIProgressHandler
 - core.interfaces.IResultRenderer
-- app.ui.result_tabs.orchestrator.ResultTabOrchestrator
+- app.ui.results.orchestrator.ResultTabOrchestrator
 
 Responsabilités :
 - StreamlitProgressHandler : Gestion de la progression (st.status)
@@ -29,8 +29,8 @@ from typing import Any, Optional
 
 import streamlit as st
 
-from core.interfaces import IUIProgressHandler, IResultRenderer
-import app.ui_components.ui_kpis as ui_kpis
+from src.interfaces import IUIProgressHandler, IResultRenderer
+import app.ui.components.ui_kpis as ui_kpis
 
 
 class StreamlitProgressHandler(IUIProgressHandler):
@@ -103,7 +103,7 @@ class StreamlitResultRenderer(IResultRenderer):
     
     def render_executive_summary(self, result: Any) -> None:
         """Utilise la nouvelle architecture ResultTabOrchestrator (Sprint 2 Phase 2)."""
-        from app.ui.result_tabs.orchestrator import ResultTabOrchestrator
+        from app.ui.results.orchestrator import ResultTabOrchestrator
         orchestrator = ResultTabOrchestrator()
         orchestrator.render(result)
 
