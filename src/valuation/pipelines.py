@@ -94,6 +94,17 @@ class DCFCalculationPipeline:
 
         self._add_step(rate_key, discount_rate, sub_rate, label=rate_label, theoretical_formula=formula_rate)
 
+        # Injection Glass Box : Ajustement du Bêta (Formule de Hamada)
+        if wacc_ctx and wacc_ctx.beta_adjusted:
+            self._add_step(
+                "BETA_HAMADA_ADJUSTMENT",
+                wacc_ctx.beta_used,
+                KPITexts.SUB_HAMADA.format(beta=wacc_ctx.beta_used),
+                label=StrategyInterpretations.HAMADA_ADJUSTMENT_L,
+                theoretical_formula=StrategyFormulas.HAMADA,
+                interpretation=StrategyInterpretations.HAMADA_ADJUSTMENT_D
+            )
+
         # 2. Phase de Projection (Sync: FCF_PROJ)
         proj_output = self.projector.project(base_value, financials, params)
         self._add_projection_step(proj_output)

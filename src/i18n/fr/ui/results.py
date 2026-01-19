@@ -123,6 +123,7 @@ class KPITexts:
     SUB_EQUITY_NPV = r"Equity Value = NPV(Equity Flows) = {val:,.2f}"
     SUB_PAYOUT = r"Payout Ratio = Div_TTM ({div:,.2f}) / EPS_TTM ({eps:,.2f}) = {total:.1%}"
     SUB_TV_PE = r"TV_n = NI_n ({ni:,.0f}) x P/E Target ({pe:.1f}x) = {total:,.2f}"
+    SUB_HAMADA = "Bêta ajusté : {beta:.2f} (Structure cible détectée)"
 
     # Monte Carlo
     LABEL_CORRELATION_BG = "Correlation (Beta, g)"

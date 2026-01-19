@@ -28,6 +28,7 @@ class StrategyFormulas:
     # === COÛT DU CAPITAL ===
     CAPM = r"K_e = R_f + \beta \times ERP"
     WACC = r"WACC = \frac{V_E}{V_E + V_D} \times K_e + \frac{V_D}{V_E + V_D} \times K_d \times (1 - T_c)"
+    HAMADA = r"\beta_L = \beta_U \times [1 + (1 - T) \times \frac{D}{E}]"
 
     # === VALEUR TERMINALE ===
     GORDON = r"TV_n = \frac{FCF_n \times (1 + g_\infty)}{WACC - g_\infty}"
@@ -115,6 +116,8 @@ class StrategyInterpretations:
     EV = "Valeur totale de l'outil de production actualisee."
     BRIDGE = "Ajustement de la structure financiere."
     IV = "Estimation de la valeur reelle d'une action pour {ticker}."
+    HAMADA_ADJUSTMENT_L = "Ajustement du Bêta (Formule de Hamada)"
+    HAMADA_ADJUSTMENT_D = "Le risque systématique (Bêta) a été recalculé pour refléter la structure de capital cible (D/E) choisie pour la valorisation."
 
     # RIM
     RIM_TV = "Estimation de la persistance des surprofits."
