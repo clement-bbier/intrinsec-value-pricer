@@ -14,7 +14,7 @@ class TestCompanyFinancials:
     
     def test_valid_instantiation(self):
         """Instanciation avec données valides."""
-        from core.models import CompanyFinancials
+        from src.domain.models import CompanyFinancials
         
         f = CompanyFinancials(
             ticker="AAPL",
@@ -30,7 +30,7 @@ class TestCompanyFinancials:
     
     def test_negative_price_accepted(self):
         """Prix négatif est accepté par le modèle (pas de validation stricte)."""
-        from core.models import CompanyFinancials
+        from src.domain.models import CompanyFinancials
         
         # Note: Le modèle actuel n'a pas de validation stricte sur current_price
         # Cette validation pourrait être ajoutée dans un sprint futur
@@ -46,7 +46,7 @@ class TestCompanyFinancials:
     
     def test_optional_fields_have_defaults(self):
         """Les champs optionnels ont des valeurs par défaut."""
-        from core.models import CompanyFinancials
+        from src.domain.models import CompanyFinancials
         
         f = CompanyFinancials(
             ticker="TEST",
@@ -65,7 +65,7 @@ class TestDCFParameters:
     
     def test_segmented_structure(self):
         """Structure segmentée avec rates, growth, monte_carlo."""
-        from core.models import (
+        from src.domain.models import (
             DCFParameters, CoreRateParameters, 
             GrowthParameters, MonteCarloConfig
         )
@@ -90,7 +90,7 @@ class TestDCFParameters:
     
     def test_model_copy_deep(self):
         """model_copy(deep=True) crée une copie indépendante."""
-        from core.models import (
+        from src.domain.models import (
             DCFParameters, CoreRateParameters, 
             GrowthParameters, MonteCarloConfig
         )
@@ -114,7 +114,7 @@ class TestValuationRequest:
     
     def test_valid_request(self):
         """Requête valide."""
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="MSFT",
@@ -128,7 +128,7 @@ class TestValuationRequest:
     
     def test_options_default_to_empty_dict(self):
         """Options par défaut = dict vide."""
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="TEST",
@@ -145,7 +145,7 @@ class TestValuationMode:
     
     def test_supports_monte_carlo_property(self):
         """Propriété supports_monte_carlo selon le mode."""
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         # Les modes DCF supportent généralement Monte Carlo
         assert ValuationMode.FCFF_STANDARD.supports_monte_carlo is True
@@ -155,7 +155,7 @@ class TestValuationMode:
     
     def test_mode_values_are_strings(self):
         """Les valeurs sont des chaînes descriptives."""
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         for mode in ValuationMode:
             assert isinstance(mode.value, str)
@@ -167,7 +167,7 @@ class TestInputSource:
     
     def test_input_sources_exist(self):
         """Les sources AUTO et MANUAL existent."""
-        from core.models import InputSource
+        from src.domain.models import InputSource
         
         assert InputSource.AUTO is not None
         assert InputSource.MANUAL is not None

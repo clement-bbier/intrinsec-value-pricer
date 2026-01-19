@@ -16,7 +16,7 @@ from typing import Dict, Any
 
 import streamlit as st
 
-from core.models import ValuationMode
+from src.domain.models import ValuationMode
 from core.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert_terminals.shared_widgets import widget_projection_years

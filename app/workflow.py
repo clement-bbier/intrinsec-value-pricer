@@ -24,7 +24,7 @@ from core.interfaces import IResultRenderer, NullResultRenderer
 from core.i18n import WorkflowTexts, DiagnosticTexts
 from core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
 from core.exceptions import ValuationException
-from core.models import (
+from src.domain.models import (
     DCFParameters,
     InputSource,
     ValuationRequest,

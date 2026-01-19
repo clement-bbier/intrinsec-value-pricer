@@ -16,7 +16,7 @@ class TestAutoModeWorkflow:
     def test_complete_auto_workflow_mocked(self, sample_financials, sample_params):
         """Workflow Auto complet avec données mockées."""
         from core.valuation.engines import run_valuation
-        from core.models import (
+        from src.domain.models import (
             ValuationRequest, ValuationMode, InputSource, 
             DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
         )
@@ -42,7 +42,7 @@ class TestAutoModeWorkflow:
     def test_workflow_handles_different_modes(self, sample_financials, sample_params):
         """Le workflow gère tous les modes de valorisation."""
         from core.valuation.engines import run_valuation
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Préparer données supplémentaires
         sample_financials.eps_ttm = 5.0
@@ -74,7 +74,7 @@ class TestAutoModeOutputValidation:
     def test_output_has_all_required_fields(self, sample_financials, sample_params):
         """La sortie contient tous les champs requis pour l'affichage."""
         from core.valuation.engines import run_valuation
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="TEST",
@@ -98,7 +98,7 @@ class TestAutoModeOutputValidation:
     def test_output_values_are_reasonable(self, sample_financials, sample_params):
         """Les valeurs de sortie sont dans des plages raisonnables."""
         from core.valuation.engines import run_valuation
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="TEST",
@@ -126,7 +126,7 @@ class TestAutoModeErrorHandling:
     
     def test_invalid_ticker_format_handled(self):
         """Format de ticker invalide est géré."""
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         # Un ticker vide devrait être accepté par le modèle
         # mais la validation métier devrait se faire ailleurs
@@ -142,7 +142,7 @@ class TestAutoModeErrorHandling:
     def test_extreme_parameters_handled(self, sample_financials, sample_params):
         """Paramètres extrêmes sont gérés sans crash."""
         from core.valuation.engines import run_valuation
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         from core.exceptions import CalculationError, ValuationException
         
         # Paramètres extrêmes mais valides

@@ -7,7 +7,7 @@ Migration depuis test_integration_registry.py (legacy).
 """
 
 import pytest
-from core.models import ValuationMode
+from src.domain.models import ValuationMode
 
 
 class TestRegistrySynchronization:

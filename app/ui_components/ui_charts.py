@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 
 from app.ui_components.ui_kpis import format_smart_number
 from core.i18n import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
-from core.models import ValuationResult, BacktestResult
+from src.domain.models import ValuationResult, BacktestResult
 from core.config.constants import TechnicalDefaults
 
 

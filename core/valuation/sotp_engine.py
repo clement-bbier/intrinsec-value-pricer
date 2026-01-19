@@ -7,7 +7,7 @@ Standards : SOLID, Glass Box, i18n Secured.
 """
 
 from typing import List, Tuple
-from core.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
+from src.domain.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
 # DT-001/002: Import depuis core.i18n
 from core.i18n import SOTPTexts, RegistryTexts, KPITexts
 

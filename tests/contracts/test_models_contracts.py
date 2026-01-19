@@ -17,7 +17,7 @@ class TestCompanyFinancialsContract:
     
     def test_required_fields_exist(self):
         """Vérifie que les champs obligatoires existent."""
-        from core.models import CompanyFinancials
+        from src.domain.models import CompanyFinancials
         
         # Ces champs DOIVENT exister et être obligatoires
         required_fields = [
@@ -35,7 +35,7 @@ class TestCompanyFinancialsContract:
     
     def test_minimal_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les champs minimaux."""
-        from core.models import CompanyFinancials
+        from src.domain.models import CompanyFinancials
         
         # Doit fonctionner avec les champs minimaux
         financials = CompanyFinancials(
@@ -54,7 +54,7 @@ class TestDCFParametersContract:
     
     def test_segmented_architecture(self):
         """Vérifie l'architecture segmentée V9.0+ (rates, growth, monte_carlo)."""
-        from core.models import DCFParameters
+        from src.domain.models import DCFParameters
         
         schema = DCFParameters.model_json_schema()
         properties = schema.get("properties", {})
@@ -66,7 +66,7 @@ class TestDCFParametersContract:
     
     def test_default_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les défauts."""
-        from core.models import DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
+        from src.domain.models import DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
         
         params = DCFParameters(
             rates=CoreRateParameters(),
@@ -84,7 +84,7 @@ class TestValuationResultContract:
     
     def test_core_output_fields(self):
         """Vérifie que les champs de sortie principaux existent."""
-        from core.models import DCFValuationResult
+        from src.domain.models import DCFValuationResult
         
         schema = DCFValuationResult.model_json_schema()
         properties = schema.get("properties", {})
@@ -106,7 +106,7 @@ class TestValuationRequestContract:
     
     def test_request_fields(self):
         """Vérifie les champs de requête."""
-        from core.models import ValuationRequest, ValuationMode, InputSource
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="AAPL",
@@ -125,7 +125,7 @@ class TestValuationModeContract:
     
     def test_all_modes_exist(self):
         """Vérifie que tous les modes de valorisation existent."""
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         # Ces modes DOIVENT exister
         expected_modes = [
@@ -145,7 +145,7 @@ class TestValuationModeContract:
     
     def test_monte_carlo_support_property(self):
         """Vérifie que la propriété supports_monte_carlo existe."""
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         # Cette propriété DOIT exister sur chaque mode
         for mode in ValuationMode:
@@ -157,7 +157,7 @@ class TestAuditReportContract:
     
     def test_audit_output_fields(self):
         """Vérifie les champs de sortie d'audit."""
-        from core.models import AuditReport
+        from src.domain.models import AuditReport
         
         schema = AuditReport.model_json_schema()
         properties = schema.get("properties", {})

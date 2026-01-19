@@ -17,7 +17,7 @@ from app.ui.result_tabs.components.kpi_cards import format_smart_number
 from core.config.constants import GrowthCalculationDefaults
 
 if TYPE_CHECKING:
-    from core.models import CompanyFinancials, DCFParameters
+    from src.domain.models import CompanyFinancials, DCFParameters
 
 logger = logging.getLogger(__name__)
 

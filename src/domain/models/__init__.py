@@ -15,7 +15,7 @@ Tous les modeles sont re-exportes ici pour la compatibilite.
 """
 
 # Enumerations
-from core.models.enums import (
+from .enums import (
     ValuationMode,
     InputSource,
     TerminalValueMethod,
@@ -24,7 +24,7 @@ from core.models.enums import (
     AuditPillar,
 )
 
-# Glass Box
+# Glass Box (from core.models.glass_box)
 from core.models.glass_box import (
     TraceHypothesis,
     CalculationStep,
@@ -32,7 +32,7 @@ from core.models.glass_box import (
 )
 
 # Scenarios et SOTP
-from core.models.scenarios import (
+from .scenarios import (
     ScenarioVariant,
     ScenarioResult,
     ScenarioSynthesis,
@@ -42,14 +42,14 @@ from core.models.scenarios import (
 )
 
 # Donnees Entreprise
-from core.models.company import (
+from .company import (
     CompanyFinancials,
     HistoricalPoint,
     BacktestResult,
 )
 
 # Parametres DCF
-from core.models.dcf_inputs import (
+from .dcf_inputs import (
     CoreRateParameters,
     GrowthParameters,
     MonteCarloConfig,
@@ -57,7 +57,7 @@ from core.models.dcf_inputs import (
 )
 
 # Audit
-from core.models.audit import (
+from .audit import (
     AuditPillarScore,
     AuditScoreBreakdown,
     AuditLog,
@@ -66,7 +66,7 @@ from core.models.audit import (
 )
 
 # Requetes et Resultats
-from core.models.request_response import (
+from .request_response import (
     ValuationRequest,
     ValuationResult,
     DCFValuationResult,

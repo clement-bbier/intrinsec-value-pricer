@@ -25,7 +25,7 @@ from core.exceptions import (
     DiagnosticDomain,
     CalculationError
 )
-from core.models import (
+from src.domain.models import (
     ValuationRequest,
     ValuationMode,
     CompanyFinancials,

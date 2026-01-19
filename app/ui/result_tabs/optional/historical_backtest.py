@@ -26,7 +26,7 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
-from core.models import ValuationResult
+from src.domain.models import ValuationResult
 from core.config.constants import TechnicalDefaults
 from core.i18n import UIMessages
 from app.ui.base import ResultTabBase

@@ -5,7 +5,7 @@ Rendu des étapes de calcul (Glass Box).
 
 import streamlit as st
 
-from core.models import CalculationStep
+from src.domain.models import CalculationStep
 from core.i18n import KPITexts
 from app.ui_components.ui_glass_box_registry import get_step_metadata
 

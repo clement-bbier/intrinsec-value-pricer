@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, GrahamValuationResult
+from src.domain.models import CompanyFinancials, DCFParameters, GrahamValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
 # Import depuis core.i18n

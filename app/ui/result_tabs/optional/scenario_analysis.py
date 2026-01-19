@@ -28,7 +28,7 @@ import numpy as np
 # Supprimer l'avertissement de dépréciation pandas
 pd.set_option('future.no_silent_downcasting', True)
 
-from core.models import ValuationResult
+from src.domain.models import ValuationResult
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
 

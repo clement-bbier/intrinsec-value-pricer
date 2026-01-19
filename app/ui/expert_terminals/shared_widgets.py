@@ -23,7 +23,7 @@ from typing import Dict, Any, List, Optional
 import streamlit as st
 import pandas as pd
 
-from core.models import (
+from src.domain.models import (
     DCFParameters,
     ValuationMode,
     TerminalValueMethod,

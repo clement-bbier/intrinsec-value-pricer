@@ -32,7 +32,7 @@ from typing import List, Any, Optional
 
 import streamlit as st
 
-from core.models import ValuationResult
+from src.domain.models import ValuationResult
 from app.ui.base import ResultTabBase
 from core.i18n import UIMessages
 

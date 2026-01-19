@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.models.enums import TerminalValueMethod
-from core.models.scenarios import ScenarioParameters, SOTPParameters
+from .enums import TerminalValueMethod
+from .scenarios import ScenarioParameters, SOTPParameters
 from core.config.constants import ModelDefaults
 
 

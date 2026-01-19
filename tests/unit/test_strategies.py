@@ -32,7 +32,7 @@ class TestStandardFCFFStrategy:
     def test_execution_returns_valid_result(self, sample_financials, sample_params):
         """L'exécution retourne un DCFValuationResult valide."""
         from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
-        from core.models import DCFValuationResult
+        from src.domain.models import DCFValuationResult
         
         strategy = StandardFCFFStrategy(glass_box_enabled=False)
         result = strategy.execute(sample_financials, sample_params)
@@ -75,7 +75,7 @@ class TestFundamentalFCFFStrategy:
     def test_execution_with_smoothed_fcf(self, sample_financials, sample_params):
         """Utilise le FCF lissé si disponible."""
         from core.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-        from core.models import ValuationResult
+        from src.domain.models import ValuationResult
         
         # S'assurer que fcf_fundamental_smoothed est défini
         sample_financials.fcf_fundamental_smoothed = 9_500_000
@@ -127,7 +127,7 @@ class TestMonteCarloStrategy:
         """Monte Carlo wrappe une stratégie sous-jacente."""
         from core.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
         from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
-        from core.models import ValuationResult
+        from src.domain.models import ValuationResult
         
         sample_params.monte_carlo.enable_monte_carlo = True
         sample_params.monte_carlo.num_simulations = 100  # Petit nombre pour le test
@@ -168,7 +168,7 @@ class TestStrategyOutputContract:
     def test_all_strategies_return_required_fields(self, sample_financials, sample_params):
         """Toutes les stratégies retournent les champs requis."""
         from core.valuation.registry import get_all_strategies
-        from core.models import ValuationResult
+        from src.domain.models import ValuationResult
         
         # Note: sample_financials du conftest a déjà eps_ttm, book_value_per_share, etc.
         # Le champ s'appelle dividend_share (pas dividend_per_share)

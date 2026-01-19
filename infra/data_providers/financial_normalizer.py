@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from pydantic import ValidationError
 
-from core.models import CompanyFinancials, PeerMetric, MultiplesData
+from src.domain.models import CompanyFinancials, PeerMetric, MultiplesData
 # DT-001/002: Import depuis core.i18n
 from core.i18n import DiagnosticTexts
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData

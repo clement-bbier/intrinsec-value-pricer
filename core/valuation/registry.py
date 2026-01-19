@@ -32,7 +32,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, Type, Optional, Callable, Any, TYPE_CHECKING
 
-from core.models import ValuationMode
+from src.domain.models import ValuationMode
 
 if TYPE_CHECKING:
     from core.valuation.strategies.abstract import ValuationStrategy

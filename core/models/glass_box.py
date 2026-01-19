@@ -10,7 +10,7 @@ from typing import Any, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from core.models.enums import AuditSeverity
+from src.domain.models.enums import AuditSeverity
 from core.config.constants import ModelDefaults
 
 

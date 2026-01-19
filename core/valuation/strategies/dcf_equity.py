@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, EquityDCFValuationResult, ValuationMode
+from src.domain.models import CompanyFinancials, DCFParameters, EquityDCFValuationResult, ValuationMode
 from core.valuation.strategies.abstract import ValuationStrategy
 from core.valuation.pipelines import DCFCalculationPipeline
 from core.computation.growth import SimpleFlowProjector

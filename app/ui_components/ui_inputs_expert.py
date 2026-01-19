@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any, List
 import streamlit as st
 import pandas as pd
 
-from core.models import (
+from src.domain.models import (
     DCFParameters,
     InputSource,
     ValuationMode,

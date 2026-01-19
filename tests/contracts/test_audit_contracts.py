@@ -40,7 +40,7 @@ class TestAuditEngineContract:
     def test_compute_audit_returns_audit_report(self, sample_financials, sample_params):
         """Vérifie que compute_audit retourne un AuditReport."""
         from infra.auditing.audit_engine import AuditEngine
-        from core.models import (
+        from src.domain.models import (
             AuditReport, ValuationRequest, ValuationMode, InputSource
         )
         from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
@@ -82,7 +82,7 @@ class TestAuditorFactoryContract:
         """Vérifie que les bons types d'auditeurs sont retournés."""
         from infra.auditing.audit_engine import AuditorFactory
         from infra.auditing.auditors import DCFAuditor, RIMAuditor, GrahamAuditor
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         # DCF modes → DCFAuditor
         for mode in [ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_NORMALIZED]:
@@ -103,7 +103,7 @@ class TestAuditSeverityContract:
     
     def test_severity_levels_exist(self):
         """Vérifie que les niveaux de sévérité existent."""
-        from core.models import AuditSeverity
+        from src.domain.models import AuditSeverity
         
         # Niveaux réels du modèle (pas de ERROR)
         expected = ["INFO", "WARNING", "CRITICAL"]
@@ -118,7 +118,7 @@ class TestAuditPillarContract:
     
     def test_pillars_exist(self):
         """Vérifie que les piliers d'audit existent."""
-        from core.models import AuditPillar
+        from src.domain.models import AuditPillar
         
         expected = [
             "DATA_CONFIDENCE",

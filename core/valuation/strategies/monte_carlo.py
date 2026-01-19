@@ -25,7 +25,7 @@ from core.exceptions import (
     ModelDivergenceError,
     MonteCarloInstabilityError,
 )
-from core.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
+from src.domain.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
 from core.valuation.strategies.abstract import ValuationStrategy
 
 # Import depuis core.i18n

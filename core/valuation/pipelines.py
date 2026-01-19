@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional, Dict, Any
 
-from core.models import (
+from src.domain.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
     ValuationResult, DCFValuationResult, EquityDCFValuationResult,
     TerminalValueMethod, TraceHypothesis, ValuationMode

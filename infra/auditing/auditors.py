@@ -10,7 +10,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Optional, Any
 
-from core.models import (
+from src.domain.models import (
     ValuationResult, DCFValuationResult, RIMValuationResult, GrahamValuationResult,
     EquityDCFValuationResult, AuditLog, AuditPillar, AuditPillarScore,
     InputSource, DCFParameters, AuditStep, AuditSeverity

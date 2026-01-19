@@ -10,7 +10,7 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
-from core.models import ValuationResult
+from src.domain.models import ValuationResult
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
 

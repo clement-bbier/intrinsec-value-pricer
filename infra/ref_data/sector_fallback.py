@@ -16,7 +16,7 @@ from typing import Dict, Optional, Any
 
 import yaml
 
-from core.models import MultiplesData
+from src.domain.models import MultiplesData
 
 logger = logging.getLogger(__name__)
 

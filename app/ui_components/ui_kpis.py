@@ -46,7 +46,7 @@ import pandas as pd
 import streamlit as st
 
 # Local
-from core.models import AuditStep, AuditSeverity, CalculationStep
+from src.domain.models import AuditStep, AuditSeverity, CalculationStep
 from app.ui_components.ui_glass_box_registry import get_step_metadata
 from core.i18n import KPITexts, AuditTexts
 

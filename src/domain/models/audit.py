@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.models.enums import AuditPillar, InputSource
+from .enums import AuditPillar, InputSource
 from core.models.glass_box import AuditStep
 from core.config.constants import ModelDefaults
 

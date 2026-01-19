@@ -39,7 +39,7 @@ if str(_ROOT_PATH) not in sys.path:
 from app.assets.style_system import inject_institutional_design, render_terminal_header
 # Module ui_inputs_expert supprimé - terminaux déplacés vers app/ui/expert_terminals/
 from app.workflow import run_workflow_and_display
-from core.models import (
+from src.domain.models import (
     DCFParameters,
     InputSource,
     ValuationMode,
@@ -325,7 +325,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
     options.setdefault("manual_peers", [])
 
     # Instanciation segmentée avec Scénarios désactivés par défaut (Sprint 5)
-    from core.models import ScenarioParameters  # Import local si nécessaire
+    from src.domain.models import ScenarioParameters  # Import local si nécessaire
 
     config_params = DCFParameters(
         rates=CoreRateParameters(),

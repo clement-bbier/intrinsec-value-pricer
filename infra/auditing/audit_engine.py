@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, Any, List, cast
 
-from core.models import (
+from src.domain.models import (
     ValuationResult, ValuationMode, AuditReport, AuditLog,
     AuditPillar, AuditPillarScore, AuditScoreBreakdown, InputSource,
     AuditStep, AuditSeverity

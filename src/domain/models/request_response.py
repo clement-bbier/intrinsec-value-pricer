@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.models.enums import ValuationMode, InputSource
-from core.models.company import CompanyFinancials, BacktestResult
-from core.models.dcf_inputs import DCFParameters
+from .enums import ValuationMode, InputSource
+from .company import CompanyFinancials, BacktestResult
+from .dcf_inputs import DCFParameters
 from core.models.glass_box import CalculationStep
-from core.models.audit import AuditReport, ValuationOutputContract
-from core.models.scenarios import ScenarioSynthesis, SOTPParameters
+from .audit import AuditReport, ValuationOutputContract
+from .scenarios import ScenarioSynthesis, SOTPParameters
 from core.config.constants import ModelDefaults
 
 

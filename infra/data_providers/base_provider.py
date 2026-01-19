@@ -12,7 +12,7 @@ from typing import Tuple
 
 import pandas as pd
 
-from core.models import CompanyFinancials, DCFParameters, MultiplesData
+from src.domain.models import CompanyFinancials, DCFParameters, MultiplesData
 
 
 class DataProvider(ABC):

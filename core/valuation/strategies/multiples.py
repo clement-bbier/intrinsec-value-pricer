@@ -7,7 +7,7 @@ Rôle : Application des médianes sectorielles aux fondamentaux de l'entreprise.
 from typing import Dict, Optional
 from core.valuation.strategies.abstract import ValuationStrategy
 from app.ui.result_tabs.components.kpi_cards import format_smart_number
-from core.models import (
+from src.domain.models import (
     CompanyFinancials, DCFParameters, MultiplesValuationResult,
     MultiplesData, TraceHypothesis
 )

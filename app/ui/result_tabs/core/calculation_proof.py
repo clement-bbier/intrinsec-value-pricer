@@ -12,7 +12,7 @@ from typing import Any, List
 
 import streamlit as st
 
-from core.models import ValuationResult, CalculationStep
+from src.domain.models import ValuationResult, CalculationStep
 from core.i18n import KPITexts, UIMessages
 from app.ui.base import ResultTabBase
 from app.ui.result_tabs.components.step_renderer import render_calculation_step

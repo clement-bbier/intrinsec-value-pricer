@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from core.models.enums import SOTPMethod
+from .enums import SOTPMethod
 from core.models.glass_box import CalculationStep
 from core.config.constants import ModelDefaults
 

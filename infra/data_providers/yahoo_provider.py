@@ -20,7 +20,7 @@ from core.computation.financial_math import (
     calculate_sustainable_growth
 )
 from core.exceptions import ExternalServiceError, TickerNotFoundError
-from core.models import (
+from src.domain.models import (
     CompanyFinancials,
     DCFParameters,
     CoreRateParameters,

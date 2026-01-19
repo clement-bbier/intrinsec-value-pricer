@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Optional, Any
 
-from core.models import ValuationMode, ValuationRequest, ValuationResult
+from src.domain.models import ValuationMode, ValuationRequest, ValuationResult
 
 
 def render_expert_terminal(mode: ValuationMode, ticker: str) -> Optional[ValuationRequest]:

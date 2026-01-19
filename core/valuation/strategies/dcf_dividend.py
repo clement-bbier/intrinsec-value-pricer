@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from core.exceptions import CalculationError
-from core.models import (
+from src.domain.models import (
     CompanyFinancials,
     DCFParameters,
     EquityDCFValuationResult,

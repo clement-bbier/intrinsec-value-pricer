@@ -28,7 +28,7 @@ from typing import Optional, Dict, Any, List
 
 import streamlit as st
 
-from core.models import (
+from src.domain.models import (
     DCFParameters,
     InputSource,
     ValuationMode,

@@ -18,7 +18,7 @@ from core.computation.financial_math import (
     calculate_rim_vectors,
 )
 from core.exceptions import CalculationError
-from core.models import CompanyFinancials, DCFParameters, RIMValuationResult
+from src.domain.models import CompanyFinancials, DCFParameters, RIMValuationResult
 from core.valuation.strategies.abstract import ValuationStrategy
 
 # Import depuis core.i18n

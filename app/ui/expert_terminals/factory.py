@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Dict, Type, List
 
-from core.models import ValuationMode
+from src.domain.models import ValuationMode
 from app.ui.base import ExpertTerminalBase
 
 # Import des terminaux concrets

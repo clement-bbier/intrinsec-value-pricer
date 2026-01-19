@@ -9,7 +9,7 @@ de valorisation pour générer le résultat avant de l'auditer.
 
 import pytest
 from infra.auditing.audit_engine import AuditEngine
-from core.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
+from src.domain.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
 from core.valuation.strategies.dcf_standard import StandardFCFFStrategy
 
 

@@ -36,7 +36,7 @@ class TestRunValuationContract:
     def test_return_type_is_valuation_result(self, sample_financials, sample_params):
         """Vérifie que run_valuation retourne un ValuationResult."""
         from core.valuation.engines import run_valuation
-        from core.models import ValuationRequest, ValuationMode, InputSource, ValuationResult
+        from src.domain.models import ValuationRequest, ValuationMode, InputSource, ValuationResult
         
         request = ValuationRequest(
             ticker="TEST",
@@ -65,7 +65,7 @@ class TestStrategyRegistryContract:
     def test_all_modes_have_strategies(self):
         """Vérifie que tous les modes ont une stratégie."""
         from core.valuation.engines import STRATEGY_REGISTRY
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         expected_modes = [
             ValuationMode.FCFF_STANDARD,
@@ -102,7 +102,7 @@ class TestCentralizedRegistryContract:
     def test_get_display_names_returns_dict(self):
         """Vérifie que get_display_names retourne un dict."""
         from core.valuation.registry import get_display_names
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         names = get_display_names()
         
@@ -117,7 +117,7 @@ class TestCentralizedRegistryContract:
         """Vérifie que get_strategy retourne une classe."""
         from core.valuation.registry import get_strategy
         from core.valuation.strategies.abstract import ValuationStrategy
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         strategy_cls = get_strategy(ValuationMode.FCFF_STANDARD)
         
@@ -127,7 +127,7 @@ class TestCentralizedRegistryContract:
     def test_get_auditor_returns_instance(self):
         """Vérifie que get_auditor retourne une instance."""
         from core.valuation.registry import get_auditor
-        from core.models import ValuationMode
+        from src.domain.models import ValuationMode
         
         auditor = get_auditor(ValuationMode.FCFF_STANDARD)
         
