@@ -6,7 +6,7 @@ Textes communs et generiques de l'interface.
 
 class CommonTexts:
     """Textes transverses et metadonnees de base."""
-    APP_TITLE = "Intrinsic Value Analytics"
+    APP_TITLE = "Analyse de la valeur intrinsèque"
     PROJECT_BADGE = "Projet Personnel Public"
     AUTHOR_NAME = "Clement Barbier"
     DEVELOPED_BY = "Developed by"
@@ -70,10 +70,10 @@ class FeedbackMessages:
 
 class LegalTexts:
     """Textes juridiques, avertissements et notes de conformite."""
-    COMPLIANCE_TITLE = "Note de conformite"
+    COMPLIANCE_TITLE = "Note de conformité"
     COMPLIANCE_BODY = (
-        "Ces estimations constituent des simulations prospectives basees sur des modeles d'analyse intrinseque. "
-        "Ce travail a visee pedagogique ne constitue pas un conseil en investissement."
+        "Les valorisations produites par cette applications sont des projections basées sur des modèles de flux actualisés et de profits résiduels." 
+        "Elles constituent un cadre d'analyse fondamentale et ne doivent pas être interprétées comme des recommandations d'investissement."
     )
 
 
