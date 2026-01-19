@@ -72,7 +72,7 @@ class LegalTexts:
     """Textes juridiques, avertissements et notes de conformite."""
     COMPLIANCE_TITLE = "Note de conformité"
     COMPLIANCE_BODY = (
-        "Les valorisations produites par cette applications sont des projections basées sur des modèles de flux actualisés et de profits résiduels." 
+        "Les valorisations produites par cette application sont des projections basées sur des modèles de flux actualisés et de profits résiduels." 
         "Elles constituent un cadre d'analyse fondamentale et ne doivent pas être interprétées comme des recommandations d'investissement."
     )
 
