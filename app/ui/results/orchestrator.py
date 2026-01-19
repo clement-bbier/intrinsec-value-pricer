@@ -359,7 +359,7 @@ class ResultTabOrchestrator:
                     sector = getattr(financials, "sector", "N/A")
             
             # Bouton de téléchargement
-            if st.button("📄 Télécharger le Rapport Pitchbook (PDF)", type="secondary"):
+            if st.button("Télécharger le Rapport Pitchbook (PDF)", type="secondary"):
                 with st.spinner("Génération du Pitchbook en cours..."):
                     # Créer le DTO
                     pitchbook_data = PitchbookData.from_valuation_result(
@@ -373,15 +373,15 @@ class ResultTabOrchestrator:
                     
                     # Proposer le téléchargement
                     st.download_button(
-                        label="⬇️ Cliquez pour télécharger",
+                        label="Cliquez pour télécharger",
                         data=pdf_bytes,
                         file_name=f"pitchbook_{result.ticker}_{result.mode.value}.pdf",
                         mime="application/pdf",
                         key="pdf_download_btn"
                     )
-                    st.success("✅ Pitchbook généré avec succès !")
+                    st.success("Pitchbook généré avec succès !")
                     
         except ImportError:
-            st.info("📄 Export PDF indisponible (module manquant)")
+            st.info("Export PDF indisponible (module manquant)")
         except Exception as e:
             st.error(f"Erreur lors de la génération du PDF : {str(e)}")
