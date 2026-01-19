@@ -16,15 +16,18 @@ Usage :
 from core.config.constants import (
     # Monte Carlo
     MonteCarloDefaults,
-    
+
     # Peers / Multiples
     PeerDefaults,
-    
+
     # Audit
     AuditThresholds,
     AuditPenalties,
     AuditWeights,
-    
+
+    # Technical
+    TechnicalDefaults,
+
     # Général
     SystemDefaults,
 )
@@ -35,5 +38,6 @@ __all__ = [
     "AuditThresholds",
     "AuditPenalties",
     "AuditWeights",
+    "TechnicalDefaults",
     "SystemDefaults",
 ]

@@ -23,6 +23,7 @@ import yfinance as yf
 from infra.ref_data.country_matrix import get_country_context
 # DT-001/002: Import depuis core.i18n
 from core.i18n import StrategySources
+from core.config.constants import MacroDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,6 @@ class YahooMacroProvider:
         # Cache indexé par Ticker (et non par devise) pour éviter les collisions
         self._rf_cache: Dict[str, pd.Series] = {}
         # Spread par défaut AAA corporate (70 bps)
-        from core.config.constants import MacroDefaults
         self.DEFAULT_AAA_SPREAD = MacroDefaults.DEFAULT_AAA_SPREAD
 
     def _fetch_history_robust(self, ticker_obj: yf.Ticker) -> pd.DataFrame:
