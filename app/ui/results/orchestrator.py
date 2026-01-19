@@ -344,7 +344,7 @@ class ResultTabOrchestrator:
             from src.reporting.pdf_generator import generate_pitchbook_pdf, FPDF_AVAILABLE
             
             if not FPDF_AVAILABLE:
-                st.info("📄 Export PDF indisponible (fpdf2 non installé)")
+                st.info(UIMessages.PDF_UNAVAILABLE)
                 return
             
             # Récupérer le provider s'il est fourni
@@ -359,18 +359,18 @@ class ResultTabOrchestrator:
                     sector = getattr(financials, "sector", "N/A")
             
             # Bouton de téléchargement
-            if st.button("Télécharger le Rapport Pitchbook (PDF)", type="secondary"):
-                with st.spinner("Génération du Pitchbook en cours..."):
+            if st.button(UIMessages.DOWNLOAD_PDF_BTN, type="secondary"):
+                with st.spinner(UIMessages.GENERATING_PDF):
                     # Créer le DTO
                     pitchbook_data = PitchbookData.from_valuation_result(
                         result=result,
                         company_name=company_name or result.ticker,
                         sector=sector
                     )
-                    
+
                     # Générer le PDF
                     pdf_bytes = generate_pitchbook_pdf(pitchbook_data)
-                    
+
                     # Proposer le téléchargement
                     st.download_button(
                         label="Cliquez pour télécharger",
@@ -379,9 +379,9 @@ class ResultTabOrchestrator:
                         mime="application/pdf",
                         key="pdf_download_btn"
                     )
-                    st.success("Pitchbook généré avec succès !")
+                    st.success(UIMessages.PDF_SUCCESS)
                     
         except ImportError:
-            st.info("Export PDF indisponible (module manquant)")
+            st.info(UIMessages.PDF_UNAVAILABLE)
         except Exception as e:
-            st.error(f"Erreur lors de la génération du PDF : {str(e)}")
+            st.error(f"{UIMessages.PDF_ERROR} {str(e)}")

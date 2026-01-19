@@ -91,3 +91,10 @@ class UIMessages:
     NO_CALCULATION_STEPS = "Aucune étape de calcul disponible."
     NO_DETAILED_TESTS = "Aucun test détaillé disponible."
     NO_TABS_TO_DISPLAY = "Aucun onglet à afficher."
+
+    # Messages PDF
+    DOWNLOAD_PDF_BTN = "Télécharger le Rapport Pitchbook (PDF)"
+    GENERATING_PDF = "Génération du Pitchbook en cours..."
+    PDF_SUCCESS = "Pitchbook généré avec succès !"
+    PDF_UNAVAILABLE = "Export PDF indisponible (fpdf2 non installé)"
+    PDF_ERROR = "Erreur lors de la génération du PDF :"

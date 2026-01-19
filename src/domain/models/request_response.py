@@ -95,6 +95,11 @@ class ValuationResult(BaseModel, ABC):
         if self.market_price > 0 and self.upside_pct is None:
             self.upside_pct = (self.intrinsic_value_per_share / self.market_price) - 1.0
 
+    @property
+    def ticker(self) -> str:
+        """Retourne le ticker du résultat ou 'UNKNOWN' si non disponible."""
+        return self.request.ticker if self.request else "UNKNOWN"
+
     @abstractmethod
     def build_output_contract(self) -> ValuationOutputContract:
         raise NotImplementedError
