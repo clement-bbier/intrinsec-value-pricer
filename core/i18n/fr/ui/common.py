@@ -6,7 +6,7 @@ Textes communs et generiques de l'interface.
 
 class CommonTexts:
     """Textes transverses et metadonnees de base."""
-    APP_TITLE = "Intrinsic Value Pricer"
+    APP_TITLE = "Intrinsic Value Analytics"
     PROJECT_BADGE = "Projet Personnel Public"
     AUTHOR_NAME = "Clement Barbier"
     DEVELOPED_BY = "Developed by"

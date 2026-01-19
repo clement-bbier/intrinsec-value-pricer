@@ -33,13 +33,13 @@ class InputsSummaryTab(ResultTabBase):
         
         st.markdown(f"**{KPITexts.SECTION_INPUTS_HEADER}**")
         st.caption(KPITexts.SECTION_INPUTS_CAPTION)
-        
+
         # Section 1 : Donnees Financieres
         with st.container(border=True):
             st.markdown("**Donnees Financieres**")
-            
+
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 data_left = {
                     "Entreprise": f.name,
@@ -51,7 +51,7 @@ class InputsSummaryTab(ResultTabBase):
                 df_left = pd.DataFrame(data_left.items(), columns=["Métrique", "Valeur"])
                 df_left["Valeur"] = df_left["Valeur"].astype(str)
                 st.table(df_left)
-            
+
             with col2:
                 data_right = {
                     "Revenue TTM": self._format_number(f.revenue_ttm),
@@ -62,11 +62,11 @@ class InputsSummaryTab(ResultTabBase):
                 df_right = pd.DataFrame(data_right.items(), columns=["Métrique", "Valeur"])
                 df_right["Valeur"] = df_right["Valeur"].astype(str)
                 st.table(df_right)
-        
+
         # Section 2 : Parametres de Valorisation
         with st.container(border=True):
             st.markdown("**Parametres du Modele**")
-            
+
             params_data = {
                 "Années de projection": p.projection_years,
                 "Taux sans risque (Rf)": f"{p.rates.risk_free_rate:.2%}" if p.rates.risk_free_rate else "Auto",

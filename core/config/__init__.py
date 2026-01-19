@@ -25,9 +25,6 @@ from core.config.constants import (
     AuditPenalties,
     AuditWeights,
 
-    # Technical
-    TechnicalDefaults,
-
     # Général
     SystemDefaults,
 )
@@ -38,6 +35,5 @@ __all__ = [
     "AuditThresholds",
     "AuditPenalties",
     "AuditWeights",
-    "TechnicalDefaults",
     "SystemDefaults",
 ]

@@ -27,9 +27,9 @@ import streamlit as st
 import pandas as pd
 
 from core.models import ValuationResult
-from app.ui.base import ResultTabBase
 from core.config.constants import TechnicalDefaults
 from core.i18n import UIMessages
+from app.ui.base import ResultTabBase
 
 
 class HistoricalBacktestTab(ResultTabBase):
