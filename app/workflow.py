@@ -35,6 +35,7 @@ from src.domain.models import (
     HistoricalPoint
 )
 from src.valuation.engines import run_valuation
+from src.quant_logger import QuantLogger, LogDomain
 from infra.auditing.backtester import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
@@ -93,7 +94,7 @@ def run_workflow(
 
         # --- ÉTAPE 2 : CONCILIATION (SMART MERGE) ---
         status.write(WorkflowTexts.STATUS_SMART_MERGE)
-        final_params = _merge_parameters(request, auto_params)
+        final_params = map_request_to_params(request, auto_params)
 
         # --- ÉTAPE 3 : ANALYSE DU PRÉSENT (BASE CASE) ---
         status.write(WorkflowTexts.STATUS_ENGINE_RUN.format(mode=request.mode.value))
@@ -106,7 +107,7 @@ def run_workflow(
         # --- ÉTAPE 4 : ANALYSE DE SCÉNARIOS DÉTERMINISTES (SPRINT 5) ---
         if final_params.scenarios.enabled:
             status.write(WorkflowTexts.STATUS_SCENARIOS_RUN)
-            result.scenario_synthesis = _orchestrate_scenarios(
+            result.scenario_synthesis = compute_scenario_impact(
                 request, financials, final_params, result
             )
 
@@ -126,6 +127,19 @@ def run_workflow(
 
         # --- ÉTAPE 6 : FINALISATION ---
         status.update(label=WorkflowTexts.STATUS_COMPLETE, state="complete", expanded=False)
+        
+        # Log Monte Carlo si activé (ST-4.2)
+        if result.simulation_results and len(result.simulation_results) > 0:
+            import numpy as np
+            values = result.simulation_results
+            QuantLogger.log_monte_carlo(
+                ticker=request.ticker,
+                simulations=len(values),
+                valid_ratio=len(values) / final_params.monte_carlo.num_simulations,
+                p50=float(np.median(values)),
+                p10=float(np.percentile(values, 10)),
+                p90=float(np.percentile(values, 90))
+            )
         
         return result, provider
 
@@ -156,10 +170,9 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
     renderer = StreamlitResultRenderer()
     result, provider = run_workflow(request, renderer)
     
-    # Affichage des résultats via le renderer injecté
+    # Affichage des résultats via le renderer injecté (ST 1.2 - render_results)
     if result is not None and provider is not None:
-        renderer.render_executive_summary(result)
-        renderer.display_valuation_details(result, provider)
+        renderer.render_results(result, provider)
 
 
 # ==============================================================================
@@ -231,14 +244,39 @@ def _orchestrate_backtesting(
 # 3. LOGIQUE DES SCÉNARIOS (OPTIMISÉE)
 # ==============================================================================
 
-def _orchestrate_scenarios(
+def compute_scenario_impact(
     request: ValuationRequest,
     financials: Any,
     params: DCFParameters,
     base_result: ValuationResult
 ) -> ScenarioSynthesis:
     """
-    Exécute les variantes stratégiques Bull/Bear sans recalculer le superflu.
+    Calcule l'impact des scénarios Bull/Base/Bear sur la valorisation.
+
+    Exécute les variantes stratégiques en optimisant les calculs :
+    - Réutilisation du résultat de base si les paramètres sont identiques
+    - Désactivation des modules lourds (Monte Carlo, Multiples) pour les variantes
+
+    Args
+    ----
+    request : ValuationRequest
+        Requête de valorisation originale.
+    financials : CompanyFinancials
+        Données financières de l'entreprise.
+    params : DCFParameters
+        Paramètres de référence (Base Case).
+    base_result : ValuationResult
+        Résultat du cas de base déjà calculé.
+
+    Returns
+    -------
+    ScenarioSynthesis
+        Synthèse des trois scénarios avec valeur espérée pondérée.
+
+    Financial Impact
+    ----------------
+    Les scénarios guident les décisions d'investissement en montrant
+    la sensibilité de la valorisation aux hypothèses clés.
     """
     sc = params.scenarios
     results = []
@@ -283,7 +321,27 @@ def _create_data_provider() -> YahooFinanceProvider:
     return YahooFinanceProvider(YahooMacroProvider())
 
 
-def _merge_parameters(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
+def map_request_to_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
+    """
+    Fusionne les paramètres automatiques avec les surcharges manuelles.
+
+    Args
+    ----
+    request : ValuationRequest
+        Requête contenant les surcharges manuelles optionnelles.
+    auto_params : DCFParameters
+        Paramètres calculés automatiquement depuis les données.
+
+    Returns
+    -------
+    DCFParameters
+        Paramètres fusionnés (Smart Merge).
+
+    Financial Impact
+    ----------------
+    Cette fonction détermine les hypothèses finales de valorisation.
+    Une erreur de fusion peut conduire à utiliser des taux incorrects.
+    """
     if request.input_source == InputSource.MANUAL:
         final_params = auto_params.model_copy(deep=True)
 

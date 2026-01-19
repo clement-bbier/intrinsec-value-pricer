@@ -107,9 +107,34 @@ class StreamlitResultRenderer(IResultRenderer):
         orchestrator = ResultTabOrchestrator()
         orchestrator.render(result)
 
-    def display_valuation_details(self, result: Any, provider: Any) -> None:
-        """Alias pour maintenir la compatibilité - utilise maintenant render_executive_summary."""
+    def render_results(self, result: Any, provider: Any = None) -> None:
+        """
+        Affiche les résultats de valorisation complets.
+
+        Méthode principale de rendu utilisant l'architecture ResultTabOrchestrator
+        pour une gestion centralisée et modulaire des onglets de résultats.
+
+        Args
+        ----
+        result : ValuationResult
+            Résultat complet de la valorisation à afficher.
+        provider : DataProviderProtocol, optional
+            Fournisseur de données (non utilisé dans l'implémentation actuelle).
+
+        Notes
+        -----
+        Remplace l'ancienne méthode display_valuation_details (ST 1.2 Naming Blueprint).
+        """
         self.render_executive_summary(result)
+
+    def display_valuation_details(self, result: Any, provider: Any) -> None:
+        """
+        Alias déprécié pour render_results.
+
+        .. deprecated::
+            Utilisez :meth:`render_results` à la place.
+        """
+        self.render_results(result, provider)
     
     def display_error(self, message: str, details: Optional[str] = None) -> None:
         st.error(message)

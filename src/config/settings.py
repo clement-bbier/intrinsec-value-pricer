@@ -1,19 +1,27 @@
 """
-core/config/settings.py
+src/config/settings.py
+
 PARAMÈTRES DE CONFIGURATION CENTRALISÉS — Sprint 4
 
-Version : V1.0 — ST 4.1 Resolution
+Version : V1.1 — ST-1.2 Type-Safe Resolution
 Pattern : Configuration Object (Single Source of Truth)
+Style : Numpy Style docstrings
 
 AVANT : Constantes éparpillées dans le code
 APRÈS : Centralisation complète dans ce fichier
 
 Usage :
     from src.config.settings import SIMULATION_CONFIG, AUDIT_CONFIG
+
+RISQUES FINANCIERS:
+- Ces paramètres contrôlent le comportement des simulations
+- Une modification peut impacter la qualité des résultats
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any  # Any requis pour config dictionnaires flexibles
 
 
 # ==============================================================================

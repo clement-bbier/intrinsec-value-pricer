@@ -1,9 +1,52 @@
 """
 src/domain/models/enums.py
-Enumerations du domaine de valorisation.
+
+Énumérations et alias de types du domaine de valorisation.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Value Objects + Type Aliases
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Les enums définissent les modes de valorisation disponibles
+- Une erreur de mapping peut conduire à utiliser le mauvais modèle
+
+DEPENDANCES CRITIQUES:
+- Aucune dépendance externe (module autonome)
 """
 
+from __future__ import annotations
+
 from enum import Enum
+from typing import TypeAlias
+
+
+# ==============================================================================
+# 1. ALIAS FINANCIERS (TYPE-SAFE)
+# ==============================================================================
+# Ces alias améliorent la lisibilité et permettent une validation future
+# sans impact sur les performances runtime.
+
+Rate: TypeAlias = float
+"""Taux financier (WACC, croissance, actualisation). Exemple: 0.08 pour 8%."""
+
+Currency: TypeAlias = float
+"""Montant monétaire en devise de base. Exemple: 1_500_000.00 pour 1.5M."""
+
+Percentage: TypeAlias = float
+"""Pourcentage normalisé entre 0.0 et 1.0. Exemple: 0.15 pour 15%."""
+
+Multiple: TypeAlias = float
+"""Multiple de valorisation (P/E, EV/EBITDA). Exemple: 15.5 pour un P/E de 15.5x."""
+
+ShareCount: TypeAlias = int
+"""Nombre d'actions en circulation. Exemple: 1_000_000_000."""
+
+Years: TypeAlias = int
+"""Durée en années. Exemple: 5 pour une projection sur 5 ans."""
+
+Ratio: TypeAlias = float
+"""Ratio financier générique. Exemple: 0.35 pour un ratio dette/equity de 35%."""
 
 
 class ValuationMode(str, Enum):

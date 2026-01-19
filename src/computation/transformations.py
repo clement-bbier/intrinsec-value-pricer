@@ -1,3 +1,19 @@
+"""
+src/computation/transformations.py
+
+Transformations financières (Beta, leverage adjustments).
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pure Functions (Stateless)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Les transformations de Beta impactent le coût des fonds propres
+- Une erreur de formule invalide le WACC et donc la valorisation
+"""
+
+from __future__ import annotations
+
 import logging
 
 logger = logging.getLogger(__name__)

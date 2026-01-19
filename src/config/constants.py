@@ -1,9 +1,11 @@
 """
-core/config/constants.py
+src/config/constants.py
+
 CONSTANTES CENTRALISÉES — DT-010/011/012/013 Resolution
 
-Version : V1.0
+Version : V1.1 — ST-1.2 Type-Safe Resolution
 Pattern : Configuration Object (Single Source of Truth)
+Style : Numpy Style docstrings
 
 AVANT (Hardcoding dispersé) :
 - app/main.py : _MIN_MC_SIMULATIONS, _MAX_MC_SIMULATIONS, etc.
@@ -18,10 +20,13 @@ APRÈS (Centralisation) :
 
 Usage :
     from src.config import AuditThresholds, MonteCarloDefaults
-    
-    if icr < AuditThresholds.ICR_MIN:
-        ...
+
+RISQUES FINANCIERS:
+- Ces constantes pilotent les seuils d'audit et les défauts de calcul
+- Une modification incorrecte peut impacter toutes les valorisations
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Optional, List
@@ -140,6 +145,9 @@ class MacroDefaults:
     # MRP par défaut
     DEFAULT_MARKET_RISK_PREMIUM: float = 0.05  # 5%
 
+    # Seuil Large Cap pour sélection des spreads (ST-2.3)
+    LARGE_CAP_THRESHOLD: float = 5_000_000_000  # 5 Milliards $
+
 
 # ==============================================================================
 # 6. EXTRACTION DE DONNÉES ET API
@@ -183,6 +191,10 @@ class ValuationEngineDefaults:
     STRESS_GROWTH_RATE: float = 0.0  # Croissance nulle en stress
     STRESS_PERPETUAL_GROWTH: float = 0.01  # 1% perpétuelle en stress
     STRESS_BETA: float = 1.50  # Risque systémique maximum
+
+    # RIM (Residual Income Model) - ST-2.3
+    RIM_DEFAULT_OMEGA: float = 0.60  # Facteur de persistance par défaut
+    RIM_MAX_PAYOUT_RATIO: float = 0.95  # Plafond du payout ratio
 
     # Spreads de rating corporate (SPREADS_LARGE_CAP)
     SPREAD_AAA: float = 0.0045
@@ -351,6 +363,10 @@ class TechnicalDefaults:
     # Seuils de validation
     BACKTEST_ERROR_THRESHOLD: float = 0.20  # 20% seuil d'erreur acceptable
     VALUATION_CONVERGENCE_THRESHOLD: float = 0.5  # 0.5 unité monétaire pour convergence
+
+    # Reverse DCF - Bornes de recherche (ST-2.3)
+    REVERSE_DCF_LOW_BOUND: float = -0.20  # -20% croissance minimale
+    REVERSE_DCF_HIGH_BOUND: float = 0.50  # +50% croissance maximale
 
     # Ratios d'audit
     BORROWING_RATIO_MAX: float = 0.5  # Ratio emprunt/NI maximum

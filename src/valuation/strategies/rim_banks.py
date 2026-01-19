@@ -17,6 +17,7 @@ from src.computation.financial_math import (
     calculate_npv,
     calculate_rim_vectors,
 )
+from src.config.constants import ValuationEngineDefaults
 from src.exceptions import CalculationError
 from src.domain.models import CompanyFinancials, DCFParameters, RIMValuationResult
 from src.valuation.strategies.abstract import ValuationStrategy
@@ -182,10 +183,13 @@ class RIMBankingStrategy(ValuationStrategy):
     def _select_book_value(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
         """Souveraineté Analyste via segment growth."""
         if params.growth.manual_book_value is not None:
-            return params.growth.manual_book_value, StrategySources.MANUAL_OVERRIDE
+            bv = params.growth.manual_book_value
+            if bv <= 0:
+                raise CalculationError(CalculationErrors.RIM_NEGATIVE_BV)
+            return bv, StrategySources.MANUAL_OVERRIDE
         if financials.book_value_per_share and financials.book_value_per_share > 0:
             return financials.book_value_per_share, StrategySources.YAHOO_TTM_SIMPLE
-        raise CalculationError(CalculationErrors.MISSING_BV)
+        raise CalculationError(CalculationErrors.RIM_NEGATIVE_BV)
 
     def _compute_ke(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
         """Coût des fonds propres via segment rates."""
@@ -211,11 +215,11 @@ class RIMBankingStrategy(ValuationStrategy):
         """Ratio de distribution effectif."""
         if eps <= 0: return 0.0
         div_per_share = financials.dividends_total_calculated / financials.shares_outstanding if financials.shares_outstanding else 0
-        return max(0.0, min(0.95, div_per_share / eps))
+        return max(0.0, min(ValuationEngineDefaults.RIM_MAX_PAYOUT_RATIO, div_per_share / eps))
 
     def _compute_ohlson_tv(self, terminal_ri: float, ke: float, last_df: float, params: DCFParameters) -> tuple[float, float]:
         """Valeur terminale RIM utilisant omega (persistance)."""
-        omega = params.growth.exit_multiple_value if params.growth.exit_multiple_value is not None else 0.60
+        omega = params.growth.exit_multiple_value if params.growth.exit_multiple_value is not None else ValuationEngineDefaults.RIM_DEFAULT_OMEGA
         tv_ri = (terminal_ri * omega) / (1 + ke - omega)
         discounted_tv = tv_ri * last_df
 

@@ -1,7 +1,18 @@
 """
-core/models/audit.py
-Modeles pour le systeme d'audit.
+src/domain/models/audit.py
+
+Modèles pour le système d'audit.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pydantic Model (Audit Domain)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- L'audit guide la confiance dans les résultats
+- Un score mal calculé peut masquer des risques critiques
 """
+
+from __future__ import annotations
 
 from typing import Dict, List, Optional, Union
 

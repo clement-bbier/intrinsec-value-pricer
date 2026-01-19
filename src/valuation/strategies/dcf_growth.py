@@ -27,6 +27,10 @@ class RevenueBasedStrategy(ValuationStrategy):
         # 1. Ancrage revenus
         rev_base = self._select_revenue_base(financials, params)
 
+        # Sécurité financière : Revenus négatifs en mode Auto uniquement
+        if params.growth.manual_fcf_base is None and rev_base <= 0:
+            raise CalculationError(CalculationErrors.NEGATIVE_FLUX_AUTO.format(model="DCF Growth", val=rev_base))
+
         self.add_step(
             step_key="GROWTH_REV_BASE",
             label=RegistryTexts.GROWTH_REV_BASE_L,

@@ -1,13 +1,14 @@
-# 🔒 GOVERNANCE & ANTI-DÉRIVE  
+# GOVERNANCE & ANTI-DÉRIVE
+
 ## Intrinsic Value Pricer — Technical Governance Charter
 
 **Statut** : Normatif — Document de référence  
-**Version** : 1.0  
-**Portée** : Ensemble du projet (code, documentation, usage)  
+**Version** : 2.0 — Janvier 2026  
+**Portée** : Ensemble du projet (code, documentation, usage)
 
 ---
 
-## 1. Objectif du document
+## 1. Objectif du Document
 
 Ce document définit les **règles de gouvernance techniques et méthodologiques non négociables**
 du projet *Intrinsic Value Pricer*.
@@ -15,194 +16,308 @@ du projet *Intrinsic Value Pricer*.
 Il a pour objectifs :
 
 - empêcher toute dérive fonctionnelle ou méthodologique
-- verrouiller les règles d’extension du moteur
-- garantir la traçabilité, l’auditabilité et la reproductibilité
-- assurer l’alignement avec les standards institutionnels  
+- verrouiller les règles d'extension du moteur
+- garantir la traçabilité, l'auditabilité et la reproductibilité
+- assurer l'alignement avec les standards institutionnels  
   *(CFA Institute, Damodaran, Model Risk Management)*
 
 Ce document prévaut sur toute interprétation implicite du code ou de la documentation.
 
 ---
 
-## 2. Principes immuables
+## 2. Principes Immuables
 
 Les principes suivants sont **absolus** et **non négociables** :
 
-- **Une méthode = une source**
-- **Une feature = une version**
-- **Un calcul = une trace**
-- **Un score = une formule**
-- **Aucune logique implicite**
-- **Aucune responsabilité ambiguë (AUTO vs EXPERT)**
+| Principe | Description |
+|----------|-------------|
+| **Une méthode = une source** | Chaque méthode dans `src/valuation/strategies/` |
+| **Une feature = une version** | Changelog explicite |
+| **Un calcul = une trace** | Glass Box V2 obligatoire |
+| **Un score = une formule** | Audit transparent |
+| **Aucune logique implicite** | Tout est documenté |
+| **Responsabilité claire** | AUTO vs EXPERT |
 
 Toute violation invalide la conformité du projet.
 
 ---
 
-## 3. Périmètre normatif du moteur
+## 3. Étanchéité Architecturale
 
-### 3.1 Moteur de valorisation
+### Règle d'Or
 
-Le moteur de valorisation est :
+```
+src/  ──────────> Zéro dépendance vers app/ ou streamlit
+infra/ ─────────> Peut importer src/, jamais app/
+app/  ──────────> Importe src/ et infra/
+```
 
-- déterministe par construction
-- piloté exclusivement via le point d’entrée central
-- strictement typé par des contrats explicites
+### Validation
 
-📌 Toute exécution de méthode de valorisation **doit** passer par le moteur central
-(`run_valuation` / registre officiel).
+```bash
+# Test automatisé
+pytest tests/contracts/test_architecture_contracts.py -v
 
-L’instanciation directe d’une stratégie hors moteur est **formellement interdite**.
+# Vérification manuelle
+grep -r "import streamlit" src/
+# Doit retourner 0 résultat
+```
 
 ---
 
-## 4. Référentiel officiel des méthodes
+## 4. Moteur de Valorisation
 
-Les méthodes de valorisation autorisées sont exclusivement celles :
+Le moteur de valorisation est :
 
-- déclarées dans le référentiel `ValuationMode`
-- implémentées dans `core/valuation/strategies/`
-- documentées dans `core/methodology/texts.py`
-- décrites dans `docs/methodology/`
+- **Déterministe** par construction
+- **Centralisé** via `run_valuation()`
+- **Typé** strictement (Pydantic)
+
+**Point d'entrée unique** :
+
+```python
+from src.valuation.engines import run_valuation
+
+result = run_valuation(request, financials, params)
+```
+
+L'instanciation directe d'une stratégie hors moteur est **formellement interdite**.
+
+---
+
+## 5. Référentiel Officiel des Méthodes
+
+Les méthodes autorisées sont exclusivement celles :
+
+| Critère | Localisation |
+|---------|--------------|
+| Déclarées | `ValuationMode` enum |
+| Implémentées | `src/valuation/strategies/` |
+| Enregistrées | `src/valuation/registry.py` |
+| Documentées | `docs/methodology/` |
 
 Toute méthode non listée est **inexistante par définition**.
 
 ---
 
-## 5. Glass Box — Traçabilité obligatoire
+## 6. Glass Box V2 — Traçabilité Obligatoire
 
-Toute méthode de valorisation doit produire :
+Toute méthode de valorisation **doit** produire :
 
-- une trace complète, séquentielle et lisible
-- une décomposition étape par étape
-- des hypothèses explicites et sourcées
-- une substitution numérique visible
-- une interprétation économique
+| Élément | Obligatoire |
+|---------|-------------|
+| `CalculationStep[]` | Oui |
+| `theoretical_formula` (LaTeX) | Oui |
+| `actual_calculation` | Oui (ST-2.1) |
+| `variables_map` | Oui (ST-2.1) |
+| `VariableInfo.source` | Oui (ST-3.3) |
 
-📌 **Aucun calcul implicite n’est autorisé.**  
-📌 Une valeur sans trace est considérée comme invalide.
+**Aucun calcul implicite n'est autorisé.**  
+**Une valeur sans trace est considérée comme invalide.**
 
 ---
 
-## 6. Monte Carlo — Statut normatif
+## 7. Monte Carlo — Statut Normatif
 
 Monte Carlo est une **extension probabiliste**, et **non une méthode de valorisation**.
 
 Règles non négociables :
 
-- Monte Carlo agit exclusivement sur les **paramètres d’entrée**
-- la logique financière reste strictement déterministe
-- chaque simulation est une exécution complète du modèle déterministe
-- le scénario pivot (P50) est **sans stochasticité**
-- Monte Carlo ne produit **jamais** une valeur intrinsèque autonome
+| Règle | Description |
+|-------|-------------|
+| Scope | Paramètres d'entrée uniquement |
+| Logique | Reste déterministe |
+| Pivot | P50 sans stochasticité |
+| Autonomie | Jamais de valeur IV autonome |
 
 Toute utilisation contraire constitue une dérive méthodologique.
 
 ---
 
-## 7. Audit & Confidence Score
+## 8. Audit & Confidence Score
 
-L’audit est une **méthode normalisée à part entière**, au même titre que la valorisation.
+L'audit est une **méthode normalisée** au même titre que la valorisation.
 
-Règles :
+| Règle | Description |
+|-------|-------------|
+| Formule explicite | Visible dans le code |
+| Pondérations visibles | `AuditWeights` |
+| Piliers indépendants | 4 piliers |
+| Pénalités traçables | Chaque -X points justifié |
 
-- le score est une **formule explicite**
-- les pondérations sont visibles
-- les piliers sont indépendants
-- aucune agrégation implicite n’est autorisée
-- toute pénalité est traçable
-
-Le moteur d’audit est unique et centralisé.
+Le moteur d'audit est **unique et centralisé** (`infra/auditing/`).
 
 ---
 
-## 8. Responsabilité utilisateur — AUTO vs EXPERT
+## 9. Mode Dégradé (ST-4.1)
+
+En cas de panne API, le système **doit** :
+
+| Étape | Action |
+|-------|--------|
+| 1 | Détecter l'échec (timeout, données aberrantes) |
+| 2 | Basculer sur fallback sectoriel |
+| 3 | Afficher bandeau d'avertissement |
+| 4 | Réduire le score de confiance |
+| 5 | Logger l'événement (QuantLogger) |
+
+Le fallback sectoriel est défini dans `config/sector_multiples.yaml`.
+
+---
+
+## 10. Diagnostic Pédagogique (ST-4.2)
+
+Toute erreur technique **doit** être traduite en conseil métier.
+
+| Composant | Rôle |
+|-----------|------|
+| `DiagnosticEvent` | Événement structuré |
+| `FinancialContext` | Explication du risque |
+| `get_pedagogical_message()` | Message complet |
+
+---
+
+## 11. Responsabilité Utilisateur
 
 ### Mode AUTO
 
-- hypothèses normatives
-- proxies autorisés
-- audit pénalisant et conservateur
-- responsabilité portée par le système
+| Aspect | Description |
+|--------|-------------|
+| Hypothèses | Normatives (système) |
+| Proxies | Autorisés |
+| Audit | Conservateur |
+| Responsabilité | Système |
 
 ### Mode EXPERT
 
-- hypothèses fournies par l’utilisateur
-- données présumées exactes
-- audit logique et financier strict
-- responsabilité transférée à l’utilisateur
+| Aspect | Description |
+|--------|-------------|
+| Hypothèses | Utilisateur |
+| Données | Présumées exactes |
+| Audit | Strict |
+| Responsabilité | Utilisateur |
 
-Aucune ambiguïté entre les deux modes n’est tolérée.
+**Aucune ambiguïté entre les deux modes n'est tolérée.**
 
 ---
 
-## 9. Providers de données — Contrat strict
+## 12. Providers de Données
 
-Toute source de données **doit** implémenter strictement l’interface `DataProvider`.
+Toute source de données **doit** implémenter l'interface `DataProvider`.
 
-Règles :
+Interdictions :
 
-- aucune logique financière dans les providers
-- aucune calibration implicite
-- aucune hypothèse métier
-- uniquement extraction, normalisation et contrôle de cohérence
+| Interdit | Raison |
+|----------|--------|
+| Logique financière | Réservée à `src/` |
+| Calibration implicite | Doit être explicite |
+| Hypothèse métier | Réservée aux stratégies |
 
 Tout provider hors contrat est interdit.
 
 ---
 
-## 10. Interface utilisateur (UI)
+## 13. Interface Utilisateur (UI)
 
-L’UI est un **canal de restitution uniquement**.
+L'UI est un **canal de restitution uniquement**.
 
 Interdictions formelles :
 
-- calcul financier
-- règle économique
-- décision méthodologique
-- modification implicite des hypothèses
+| Interdit | Alternative |
+|----------|-------------|
+| Calcul financier | `src/computation/` |
+| Règle économique | `src/valuation/strategies/` |
+| Décision méthodologique | `src/valuation/registry.py` |
+| Modification implicite | Mode EXPERT explicite |
 
-Toute logique métier dans l’UI est une violation de la gouvernance.
+Toute logique métier dans l'UI est une violation de la gouvernance.
 
 ---
 
-## 11. Documentation & source de vérité
+## 14. Documentation & Source de Vérité
 
-La source de vérité **canonique** des méthodes est :
-
-- `core/methodology/texts.py`
-
-Les documents Markdown :
-
-- sont explicatifs
-- non contractuels
-- ne peuvent introduire aucune méthode ou règle nouvelle
+| Type | Localisation | Statut |
+|------|--------------|--------|
+| Code | `src/valuation/strategies/` | Canonique |
+| Registry | `src/valuation/registry.py` | Canonique |
+| Textes | `locales/*.yaml` | Canonique (ST-5.1) |
+| Docs MD | `docs/` | Explicatif, non contractuel |
 
 Toute divergence est considérée comme une erreur documentaire.
 
 ---
 
-## 12. Archives & documents historiques
-
-Le dossier `_archive/` contient :
-
-- des documents historiques
-- des réflexions passées
-- des pistes abandonnées
-
-Ces documents sont **non normatifs**, **non contractuels** et **non applicables**.
-
-Ils ne doivent en aucun cas être utilisés comme référence.
-
----
-
-## 13. Règles d’extension du projet
+## 15. Règles d'Extension
 
 Toute extension du projet implique :
 
-- une nouvelle version explicite
-- une documentation associée
-- un audit de cohérence
-- une validation des invariants
+| Étape | Obligatoire |
+|-------|-------------|
+| Version explicite | Oui |
+| Documentation associée | Oui |
+| Tests de contrats | Oui |
+| Validation des invariants | Oui |
 
-Les ajout
+---
+
+## 16. Logging Institutionnel (ST-4.2)
+
+Format obligatoire via `QuantLogger` :
+
+```
+[DOMAIN][LEVEL] Ticker: XXX | Key1: Val1 | Key2: Val2
+```
+
+Exemple :
+
+```
+[VALUATION][SUCCESS] Ticker: AAPL | Model: FCFF_STANDARD | IV: 185.20 | AuditScore: 88.5%
+```
+
+---
+
+## 17. Internationalisation (ST-5.1)
+
+| Règle | Description |
+|-------|-------------|
+| Source | `locales/*.yaml` |
+| Accès | `TextRegistry.get()` ou `t()` |
+| Placeholders | Format `{variable}` |
+| Fallback | FR si clé manquante |
+
+---
+
+## 18. Export PDF (ST-5.2)
+
+Le Pitchbook PDF **doit** contenir :
+
+| Page | Contenu |
+|------|---------|
+| 1 | Résumé exécutif (IV, prix, upside, audit) |
+| 2 | Preuves de calcul (formules, paramètres) |
+| 3 | Analyse de risque (MC, scénarios) |
+
+Performance cible : < 5 secondes.
+
+---
+
+## 19. Métriques de Conformité
+
+| Métrique | Cible | Validation |
+|----------|-------|------------|
+| Imports app/ dans src/ | 0 | `test_architecture_contracts.py` |
+| Tests de contrats | 51+ passent | `pytest tests/contracts/` |
+| Constantes hardcodées | 0 | `src/config/constants.py` |
+| Fichiers avec docstrings | 85%+ | Revue manuelle |
+
+---
+
+## 20. Violations et Sanctions
+
+Toute violation de cette charte :
+
+1. Invalide la conformité de la version
+2. Doit être corrigée avant merge
+3. Est documentée dans `TECHNICAL_DEBT.md`
+
+La gouvernance est appliquée via les tests de contrats automatisés.

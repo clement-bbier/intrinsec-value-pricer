@@ -46,6 +46,10 @@ class FCFEStrategy(ValuationStrategy):
         # On extrait les composants pour la trace Glass Box
         ni, adj, nb, fcfe_base, source = self._resolve_fcfe_components(financials, params)
 
+        # Sécurité financière : FCFE négatif en mode Auto uniquement
+        if params.growth.manual_fcf_base is None and fcfe_base <= 0:
+            raise CalculationError(CalculationErrors.NEGATIVE_FLUX_AUTO.format(model="DCF Equity", val=fcfe_base))
+
         self.add_step(
             step_key="FCFE_BASE_SELECTION",
             label=RegistryTexts.FCFE_BASE_L,

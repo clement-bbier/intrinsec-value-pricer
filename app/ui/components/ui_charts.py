@@ -1,8 +1,20 @@
 """
 app/ui_components/ui_charts.py
-VISUALISATIONS — VERSION V4.0 (Hedge Fund Standard)
+
+VISUALISATIONS — VERSION V5.0 (ST-3.2 Fragment Optimization)
 Rôle : Rendu graphique haute précision incluant le Football Field Chart.
 Standards : Altair, i18n, Zero-Depreciation.
+
+ST-3.2 : OPTIMISATION PERFORMANCE VIA @st.fragment
+===================================================
+Les graphiques lourds sont isolés via @st.fragment pour :
+- Éliminer le "flicker" lors des ajustements de sliders
+- Permettre des mises à jour partielles sans rechargement total
+- Améliorer la fluidité de l'expérience utilisateur
+
+Financial Impact:
+    L'utilisation de fragments améliore la productivité de l'analyste
+    en réduisant les temps de latence perçus lors des simulations.
 """
 
 from __future__ import annotations
@@ -19,6 +31,12 @@ from app.ui.components.ui_kpis import format_smart_number
 from src.i18n import ChartTexts, KPITexts, SOTPTexts, BacktestTexts
 from src.domain.models import ValuationResult, BacktestResult
 from src.config.constants import TechnicalDefaults
+
+
+# ============================================================================
+# FRAGMENTS ISOLÉS (ST-3.2)
+# Les fonctions @st.fragment ne déclenchent pas de re-run complet
+# ============================================================================
 
 
 # ============================================================================
@@ -67,8 +85,22 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 # 2. MONTE CARLO (DISTRIBUTION DES VALEURS)
 # ============================================================================
 
+@st.fragment
 def display_simulation_chart(simulation_results: List[float], market_price: float, currency: str) -> None:
-    """Affiche l'histogramme Monte Carlo avec synthèse technique localisée."""
+    """
+    Affiche l'histogramme Monte Carlo avec synthèse technique localisée.
+    
+    ST-3.2 : Fonction fragmentée pour éviter le flicker lors des reruns.
+    
+    Parameters
+    ----------
+    simulation_results : List[float]
+        Résultats des simulations Monte Carlo.
+    market_price : float
+        Prix de marché actuel pour comparaison.
+    currency : str
+        Symbole de la devise.
+    """
     if not simulation_results:
         st.warning(ChartTexts.SIM_UNAVAILABLE)
         return
@@ -107,10 +139,13 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 # 3. TRIANGULATION : FOOTBALL FIELD CHART (NOUVEAUTÉ SPRINT 4)
 # ============================================================================
 
+@st.fragment
 def display_football_field(result: ValuationResult) -> None:
     """
     Rendu visuel de la triangulation (Football Field).
     Compare le modèle intrinsèque (avec range MC si possible) aux multiples de marché.
+    
+    ST-3.2 : Fonction fragmentée pour performance optimale.
     """
     st.subheader(KPITexts.FOOTBALL_FIELD_TITLE)
 
@@ -194,6 +229,7 @@ def display_football_field(result: ValuationResult) -> None:
 # 4. SENSIBILITÉ & CORRÉLATION
 # ============================================================================
 
+@st.fragment
 def display_sensitivity_heatmap(
     base_rate: float,
     base_growth: float,
@@ -201,7 +237,11 @@ def display_sensitivity_heatmap(
     currency: str = "EUR",
     is_direct_equity: bool = False
 ) -> None:
-    """Rendu de la matrice de sensibilité avec labels dynamiques (WACC vs Ke)."""
+    """
+    Rendu de la matrice de sensibilité avec labels dynamiques (WACC vs Ke).
+    
+    ST-3.2 : Fonction fragmentée — ajustement slider sans flicker.
+    """
     st.subheader(ChartTexts.SENS_TITLE)
 
     label_y = "Ke" if is_direct_equity else "WACC"
@@ -283,10 +323,13 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
 # 5. SOMME DES PARTIES (WATERFALL SOTP) — SPRINT 6 (ST 4.1)
 # ============================================================================
 
+@st.fragment
 def display_sotp_waterfall(result: ValuationResult) -> None:
     """
     Rendu Plotly d'une cascade de valorisation Sum-of-the-Parts (ST 4.1).
     Visualise la décomposition sans aucune chaîne de caractères en dur.
+    
+    ST-3.2 : Fonction fragmentée pour performance.
     """
     if not result.params.sotp.enabled or not result.params.sotp.segments:
         return
@@ -365,10 +408,13 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
 
     st.plotly_chart(fig, width='stretch')
 
+@st.fragment
 def display_backtest_convergence_chart(backtest_report: Optional[BacktestResult], currency: str) -> None:
     """
     Graphique de convergence IV vs Prix Réel (ST 4.2).
     Affiche la performance historique du modèle.
+    
+    ST-3.2 : Fonction fragmentée pour navigation fluide.
     """
     if not backtest_report or not backtest_report.points:
         st.info(ChartTexts.PRICE_UNAVAILABLE.format(ticker="Backtest"))

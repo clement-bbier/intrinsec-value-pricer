@@ -1,16 +1,34 @@
 # config/sector_multiples.yaml
-# MULTIPLES SECTORIELS PAR DÉFAUT — DT-023 Resolution
+# MULTIPLES SECTORIELS PAR DÉFAUT — ST-4.1 Resilience Mode
 #
-# Version : V1.0
-# Source : Données Damodaran (NYU Stern) moyennes historiques
+# Version : V2.0 — Sprint 4 Enhanced
+# Source : Données Damodaran (NYU Stern) moyennes historiques 2024
 #
 # Objectif :
 # - Servir de fallback lorsque Yahoo Finance échoue pour les peers
 # - Fournir des multiples raisonnables par secteur
+# - Mode Dégradé : Données de secours avec traçabilité complète
 #
 # Usage :
-#   from infra.ref_data.sector_fallback import get_sector_multiples
-#   multiples = get_sector_multiples("Technology")
+#   from infra.ref_data.sector_fallback import get_sector_multiples, SectorFallbackResult
+#   result = get_sector_multiples("Technology")
+#   if result.is_fallback:
+#       display_degraded_mode_banner()
+#
+# Financial Impact:
+#   Les multiples sectoriels sont des moyennes historiques.
+#   Ils ne remplacent pas une analyse peer-to-peer mais permettent
+#   une valorisation approximative en cas de panne API.
+
+# ============================================================================
+# MÉTADONNÉES DU FALLBACK
+# ============================================================================
+_metadata:
+  version: "2.0"
+  last_update: "2024-01-15"
+  source: "Damodaran NYU Stern - January 2024"
+  disclaimer: "Données moyennes historiques. Utiliser avec prudence."
+  confidence_score: 0.70  # Score de confiance des données de fallback
 
 # Technologie
 technology:

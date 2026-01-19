@@ -27,6 +27,10 @@ class StandardFCFFStrategy(ValuationStrategy):
         # 1. Sélection du flux de base
         fcf_base, source = self._select_base_fcf(financials, params)
 
+        # Sécurité financière : Flux négatifs en mode Auto uniquement
+        if params.growth.manual_fcf_base is None and fcf_base <= 0:
+            raise CalculationError(CalculationErrors.NEGATIVE_FLUX_AUTO.format(model="DCF Standard", val=fcf_base))
+
         self.add_step(
             step_key="FCF_BASE_SELECTION",
             label=RegistryTexts.DCF_FCF_BASE_L,

@@ -3,18 +3,27 @@ app/ui/base/expert_terminal.py
 
 CLASSE ABSTRAITE — Terminal Expert de Saisie
 
+Version : V2.0 — ST-3.1 Logical Path Resolution
 Pattern : Template Method (GoF)
 Style : Numpy docstrings
 Principes : SOLID (Single Responsibility, Open/Closed)
 
-Workflow du Template Method :
-    1. render_header()           - Titre + description du modèle
-    2. render_model_inputs()     - SPÉCIFIQUE (abstract) - flux de base
-    3. render_discount_rate()    - Coût du capital (WACC ou Ke)
-    4. render_terminal_value()   - Méthode de sortie
-    5. render_equity_bridge()    - Ajustements EV -> Equity
-    6. render_optional_features()- Monte Carlo, Scénarios, SOTP
-    7. render_submit()           - Bouton de lancement
+SÉQUENÇAGE "LOGICAL PATH" (ST-3.1 — McKinsey/Damodaran):
+=========================================================
+Le rendu suit strictement l'ordre de construction d'un modèle financier professionnel :
+
+    1. HEADER              - Titre + description du modèle
+    2. OPÉRATIONNEL        - CA, Marges, Flux de base (render_model_inputs)
+    3. RISQUE & CAPITAL    - Bêta, Kd, WACC/Ke (render_discount_rate)
+    4. VALEUR DE SORTIE    - Taux g, Multiples (render_terminal_value)
+    5. EQUITY BRIDGE       - Passage EV → Equity (render_equity_bridge)
+    6. EXTENSIONS          - Monte Carlo, Scénarios, SOTP
+    7. SUBMIT              - Bouton de lancement
+
+Financial Impact:
+    L'ordre séquentiel guide l'analyste dans une réflexion structurée.
+    Chaque section dépend logiquement des précédentes pour la cohérence
+    des hypothèses de valorisation.
 
 Note : Chaque terminal hérite de cette classe et implémente uniquement
        les parties spécifiques à son modèle de valorisation via les hooks.
@@ -139,40 +148,69 @@ class ExpertTerminalBase(ABC):
         Exécute le rendu complet du terminal (Template Method).
 
         Cette méthode orchestre l'ensemble du workflow de saisie en appelant
-        les différentes étapes dans l'ordre défini.
+        les différentes étapes dans l'ordre strict du "Logical Path" (ST-3.1).
+
+        Séquençage McKinsey/Damodaran:
+        1. Header → 2. Opérationnel → 3. Risque & Capital →
+        4. Valeur de Sortie → 5. Equity Bridge → 6. Extensions → 7. Submit
 
         Returns
         -------
         Optional[ValuationRequest]
             La requête de valorisation si le formulaire est soumis,
             None sinon (l'utilisateur n'a pas cliqué sur le bouton).
+
+        Financial Impact
+        ----------------
+        L'ordre séquentiel guide l'analyste dans une réflexion structurée.
+        Ne pas modifier l'ordre sans impact sur l'UX professionnelle.
         """
-        # Étape 1 : Header avec titre et description
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 1 : HEADER
+        # ══════════════════════════════════════════════════════════════════
         self._render_header()
 
-        # Étape 2 : Inputs spécifiques au modèle (ABSTRACT)
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 2 : OPÉRATIONNEL (CA, Marges, Flux de base)
+        # Point d'entrée du modèle — Données fondamentales
+        # ══════════════════════════════════════════════════════════════════
         model_data = self.render_model_inputs()
         self._collected_data.update(model_data or {})
 
-        # Étape 3 : Coût du capital (WACC ou Ke)
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 3 : RISQUE & CAPITAL (Bêta, Kd, WACC/Ke)
+        # Coût du capital — Détermine le taux d'actualisation
+        # ══════════════════════════════════════════════════════════════════
         if self.SHOW_DISCOUNT_SECTION:
             discount_data = self._render_discount_rate()
             self._collected_data.update(discount_data or {})
 
-        # Étape 4 : Valeur terminale
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 4 : VALEUR DE SORTIE (Taux g, Multiples)
+        # Hypothèses de sortie — Impact majeur sur la valorisation
+        # ══════════════════════════════════════════════════════════════════
         if self.SHOW_TERMINAL_SECTION:
             terminal_data = self._render_terminal_value()
             self._collected_data.update(terminal_data or {})
 
-        # Étape 5 : Equity Bridge
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 5 : EQUITY BRIDGE (EV → Equity)
+        # Passage de la valeur d'entreprise à la valeur par action
+        # ══════════════════════════════════════════════════════════════════
         if self.SHOW_BRIDGE_SECTION:
             bridge_data = self._render_equity_bridge()
             self._collected_data.update(bridge_data or {})
 
-        # Étape 6 : Fonctionnalités optionnelles (expanders)
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 6 : EXTENSIONS (Monte Carlo, Scénarios, SOTP)
+        # Analyses complémentaires optionnelles
+        # ══════════════════════════════════════════════════════════════════
         self._render_optional_features()
 
-        # Étape 7 : Bouton de soumission
+        # ══════════════════════════════════════════════════════════════════
+        # SECTION 7 : SUBMIT
+        # Lancement de la valorisation
+        # ══════════════════════════════════════════════════════════════════
         return self._render_submit()
 
     # ══════════════════════════════════════════════════════════════════════════

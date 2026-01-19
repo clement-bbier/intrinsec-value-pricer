@@ -55,9 +55,9 @@ class DividendDiscountStrategy(ValuationStrategy):
         # On récupère d'abord le dividende par action (Expert ou Auto)
         d0_per_share, source = self._resolve_dividend_base(financials, params)
 
-        # Validation de rigueur : Un DDM sans dividende est mathématiquement nul
-        if d0_per_share <= 0:
-            raise CalculationError(CalculationErrors.INVALID_DIVIDEND)
+        # Sécurité financière : Dividendes négatifs en mode Auto uniquement
+        if params.growth.manual_dividend_base is None and d0_per_share <= 0:
+            raise CalculationError(CalculationErrors.NEGATIVE_FLUX_AUTO.format(model="DDM", val=d0_per_share))
 
         # CORRECTION ÉCHELLE : Conversion en masse totale pour le Pipeline
         # Cela évite que l'étape 7 du pipeline (IV = Value / Shares) ne produise 0.00

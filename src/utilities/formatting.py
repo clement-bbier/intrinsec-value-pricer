@@ -1,10 +1,21 @@
 """
 src/utilities/formatting.py
+
 Utilitaires de formatage partagés.
 
 Ces fonctions sont utilisées à la fois par la logique métier
 et par l'interface utilisateur pour un formatage cohérent.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pure Functions
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Un formatage incorrect peut induire en erreur l'utilisateur
+- Les arrondis doivent être cohérents avec les conventions financières
 """
+
+from __future__ import annotations
 
 import numpy as np
 from typing import Optional

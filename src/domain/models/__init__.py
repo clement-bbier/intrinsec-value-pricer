@@ -14,18 +14,29 @@ Structure :
 Tous les modeles sont re-exportes ici pour la compatibilite.
 """
 
-# Enumerations
+# Enumerations et Alias Financiers
 from .enums import (
+    # Enumerations
     ValuationMode,
     InputSource,
     TerminalValueMethod,
     AuditSeverity,
     SOTPMethod,
     AuditPillar,
+    # Type Aliases (ST-1.2 Type-Safe)
+    Rate,
+    Currency,
+    Percentage,
+    Multiple,
+    ShareCount,
+    Years,
+    Ratio,
 )
 
-# Glass Box
+# Glass Box (ST-2.1 Enhanced)
 from .glass_box import (
+    VariableSource,
+    VariableInfo,
     TraceHypothesis,
     CalculationStep,
     AuditStep,
@@ -87,7 +98,17 @@ __all__ = [
     "AuditSeverity",
     "SOTPMethod",
     "AuditPillar",
-    # Glass Box
+    # Type Aliases (ST-1.2 Type-Safe)
+    "Rate",
+    "Currency",
+    "Percentage",
+    "Multiple",
+    "ShareCount",
+    "Years",
+    "Ratio",
+    # Glass Box (ST-2.1 Enhanced)
+    "VariableSource",
+    "VariableInfo",
     "TraceHypothesis",
     "CalculationStep",
     "AuditStep",

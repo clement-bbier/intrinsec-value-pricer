@@ -1,10 +1,22 @@
 """
-core/valuation/sotp_engine.py
+src/valuation/sotp_engine.py
+
 MOTEUR DE SOMMATION PAR SEGMENTS (SOTP) — VERSION V13.1
+
 Sprint 6 : Valorisation des conglomérats.
 Rôle : Consolidation des EV et application de l'Equity Bridge global.
 Standards : SOLID, Glass Box, i18n Secured.
+
+Version : V13.2 — ST-1.2 Type-Safe Resolution
+Pattern : Pipeline
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- La valorisation SOTP est critique pour les conglomérats
+- Une erreur de décote peut sous/sur-évaluer significativement
 """
+
+from __future__ import annotations
 
 from typing import List, Tuple
 from src.domain.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis

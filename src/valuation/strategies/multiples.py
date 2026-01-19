@@ -1,8 +1,20 @@
 """
-core/valuation/strategies/multiples.py
+src/valuation/strategies/multiples.py
+
 STRATÉGIE DE VALORISATION PAR MULTIPLES — VERSION V2.0 (Sprint 4)
+
 Rôle : Application des médianes sectorielles aux fondamentaux de l'entreprise.
+
+Version : V2.1 — ST-1.2 Type-Safe Resolution
+Pattern : Strategy (GoF)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Les multiples sont sensibles à la qualité de la cohorte de pairs
+- Une médiane mal calculée peut biaiser la triangulation
 """
+
+from __future__ import annotations
 
 from typing import Dict, Optional
 from src.valuation.strategies.abstract import ValuationStrategy

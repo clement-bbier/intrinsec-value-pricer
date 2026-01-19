@@ -1,11 +1,25 @@
 """
-core/models/request_response.py
-Requetes et resultats de valorisation.
+src/domain/models/request_response.py
+
+Requêtes et résultats de valorisation.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pydantic Model (Request/Response Objects)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- ValuationResult est le contrat de sortie principal
+- Toute modification impacte l'ensemble de la chaîne de valeur
+
+DEPENDANCES CRITIQUES:
+- pydantic >= 2.0.0
 """
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # Any requis pour Pydantic model_post_init
 
 from pydantic import BaseModel, ConfigDict, Field
 

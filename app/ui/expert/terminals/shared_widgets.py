@@ -334,8 +334,128 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 4. WIDGET EQUITY BRIDGE (Section 5)
+# 4. WIDGET EQUITY BRIDGE (Section 5) — ST-3.4 Pitchbook Design
 # ==============================================================================
+
+@st.fragment
+def render_equity_bridge_inputs(
+    key_prefix: str = "bridge",
+    show_header: bool = True,
+    is_direct_equity: bool = False
+) -> Dict[str, Any]:
+    """
+    Widget mutualisé pour la saisie de l'Equity Bridge (ST-3.4).
+    
+    Design unifié "Pitchbook" : visuel identique en mode DCF ou Multiples.
+    Le bridge convertit l'Enterprise Value en Equity Value.
+    
+    Parameters
+    ----------
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (évite les conflits), by default "bridge".
+    show_header : bool, optional
+        Afficher le header de section, by default True.
+    is_direct_equity : bool, optional
+        Mode Direct Equity (seul le nombre d'actions est demandé), by default False.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Paramètres de bridge collectés :
+        - manual_total_debt : float | None
+        - manual_cash : float | None
+        - manual_shares_outstanding : float | None
+        - manual_minority_interests : float | None
+        - manual_pension_provisions : float | None
+    
+    Financial Impact
+    ----------------
+    L'Equity Bridge est critique : une erreur sur la dette ou le cash
+    impacte directement le prix par action final.
+    
+    Examples
+    --------
+    >>> # En mode DCF Standard
+    >>> bridge_data = render_equity_bridge_inputs(key_prefix="dcf")
+    >>> 
+    >>> # En mode Multiples (même visuel)
+    >>> bridge_data = render_equity_bridge_inputs(key_prefix="mult")
+    """
+    if show_header:
+        st.markdown("#### Equity Bridge")
+        st.caption("Passage de la Valeur d'Entreprise à la Valeur par Action")
+        st.latex(r"P = \frac{EV - \text{Dette} + \text{Cash} - \text{Minorities}}{\text{Actions}}")
+    
+    if is_direct_equity:
+        # Direct Equity : seul le nombre d'actions est nécessaire
+        shares = st.number_input(
+            ExpertTerminalTexts.INP_SHARES,
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_SHARES,
+            key=f"{key_prefix}_shares"
+        )
+        return {"manual_shares_outstanding": shares}
+    
+    # ══════════════════════════════════════════════════════════════════
+    # DESIGN PITCHBOOK : Structure visuelle institutionnelle
+    # ══════════════════════════════════════════════════════════════════
+    
+    with st.container(border=True):
+        # Ligne 1 : Dette et Cash (les 2 composantes majeures)
+        st.markdown("**Composantes de Structure**")
+        col_debt, col_cash = st.columns(2)
+        
+        debt = col_debt.number_input(
+            "Dette Nette Totale",
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_DEBT,
+            key=f"{key_prefix}_debt"
+        )
+        cash = col_cash.number_input(
+            "Trésorerie & Équivalents",
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_CASH,
+            key=f"{key_prefix}_cash"
+        )
+        
+        # Ligne 2 : Ajustements secondaires
+        st.divider()
+        st.markdown("**Ajustements**")
+        col_min, col_pen, col_shares = st.columns(3)
+        
+        minorities = col_min.number_input(
+            "Minoritaires",
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_MINORITIES,
+            key=f"{key_prefix}_min"
+        )
+        pensions = col_pen.number_input(
+            "Provisions Retraite",
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_PENSIONS,
+            key=f"{key_prefix}_pen"
+        )
+        shares = col_shares.number_input(
+            "Actions en Circulation",
+            value=None,
+            format="%.0f",
+            help=ExpertTerminalTexts.HELP_SHARES,
+            key=f"{key_prefix}_shares"
+        )
+    
+    return {
+        "manual_total_debt": debt,
+        "manual_cash": cash,
+        "manual_shares_outstanding": shares,
+        "manual_minority_interests": minorities,
+        "manual_pension_provisions": pensions,
+    }
+
 
 def widget_equity_bridge(
     formula_latex: str,
@@ -360,66 +480,26 @@ def widget_equity_bridge(
     -------
     Dict[str, Any]
         Paramètres de bridge collectés (dette, cash, actions, etc.)
+    
+    Notes
+    -----
+    Cette fonction délègue maintenant à render_equity_bridge_inputs()
+    pour un design unifié (ST-3.4).
     """
     st.markdown(ExpertTerminalTexts.SEC_5_BRIDGE)
     st.latex(formula_latex)
 
     is_direct_equity = mode.is_direct_equity
-
-    if is_direct_equity:
-        # Direct Equity : seul le nombre d'actions est nécessaire
-        shares = st.number_input(
-            ExpertTerminalTexts.INP_SHARES,
-            value=None,
-            format="%.0f",
-            help=ExpertTerminalTexts.HELP_SHARES
-        )
-        st.divider()
-        return {"manual_shares_outstanding": shares}
-
-    # Firm-Level : bridge complet EV -> Equity
-    col1, col2, col3 = st.columns(3)
-
-    debt = col1.number_input(
-        ExpertTerminalTexts.INP_DEBT,
-        value=None,
-        format="%.0f",
-        help=ExpertTerminalTexts.HELP_DEBT
+    
+    # Délégation au widget mutualisé (ST-3.4)
+    result = render_equity_bridge_inputs(
+        key_prefix=f"bridge_{mode.value}",
+        show_header=False,  # Header déjà affiché ci-dessus
+        is_direct_equity=is_direct_equity
     )
-    cash = col2.number_input(
-        ExpertTerminalTexts.INP_CASH,
-        value=None,
-        format="%.0f",
-        help=ExpertTerminalTexts.HELP_CASH
-    )
-    shares = col3.number_input(
-        ExpertTerminalTexts.INP_SHARES,
-        value=None,
-        format="%.0f",
-        help=ExpertTerminalTexts.HELP_SHARES
-    )
-
-    minorities = col1.number_input(
-        ExpertTerminalTexts.INP_MINORITIES,
-        value=None,
-        format="%.0f",
-        help=ExpertTerminalTexts.HELP_MINORITIES
-    )
-    pensions = col2.number_input(
-        ExpertTerminalTexts.INP_PENSIONS,
-        value=None,
-        format="%.0f",
-        help=ExpertTerminalTexts.HELP_PENSIONS
-    )
-
+    
     st.divider()
-    return {
-        "manual_total_debt": debt,
-        "manual_cash": cash,
-        "manual_shares_outstanding": shares,
-        "manual_minority_interests": minorities,
-        "manual_pension_provisions": pensions,
-    }
+    return result
 
 
 # ==============================================================================

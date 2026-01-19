@@ -1,9 +1,20 @@
 """
-core/models/dcf_inputs.py
-Parametres d'entree pour les modeles DCF.
+src/domain/models/dcf_inputs.py
+
+Paramètres d'entrée pour les modèles DCF.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pydantic Model (Configuration Objects)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Ces paramètres pilotent directement les calculs DCF
+- Un taux mal configuré invalide toute la valorisation
 """
 
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any, Dict, Optional  # Any requis pour _decimal_guard
 
 from pydantic import BaseModel, Field, field_validator
 

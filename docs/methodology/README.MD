@@ -1,4 +1,6 @@
-# Méthodologies de valorisation
+# Méthodologies de Valorisation
+
+**Version** : 2.0 — Janvier 2026
 
 Ce dossier regroupe la **documentation méthodologique financière**
 du projet *Intrinsic Value Pricer*.
@@ -7,7 +9,7 @@ Il constitue la référence pédagogique pour comprendre :
 - les **méthodes de valorisation** implémentées,
 - leurs **hypothèses économiques**,
 - leurs **formules financières**,
-- leurs **limites d’usage**.
+- leurs **limites d'usage**.
 
 Cette documentation est conçue pour être :
 - exploitable par un **analyste junior** (apprentissage),
@@ -16,46 +18,51 @@ Cette documentation est conçue pour être :
 
 ---
 
-## 🎯 Philosophie générale
+## Philosophie Générale
 
 Le moteur de valorisation repose sur trois principes non négociables :
 
-1. **Glass Box**  
-   Chaque méthode expose explicitement :
-   - ses hypothèses,
-   - ses formules,
-   - chaque étape de calcul,
-   - chaque résultat intermédiaire.
+### 1. Glass Box V2
 
-2. **Déterminisme des modèles**  
-   Les méthodes de valorisation sont **strictement déterministes**.  
-   Toute incertitude est traitée via des **extensions séparées** (Monte Carlo).
+Chaque méthode expose explicitement :
+- ses hypothèses,
+- ses formules (LaTeX),
+- chaque étape de calcul,
+- chaque résultat intermédiaire,
+- **la source de chaque variable** (ST-3.3).
 
-3. **Traçabilité complète**  
-   Toute information affichée dans l’interface :
-   - provient du moteur,
-   - est traçable jusqu’au code,
-   - est vérifiable ligne par ligne.
+### 2. Déterminisme des Modèles
+
+Les méthodes de valorisation sont **strictement déterministes**.
+Toute incertitude est traitée via des **extensions séparées** (Monte Carlo).
+
+### 3. Traçabilité Complète
+
+Toute information affichée dans l'interface :
+- provient du moteur,
+- est traçable jusqu'au code,
+- affiche un **badge de confiance** (Certifié/Estimé/Manuel).
 
 ---
 
-## 🧠 Comment lire une méthode de valorisation
+## Comment Lire une Méthode de Valorisation
 
 Chaque méthode documentée dans ce dossier suit **la même structure**.
 
-### 1️⃣ Objectif de la méthode
+### 1. Objectif de la Méthode
 - Quel problème économique la méthode cherche à résoudre
-- Pour quel type d’entreprise elle est adaptée
+- Pour quel type d'entreprise elle est adaptée
 
-### 2️⃣ Principe économique
+### 2. Principe Économique
 - Logique financière sous-jacente
 - Hypothèses structurantes
 
-### 3️⃣ Formules financières
-- Écriture mathématique canonique
+### 3. Formules Financières
+- Écriture mathématique canonique (LaTeX)
 - Correspondance exacte avec le code
 
-### 4️⃣ Étapes de calcul (Glass Box)
+### 4. Étapes de Calcul (Glass Box)
+
 Chaque étape correspond directement à une
 `CalculationStep` générée par le moteur :
 
@@ -65,102 +72,111 @@ Chaque étape correspond directement à une
 - valeur terminale,
 - passage à la valeur par action.
 
-👉 **Ces étapes sont visibles intégralement dans l’interface utilisateur.**
+**Ces étapes sont visibles intégralement dans l'interface utilisateur.**
 
-### 5️⃣ Implémentation technique
+### 5. Implémentation Technique
+
 Chaque page indique explicitement :
 - le fichier Python concerné,
 - la classe de stratégie utilisée.
 
-### 6️⃣ Limites et cas d’usage
+### 6. Limites et Cas d'Usage
 - Quand la méthode est pertinente
 - Quand elle ne doit pas être utilisée
-- Principales sources d’erreur d’interprétation
+- Principales sources d'erreur d'interprétation
 
 ---
 
-## 🧮 Lien entre documentation, code et interface
+## Lien entre Documentation, Code et Interface
 
-La documentation méthodologique est **directement reliée au code** :
+| Élément | Localisation | Rôle |
+|---------|--------------|------|
+| Stratégies | `src/valuation/strategies/*.py` | Implémentation du calcul |
+| Formules | `CalculationStep.theoretical_formula` | LaTeX dans l'UI |
+| Variables | `CalculationStep.variables_map` | Traçabilité des sources |
+| Interface | `app/ui/results/` | Restitution interactive |
 
-| Élément | Rôle |
-|------|------|
-| `core/valuation/strategies/*.py` | Implémentation du calcul |
-| `core/methodology/texts.py` | Texte canonique court (UI) |
-| `CalculationStep` | Trace détaillée du calcul |
-| Interface Streamlit | Restitution interactive |
-
-👉 **Il n’existe aucune méthode documentée qui ne soit implémentée dans le code.**  
-👉 **Il n’existe aucune logique implémentée qui ne soit documentée.**
+**Il n'existe aucune méthode documentée qui ne soit implémentée dans le code.**
+**Il n'existe aucune logique implémentée qui ne soit documentée.**
 
 ---
 
-## 📚 Méthodes disponibles
-
-Les méthodes actuellement implémentées et documentées sont :
+## Méthodes Disponibles
 
 ### Méthodes DCF (Discounted Cash Flow)
 
-- **DCF Standard — FCFF Two-Stage**  
-  Entreprises matures à flux stables  
-  → `dcf_standard.py`
+| Méthode | Fichier | Cible |
+|---------|---------|-------|
+| **DCF Standard — FCFF Two-Stage** | `dcf_standard.py` | Entreprises matures |
+| **DCF Fondamental — FCFF Normalisé** | `dcf_fundamental.py` | Cycliques / industrielles |
+| **DCF Croissance — Revenue-Driven** | `dcf_growth.py` | Tech / forte croissance |
+| **FCFE — Flux vers Actionnaires** | `dcf_equity.py` | Sociétés endettées stables |
+| **DDM — Dividend Discount** | `dcf_dividend.py` | Dividendes réguliers |
 
-- **DCF Fondamental — FCFF Normalisé**  
-  Entreprises cycliques / industrielles  
-  → `dcf_fundamental.py`
+### Méthodes Non DCF
 
-- **DCF Croissance — Revenue-Driven**  
-  Entreprises en forte croissance / tech  
-  → `dcf_growth.py`
+| Méthode | Fichier | Cible |
+|---------|---------|-------|
+| **Graham Intrinsic Value (1974)** | `graham_value.py` | Screening rapide |
+| **Residual Income Model (RIM)** | `rim_banks.py` | Banques / assurances |
+| **Multiples Sectoriels** | `multiples.py` | Triangulation relative |
 
-### Méthodes non DCF
+### Extensions (Incertitude)
 
-- **Residual Income Model (RIM)**  
-  Banques, assurances, institutions financières  
-  → `rim_banks.py`
-
-- **Graham Intrinsic Value (1974)**  
-  Méthode heuristique comparative  
-  → `graham_value.py`
-
-### Extensions (incertitude)
-
-- **Monte Carlo**  
-  Extension probabiliste appliquée aux hypothèses  
-  → `monte_carlo.py`
+| Extension | Fichier | Rôle |
+|-----------|---------|------|
+| **Monte Carlo** | `monte_carlo.py` | Quantification de l'incertitude |
 
 ---
 
-## ⚠️ Point clé sur l’incertitude
+## Hiérarchie Analytique (ST-3.1)
 
-L’analyse Monte Carlo :
-- **n’est pas** une méthode de valorisation,
+Les méthodes sont ordonnées par niveau de complexité :
+
+```
+┌─────────────────────────────────────────────────┐
+│ TIER 1 : DEFENSIVE                              │
+│ Graham Value — Approche heuristique             │
+├─────────────────────────────────────────────────┤
+│ TIER 2 : RELATIVE                               │
+│ RIM, DDM, Multiples — Valorisation comparative  │
+├─────────────────────────────────────────────────┤
+│ TIER 3 : FUNDAMENTAL                            │
+│ DCF variants — Valorisation fondamentale        │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## Point Clé sur l'Incertitude
+
+L'analyse Monte Carlo :
+- **n'est pas** une méthode de valorisation,
 - **ne modifie jamais** la logique des modèles,
-- **quantifie uniquement l’incertitude** autour des hypothèses.
+- **quantifie uniquement l'incertitude** autour des hypothèses.
 
-Les valeurs centrales restent issues
-des **modèles déterministes**.
+Les valeurs centrales restent issues des **modèles déterministes**.
 
 ---
 
-## 🛡️ Audit et gouvernance
+## Audit et Gouvernance
 
 Toutes les méthodes sont compatibles avec :
-- l’**Audit Engine**,
-- le **Confidence Score**,
+- l'**Audit Engine** (score de confiance),
+- le **diagnostic pédagogique** (ST-4.2),
 - les exigences de **Model Validation**.
 
 La documentation méthodologique doit toujours être lue conjointement
-avec la section **Audit & Confiance** de l’interface.
+avec la section **Rapport d'Audit** de l'interface.
 
 ---
 
-## 📌 Règles de maintenance
+## Règles de Maintenance
 
 - Toute nouvelle méthode implique :
-  - une nouvelle stratégie dans `core/valuation/strategies/`,
+  - une nouvelle stratégie dans `src/valuation/strategies/`,
   - une page dédiée dans ce dossier,
-  - une entrée correspondante dans `texts.py`.
+  - une entrée dans le Registry.
 
 - Toute modification de formule implique :
   - mise à jour du code,
@@ -169,6 +185,8 @@ avec la section **Audit & Confiance** de l’interface.
 
 ---
 
-📎 **Prochaine lecture recommandée**  
-➡️ Commencer par la méthode correspondant au profil de l’entreprise analysée  
-➡️ Puis consulter la page dédiée à l’audit et à l’incertitude
+## Prochaine Lecture Recommandée
+
+1. Commencer par la méthode correspondant au profil de l'entreprise analysée
+2. Puis consulter la page dédiée à Monte Carlo pour l'incertitude
+3. Enfin, lire `docs/technical/audit_engine.md` pour le scoring

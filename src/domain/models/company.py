@@ -1,7 +1,21 @@
 """
-core/models/company.py
-Donnees financieres de l'entreprise.
+src/domain/models/company.py
+
+Données financières de l'entreprise.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pydantic Model (Value Object)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Ces données alimentent tous les modèles de valorisation
+- Une erreur de normalisation invalide l'ensemble du calcul
+
+DEPENDANCES CRITIQUES:
+- pydantic >= 2.0.0
 """
+
+from __future__ import annotations
 
 from typing import Optional
 

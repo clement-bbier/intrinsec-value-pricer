@@ -1,10 +1,24 @@
 """
-core/computation/financial_math.py
+src/computation/financial_math.py
+
 MOTEUR MATHÉMATIQUE FINANCIER — VERSION V12.0 (Institutional Grade)
+
 Sprint 4 : Finalisation Triangulation & Localisation Macro
 Rôle : Calculs financiers atomiques, WACC, Ke et moteur de synthèse hybride.
 Sources : Damodaran (Investment Valuation), McKinsey (Valuation).
+
+Pattern : Pure Functions (Stateless)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Point critique : erreur de formule = valorisation incorrecte
+- Toute modification doit être validée contre le Golden Dataset
+
+DEPENDANCES CRITIQUES:
+- Aucune dépendance externe (mathématiques pures)
 """
+
+from __future__ import annotations
 
 import logging
 from typing import List, Tuple, Optional, Dict
@@ -14,7 +28,7 @@ from dataclasses import dataclass
 from src.i18n import CalculationErrors, StrategySources
 from src.exceptions import CalculationError
 from src.domain.models import CompanyFinancials, DCFParameters
-from src.config.constants import ValuationEngineDefaults, TechnicalDefaults
+from src.config.constants import ValuationEngineDefaults, TechnicalDefaults, MacroDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +48,8 @@ class WACCBreakdown:
     weight_debt: float
     wacc: float
     method: str
+    beta_used: float = 1.0  # Bêta utilisé pour le calcul du Ke
+    beta_adjusted: bool = False  # Indique si le bêta a été réendetté
 
 # ==============================================================================
 # 1. TIME VALUE OF MONEY & TERMINAL VALUES
@@ -76,6 +92,24 @@ def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     """Modèle CAPM standard : $k_e = R_f + \beta \times MRP$."""
     return rf + (beta * mrp)
 
+def unlever_beta(beta_levered: float, tax_rate: float, debt_equity_ratio: float) -> float:
+    """
+    Désendettement du bêta selon la formule de Hamada.
+    βU = βL / [1 + (1 - T) × (D/E)]
+    """
+    if debt_equity_ratio <= 0:
+        return beta_levered  # Si pas d'endettement, bêta inchangé
+    return beta_levered / (1.0 + (1.0 - tax_rate) * debt_equity_ratio)
+
+def relever_beta(beta_unlevered: float, tax_rate: float, target_debt_equity_ratio: float) -> float:
+    """
+    Réendettement du bêta selon la formule de Hamada.
+    βL = βU × [1 + (1 - T) × (D/E)]
+    """
+    if target_debt_equity_ratio <= 0:
+        return beta_unlevered  # Si pas d'endettement cible, bêta inchangé
+    return beta_unlevered * (1.0 + (1.0 - tax_rate) * target_debt_equity_ratio)
+
 def calculate_cost_of_equity(financials: CompanyFinancials, params: DCFParameters) -> float:
     """Isole le calcul du Ke pour les modèles Direct Equity."""
     r = params.rates
@@ -96,7 +130,7 @@ def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float], interest_
         return rf + 0.0107  # Proxy spread A-rated
 
     icr = safe_ebit / safe_int
-    table = SPREADS_LARGE_CAP if market_cap >= 5_000_000_000 else SPREADS_SMALL_MID_CAP
+    table = SPREADS_LARGE_CAP if market_cap >= MacroDefaults.LARGE_CAP_THRESHOLD else SPREADS_SMALL_MID_CAP
 
     for threshold, spread in table:
         if icr >= threshold:
@@ -120,8 +154,31 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     total_cap = market_equity + debt
     we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
 
+    # Bêta utilisé pour le calcul (avant ajustement potentiel)
+    beta_original = r.manual_beta if r.manual_beta is not None else (financials.beta or 1.0)
+    beta_used = beta_original
+    beta_adjusted = False
+
+    # Logique de réendettement du bêta (formule de Hamada)
+    if g.target_equity_weight is not None and g.target_debt_weight is not None and g.target_equity_weight > 0:
+        target_debt_equity_ratio = g.target_debt_weight / g.target_equity_weight
+
+        # Désendetter le bêta observé vers un bêta sans dette
+        beta_unlevered = unlever_beta(beta_original, tax, debt / market_equity if market_equity > 0 else 0.0)
+
+        # Réendetter vers la structure cible
+        beta_used = relever_beta(beta_unlevered, tax, target_debt_equity_ratio)
+        beta_adjusted = True
+
+        # Recalculer le Ke avec le bêta ajusté
+        mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
+        ke = calculate_cost_of_equity_capm(rf, beta_used, mrp)
+
     wacc_raw = (we * ke) + (wd * kd_net)
-    return WACCBreakdown(ke, kd_gross, kd_net, we, wd, r.wacc_override or wacc_raw, StrategySources.WACC_MARKET)
+    return WACCBreakdown(
+        ke, kd_gross, kd_net, we, wd, r.wacc_override or wacc_raw, StrategySources.WACC_MARKET,
+        beta_used, beta_adjusted
+    )
 
 # ==============================================================================
 # 3. MODÈLES ACTIONNAIRES (FCFE & DDM)

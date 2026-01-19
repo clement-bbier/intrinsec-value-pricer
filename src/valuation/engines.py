@@ -39,6 +39,9 @@ from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
 # Import du registre centralisé (DT-007)
 from src.valuation.registry import get_strategy, StrategyRegistry
 
+# Import du logger institutionnel (ST-4.2)
+from src.quant_logger import QuantLogger, LogDomain
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,8 +71,61 @@ def run_valuation(
         params: DCFParameters
 ) -> ValuationResult:
     """
-    Exécute une valorisation complète et déclenche l'audit institutionnel.
-    Supporte nativement le mode Monte Carlo et la triangulation hybride automatique (Phase 5).
+    Exécute le moteur de valorisation unifié et lance l'audit institutionnel.
+
+    Point d'entrée principal du système de valorisation. Orchestre l'exécution
+    de la stratégie appropriée, gère le wrapper Monte Carlo optionnel, et
+    déclenche la triangulation par multiples si des données de pairs sont disponibles.
+
+    Args
+    ----
+    request : ValuationRequest
+        Contrat de requête immuable contenant le ticker, le mode de valorisation
+        et les options (dont les données de multiples pour triangulation).
+    financials : CompanyFinancials
+        Données financières normalisées (TTM - Trailing Twelve Months).
+        Doivent être validées et sanitizées avant appel.
+    params : DCFParameters
+        Hypothèses d'entrée : taux (WACC, Ke), croissance, configuration
+        Monte Carlo et scénarios optionnels.
+
+    Returns
+    -------
+    ValuationResult
+        Objet riche incluant :
+        - intrinsic_value_per_share : Valeur intrinsèque par action
+        - calculation_trace : Liste des CalculationStep (Glass Box)
+        - audit_report : Score de fiabilité et alertes
+        - multiples_triangulation : Valorisation par comparables (si disponible)
+
+    Raises
+    ------
+    ValuationException
+        Si le mode de valorisation n'est pas supporté (UNKNOWN_STRATEGY).
+    CalculationError
+        Si une erreur mathématique survient pendant le calcul.
+
+    Financial Impact
+    ----------------
+    Point d'entrée critique. Une défaillance ici invalide l'intégralité du
+    Pitchbook. Toute modification doit être validée contre le Golden Dataset
+    (50 tickers de référence) pour garantir la non-régression des calculs.
+
+    Examples
+    --------
+    >>> from src.domain.models import ValuationRequest, ValuationMode, InputSource
+    >>> request = ValuationRequest(
+    ...     ticker="AAPL",
+    ...     projection_years=5,
+    ...     mode=ValuationMode.FCFF_STANDARD,
+    ...     input_source=InputSource.AUTO
+    ... )
+    >>> result = run_valuation(request, financials, params)
+    >>> print(f"Valeur intrinsèque: ${result.intrinsic_value_per_share:.2f}")
+
+    See Also
+    --------
+    run_reverse_dcf : Calcul du taux de croissance implicite par dichotomie.
     """
     logger.info(f"[Engine] Initialisation {request.mode.value} pour {request.ticker}")
 
@@ -132,6 +188,16 @@ def run_valuation(
         strategy.verify_output_contract(result)
 
         logger.info(f"[Engine] Valuation completed | audit_score={result.audit_report.global_score:.1f}")
+        
+        # 5. Log institutionnel (ST-4.2)
+        QuantLogger.log_success(
+            ticker=request.ticker,
+            mode=request.mode.value,
+            iv=result.intrinsic_value_per_share,
+            audit_score=result.audit_report.global_score if result.audit_report else None,
+            market_price=result.market_price
+        )
+        
         return result
 
     except ValuationException:
@@ -143,6 +209,11 @@ def run_valuation(
     except Exception as e:
         # Capture des défaillances imprévues (Système)
         logger.error(f"[Engine] Critical engine error | error={str(e)}")
+        QuantLogger.log_error(
+            ticker=request.ticker,
+            error=str(e),
+            domain=LogDomain.VALUATION
+        )
         raise _handle_system_crash(e)
 
 # ==============================================================================
@@ -209,8 +280,9 @@ def run_reverse_dcf(
     if market_price <= 0:
         return None
 
-    # Bornes économiques standards pour la recherche
-    low, high = -0.20, 0.50
+    # Bornes économiques standards pour la recherche (centralisées ST-2.3)
+    low = TechnicalDefaults.REVERSE_DCF_LOW_BOUND
+    high = TechnicalDefaults.REVERSE_DCF_HIGH_BOUND
     strategy = FundamentalFCFFStrategy(glass_box_enabled=False)
 
     for _ in range(max_iterations):

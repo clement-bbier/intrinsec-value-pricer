@@ -80,6 +80,9 @@ class StrategyFormulas:
     # === VALEUR ACTUELLE NETTE ===
     NPV = r"PV = \sum_{t=1}^{n} \frac{FCF_t}{(1 + r)^t} + \frac{TV_n}{(1 + r)^n}"
 
+    # === DCF STANDARD (ST-2.2) ===
+    DCF_STANDARD = r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
+
     # === AUTRES FORMULES ===
     EQUITY_BRIDGE = r"Equity = EV - Debt + Cash - Minority - Provisions"
     VALUE_PER_SHARE = r"IV = \frac{Equity}{Shares\ Outstanding}"
@@ -87,9 +90,11 @@ class StrategyFormulas:
     # === MONTE CARLO ===
     MC_VOLATILITY_MATRIX = r"\sigma = [\sigma_\beta, \sigma_g, \sigma_{Y_0}]"
 
-    # === RELATIFS ===
+    # === RELATIFS / MULTIPLES (ST-2.2) ===
     PE_MULTIPLE = r"P/E = \frac{Price}{EPS}"
     EV_EBITDA_MULTIPLE = r"EV/EBITDA = \frac{Enterprise\ Value}{EBITDA}"
+    PRICE_FROM_PE = r"Price_{P/E} = \frac{Net\ Income \times Median\ P/E}{Shares}"
+    PRICE_FROM_EV_EBITDA = r"Price_{EV/EBITDA} = \frac{EBITDA \times Median\ EV/EBITDA - Debt + Cash}{Shares}"
 
     # === RIM BANKS ===
     RIM_RESIDUAL_INCOME = r"RI_t = NI_t - (K_e \times BV_{t-1})"

@@ -1,7 +1,18 @@
 """
-core/models/scenarios.py
-Modeles pour les scenarios et SOTP.
+src/domain/models/scenarios.py
+
+Modèles pour les scénarios et SOTP.
+
+Version : V2.0 — ST-1.2 Type-Safe Resolution
+Pattern : Pydantic Model (Scenario Domain)
+Style : Numpy Style docstrings
+
+RISQUES FINANCIERS:
+- Les scénarios Bull/Base/Bear guident les décisions d'investissement
+- Un scénario mal paramétré peut biaiser l'analyse
 """
+
+from __future__ import annotations
 
 from typing import List, Optional
 

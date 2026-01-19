@@ -1,11 +1,22 @@
 """
-core/exceptions.py
+src/exceptions.py
+
 Exceptions typées transportant des diagnostics structurés.
 
-Version : V2.0 — DT-001/002/020/021 Resolution
-- Migration des imports vers core.i18n
-- Amélioration des messages d'erreur pédagogiques
+Version : V2.1 — ST-1.2 Type-Safe Resolution
+Pattern : Domain Exceptions
+Style : Numpy Style docstrings
+
+Historique:
+- V2.0: DT-001/002/020/021 Resolution (migration i18n)
+- V2.1: ST-1.2 Type-Safe (future annotations)
+
+RISQUES FINANCIERS:
+- Ces exceptions guident le diagnostic utilisateur
+- Un mauvais message peut masquer un problème critique
 """
+
+from __future__ import annotations
 
 import logging
 from typing import Optional
