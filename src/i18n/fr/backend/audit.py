@@ -28,6 +28,12 @@ class AuditMessages:
     DCF_LEVERAGE_EXCESSIVE = "Levier financier excessif (> 4x EBIT)."
     DCF_REINVESTMENT_DEFICIT = "Deficit de reinvestissement : Capex < 80% des dotations."
     DCF_GROWTH_OUTSIDE_NORMS = "Taux de croissance g ({g:.1%}) hors normes normatives."
+
+    # Diagnostic Events
+    RISK_EXTREME_BETA_MSG = "Le Beta ({beta:.2f}) est statistiquement extrême et peut fausser le coût du capital."
+    RISK_EXTREME_BETA_HINT = "Envisager un Beta sectoriel ou ajuster manuellement."
+    PROVIDER_API_FAILURE_MSG = "Le fournisseur {provider} n'a pas répondu. Utilisation des données de secours."
+    PROVIDER_API_FAILURE_HINT = "Les données de fallback sectoriel sont utilisées automatiquement."
     DCF_WACC_FLOOR = "Taux d'actualisation WACC ({wacc:.1%}) excessivement bas."
     DCF_TV_CONCENTRATION = "Concentration de valeur critique : {weight:.1%} repose sur la TV."
     DCF_MATH_INSTABILITY = "Instabilite mathematique : Taux g >= WACC."

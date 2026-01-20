@@ -1,25 +1,8 @@
 """
-src/diagnostics.py
-
 Système de types pour le diagnostic et la gestion d'erreurs structurée.
 
-Version : V3.0 — ST-4.2 Financial Pedagogy
-Pattern : Value Objects (Diagnostic Domain)
-Style : Numpy Style docstrings
-
-ST-4.2 : PÉDAGOGIE DES ERREURS
-==============================
-Les erreurs mathématiques brutes sont traduites en diagnostics métier
-compréhensibles par les analystes non-techniques.
-
-Exemple : "Math Error" devient "Erreur : La croissance g (5%) est 
-supérieure au WACC (4.5%), le modèle ne peut converger".
-
-Audit-Grade : Ajout du registre normatif des événements financiers.
-
-RISQUES FINANCIERS:
-- Les diagnostics guident la compréhension des erreurs
-- Un diagnostic imprécis peut masquer des problèmes critiques
+Ce module définit les événements de diagnostic avec contexte financier
+pédagogique pour faciliter la compréhension des erreurs par les analystes.
 """
 
 from __future__ import annotations
@@ -28,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Any, List, Dict  # Any requis pour DiagnosticEvent.context
 # DT-001/002: Import depuis core.i18n
-from src.i18n import DiagnosticTexts
+from src.i18n import DiagnosticTexts, AuditMessages
 
 
 class SeverityLevel(Enum):
@@ -65,16 +48,6 @@ class FinancialContext:
         Explication du risque statistique.
     recommendation : str
         Recommandation pour l'analyste.
-    
-    Examples
-    --------
-    >>> ctx = FinancialContext(
-    ...     parameter_name="Beta",
-    ...     current_value=3.5,
-    ...     typical_range=(0.5, 2.0),
-    ...     statistical_risk="Beta supérieur à 3.0 implique une volatilité extrême",
-    ...     recommendation="Vérifier la source ou utiliser un proxy sectoriel"
-    ... )
     """
     parameter_name: str
     current_value: float
@@ -97,9 +70,7 @@ class FinancialContext:
 class DiagnosticEvent:
     """
     Représente un événement de diagnostic unique avec contexte financier.
-    
-    ST-4.2 : Enrichi avec financial_context pour la pédagogie.
-    
+
     Attributes
     ----------
     code : str
@@ -115,7 +86,7 @@ class DiagnosticEvent:
     remediation_hint : Optional[str]
         Conseil de remédiation.
     financial_context : Optional[FinancialContext]
-        Contexte financier expliquant le risque (ST-4.2).
+        Contexte financier expliquant le risque.
     """
     code: str
     severity: SeverityLevel
@@ -154,8 +125,8 @@ class DiagnosticEvent:
     
     def get_pedagogical_message(self) -> str:
         """
-        Retourne un message pédagogique complet pour l'UI (ST-4.2).
-        
+        Retourne un message pédagogique complet pour l'UI.
+
         Returns
         -------
         str
@@ -175,16 +146,15 @@ class DiagnosticEvent:
 class DiagnosticRegistry:
     """
     Catalogue centralisé des événements utilisant DiagnosticTexts.
-    
-    ST-4.2 : Enrichi avec financial_context pour la pédagogie.
-    Chaque événement fournit maintenant un contexte financier explicatif.
+
+    Chaque événement fournit un contexte financier explicatif.
     """
 
     @staticmethod
     def model_g_divergence(g: float, wacc: float) -> DiagnosticEvent:
         """
-        Erreur de convergence Gordon Shapiro (ST-4.2 Enhanced).
-        
+        Erreur de convergence Gordon Shapiro.
+
         Traduit "Math Error" en explication compréhensible :
         "La croissance g est supérieure au WACC, le modèle ne peut converger."
         """
@@ -240,7 +210,7 @@ class DiagnosticRegistry:
 
     @staticmethod
     def risk_excessive_growth(g: float) -> DiagnosticEvent:
-        """Alerte sur une hypothèse de croissance irréaliste (ST-4.2 Enhanced)."""
+        """Alerte sur une hypothèse de croissance irréaliste."""
         return DiagnosticEvent(
             code="RISK_EXCESSIVE_GROWTH",
             severity=SeverityLevel.WARNING,
@@ -261,7 +231,7 @@ class DiagnosticRegistry:
 
     @staticmethod
     def data_negative_beta(beta: float) -> DiagnosticEvent:
-        """Détection d'un Beta inhabituel (ST-4.2 Enhanced)."""
+        """Détection d'un Beta inhabituel."""
         return DiagnosticEvent(
             code="DATA_NEGATIVE_BETA",
             severity=SeverityLevel.WARNING,
@@ -282,25 +252,13 @@ class DiagnosticRegistry:
 
     @staticmethod
     def risk_extreme_beta(beta: float) -> DiagnosticEvent:
-        """
-        Alerte sur un Beta statistiquement extrême (ST-4.2 New).
-        
-        Parameters
-        ----------
-        beta : float
-            Valeur du Beta.
-        
-        Returns
-        -------
-        DiagnosticEvent
-            Événement avec contexte financier explicatif.
-        """
+        """Alerte sur un Beta statistiquement extrême."""
         return DiagnosticEvent(
             code="RISK_EXTREME_BETA",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.DATA,
-            message=f"Le Beta ({beta:.2f}) est statistiquement extrême et peut fausser le coût du capital.",
-            remediation_hint="Envisager un Beta sectoriel ou ajuster manuellement.",
+            message=AuditMessages.RISK_EXTREME_BETA_MSG.format(beta=beta),
+            remediation_hint=AuditMessages.RISK_EXTREME_BETA_HINT,
             financial_context=FinancialContext(
                 parameter_name="Beta",
                 current_value=beta,
@@ -378,37 +336,19 @@ class DiagnosticRegistry:
     
     @staticmethod
     def provider_api_failure(provider: str, error: str) -> DiagnosticEvent:
-        """
-        Erreur de communication avec un fournisseur externe (ST-4.2 New).
-        
-        Parameters
-        ----------
-        provider : str
-            Nom du fournisseur (ex: "Yahoo Finance").
-        error : str
-            Message d'erreur technique.
-        
-        Returns
-        -------
-        DiagnosticEvent
-            Événement avec contexte pour le mode dégradé.
-        """
+        """Erreur de communication avec un fournisseur externe."""
         return DiagnosticEvent(
             code="PROVIDER_API_FAILURE",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.PROVIDER,
-            message=f"Le fournisseur {provider} n'a pas répondu. Utilisation des données de secours.",
+            message=AuditMessages.PROVIDER_API_FAILURE_MSG.format(provider=provider),
             technical_detail=error,
-            remediation_hint="Les données de fallback sectoriel sont utilisées automatiquement."
+            remediation_hint=AuditMessages.PROVIDER_API_FAILURE_HINT
         )
 
     @staticmethod
     def risk_missing_sbc_dilution(sector: str, current_dilution: float) -> DiagnosticEvent:
-        """
-        Détecte une absence d'hypothèse de dilution pour un secteur à risque (Tech).
-
-        ST-4.2 : Entièrement internationalisé via DiagnosticTexts.
-        """
+        """Détecte une absence d'hypothèse de dilution pour un secteur à risque."""
         return DiagnosticEvent(
             code="RISK_MISSING_SBC_DILUTION",
             severity=SeverityLevel.WARNING,

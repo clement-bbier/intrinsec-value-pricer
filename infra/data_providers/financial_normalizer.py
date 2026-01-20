@@ -1,7 +1,7 @@
 """
 infra/data_providers/financial_normalizer.py
 
-NORMALISATION DES DONNÉES FINANCIÈRES — VERSION V11.0 (Sprint 4)
+Normalisation des données financières
 Rôle : Reconstruction TTM et normalisation des pairs (Multiples sectoriels).
 Responsabilité : Transformer les données brutes Yahoo en modèles validés (CompanyFinancials & MultiplesData).
 
@@ -110,7 +110,6 @@ class FinancialDataNormalizer:
                     logger.info(DiagnosticTexts.DATA_PEER_SKIP_MSG.format(ticker=ticker))
 
             except (ValidationError, TypeError, ValueError):
-                logger.debug(f"[Normalizer] Unreadable data skipped | peer={ticker}")
                 continue
 
         # 3. Calcul des médianes robustes

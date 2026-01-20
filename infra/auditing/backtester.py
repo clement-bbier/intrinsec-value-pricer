@@ -1,9 +1,8 @@
 """
-infra/auditing/backtester.py
+Moteur de validation historique.
 
-MOTEUR DE VALIDATION HISTORIQUE — VERSION V13.0 (Sprint 6)
-Rôle : Isolation temporelle (Point-in-Time) et simulation de valorisation passée.
-Standards : SOLID, Prévention du biais d'anticipation, i18n Secured.
+Isolation temporelle (Point-in-Time) et simulation de valorisation passée.
+Prévention du biais d'anticipation avec données historiques figées.
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class BacktestEngine:
     """
-    Moteur responsable de la simulation historique (ST 3.2).
+    Moteur responsable de la simulation historique.
     Il "gèle" les données brutes à une date précise pour simuler une analyse passée.
     """
 
@@ -30,7 +29,7 @@ class BacktestEngine:
     def freeze_data_at_fiscal_year(raw_data: RawFinancialData, target_year: int) -> Optional[RawFinancialData]:
         """
         Crée une copie de RawFinancialData contenant uniquement les données
-        disponibles pour l'année fiscale cible (ST 3.2).
+        disponibles pour l'année fiscale cible.
         """
         logger.debug("[Backtest] Tentative d'isolation Point-in-Time pour %s", target_year)
 

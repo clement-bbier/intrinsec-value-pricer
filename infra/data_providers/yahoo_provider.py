@@ -1,20 +1,8 @@
 """
-infra/data_providers/yahoo_provider.py
+Fournisseur de données Yahoo Finance.
 
-FOURNISSEUR DE DONNÉES — YAHOO FINANCE — VERSION V13.0 (ST-4.1 Resilience)
-Rôle : Orchestration, acquisition macro localisée, discovery et normalisation des pairs.
-Pattern : Provider + Fallback Chain
-Style : Numpy docstrings
-
-ST-4.1 : MODE DÉGRADÉ
-=====================
-Lorsque Yahoo Finance échoue ou renvoie des données aberrantes,
-le provider bascule automatiquement sur les multiples sectoriels
-avec traçabilité complète pour garantir la transparence.
-
-Financial Impact:
-    La résilience API garantit qu'une valorisation est toujours possible,
-    même en cas de panne du fournisseur de données externe.
+Orchestration de l'acquisition de données financières avec système
+de fallback automatique sur les multiples sectoriels en cas d'échec.
 """
 
 from __future__ import annotations
@@ -59,13 +47,13 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# ST-4.1 : CONSTANTES ET TYPES POUR LE MODE DÉGRADÉ
+# Constantes et types pour le mode dégradé
 # ============================================================================
 
 @dataclass
 class DataProviderStatus:
     """
-    État du provider avec traçabilité du mode dégradé (ST-4.1).
+    État du provider avec traçabilité du mode dégradé .
     
     Attributes
     ----------
@@ -110,7 +98,7 @@ class YahooFinanceProvider(DataProvider):
     last_raw_data : Optional[RawFinancialData]
         Dernières données brutes fetched (pour backtesting).
     status : DataProviderStatus
-        État du provider avec traçabilité du mode dégradé (ST-4.1).
+        État du provider avec traçabilité du mode dégradé .
     """
 
     MARKET_SUFFIXES: List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
@@ -145,7 +133,7 @@ class YahooFinanceProvider(DataProvider):
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
-        Orchestration de la cohorte avec limitation stricte et fallback sectoriel (ST-4.1).
+        Orchestration de la cohorte avec limitation stricte et fallback sectoriel .
         
         Parameters
         ----------
@@ -219,7 +207,7 @@ class YahooFinanceProvider(DataProvider):
     
     def _validate_multiples(self, multiples: MultiplesData) -> bool:
         """
-        Valide les multiples pour détecter les données aberrantes (ST-4.1).
+        Valide les multiples pour détecter les données aberrantes .
         
         Parameters
         ----------
@@ -245,7 +233,7 @@ class YahooFinanceProvider(DataProvider):
     
     def _fallback_to_sector_multiples(self, ticker: str, status: Any) -> MultiplesData:
         """
-        Bascule sur les multiples sectoriels en mode dégradé (ST-4.1).
+        Bascule sur les multiples sectoriels en mode dégradé .
         
         Parameters
         ----------
@@ -290,7 +278,7 @@ class YahooFinanceProvider(DataProvider):
     
     def is_degraded_mode(self) -> bool:
         """
-        Vérifie si le provider est en mode dégradé (ST-4.1).
+        Vérifie si le provider est en mode dégradé .
         
         Returns
         -------
@@ -301,7 +289,7 @@ class YahooFinanceProvider(DataProvider):
     
     def get_degraded_mode_info(self) -> Dict[str, Any]:
         """
-        Retourne les informations sur le mode dégradé pour l'UI (ST-4.1).
+        Retourne les informations sur le mode dégradé pour l'UI .
         
         Returns
         -------
@@ -331,7 +319,7 @@ class YahooFinanceProvider(DataProvider):
         # 1. Estimation de la croissance hybride
         growth_hist = self._estimate_dynamic_growth(ticker)
 
-        # 2. Estimation de la dilution annuelle (Sprint 3.2)
+        # 2. Estimation de la dilution annuelle
         # Extraction de la série historique via le normaliseur
         shares_history = self.normalizer.extract_shares_history(
             self.last_raw_data.balance_sheet if self.last_raw_data else None
