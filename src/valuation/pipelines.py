@@ -1,9 +1,9 @@
 """
 core/valuation/pipelines.py
-PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE) — VERSION V1.2 (Sync V11.0)
-Rôle : Moteur universel pour les modèles de flux (FCFF, FCFE, DDM).
+PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE) — VERSION V1.3
+Rôle : Moteur universel pour les modèles de flux (FCFF, FCFE, DDM) avec gestion de la dilution.
 Architecture : Orchestration bifurquée Firm-Level (EV) vs Equity-Level (IV).
-Note : Alignement strict sur ui_glass_box_registry.py V11.0 pour éviter les KeyError.
+Note : Alignement strict sur ui_glass_box_registry.py pour la traçabilité complète.
 """
 
 from __future__ import annotations
@@ -20,12 +20,16 @@ from src.computation.financial_math import (
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
     calculate_wacc,
-    calculate_cost_of_equity
+    calculate_cost_of_equity,
+    calculate_dilution_factor,
+    apply_dilution_adjustment
 )
 from src.computation.growth import FlowProjector, ProjectionOutput
 from src.exceptions import CalculationError, ModelDivergenceError
-# Import depuis core.i18n
-from src.i18n import RegistryTexts, StrategyInterpretations, StrategyFormulas, CalculationErrors, KPITexts
+from src.i18n import (
+    RegistryTexts, StrategyInterpretations, StrategyFormulas,
+    CalculationErrors, KPITexts, StrategySources
+)
 from src.utilities.formatting import format_smart_number
 
 logger = logging.getLogger(__name__)
@@ -34,7 +38,7 @@ logger = logging.getLogger(__name__)
 class DCFCalculationPipeline:
     """
     Pipeline de calcul standardisé.
-    Les clés (step_key) sont alignées sur le registre Glass Box V11.0.
+    Gère la chaîne complète de valorisation, de l'actualisation à la dilution finale.
     """
 
     def __init__(self, projector: FlowProjector, mode: ValuationMode, glass_box_enabled: bool = True):
@@ -52,7 +56,7 @@ class DCFCalculationPipeline:
     ) -> ValuationResult:
         """Exécute la séquence de valorisation avec synchronisation des clés registre."""
 
-        # 1. Détermination du taux d'actualisation (Sync: WACC_CALC / KE_CALC)
+        # 1. Détermination du taux d'actualisation (WACC_CALC / KE_CALC)
         is_equity_level = self.mode.is_direct_equity
 
         if is_equity_level:
@@ -60,7 +64,6 @@ class DCFCalculationPipeline:
             rate_key = "KE_CALC"
             rate_label = RegistryTexts.DCF_KE_L
 
-            # Substitution détaillée pour CAPM
             r = params.rates
             rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
             mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
@@ -79,7 +82,6 @@ class DCFCalculationPipeline:
             rate_key = "WACC_CALC"
             rate_label = RegistryTexts.DCF_WACC_L
 
-            # Substitution détaillée pour WACC
             if wacc_override is not None:
                 sub_rate = StrategySources.MANUAL_OVERRIDE.format(wacc=discount_rate)
             else:
@@ -94,7 +96,6 @@ class DCFCalculationPipeline:
 
         self._add_step(rate_key, discount_rate, sub_rate, label=rate_label, theoretical_formula=formula_rate)
 
-        # Injection Glass Box : Ajustement du Bêta (Formule de Hamada)
         if wacc_ctx and wacc_ctx.beta_adjusted:
             self._add_step(
                 "BETA_HAMADA_ADJUSTMENT",
@@ -105,22 +106,22 @@ class DCFCalculationPipeline:
                 interpretation=StrategyInterpretations.HAMADA_ADJUSTMENT_D
             )
 
-        # 2. Phase de Projection (Sync: FCF_PROJ)
+        # 2. Phase de Projection (FCF_PROJ)
         proj_output = self.projector.project(base_value, financials, params)
         self._add_projection_step(proj_output)
         flows = proj_output.flows
 
-        # 3. Valeur Terminale (Sync: TV_GORDON / TV_MULTIPLE)
+        # 3. Valeur Terminale (TV_GORDON / TV_MULTIPLE)
         tv, key_tv = self._compute_terminal_value(flows, discount_rate, params)
 
-        # 4. NPV (Sync: NPV_CALC)
+        # 4. NPV (NPV_CALC)
         factors, sum_pv, pv_tv, final_value = self._compute_npv_logic(flows, tv, discount_rate, params)
 
-        # 5. Equity Bridge (Sync: EQUITY_BRIDGE / EQUITY_DIRECT)
+        # 5. Equity Bridge (EQUITY_BRIDGE / EQUITY_DIRECT)
         equity_val, bridge_shares = self._compute_bridge_by_level(final_value, financials, params, is_equity_level)
 
-        # 6. Valeur Intrinsèque par Action (Sync: VALUE_PER_SHARE)
-        iv_share = self._compute_value_per_share(equity_val, bridge_shares, financials)
+        # 6. Valeur Intrinsèque par Action (VALUE_PER_SHARE / SBC_DILUTION_ADJUSTMENT)
+        iv_share = self._compute_value_per_share(equity_val, bridge_shares, financials, params)
 
         # 7. Collecte des métriques d'audit
         audit_metrics = self._extract_audit_metrics(financials, pv_tv, final_value)
@@ -153,35 +154,7 @@ class DCFCalculationPipeline:
     def _add_step(self, step_key: str, result: float, numerical_substitution: str,
                   label: str = "", theoretical_formula: str = "", interpretation: str = "",
                   hypotheses: Optional[List[TraceHypothesis]] = None) -> None:
-        """
-        Ajoute une étape de calcul à la trace Glass Box.
-
-        Cette méthode centralise l'ajout d'étapes de calcul pour assurer la transparence
-        et l'auditabilité complète du processus de valorisation.
-
-        Parameters
-        ----------
-        step_key : str
-            Clé unique identifiant l'étape (doit correspondre au registre Glass Box).
-        result : float
-            Résultat numérique de l'étape de calcul.
-        numerical_substitution : str
-            Substitution numérique détaillée montrant les vraies valeurs utilisées
-            dans le calcul (formatées avec format_smart_number).
-        label : str, optional
-            Libellé d'affichage de l'étape (par défaut step_key).
-        theoretical_formula : str, optional
-            Formule LaTeX théorique (provenant de StrategyFormulas).
-        interpretation : str, optional
-            Interprétation pédagogique de l'étape (provenant de StrategyInterpretations).
-        hypotheses : Optional[List[TraceHypothesis]], optional
-            Hypothèses associées à l'étape pour l'audit.
-
-        Notes
-        -----
-        Cette méthode ne fait rien si glass_box_enabled est False.
-        Les étapes sont automatiquement numérotées séquentiellement.
-        """
+        """Ajoute une étape de calcul à la trace Glass Box."""
         if not self.glass_box_enabled: return
         self.calculation_trace.append(CalculationStep(
             step_id=len(self.calculation_trace) + 1,
@@ -231,13 +204,12 @@ class DCFCalculationPipeline:
         return tv, key_tv
 
     def _compute_npv_logic(self, flows, tv, rate, params) -> tuple:
-        """Actualisation des flux (Sync: NPV_CALC)."""
+        """Actualisation des flux (NPV_CALC)."""
         factors = calculate_discount_factors(rate, params.growth.projection_years)
         sum_pv = sum(f * d for f, d in zip(flows, factors))
         pv_tv = tv * factors[-1]
         final_value = sum_pv + pv_tv
 
-        # Distinction EV (Entity) vs Total Equity (Direct)
         label = RegistryTexts.DCF_EV_L if not self.mode.is_direct_equity else "Total Equity Value"
         sum_pv_formatted = format_smart_number(sum_pv)
         pv_tv_formatted = format_smart_number(pv_tv)
@@ -261,7 +233,6 @@ class DCFCalculationPipeline:
 
         equity_val = val - debt + cash - minorities - pensions
 
-        # Formatage automatique des montants
         ev_formatted = format_smart_number(val)
         debt_formatted = format_smart_number(debt)
         cash_formatted = format_smart_number(cash)
@@ -280,22 +251,57 @@ class DCFCalculationPipeline:
         )
         return equity_val, shares
 
-    def _compute_value_per_share(self, equity_val, shares, financials) -> float:
-        """Etape finale (Sync: VALUE_PER_SHARE)."""
+    def _compute_value_per_share(
+        self,
+        equity_val: float,
+        shares: float,
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> float:
+        """
+        Calcule la valeur par action finale en intégrant l'ajustement de dilution SBC.
+        """
         if shares <= 0:
             raise CalculationError(CalculationErrors.INVALID_SHARES)
-        iv_share = equity_val / shares
 
-        equity_formatted = format_smart_number(equity_val)
-        shares_formatted = f"{shares:,.0f}"
-        sub_iv = f"{equity_formatted} / {shares_formatted}"
+        # 1. Calcul de la valeur initiale non diluée
+        base_iv = equity_val / shares
 
-        self._add_step("VALUE_PER_SHARE", iv_share, sub_iv, RegistryTexts.DCF_IV_L,
-                       theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
-                       interpretation=StrategyInterpretations.IV.format(ticker=financials.ticker))
-        return iv_share
+        # 2. Détermination du facteur de dilution (SBC)
+        rate = params.growth.annual_dilution_rate
+        years = params.growth.projection_years
+
+        dilution_factor = calculate_dilution_factor(rate, years)
+        final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
+
+        # 3. Tracement Glass Box bifurqué selon la présence de dilution
+        if self.glass_box_enabled and dilution_factor > 1.0:
+            sub_dilution = f"{base_iv:.2f} / (1 + {rate:.2%})^{years}"
+            self._add_step(
+                step_key="SBC_DILUTION_ADJUSTMENT",
+                result=final_iv,
+                numerical_substitution=sub_dilution,
+                label="Ajustement Dilution (SBC)",
+                theoretical_formula=r"IV_{diluted} = \frac{IV_{initial}}{(1 + d)^t}",
+                interpretation=f"La rémunération en actions (SBC) de {rate:.1%} par an réduit la part des actionnaires actuels de {(1 - 1/dilution_factor):.1%} sur l'horizon de projection."
+            )
+        else:
+            equity_formatted = format_smart_number(equity_val)
+            shares_formatted = f"{shares:,.0f}"
+            sub_iv = f"{equity_formatted} / {shares_formatted}"
+            self._add_step(
+                step_key="VALUE_PER_SHARE",
+                result=final_iv,
+                numerical_substitution=sub_iv,
+                label=RegistryTexts.DCF_IV_L,
+                theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
+                interpretation=StrategyInterpretations.IV.format(ticker=financials.ticker)
+            )
+
+        return final_iv
 
     def _extract_audit_metrics(self, financials: CompanyFinancials, pv_tv: float, ev: float) -> dict:
+        """Extrait les ratios clés pour le moteur d'audit."""
         icr = financials.ebit_ttm / financials.interest_expense if financials.interest_expense > 0 and financials.ebit_ttm is not None else None
         capex_ratio = abs(financials.capex / (financials.depreciation_and_amortization or 1.0)) if financials.capex else None
         tv_weight = (pv_tv / ev) if ev > 0 else None

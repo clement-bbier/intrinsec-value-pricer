@@ -108,7 +108,7 @@ def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float
     return (1.0 + annual_rate) ** years
 
 
-def apply_dilution_to_price(price: float, dilution_factor: float) -> float:
+def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
     """Applique le facteur de dilution au prix par action final."""
     if dilution_factor <= 1.0:
         return price
