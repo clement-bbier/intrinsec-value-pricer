@@ -2,7 +2,7 @@
 core/interfaces/
 Interfaces et Abstractions pour l'Inversion de Dépendances.
 
-Version : V1.0 — DT-016/017 Resolution
+Résolution DT-017
 Pattern : Dependency Inversion Principle (SOLID)
 
 Objectif :

@@ -3,7 +3,7 @@ app/ui/result_tabs/components/step_renderer.py
 
 RENDU DES ÉTAPES DE CALCUL (Glass Box).
 
-Version : V2.0 — ST-3.3 Reliability Visualization
+Rendu des étapes - Visualisation fiable
 Pattern : Component Renderer
 Style : Numpy docstrings
 
@@ -113,7 +113,7 @@ def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
         color = SOURCE_BADGE_COLORS.get(var_info.source, "#9E9E9E")
         
         # Badge coloré + symbole + valeur + source
-        override_indicator = " ⚠️" if var_info.is_overridden else ""
+        override_indicator = ""
         
         st.markdown(
             f"<span style='color:{color}; font-weight:600;'>●</span> "

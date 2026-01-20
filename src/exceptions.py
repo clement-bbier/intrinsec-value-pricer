@@ -3,7 +3,7 @@ src/exceptions.py
 
 Exceptions typées transportant des diagnostics structurés.
 
-Version : V2.1 — ST-1.2 Type-Safe Resolution
+Exceptions typées - Type-safe
 Pattern : Domain Exceptions
 Style : Numpy Style docstrings
 

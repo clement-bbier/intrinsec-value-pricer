@@ -7,7 +7,7 @@ Rôle : Implémentation des interfaces core avec Streamlit
 Pattern : Adapter (GoF)
 Style : Numpy docstrings
 
-Version : V2.0 — ST-2.2 (Migration ResultTabOrchestrator)
+Migration vers ResultTabOrchestrator
 Risques financiers : Coordination d'affichage UI, pas de calculs
 
 Dépendances critiques :
@@ -102,7 +102,7 @@ class StreamlitResultRenderer(IResultRenderer):
     """
     
     def render_executive_summary(self, result: Any) -> None:
-        """Utilise la nouvelle architecture ResultTabOrchestrator (Sprint 2 Phase 2)."""
+        """Utilise la nouvelle architecture ResultTabOrchestrator ( Phase 2)."""
         from app.ui.results.orchestrator import ResultTabOrchestrator
         orchestrator = ResultTabOrchestrator()
         orchestrator.render(result)

@@ -133,7 +133,7 @@ Si un bandeau orange s'affiche :
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ ⚠️ MODE DÉGRADÉ                    Confiance: 70%  │
+│ Mode dégradé                      Confiance: 70%  │
 │ Raison : API peers indisponible                    │
 │ Sources : Damodaran 2024 - Sector average          │
 └─────────────────────────────────────────────────────┘

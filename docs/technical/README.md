@@ -161,9 +161,9 @@ Format de log institutionnel :
 | `audit_engine.md` | Logique d'audit et Confidence Score |
 | `data_providers.md` | Acquisition et normalisation des données |
 | `governance.md` | Règles de gouvernance du code |
-| `SPRINT_ROADMAP.md` | Historique et état des sprints |
-| `TECHNICAL_DEBT.md` | Suivi des dettes techniques |
-| `NAMING_BLUEPRINT.md` | Conventions de nommage |
+| `MAINTENANCE.md` | Guide de maintenance et évolution |
+| `ARCHITECTURE.md` | Architecture technique détaillée |
+| `CONTRIBUTING.md` | Guide de contribution |
 
 ---
 

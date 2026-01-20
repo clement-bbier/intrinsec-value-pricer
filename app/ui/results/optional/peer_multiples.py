@@ -7,7 +7,7 @@ Rôle : Affichage de la triangulation sectorielle par multiples
 Pattern : ResultTabBase (Template Method)
 Style : Numpy docstrings
 
-Version : V1.1 — DT-018 Resolution (Correction peer_count)
+Triangulation sectorielle - Correction peer_count
 Risques financiers : Affichage de valorisations relatives, pas de calculs
 
 Dépendances critiques :

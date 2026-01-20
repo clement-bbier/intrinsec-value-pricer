@@ -292,7 +292,7 @@ path/to/file.py
 
 [DESCRIPTION BREVE DU ROLE DU FICHIER]
 
-Version : V[X.Y] — [DT-XXX] Resolution
+Guide de contribution - Évolution continue
 Pattern : [Factory | Strategy | etc.]
 Style : Numpy Style docstrings
 
@@ -451,7 +451,7 @@ Ce test est exécuté automatiquement sur chaque Pull Request.
 
 ---
 
-## Changements Architecturaux Récents (Sprint 6)
+## Évolution Architecturale
 
 ### Modules Connectés
 

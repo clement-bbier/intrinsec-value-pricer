@@ -3,7 +3,7 @@ app/ui/expert_terminals/factory.py
 
 FACTORY — Création dynamique des terminaux experts.
 
-Version : V2.0 — ST-3.1 Logical Path Resolution
+Factory des terminaux - Logical Path
 Pattern : Factory Method (GoF)
 Style : Numpy docstrings
 

@@ -1,9 +1,9 @@
 """
 infra/ref_data/sector_fallback.py
 
-FALLBACK MULTIPLES SECTORIELS — ST-4.1 Resilience Mode
+FALLBACK MULTIPLES SECTORIELS Resilience Mode
 
-Version : V2.0 — Sprint 4 Enhanced
+Fallback multiples sectoriels - Enhanced
 Rôle : Fournir des multiples de valorisation par défaut si Yahoo échoue.
 Pattern : Value Object + Factory
 Style : Numpy docstrings

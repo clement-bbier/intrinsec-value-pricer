@@ -1,7 +1,7 @@
 """
 infra/data_providers/extraction_utils.py
 
-OUTILS D'EXTRACTION & SÉCURITÉ API — VERSION V9.0 (DT-022 Resolution)
+OUTILS D'EXTRACTION & SÉCURITÉ API (DT-022 Resolution)
 Rôle :  Normalisation et extraction robuste des données yfinance.
 Architecture :  Honest Data avec propagation stricte des None.
 
@@ -59,7 +59,7 @@ DEBT_ISSUANCE_KEYS: List[str] = ["Issuance Of Debt", "Long Term Debt Issuance", 
 DEBT_REPAYMENT_KEYS: List[str] = ["Repayment Of Debt", "Long Term Debt Payments", "Net Long Term Debt"]
 
 # ==============================================================================
-# 2. SÉCURITÉ API (RETRY PATTERN + TIMEOUT) — DT-022 Resolution
+# 2. SÉCURITÉ API (RETRY PATTERN + TIMEOUT) Resolution
 # ==============================================================================
 
 def safe_api_call(

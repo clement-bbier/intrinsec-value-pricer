@@ -2,7 +2,7 @@
 app/adapters/
 Adaptateurs UI — Implémentations Streamlit des interfaces core.
 
-Version : V1.0 — DT-016/017 Resolution
+Résolution DT-017
 Pattern : Adapter (GoF)
 
 Objectif :

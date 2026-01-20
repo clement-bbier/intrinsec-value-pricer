@@ -1,7 +1,7 @@
 """
 infra/data_providers/yahoo_raw_fetcher.py
 
-FETCHER BRUT — YAHOO FINANCE API — VERSION V13.0 (Sprint 6)
+FETCHER BRUT — YAHOO FINANCE API ()
 Rôle : Extraction multi-temporelle (TTM & Historique) pour Backtesting.
 Standards : SOLID (Interface Segregation), Pydantic Rigueur, safe_api_call.
 """
@@ -134,7 +134,7 @@ class YahooRawFetcher:
             return []
 
         raw_peers_data: List[Dict[str, Any]] = []
-        # Limitation à 5 pour optimiser les temps de réponse API (Sprint 5)
+        # Limitation à 5 pour optimiser les temps de réponse API
         for p_ticker in peer_tickers[:5]:
             p_info = safe_api_call(lambda: yf.Ticker(p_ticker).info, f"PeerInfo/{p_ticker}", 1)
             if p_info:

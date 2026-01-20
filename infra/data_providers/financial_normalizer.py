@@ -41,7 +41,7 @@ class FinancialDataNormalizer:
     """
 
     # =========================================================================
-    # 1. NORMALISATION DE L'ENTREPRISE CIBLE (SPRINT 3)
+    # 1. NORMALISATION DE L'ENTREPRISE CIBLE
     # =========================================================================
 
     def normalize(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
@@ -80,7 +80,7 @@ class FinancialDataNormalizer:
         )
 
     # =========================================================================
-    # 2. NORMALISATION DES PAIRS (SPRINT 4 - PHASE 3)
+    # 2. NORMALISATION DES PAIRS ( - PHASE 3)
     # =========================================================================
 
     def normalize_peers(self, raw_peers: List[Dict[str, Any]]) -> MultiplesData:
@@ -150,7 +150,7 @@ class FinancialDataNormalizer:
         )
 
     # =========================================================================
-    # HELPERS DE RECONSTRUCTION (SPRINT 3 - MAINTENANCE)
+    # HELPERS DE RECONSTRUCTION ( - MAINTENANCE)
     # =========================================================================
 
     def _reconstruct_shares(self, info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:

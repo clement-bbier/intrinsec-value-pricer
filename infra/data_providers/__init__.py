@@ -3,7 +3,7 @@ infra/data_providers/__init__.py
 
 Package des fournisseurs de données financières.
 
-Version : V2.0 — ST-1.3 Encapsulation Resolution
+Fournisseurs de données - Encapsulation
 Pattern : Facade + Adapter
 Style : Numpy Style docstrings
 

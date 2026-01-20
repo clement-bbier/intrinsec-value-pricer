@@ -1,6 +1,6 @@
 """
 app/ui/
-Interface Utilisateur Restructurée — Sprint 2
+Interface Utilisateur Restructurée
 
 Architecture claire et maintenable :
 

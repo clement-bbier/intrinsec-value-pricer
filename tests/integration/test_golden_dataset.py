@@ -3,7 +3,7 @@ tests/integration/test_golden_dataset.py
 
 GOLDEN DATASET — Invariants Mathématiques de Non-Régression
 
-Version : V1.0 — ST-1.3 Resolution
+Test Golden Dataset - ST-1.3
 Pattern : Golden Master Testing
 Style : Numpy Style docstrings
 

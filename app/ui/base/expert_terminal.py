@@ -3,7 +3,7 @@ app/ui/base/expert_terminal.py
 
 CLASSE ABSTRAITE — Terminal Expert de Saisie
 
-Version : V2.0 — ST-3.1 Logical Path Resolution
+Classe abstraite - Expert Terminal
 Pattern : Template Method (GoF)
 Style : Numpy docstrings
 Principes : SOLID (Single Responsibility, Open/Closed)

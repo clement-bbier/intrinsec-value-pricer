@@ -1,9 +1,9 @@
 """
 src/config/settings.py
 
-PARAMÈTRES DE CONFIGURATION CENTRALISÉS — Sprint 4
+PARAMÈTRES DE CONFIGURATION CENTRALISÉS
 
-Version : V1.1 — ST-1.2 Type-Safe Resolution
+Paramètres de configuration - Type-safe
 Pattern : Configuration Object (Single Source of Truth)
 Style : Numpy Style docstrings
 

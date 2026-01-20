@@ -2,7 +2,7 @@
 app/main.py
 
 POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Version : V11.0 — DT-008 Resolution (Centralized Registry)
+Point d'entrée - Registre centralisé
 
 Principes appliqués :
 - Conservation intégrale de la logique V9.1
@@ -60,7 +60,7 @@ from src.i18n import (
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)
 from src.valuation.registry import get_display_names
 
-# IMPORT DE LA FACTORY POUR LA CORRECTION DU REGISTRE (Sprint 1.1)
+# Import de la factory pour la correction du registre
 from app.ui.expert.factory import create_expert_terminal
 
 # ==============================================================================
@@ -78,10 +78,10 @@ logger = logging.getLogger(__name__)
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
 def _expert_render_wrapper(mode: ValuationMode, ticker: str):
-    """Wrapper pour rendre le terminal expert via la factory (Correction Sprint 1.1)."""
+    """Wrapper pour rendre le terminal expert via la factory."""
     return create_expert_terminal(mode, ticker).render()
 
-# Registre des terminaux expert (Correction DT-008/Sprint 1.1 : doit être un callable pour les tests)
+# Registre des terminaux expert
 EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
     mode: _expert_render_wrapper for mode in ValuationMode
 }
@@ -247,7 +247,6 @@ def _render_sidebar_footer() -> None:
 def _render_onboarding_guide() -> None:
     """
     Guide d'onboarding — Restitution intégrale pilotée par OnboardingTexts.
-    Version : V10.0 (Sprint 3)
     """
     # --- Introduction ---
     st.info(OnboardingTexts.INTRO_INFO)
@@ -320,7 +319,7 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    # Sprint 2: Utilisation de la factory pour les terminaux isolés
+    # : Utilisation de la factory pour les terminaux isolés
     from app.ui.expert.factory import create_expert_terminal
     terminal = create_expert_terminal(mode, ticker)
     request = terminal.render()
@@ -336,7 +335,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
 
     options.setdefault("manual_peers", [])
 
-    # Instanciation segmentée avec Scénarios désactivés par défaut (Sprint 5)
+    # Instanciation segmentée avec Scénarios désactivés par défaut
     from src.models import ScenarioParameters  # Import local si nécessaire
 
     config_params = DCFParameters(

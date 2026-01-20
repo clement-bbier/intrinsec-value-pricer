@@ -318,6 +318,6 @@ Toute violation de cette charte :
 
 1. Invalide la conformité de la version
 2. Doit être corrigée avant merge
-3. Est documentée dans `TECHNICAL_DEBT.md`
+3. Est documentée dans les issues GitHub
 
 La gouvernance est appliquée via les tests de contrats automatisés.

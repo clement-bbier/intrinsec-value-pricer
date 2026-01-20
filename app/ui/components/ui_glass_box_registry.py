@@ -1,8 +1,8 @@
 """
 app/ui_components/ui_glass_box_registry.py
-REGISTRE UNIFIÉ DES MÉTADONNÉES GLASS BOX — VERSION V11.0 (Audit-Grade)
+REGISTRE UNIFIÉ DES MÉTADONNÉES GLASS BOX (Audit-Grade)
 Rôle : Source unique de vérité pour les labels, formules et descriptions.
-Architecture : Alignement strict sur le Pipeline V1.1 et les Stratégies Sprint 3.
+Architecture : Alignement strict sur le Pipeline V1.1 et les Stratégies .
 """
 
 from __future__ import annotations

@@ -8,7 +8,7 @@ Pattern : ResultTabBase (Template Method)
 Style : Numpy docstrings
 Ordre : 1 (toujours premier onglet affiché)
 
-Version : V1.0 — ST-2.2
+Résumé exécutif
 Risques financiers : Aucun calcul, affichage seulement
 
 Dépendances critiques :

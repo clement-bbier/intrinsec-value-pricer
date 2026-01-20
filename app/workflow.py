@@ -1,7 +1,7 @@
 """
 app/workflow.py
 
-ORCHESTRATEUR LOGIQUE — VERSION V14.0 (DT-016 Resolution)
+ORCHESTRATEUR LOGIQUE (DT-016 Resolution)
 Rôle : Pilotage du cycle de vie de l'analyse, orchestration multi-temporelle et scénarios.
 Architecture : Smart Merge segmenté, Isolation Point-in-Time et Validation Historique.
 
@@ -104,14 +104,14 @@ def run_workflow(
         # Exécution du moteur principal (IV + Triangulation + Audit)
         result = run_valuation(request, financials, final_params)
 
-        # --- ÉTAPE 4 : ANALYSE DE SCÉNARIOS DÉTERMINISTES (SPRINT 5) ---
+        # --- ÉTAPE 4 : ANALYSE DE SCÉNARIOS DÉTERMINISTES ---
         if final_params.scenarios.enabled:
             status.write(WorkflowTexts.STATUS_SCENARIOS_RUN)
             result.scenario_synthesis = compute_scenario_impact(
                 request, financials, final_params, result
             )
 
-        # --- ÉTAPE 5 : VALIDATION HISTORIQUE (BACKTESTING - SPRINT 6) ---
+        # --- ÉTAPE 5 : VALIDATION HISTORIQUE (BACKTESTING - ) ---
         if request.options.get("enable_backtest", False):
             status.write(WorkflowTexts.STATUS_BACKTEST_RUN)
 

@@ -1,7 +1,7 @@
 """
 app/ui_components/ui_charts.py
 
-VISUALISATIONS — VERSION V5.0 (ST-3.2 Fragment Optimization)
+VISUALISATIONS (ST-3.2 Fragment Optimization)
 Rôle : Rendu graphique haute précision incluant le Football Field Chart.
 Standards : Altair, i18n, Zero-Depreciation.
 
@@ -135,7 +135,7 @@ def display_simulation_chart(simulation_results: List[float], market_price: floa
 
 
 # ============================================================================
-# 3. TRIANGULATION : FOOTBALL FIELD CHART (NOUVEAUTÉ SPRINT 4)
+# 3. TRIANGULATION : FOOTBALL FIELD CHART (NOUVEAUTÉ )
 # ============================================================================
 
 @st.fragment
@@ -319,7 +319,7 @@ def display_correlation_heatmap(rho: float = -0.30) -> None:
 
 
 # ============================================================================
-# 5. SOMME DES PARTIES (WATERFALL SOTP) — SPRINT 6 (ST 4.1)
+# 5. SOMME DES PARTIES (WATERFALL SOTP) (ST 4.1)
 # ============================================================================
 
 @st.fragment

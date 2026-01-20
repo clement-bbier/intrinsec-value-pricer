@@ -2,7 +2,7 @@
 core/config/
 Module de configuration centralisée.
 
-Version : V1.0 — DT-010/011/012/013 Resolution
+Résolution DT-010/011/012/013
 Rôle : Centraliser toutes les constantes et seuils du système.
 
 Contenu :

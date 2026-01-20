@@ -1,7 +1,7 @@
 """
 infra/macro/yahoo_macro_provider.py
 
-FOURNISSEUR MACRO — TAUX & RISQUE — VERSION V4.0 (Sprint 4)
+FOURNISSEUR MACRO — TAUX & RISQUE ()
 Rôle : Orchestration des données de marché (Rf, MRP, Yield AAA) avec localisation pays.
 
 Améliorations majeures :

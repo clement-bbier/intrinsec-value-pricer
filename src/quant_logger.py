@@ -3,7 +3,7 @@ src/quant_logger.py
 
 QUANTLOGGER — Logging Institutionnel Standardisé
 
-Version : V1.0 — ST-4.2
+Logging institutionnel standardisé
 Pattern : Decorator + Structured Logging
 Style : Numpy docstrings
 

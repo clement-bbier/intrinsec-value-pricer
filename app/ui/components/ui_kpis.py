@@ -8,7 +8,7 @@ Rôle : Fournit les utilitaires de formatage et composants atomiques
 Pattern : Utility functions + Atomic components
 Style : Numpy docstrings
 
-Version : V2.0 — ST-2.2 (Migration ResultTabOrchestrator)
+Migration vers ResultTabOrchestrator
 Risques financiers : Aucun calcul, formatage seulement
 
 Dépendances critiques :
@@ -207,13 +207,10 @@ def render_degraded_mode_banner(
     # Couleur selon le score de confiance
     if confidence_score >= 0.8:
         color = "#1565C0"  # Bleu — Mineur
-        icon = "ℹ️"
     elif confidence_score >= 0.6:
         color = "#FF6F00"  # Orange — Attention
-        icon = "⚠️"
     else:
         color = "#C62828"  # Rouge — Critique
-        icon = "🚨"
     
     # Construction du message
     sources_text = ", ".join(fallback_sources) if fallback_sources else "Données de secours"

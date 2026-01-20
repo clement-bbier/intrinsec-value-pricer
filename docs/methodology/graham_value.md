@@ -6,9 +6,9 @@ La **méthode de Graham** est une **heuristique historique** proposée par
 Benjamin Graham pour estimer une valeur intrinsèque à partir du bénéfice
 et de la croissance attendue.
 
-⚠️ **Ce n’est pas un modèle financier complet**  
-⚠️ **Ce n’est pas un DCF**  
-⚠️ **Elle ne remplace jamais une analyse fondamentale approfondie**
+**Avertissement** : **Ce n’est pas un modèle financier complet**  
+**Avertissement** : **Ce n’est pas un DCF**  
+**Avertissement** : **Elle ne remplace jamais une analyse fondamentale approfondie**
 
 Dans ce projet, elle est utilisée **exclusivement comme outil comparatif
 et pédagogique**.

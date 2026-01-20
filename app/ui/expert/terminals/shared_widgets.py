@@ -333,7 +333,7 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 4. WIDGET EQUITY BRIDGE (Section 5) — ST-3.4 Pitchbook Design
+# 4. WIDGET EQUITY BRIDGE (Section 5) Pitchbook Design
 # ==============================================================================
 
 @st.fragment

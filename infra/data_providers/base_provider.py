@@ -1,7 +1,7 @@
 """
 infra/data_providers/base_provider.py
 
-INTERFACE ABSTRAITE — FOURNISSEURS DE DONNÉES — VERSION V11.0 (Sprint 4)
+INTERFACE ABSTRAITE — FOURNISSEURS DE DONNÉES ()
 Rôle : Contrat strict pour tous les providers de données financières et sectorielles.
 """
 
@@ -31,7 +31,7 @@ class DataProvider(ABC):
     @abstractmethod
     def get_peer_multiples(self, ticker: str) -> MultiplesData:
         """
-        NOUVEAUTÉ SPRINT 4 (Phase 3) :
+        NOUVEAUTÉ  (Phase 3) :
         Découvre les concurrents et retourne leurs multiples normalisés.
         """
         raise NotImplementedError

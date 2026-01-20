@@ -48,7 +48,7 @@ class AuditMessages:
     # Graham Auditor
     GRAHAM_GROWTH_PRUDENCE = "Taux de croissance g Graham ({g:.1%}) hors perimetre de prudence."
 
-    # Sprint 3
+    # 
     FCFE_HIGH_BORROWING = "Attention : La valorisation repose sur un fort endettement."
     DDM_PAYOUT_UNSUSTAINABLE = "Alerte : Le Payout Ratio > 100% indique un dividende non soutenable."
 

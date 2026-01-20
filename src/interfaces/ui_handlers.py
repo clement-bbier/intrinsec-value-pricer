@@ -1,9 +1,9 @@
 """
 src/interfaces/ui_handlers.py
 
-INTERFACES UI ABSTRAITES — DT-016/017 Resolution
+INTERFACES UI ABSTRAITES/017 Resolution
 
-Version : V1.1
+Interfaces UI abstraites
 Pattern : Strategy + Null Object (GoF)
 Style : Numpy Style docstrings
 

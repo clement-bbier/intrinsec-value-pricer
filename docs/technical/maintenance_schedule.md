@@ -52,8 +52,8 @@ du projet *Intrinsic Value Pricer*.
 | Fréquence | Action |
 |-----------|--------|
 | À chaque feature | Mise à jour `docs/technical/` |
-| À chaque sprint | Mise à jour `SPRINT_ROADMAP.md` |
-| À chaque correction | Mise à jour `TECHNICAL_DEBT.md` |
+| À chaque itération | Mise à jour du changelog |
+| À chaque correction | Mise à jour de la documentation |
 
 ### Documentation Méthodologique
 
@@ -124,7 +124,7 @@ du projet *Intrinsic Value Pricer*.
 |-----------|--------|
 | Test échoue | Bloquer le merge |
 | Import interdit | Bloquer le merge |
-| Dette technique | Documenter dans `TECHNICAL_DEBT.md` |
+| Dette technique | Documenter dans les issues GitHub |
 
 ---
 

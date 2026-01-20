@@ -1,10 +1,10 @@
 """
 infra/auditing/audit_engine.py
-Audit Engine — VERSION V15.0 (Sprint 4 Integration)
+Audit Engine ( Integration)
 Rôle : Routage dynamique, Audit d'intégrité SOTP et vérification Dilution SBC.
 Standards : SOLID, Zéro Hardcoding, Centralized Registry.
 
-Note Sprint 4 : Ajout de la règle de cohérence SBC pour le secteur Technology.
+Note  : Ajout de la règle de cohérence SBC pour le secteur Technology.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ class AuditEngine:
             raw_pillars = auditor.audit_pillars(cast(Any, result))
             all_steps: List[AuditStep] = getattr(auditor, "_audit_steps", [])
 
-            # --- SPRINT 4 : AUDIT DE COHÉRENCE SBC ---
+            # ---  : AUDIT DE COHÉRENCE SBC ---
             sbc_steps = AuditEngine._audit_sbc_integrity(result)
             all_steps.extend(sbc_steps)
 
@@ -137,7 +137,7 @@ class AuditEngine:
     @staticmethod
     def _audit_sbc_integrity(result: ValuationResult) -> List[AuditStep]:
         """
-        Vérifie la cohérence des hypothèses de dilution Stock-Based Compensation (Sprint 4).
+        Vérifie la cohérence des hypothèses de dilution Stock-Based Compensation ().
         Standard institutionnel : Tech Sector > 0% Dilution attendue.
         """
         steps = []

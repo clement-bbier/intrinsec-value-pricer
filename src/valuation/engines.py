@@ -1,7 +1,7 @@
 """
 core/valuation/engines.py
 
-ROUTEUR CENTRAL DES MOTEURS DE VALORISATION — VERSION V11.0 (DT-007 Resolution)
+ROUTEUR CENTRAL DES MOTEURS DE VALORISATION (DT-007 Resolution)
 Responsabilités : Orchestration, Routage, Wrapper Monte Carlo et Reverse DCF.
 Architecture : Grade-A avec support intégral FCFF (Firm) et Direct Equity (Actionnaire).
 Standards : SOLID, Pydantic, Audit-Integrated, i18n, Centralized Registry.
@@ -263,7 +263,7 @@ def _handle_system_crash(e: Exception) -> ValuationException:
 
 
 # ==============================================================================
-# 4. REVERSE DCF (Version Segmentée)
+# 4. REVERSE DCF (Segmentée)
 # ==============================================================================
 
 def run_reverse_dcf(

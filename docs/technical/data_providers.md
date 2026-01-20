@@ -112,7 +112,7 @@ Quand le mode dégradé est actif, un bandeau s'affiche :
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ ⚠️ MODE DÉGRADÉ                    Confiance: 70%  │
+│ Mode dégradé                      Confiance: 70%  │
 │ Raison : API peers indisponible pour AAPL          │
 │ Sources : Damodaran 2024 - Technology sector       │
 └─────────────────────────────────────────────────────┘

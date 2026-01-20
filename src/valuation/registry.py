@@ -2,7 +2,7 @@
 core/valuation/registry.py
 REGISTRE CENTRALISÉ DES STRATÉGIES DE VALORISATION
 
-Version : V1.0 — DT-007/008/009 Resolution
+Résolution DT-007/008/009
 Pattern : Decorator-based Auto-Discovery
 
 AVANT (3 registres manuels à maintenir) :

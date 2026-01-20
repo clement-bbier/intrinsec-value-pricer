@@ -7,7 +7,7 @@ Rôle : Affichage des résultats de valorisation sous différents scénarios
 Pattern : ResultTabBase (Template Method)
 Style : Numpy docstrings
 
-Version : V2.0 — ST-2.2 (Correction interface scenario_synthesis)
+Correction de l'interface scenario_synthesis
 Risques financiers : Affichage de valorisations alternatives, pas de calculs
 
 Dépendances critiques :

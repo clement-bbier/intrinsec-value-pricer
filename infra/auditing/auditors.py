@@ -1,6 +1,6 @@
 """
 infra/auditing/auditors.py
-AUDITEUR INSTITUTIONNEL — VERSION V10.0 (Sprint 3 : Equity Expansion)
+AUDITEUR INSTITUTIONNEL ( : Equity Expansion)
 Rôle : Analyse multidimensionnelle de la fiabilité avec traçabilité AuditStep.
 Note : Migration intégrale V9.0 + Rigueur Hedge Fund pour FCFE et DDM.
 """

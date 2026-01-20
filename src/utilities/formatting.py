@@ -6,7 +6,7 @@ Utilitaires de formatage partagés.
 Ces fonctions sont utilisées à la fois par la logique métier
 et par l'interface utilisateur pour un formatage cohérent.
 
-Version : V2.0 — ST-1.2 Type-Safe Resolution
+Utilitaires de formatage - Type-safe
 Pattern : Pure Functions
 Style : Numpy Style docstrings
 

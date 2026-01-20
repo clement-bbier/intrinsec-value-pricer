@@ -1,6 +1,6 @@
 """
 core/valuation/pipelines.py
-PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE) — VERSION V1.3
+PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE)
 Rôle : Moteur universel pour les modèles de flux (FCFF, FCFE, DDM) avec gestion de la dilution.
 Architecture : Orchestration bifurquée Firm-Level (EV) vs Equity-Level (IV).
 Note : Alignement strict sur ui_glass_box_registry.py pour la traçabilité complète.

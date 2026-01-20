@@ -7,7 +7,7 @@ Rôle : Valorisation d'entreprises matures avec FCF stable
 Pattern : Template Method (hérite de ExpertTerminalBase)
 Style : Numpy docstrings
 
-Version : V1.0 — ST-2.1
+Terminal FCFF Standard
 Risques financiers : Calculs de valorisation, sensibilité aux inputs
 
 Dépendances critiques :

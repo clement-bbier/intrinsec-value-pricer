@@ -3,7 +3,7 @@ app/ui/results/orchestrator.py
 
 ORCHESTRATEUR — GESTION CENTRALISÉE DES ONGLETS DE RÉSULTATS
 
-Version : V2.1 — PDF Export Removed
+Orchestrateur de résultats
 Rôle : Coordination et rendu des onglets de résultats post-calcul
 Pattern : Mediator (GoF) + Factory Method + Session State Cache
 """

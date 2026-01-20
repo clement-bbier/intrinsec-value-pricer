@@ -3,7 +3,7 @@ tests/contracts/test_architecture_contracts.py
 
 Tests contractuels pour l'étanchéité architecturale.
 
-Version : V1.0 — ST-1.1 Resolution
+Test Contrats Architecture - ST-1.1
 Pattern : Contract Testing
 Style : Numpy Style docstrings
 

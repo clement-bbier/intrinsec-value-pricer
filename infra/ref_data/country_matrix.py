@@ -1,7 +1,7 @@
 """
 infra/ref_data/country_matrix.py
 Base de données macro-économiques et sources officielles par pays.
-Version : 2026.1 — Janvier 2026 Update
+Matrice pays - Mise à jour Janvier 2026
 """
 
 from typing import TypedDict, Dict

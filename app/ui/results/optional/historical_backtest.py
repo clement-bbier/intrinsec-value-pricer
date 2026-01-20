@@ -7,7 +7,7 @@ Rôle : Validation historique de la pertinence des hypothèses de valorisation
 Pattern : ResultTabBase (Template Method)
 Style : Numpy docstrings
 
-Version : V1.1 — DT-019 Resolution (Correction backtest_result → backtest_report)
+Backtesting historique - Correction interface
 Risques financiers : Analyse de performance passée, pas de calculs nouveaux
 
 Dépendances critiques :
