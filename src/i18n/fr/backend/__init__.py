@@ -23,6 +23,7 @@ from src.i18n.fr.backend.strategies import (
 )
 
 from src.i18n.fr.backend.registry import RegistryTexts
+from src.i18n.fr.backend.models import ModelValidationTexts, MODEL_VALIDATION_TEXTS
 
 __all__ = [
     "WorkflowTexts",
@@ -35,4 +36,6 @@ __all__ = [
     "StrategyInterpretations",
     "StrategyFormulas",
     "RegistryTexts",
+    "ModelValidationTexts",
+    "MODEL_VALIDATION_TEXTS",
 ]

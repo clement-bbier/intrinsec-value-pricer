@@ -1,29 +1,13 @@
 """
-src/config/constants.py
+Constantes centralisées du système de valorisation.
 
-CONSTANTES CENTRALISÉES — DT-010/011/012/013 Resolution
+Ce module regroupe toutes les constantes de configuration utilisées
+dans les calculs financiers, l'audit et les interfaces utilisateur.
+Source unique de vérité pour les seuils et paramètres par défaut.
 
-Version : V1.1 — ST-1.2 Type-Safe Resolution
-Pattern : Configuration Object (Single Source of Truth)
-Style : Numpy Style docstrings
-
-AVANT (Hardcoding dispersé) :
-- app/main.py : _MIN_MC_SIMULATIONS, _MAX_MC_SIMULATIONS, etc.
-- yahoo_provider.py : _MAX_PEERS_ANALYSIS = 5
-- auditors.py : PENALTY_CRITICAL = 100.0, etc.
-- audit_engine.py : MODE_WEIGHTS, seuils gap < 0.05, etc.
-
-APRÈS (Centralisation) :
-- Toutes les constantes dans ce fichier
-- Imports depuis core.config
-- Modification en un seul endroit
-
-Usage :
-    from src.config import AuditThresholds, MonteCarloDefaults
-
-RISQUES FINANCIERS:
-- Ces constantes pilotent les seuils d'audit et les défauts de calcul
-- Une modification incorrecte peut impacter toutes les valorisations
+Usage
+-----
+    from src.config.constants import AuditThresholds, MonteCarloDefaults
 """
 
 from __future__ import annotations
@@ -67,7 +51,7 @@ class PeerDefaults:
     MAX_PEERS_ANALYSIS: int = 5
     MIN_PEERS_REQUIRED: int = 2
     
-    # Timeout API (Sprint 6)
+    # Délai d'expiration pour les appels API de données financières
     API_TIMEOUT_SECONDS: float = 12.0
     
     # Retry policy
@@ -145,7 +129,7 @@ class MacroDefaults:
     # MRP par défaut
     DEFAULT_MARKET_RISK_PREMIUM: float = 0.05  # 5%
 
-    # Seuil Large Cap pour sélection des spreads (ST-2.3)
+    # Seuil de capitalisation pour sélection des spreads obligataires
     LARGE_CAP_THRESHOLD: float = 5_000_000_000  # 5 Milliards $
 
 
@@ -192,7 +176,7 @@ class ValuationEngineDefaults:
     STRESS_PERPETUAL_GROWTH: float = 0.01  # 1% perpétuelle en stress
     STRESS_BETA: float = 1.50  # Risque systémique maximum
 
-    # RIM (Residual Income Model) - ST-2.3
+    # RIM (Residual Income Model)
     RIM_DEFAULT_OMEGA: float = 0.60  # Facteur de persistance par défaut
     RIM_MAX_PAYOUT_RATIO: float = 0.95  # Plafond du payout ratio
 
@@ -364,7 +348,7 @@ class TechnicalDefaults:
     BACKTEST_ERROR_THRESHOLD: float = 0.20  # 20% seuil d'erreur acceptable
     VALUATION_CONVERGENCE_THRESHOLD: float = 0.5  # 0.5 unité monétaire pour convergence
 
-    # Reverse DCF - Bornes de recherche (ST-2.3)
+    # Reverse DCF - Bornes de recherche
     REVERSE_DCF_LOW_BOUND: float = -0.20  # -20% croissance minimale
     REVERSE_DCF_HIGH_BOUND: float = 0.50  # +50% croissance maximale
 

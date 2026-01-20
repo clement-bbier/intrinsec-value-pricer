@@ -1,22 +1,9 @@
 """
-src/domain/models/glass_box.py
-
 Modèles de traçabilité Glass Box.
 
-Ces modèles permettent de documenter chaque étape de calcul
-pour une transparence totale envers l'utilisateur.
-
-Version : V3.0 — ST-2.1 Glass Box Enhancement
-Pattern : Pydantic Model (Traceability Domain)
-Style : Numpy Style docstrings
-
-Historique:
-- V2.0: ST-1.2 Type-Safe Resolution
-- V3.0: ST-2.1 actual_calculation + variables_map
-
-RISQUES FINANCIERS:
-- La traçabilité garantit l'auditabilité des calculs
-- Sans Glass Box, impossible de valider les résultats
+Ce module définit les structures de données pour la traçabilité
+complète des calculs de valorisation, permettant l'audit
+et la pédagogie des résultats financiers.
 """
 
 from __future__ import annotations
@@ -31,7 +18,12 @@ from src.config.constants import ModelDefaults
 
 
 class VariableSource(str, Enum):
-    """Source d'une variable utilisée dans un calcul."""
+    """Source d'une variable utilisée dans un calcul.
+
+    Énumération des origines possibles pour une variable
+    dans les calculs de valorisation.
+    """
+
     YAHOO_FINANCE = "Yahoo Finance"
     MANUAL_OVERRIDE = "Surcharge Expert"
     CALCULATED = "Calculé"
@@ -40,11 +32,10 @@ class VariableSource(str, Enum):
 
 
 class VariableInfo(BaseModel):
-    """
-    Information détaillée sur une variable utilisée dans un calcul Glass Box.
-    
-    Permet à l'utilisateur de tracer la provenance de chaque composant
-    d'une formule et de comprendre l'impact de ses surcharges.
+    """Information détaillée sur une variable utilisée dans un calcul.
+
+    Permet la traçabilité complète de chaque composant d'une formule,
+    incluant provenance, valeur et impact des surcharges utilisateur.
 
     Attributes
     ----------
@@ -52,21 +43,16 @@ class VariableInfo(BaseModel):
         Symbole mathématique de la variable (ex: "WACC", "g", "FCF₀").
     value : float
         Valeur numérique utilisée dans le calcul.
-    formatted_value : str
+    formatted_value : str, default=""
         Valeur formatée pour affichage (ex: "8.5%", "150.5 M€").
-    source : VariableSource
+    source : VariableSource, default=VariableSource.CALCULATED
         Provenance de la donnée (Yahoo, Expert, Calculé, etc.).
-    description : str
+    description : str, default=""
         Description pédagogique de la variable.
-    is_overridden : bool
+    is_overridden : bool, default=False
         True si l'utilisateur a surchargé la valeur automatique.
-    original_value : Optional[float]
+    original_value : float, optional
         Valeur automatique originale si surchargée.
-
-    Financial Impact
-    ----------------
-    La traçabilité des variables permet à l'utilisateur de comprendre
-    exactement quelles hypothèses impactent sa valorisation.
     """
     symbol: str
     value: float
@@ -90,7 +76,24 @@ class VariableInfo(BaseModel):
 
 
 class TraceHypothesis(BaseModel):
-    """Hypothèse utilisée dans un calcul."""
+    """Hypothèse utilisée dans un calcul.
+
+    Représente une hypothèse spécifique appliquée lors
+    d'une étape de calcul.
+
+    Attributes
+    ----------
+    name : str
+        Nom de l'hypothèse.
+    value : Any
+        Valeur de l'hypothèse.
+    unit : str, default=""
+        Unité de la valeur.
+    source : str, default="auto"
+        Source de l'hypothèse.
+    comment : str, optional
+        Commentaire additionnel.
+    """
     name: str
     value: Any
     unit: str = ""
@@ -99,59 +102,35 @@ class TraceHypothesis(BaseModel):
 
 
 class CalculationStep(BaseModel):
-    """
-    Étape de calcul documentée (Glass Box).
+    """Étape de calcul documentée (Glass Box).
 
-    Chaque étape représente une formule appliquée dans le processus de valorisation,
-    avec sa trace complète pour audit et pédagogie.
+    Représente une formule mathématique appliquée dans le processus
+    de valorisation, avec traçabilité complète pour audit et pédagogie.
 
     Attributes
     ----------
-    step_id : int
+    step_id : int, default=ModelDefaults.DEFAULT_STEP_ID
         Numéro séquentiel de l'étape.
-    step_key : str
-        Clé unique pour le registre Glass Box (ex: "WACC_CALC", "TV_GORDON").
-    label : str
+    step_key : str, default=""
+        Clé unique pour le registre Glass Box.
+    label : str, default=""
         Libellé d'affichage de l'étape.
-    theoretical_formula : str
-        Formule LaTeX théorique (ex: r"WACC = w_e \\times k_e + w_d \\times k_d(1-\\tau)").
-    actual_calculation : str
-        Substitution numérique réelle avec les valeurs du ticker.
-        Ex: "0.75 × 8.5% + 0.25 × 4.2% × (1 - 25%)"
-    variables_map : Dict[str, VariableInfo]
-        Dictionnaire des variables avec leur provenance et valeur.
-        Permet le drill-down sur chaque composant.
-    hypotheses : List[TraceHypothesis]
-        Hypothèses associées à l'étape (legacy, pour compatibilité).
-    numerical_substitution : str
-        Substitution numérique formatée (legacy, remplacé par actual_calculation).
-    result : float
+    theoretical_formula : str, default=""
+        Formule LaTeX théorique.
+    actual_calculation : str, default=""
+        Substitution numérique réelle avec les valeurs utilisées.
+    variables_map : Dict[str, VariableInfo], default={}
+        Dictionnaire des variables avec provenance et valeur.
+    hypotheses : List[TraceHypothesis], default=[]
+        Hypothèses associées à l'étape.
+    numerical_substitution : str, default=""
+        Substitution numérique formatée (legacy).
+    result : float, default=ModelDefaults.DEFAULT_RESULT_VALUE
         Résultat numérique de l'étape.
-    unit : str
+    unit : str, default=""
         Unité du résultat (€, %, x, etc.).
-    interpretation : str
+    interpretation : str, default=""
         Interprétation pédagogique du résultat.
-
-    Financial Impact
-    ----------------
-    Chaque CalculationStep est un point d'audit critique.
-    La transparence totale permet de valider les hypothèses utilisées.
-
-    Examples
-    --------
-    >>> step = CalculationStep(
-    ...     step_id=1,
-    ...     step_key="WACC_CALC",
-    ...     label="Coût Moyen Pondéré du Capital",
-    ...     theoretical_formula=r"WACC = w_e \\times k_e + w_d \\times k_d(1-\\tau)",
-    ...     actual_calculation="0.75 × 8.5% + 0.25 × 4.2% × (1 - 25%)",
-    ...     variables_map={
-    ...         "w_e": VariableInfo(symbol="w_e", value=0.75, source=VariableSource.YAHOO_FINANCE),
-    ...         "k_e": VariableInfo(symbol="k_e", value=0.085, source=VariableSource.CALCULATED),
-    ...     },
-    ...     result=0.0717,
-    ...     unit="%"
-    ... )
     """
     step_id: int = ModelDefaults.DEFAULT_STEP_ID
     step_key: str = ""
@@ -166,11 +145,10 @@ class CalculationStep(BaseModel):
     interpretation: str = ""
 
     def get_variable(self, symbol: str) -> Optional[VariableInfo]:
-        """
-        Récupère les informations d'une variable par son symbole.
+        """Récupère les informations d'une variable par son symbole.
 
-        Args
-        ----
+        Parameters
+        ----------
         symbol : str
             Symbole de la variable (ex: "WACC", "g").
 
@@ -182,8 +160,7 @@ class CalculationStep(BaseModel):
         return self.variables_map.get(symbol)
 
     def has_overrides(self) -> bool:
-        """
-        Vérifie si des variables ont été surchargées par l'utilisateur.
+        """Vérifie si des variables ont été surchargées par l'utilisateur.
 
         Returns
         -------
@@ -194,7 +171,34 @@ class CalculationStep(BaseModel):
 
 
 class AuditStep(BaseModel):
-    """Etape d'audit avec verdict."""
+    """Étape d'audit avec verdict.
+
+    Représente une vérification spécifique effectuée pendant
+    l'audit d'une valorisation.
+
+    Attributes
+    ----------
+    step_id : int, default=ModelDefaults.DEFAULT_STEP_ID
+        Numéro séquentiel de l'étape d'audit.
+    step_key : str, default=""
+        Clé unique de l'étape d'audit.
+    label : str, default=""
+        Libellé d'affichage de l'étape.
+    rule_formula : str, default=""
+        Formule de la règle d'audit.
+    indicator_value : Union[float, str], default=ModelDefaults.DEFAULT_INDICATOR_VALUE
+        Valeur de l'indicateur testé.
+    threshold_value : Union[float, str, None]
+        Valeur seuil de référence.
+    severity : AuditSeverity, default=AuditSeverity.INFO
+        Niveau de sévérité du verdict.
+    verdict : bool, default=True
+        Résultat de la vérification (True = succès).
+    evidence : str, default=""
+        Preuve ou justification du verdict.
+    description : str, default=""
+        Description détaillée de l'étape.
+    """
     step_id: int = ModelDefaults.DEFAULT_STEP_ID
     step_key: str = ""
     label: str = ""

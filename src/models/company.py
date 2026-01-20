@@ -1,18 +1,9 @@
 """
-src/domain/models/company.py
-
 Données financières de l'entreprise.
 
-Version : V2.0 — ST-1.2 Type-Safe Resolution
-Pattern : Pydantic Model (Value Object)
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Ces données alimentent tous les modèles de valorisation
-- Une erreur de normalisation invalide l'ensemble du calcul
-
-DEPENDANCES CRITIQUES:
-- pydantic >= 2.0.0
+Ce module définit les structures de données pour les informations
+financières de base d'une entreprise, utilisées par tous les moteurs
+de valorisation.
 """
 
 from __future__ import annotations
@@ -24,7 +15,69 @@ from src.config.constants import ModelDefaults
 
 
 class CompanyFinancials(BaseModel):
-    """Contrat de donnees financier unifie."""
+    """Données financières unifiées d'une entreprise.
+
+    Conteneur principal pour toutes les données financières nécessaires
+    aux calculs de valorisation. Centralise les informations de marché,
+    bilan, compte de résultat et flux de trésorerie.
+
+    Attributes
+    ----------
+    ticker : str
+        Symbole boursier de l'entreprise.
+    name : str, default="Unknown"
+        Nom de l'entreprise.
+    currency : str
+        Devise des données financières.
+    sector : str, default="Unknown"
+        Secteur d'activité.
+    industry : str, default="Unknown"
+        Industrie spécifique.
+    country : str, default="Unknown"
+        Pays d'origine.
+    current_price : float
+        Prix actuel de l'action.
+    shares_outstanding : float
+        Nombre d'actions en circulation.
+    beta : float, default=ModelDefaults.DEFAULT_BETA
+        Coefficient bêta (risque systématique).
+    total_debt : float, default=ModelDefaults.DEFAULT_TOTAL_DEBT
+        Dettes totales.
+    cash_and_equivalents : float, default=ModelDefaults.DEFAULT_CASH_EQUIVALENTS
+        Trésorerie et équivalents.
+    minority_interests : float, default=ModelDefaults.DEFAULT_MINORITY_INTERESTS
+        Intérêts minoritaires.
+    pension_provisions : float, default=ModelDefaults.DEFAULT_PENSION_PROVISIONS
+        Provisions pour pensions.
+    book_value : float, default=ModelDefaults.DEFAULT_BOOK_VALUE
+        Valeur comptable totale.
+    book_value_per_share : float, optional
+        Valeur comptable par action.
+    revenue_ttm : float, optional
+        Chiffre d'affaires des 12 derniers mois.
+    ebitda_ttm : float, optional
+        EBITDA des 12 derniers mois.
+    ebit_ttm : float, optional
+        EBIT des 12 derniers mois.
+    net_income_ttm : float, optional
+        Bénéfice net des 12 derniers mois.
+    interest_expense : float, default=ModelDefaults.DEFAULT_INTEREST_EXPENSE
+        Charges d'intérêts.
+    eps_ttm : float, optional
+        Bénéfice par action des 12 derniers mois.
+    dividend_share : float, optional
+        Dividende par action.
+    fcf_last : float, optional
+        Free Cash Flow de la dernière période.
+    fcf_fundamental_smoothed : float, optional
+        FCF fondamental lissé.
+    net_borrowing_ttm : float, optional
+        Variation nette de l'endettement sur 12 mois.
+    capex : float, optional
+        Dépenses d'investissement (CAPEX).
+    depreciation_and_amortization : float, optional
+        Dotations aux amortissements.
+    """
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Identite
@@ -66,28 +119,59 @@ class CompanyFinancials(BaseModel):
 
     @property
     def market_cap(self) -> float:
-        """Capitalisation boursiere."""
+        """Capitalisation boursière.
+
+        Returns
+        -------
+        float
+            Produit du prix actuel par le nombre d'actions en circulation.
+        """
         return self.current_price * self.shares_outstanding
 
     @property
     def net_debt(self) -> float:
-        """Dette nette."""
+        """Dette nette.
+
+        Returns
+        -------
+        float
+            Dettes totales moins trésorerie et équivalents.
+        """
         return self.total_debt - self.cash_and_equivalents
 
     @property
     def dividends_total_calculated(self) -> float:
-        """Dividendes totaux calcules."""
+        """Dividendes totaux calculés.
+
+        Returns
+        -------
+        float
+            Dividende par action multiplié par le nombre d'actions en circulation.
+        """
         return (self.dividend_share or 0.0) * self.shares_outstanding
 
     # Alias pour compatibilite
     @property
     def fcf(self) -> Optional[float]:
-        """Alias pour fcf_last."""
+        """Alias pour fcf_last.
+
+        Returns
+        -------
+        Optional[float]
+            Valeur du dernier Free Cash Flow disponible.
+        """
         return self.fcf_last
 
     @property
     def pe_ratio(self) -> Optional[float]:
-        """Ratio cours/benefice (P/E)."""
+        """Ratio cours/bénéfice (P/E).
+
+        Returns
+        -------
+        Optional[float]
+            Rapport entre le prix actuel et le bénéfice par action.
+            None si les données ne sont pas disponibles ou négatives.
+        """
         if (self.eps_ttm is not None and self.eps_ttm > 0 and
             self.current_price is not None and self.current_price > 0):
             return self.current_price / self.eps_ttm
@@ -95,7 +179,14 @@ class CompanyFinancials(BaseModel):
 
     @property
     def pb_ratio(self) -> Optional[float]:
-        """Ratio cours/valeur comptable (P/B)."""
+        """Ratio cours/valeur comptable (P/B).
+
+        Returns
+        -------
+        Optional[float]
+            Rapport entre le prix actuel et la valeur comptable par action.
+            None si les données ne sont pas disponibles ou négatives.
+        """
         if (self.book_value_per_share is not None and self.book_value_per_share > 0 and
             self.current_price is not None and self.current_price > 0):
             return self.current_price / self.book_value_per_share
@@ -103,7 +194,14 @@ class CompanyFinancials(BaseModel):
 
     @property
     def ev_ebitda_ratio(self) -> Optional[float]:
-        """Ratio valeur entreprise/EBITDA (EV/EBITDA)."""
+        """Ratio valeur entreprise/EBITDA (EV/EBITDA).
+
+        Returns
+        -------
+        Optional[float]
+            Rapport entre la valeur d'entreprise et l'EBITDA.
+            None si les données ne sont pas disponibles ou négatives.
+        """
         if (self.ebitda_ttm is not None and self.ebitda_ttm > 0 and
             self.market_cap is not None and self.market_cap > 0):
             return self.market_cap / self.ebitda_ttm

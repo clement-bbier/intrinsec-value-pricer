@@ -95,3 +95,4 @@ class CalculationErrors:
     INVALID_DIVIDEND = "Dividende de base nul ou invalide pour le modele DDM."
     NEGATIVE_FLUX_AUTO = "Impossible de valoriser via {model} en mode Auto : le flux de base est negatif ou nul ({val:.2f}). Veuillez utiliser un modele alternatif (RIM, Multiples) ou saisir un flux normatif en mode Expert."
     RIM_NEGATIVE_BV = "Le modele RIM necessite une valeur comptable positive pour calculer le revenu residuel."
+    NEGATIVE_PE_RATIO = "Le multiple P/E doit être strictement positif."

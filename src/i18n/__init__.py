@@ -44,6 +44,8 @@ from src.i18n.fr import (
     AuditMessages,
     AuditEngineTexts,
     RegistryTexts,
+    ModelValidationTexts,
+    MODEL_VALIDATION_TEXTS,
 )
 
 __all__ = [
@@ -74,4 +76,6 @@ __all__ = [
     "AuditMessages",
     "AuditEngineTexts",
     "RegistryTexts",
+    "ModelValidationTexts",
+    "MODEL_VALIDATION_TEXTS",
 ]

@@ -81,7 +81,7 @@ def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float)
 def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> float:
     """Valeur terminale Equity : Applique un multiple P/E au résultat net terminal."""
     if pe_multiple <= 0:
-        raise CalculationError("Le multiple P/E doit être strictement positif.")
+        raise CalculationError(CalculationErrors.NEGATIVE_PE_RATIO)
     return final_net_income * pe_multiple
 
 # ==============================================================================

@@ -1,15 +1,9 @@
 """
-src/domain/models/dcf_inputs.py
-
 Paramètres d'entrée pour les modèles DCF.
 
-Version : V2.0 — ST-1.2 Type-Safe Resolution
-Pattern : Pydantic Model (Configuration Objects)
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Ces paramètres pilotent directement les calculs DCF
-- Un taux mal configuré invalide toute la valorisation
+Ce module définit les structures de configuration pour les paramètres
+utilisés dans les modèles de Discounted Cash Flow (DCF), incluant
+les taux, la croissance et les paramètres Monte Carlo.
 """
 
 from __future__ import annotations
@@ -35,7 +29,32 @@ def _decimal_guard(v: Any) -> Optional[float]:
 
 
 class CoreRateParameters(BaseModel):
-    """Parametres de taux (WACC, Ke, Kd)."""
+    """Paramètres de taux financiers.
+
+    Contient les taux d'actualisation essentiels pour les calculs DCF :
+    taux sans risque, prime de risque marché, coût de la dette, etc.
+
+    Attributes
+    ----------
+    risk_free_rate : float, optional
+        Taux sans risque.
+    risk_free_source : str, default="N/A"
+        Source du taux sans risque.
+    market_risk_premium : float, optional
+        Prime de risque marché.
+    corporate_aaa_yield : float, optional
+        Rendement obligataire AAA corporate.
+    cost_of_debt : float, optional
+        Coût de la dette après impôts.
+    tax_rate : float, optional
+        Taux d'imposition effectif.
+    manual_cost_of_equity : float, optional
+        Coût des fonds propres manuel.
+    wacc_override : float, optional
+        WACC forcé (remplace le calcul automatique).
+    manual_beta : float, optional
+        Bêta manuel (remplace le bêta automatique).
+    """
     risk_free_rate: Optional[float] = None
     risk_free_source: str = "N/A"
     market_risk_premium: Optional[float] = None
@@ -54,7 +73,54 @@ class CoreRateParameters(BaseModel):
 
 
 class GrowthParameters(BaseModel):
-    """Parametres de croissance et projections."""
+    """Paramètres de croissance et projections.
+
+    Définit les hypothèses de croissance pour les projections de flux
+    et la valorisation terminale.
+
+    Attributes
+    ----------
+    fcf_growth_rate : float, optional
+        Taux de croissance des Free Cash Flows.
+    projection_years : int, default=ModelDefaults.DEFAULT_PROJECTION_YEARS
+        Nombre d'années de projection explicite.
+    high_growth_years : int, default=ModelDefaults.DEFAULT_HIGH_GROWTH_YEARS
+        Nombre d'années de croissance élevée.
+    terminal_method : TerminalValueMethod, default=TerminalValueMethod.GORDON_GROWTH
+        Méthode de calcul de la valeur terminale.
+    perpetual_growth_rate : float, optional
+        Taux de croissance perpétuelle.
+    exit_multiple_value : float, optional
+        Multiple de sortie pour la valeur terminale.
+    target_equity_weight : float, optional
+        Poids cible des fonds propres dans le capital.
+    target_debt_weight : float, optional
+        Poids cible de la dette dans le capital.
+    target_fcf_margin : float, optional
+        Marge FCF cible.
+    annual_dilution_rate : float, optional
+        Taux annuel de dilution.
+    manual_fcf_base : float, optional
+        Base FCF manuelle.
+    manual_stock_price : float, optional
+        Prix d'action manuel.
+    manual_total_debt : float, optional
+        Dette totale manuelle.
+    manual_cash : float, optional
+        Trésorerie manuelle.
+    manual_minority_interests : float, optional
+        Intérêts minoritaires manuels.
+    manual_pension_provisions : float, optional
+        Provisions pour pensions manuelles.
+    manual_shares_outstanding : float, optional
+        Actions en circulation manuelles.
+    manual_book_value : float, optional
+        Valeur comptable manuelle.
+    manual_net_borrowing : float, optional
+        Variation nette d'endettement manuelle.
+    manual_dividend_base : float, optional
+        Base de dividende manuelle.
+    """
     fcf_growth_rate: Optional[float] = None
     projection_years: int = ModelDefaults.DEFAULT_PROJECTION_YEARS
     high_growth_years: int = ModelDefaults.DEFAULT_HIGH_GROWTH_YEARS
@@ -85,7 +151,28 @@ class GrowthParameters(BaseModel):
 
 
 class MonteCarloConfig(BaseModel):
-    """Configuration des simulations Monte Carlo."""
+    """Configuration des simulations Monte Carlo.
+
+    Paramètres pour l'analyse de sensibilité probabiliste des
+    valorisations DCF.
+
+    Attributes
+    ----------
+    enable_monte_carlo : bool, default=False
+        Active les simulations Monte Carlo.
+    num_simulations : int, default=2000
+        Nombre de simulations à effectuer.
+    base_flow_volatility : float, optional
+        Volatilité de base des flux.
+    beta_volatility : float, optional
+        Volatilité du bêta.
+    growth_volatility : float, optional
+        Volatilité du taux de croissance.
+    terminal_growth_volatility : float, optional
+        Volatilité du taux de croissance terminal.
+    correlation_beta_growth : float, default=-0.30
+        Corrélation entre bêta et croissance.
+    """
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
     base_flow_volatility: Optional[float] = None
@@ -101,7 +188,24 @@ class MonteCarloConfig(BaseModel):
 
 
 class DCFParameters(BaseModel):
-    """Conteneur principal des parametres DCF."""
+    """Conteneur principal des paramètres DCF.
+
+    Structure de configuration complète pour une valorisation DCF,
+    regroupant taux, croissance et paramètres stochastiques.
+
+    Attributes
+    ----------
+    rates : CoreRateParameters
+        Paramètres de taux financiers.
+    growth : GrowthParameters
+        Paramètres de croissance et projections.
+    monte_carlo : MonteCarloConfig
+        Configuration des simulations Monte Carlo.
+    scenarios : ScenarioParameters
+        Configuration des scénarios déterministes.
+    sotp : SOTPParameters
+        Configuration de la valorisation par segments.
+    """
     rates: CoreRateParameters = Field(default_factory=CoreRateParameters)
     growth: GrowthParameters = Field(default_factory=GrowthParameters)
     monte_carlo: MonteCarloConfig = Field(default_factory=MonteCarloConfig)
@@ -114,7 +218,11 @@ class DCFParameters(BaseModel):
         return self.growth.projection_years
 
     def normalize_weights(self) -> None:
-        """Normalise les poids equity/debt pour sommer a 1."""
+        """Normalise les poids equity/dette pour sommer à 1.
+
+        Ajuste automatiquement les poids cibles d'equity et dette
+        pour qu'ils totalisent 100% du capital.
+        """
         w_e = self.growth.target_equity_weight or 0.0
         w_d = self.growth.target_debt_weight or 0.0
         total = w_e + w_d
@@ -127,7 +235,18 @@ class DCFParameters(BaseModel):
 
     @classmethod
     def from_legacy(cls, data: Dict[str, Any]) -> 'DCFParameters':
-        """Construit depuis un dictionnaire plat (compatibilite)."""
+        """Construit depuis un dictionnaire plat (compatibilité).
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionnaire contenant les paramètres DCF dans un format plat.
+
+        Returns
+        -------
+        DCFParameters
+            Instance configurée avec les paramètres fournis.
+        """
         return cls(
             rates=CoreRateParameters(**data),
             growth=GrowthParameters(**data),

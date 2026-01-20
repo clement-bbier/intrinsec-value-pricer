@@ -1,18 +1,9 @@
 """
-src/domain/models/request_response.py
-
 Requêtes et résultats de valorisation.
 
-Version : V2.0 — ST-1.2 Type-Safe Resolution
-Pattern : Pydantic Model (Request/Response Objects)
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- ValuationResult est le contrat de sortie principal
-- Toute modification impacte l'ensemble de la chaîne de valeur
-
-DEPENDANCES CRITIQUES:
-- pydantic >= 2.0.0
+Ce module définit les structures de données pour les requêtes
+de valorisation et leurs résultats, formant le contrat principal
+d'interface avec les moteurs de calcul.
 """
 
 from __future__ import annotations
@@ -33,7 +24,26 @@ from src.config.constants import ModelDefaults
 
 
 class ValuationRequest(BaseModel):
-    """Requete de valorisation."""
+    """Requête de valorisation.
+
+    Structure de données pour une demande de valorisation d'entreprise.
+    Spécifie le ticker, la méthode et les paramètres optionnels.
+
+    Attributes
+    ----------
+    ticker : str
+        Symbole boursier de l'entreprise à valoriser.
+    projection_years : int
+        Nombre d'années de projection explicite.
+    mode : ValuationMode
+        Mode de valorisation à utiliser.
+    input_source : InputSource
+        Source des données d'entrée (AUTO ou MANUAL).
+    manual_params : DCFParameters, optional
+        Paramètres DCF manuels (si input_source=MANUAL).
+    options : Dict[str, Any], default={}
+        Options supplémentaires pour le calcul.
+    """
     model_config = ConfigDict(frozen=True)
 
     ticker: str
@@ -45,7 +55,24 @@ class ValuationRequest(BaseModel):
 
 
 class HistoricalPoint(BaseModel):
-    """Resultat de valorisation a un instant T passe (Backtest)."""
+    """Résultat de valorisation à un instant T passé (Backtest).
+
+    Point de données historique pour l'analyse de backtesting,
+    comparant la valeur intrinsèque calculée avec le prix de marché.
+
+    Attributes
+    ----------
+    valuation_date : date
+        Date de la valorisation historique.
+    intrinsic_value : float
+        Valeur intrinsèque calculée à cette date.
+    market_price : float
+        Prix de marché effectif à cette date.
+    error_pct : float
+        Erreur de valorisation en pourcentage.
+    was_undervalued : bool
+        True si la valeur intrinsèque > prix de marché.
+    """
     valuation_date: date
     intrinsic_value: float
     market_price: float
@@ -54,7 +81,22 @@ class HistoricalPoint(BaseModel):
 
 
 class BacktestResult(BaseModel):
-    """Synthese complete d'un backtesting."""
+    """Synthèse complète d'un backtesting.
+
+    Résultats agrégés d'une analyse de backtesting sur une période
+    historique, incluant métriques de précision du modèle.
+
+    Attributes
+    ----------
+    points : List[HistoricalPoint], default=[]
+        Liste des points de valorisation historique.
+    mean_absolute_error : float, default=0.0
+        Erreur absolue moyenne du modèle.
+    alpha_vs_market : float, default=0.0
+        Alpha généré par rapport au marché.
+    model_accuracy_score : float, default=0.0
+        Score de précision global du modèle.
+    """
     model_config = ConfigDict(protected_namespaces=())
 
     points: List[HistoricalPoint] = Field(default_factory=list)
@@ -64,7 +106,53 @@ class BacktestResult(BaseModel):
 
 
 class ValuationResult(BaseModel, ABC):
-    """Resultat de valorisation (classe abstraite)."""
+    """Résultat de valorisation (classe abstraite).
+
+    Classe de base pour tous les résultats de valorisation.
+    Définit le contrat commun incluant valeur intrinsèque,
+    audit et traçabilité.
+
+    Attributes
+    ----------
+    request : ValuationRequest, optional
+        Requête originale ayant généré ce résultat.
+    financials : CompanyFinancials
+        Données financières utilisées dans le calcul.
+    params : DCFParameters
+        Paramètres utilisés pour la valorisation.
+    intrinsic_value_per_share : float
+        Valeur intrinsèque par action.
+    market_price : float
+        Prix de marché au moment du calcul.
+    upside_pct : float, optional
+        Potentiel de hausse en pourcentage.
+    calculation_trace : List[CalculationStep], default=[]
+        Trace détaillée des étapes de calcul.
+    audit_report : AuditReport, optional
+        Rapport d'audit de la valorisation.
+    simulation_results : List[float], optional
+        Résultats des simulations Monte Carlo.
+    quantiles : Dict[str, float], optional
+        Quantiles des distributions Monte Carlo.
+    rho_sensitivity : Dict[str, float], default={}
+        Sensibilité aux paramètres (rho coefficients).
+    stress_test_value : float, optional
+        Valeur dans un scénario de stress.
+    mc_valid_ratio : float, optional
+        Ratio de simulations valides.
+    mc_clamping_applied : bool, optional
+        True si du clamping a été appliqué.
+    multiples_triangulation : 'MultiplesValuationResult', optional
+        Résultat de triangulation par multiples.
+    relative_valuation : Dict[str, float], optional
+        Métriques de valorisation relative.
+    scenario_synthesis : ScenarioSynthesis, optional
+        Synthèse des scénarios.
+    sotp_results : SOTPParameters, optional
+        Résultats SOTP.
+    backtest_report : BacktestResult, optional
+        Rapport de backtesting.
+    """
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     request: Optional[ValuationRequest] = None
@@ -97,21 +185,57 @@ class ValuationResult(BaseModel, ABC):
 
     @property
     def ticker(self) -> str:
-        """Retourne le ticker du résultat ou 'UNKNOWN' si non disponible."""
+        """Retourne le ticker du résultat ou 'UNKNOWN' si non disponible.
+
+        Returns
+        -------
+        str
+            Symbole boursier ou 'UNKNOWN' si non disponible.
+        """
         return self.request.ticker if self.request else "UNKNOWN"
 
     @property
     def mode(self) -> Optional[ValuationMode]:
-        """Retourne le mode de valorisation ou None si non disponible."""
+        """Retourne le mode de valorisation ou None si non disponible.
+
+        Returns
+        -------
+        Optional[ValuationMode]
+            Mode de valorisation utilisé ou None si non disponible.
+        """
         return self.request.mode if self.request else None
 
     @abstractmethod
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie de valorisation.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles dans ce résultat.
+        """
         raise NotImplementedError
 
 
 class DCFValuationResult(ValuationResult):
-    """Resultat DCF (FCFF)."""
+    """Résultat DCF (Free Cash Flow to Firm).
+
+    Résultat d'une valorisation DCF basée sur les flux de trésorerie
+    disponibles pour les investisseurs (FCFF).
+
+    Attributes
+    ----------
+    wacc : float
+        Weighted Average Cost of Capital utilisé.
+    projected_fcfs : List[float]
+        Liste des FCFF projetés pour chaque année.
+    enterprise_value : float
+        Valeur d'entreprise calculée.
+    equity_value : float
+        Valeur des fonds propres.
+    discounted_terminal_value : float, optional
+        Valeur terminale actualisée.
+    """
     wacc: float
     projected_fcfs: List[float]
     enterprise_value: float
@@ -119,6 +243,13 @@ class DCFValuationResult(ValuationResult):
     discounted_terminal_value: Optional[float] = None
 
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie pour un résultat DCF.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles.
+        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=len(self.projected_fcfs) > 0,
@@ -129,12 +260,32 @@ class DCFValuationResult(ValuationResult):
 
 
 class RIMValuationResult(ValuationResult):
-    """Resultat Residual Income Model."""
+    """Résultat Residual Income Model.
+
+    Résultat d'une valorisation par le modèle du revenu résiduel,
+    basé sur les flux de trésorerie disponibles pour les actionnaires (FCFE).
+
+    Attributes
+    ----------
+    cost_of_equity : float
+        Coût des fonds propres utilisé.
+    total_equity_value : float
+        Valeur totale des fonds propres.
+    projected_residual_incomes : List[float]
+        Liste des revenus résiduels projetés.
+    """
     cost_of_equity: float
     total_equity_value: float
     projected_residual_incomes: List[float]
 
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie pour un résultat RIM.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles.
+        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=len(self.projected_residual_incomes) > 0,
@@ -145,11 +296,29 @@ class RIMValuationResult(ValuationResult):
 
 
 class GrahamValuationResult(ValuationResult):
-    """Resultat Graham Number."""
+    """Résultat Graham Number.
+
+    Résultat d'une valorisation selon la formule de Benjamin Graham,
+    basée sur les fondamentaux EPS et croissance.
+
+    Attributes
+    ----------
+    eps_used : float
+        Bénéfice par action utilisé dans le calcul.
+    growth_rate_used : float
+        Taux de croissance utilisé dans le calcul.
+    """
     eps_used: float
     growth_rate_used: float
 
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie pour un résultat Graham.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles.
+        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=False,
@@ -160,13 +329,35 @@ class GrahamValuationResult(ValuationResult):
 
 
 class EquityDCFValuationResult(ValuationResult):
-    """Resultat FCFE / DDM."""
+    """Résultat FCFE / Dividend Discount Model.
+
+    Résultat d'une valorisation basée sur les flux de trésorerie
+    disponibles pour les actionnaires (FCFE) ou les dividendes.
+
+    Attributes
+    ----------
+    cost_of_equity : float
+        Coût des fonds propres utilisé.
+    projected_equity_flows : List[float]
+        Liste des flux actionnariaux projetés.
+    equity_value : float
+        Valeur des fonds propres calculée.
+    discounted_terminal_value : float, optional
+        Valeur terminale actualisée.
+    """
     cost_of_equity: float
     projected_equity_flows: List[float]
     equity_value: float
     discounted_terminal_value: Optional[float] = None
 
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie pour un résultat FCFE/DDM.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles.
+        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=len(self.projected_equity_flows) > 0,
@@ -177,7 +368,26 @@ class EquityDCFValuationResult(ValuationResult):
 
 
 class PeerMetric(BaseModel):
-    """Metriques brutes d'un concurrent."""
+    """Métriques brutes d'un concurrent.
+
+    Données financières d'une entreprise comparable utilisée
+    pour la triangulation par multiples.
+
+    Attributes
+    ----------
+    ticker : str
+        Symbole boursier du concurrent.
+    name : str, optional, default="Unknown"
+        Nom du concurrent.
+    pe_ratio : float, optional
+        Ratio cours/bénéfice.
+    ev_ebitda : float, optional
+        Ratio valeur entreprise/EBITDA.
+    ev_revenue : float, optional
+        Ratio valeur entreprise/chiffre d'affaires.
+    market_cap : float, optional
+        Capitalisation boursière.
+    """
     ticker: str
     name: Optional[str] = "Unknown"
     pe_ratio: Optional[float] = None
@@ -187,7 +397,32 @@ class PeerMetric(BaseModel):
 
 
 class MultiplesData(BaseModel):
-    """Synthese sectorielle pour la triangulation."""
+    """Synthèse sectorielle pour la triangulation.
+
+    Données agrégées des entreprises comparables pour
+    l'estimation par multiples sectoriels.
+
+    Attributes
+    ----------
+    peers : List[PeerMetric], default=[]
+        Liste des entreprises comparables.
+    median_pe : float, default=ModelDefaults.DEFAULT_MEDIAN_PE
+        Médiane du ratio P/E sectoriel.
+    median_ev_ebitda : float, default=ModelDefaults.DEFAULT_MEDIAN_EV_EBITDA
+        Médiane du ratio EV/EBITDA sectoriel.
+    median_ev_ebit : float, default=ModelDefaults.DEFAULT_MEDIAN_EV_EBIT
+        Médiane du ratio EV/EBIT sectoriel.
+    median_pb : float, default=ModelDefaults.DEFAULT_MEDIAN_PB
+        Médiane du ratio P/B sectoriel.
+    median_ev_rev : float, default=ModelDefaults.DEFAULT_MEDIAN_EV_REV
+        Médiane du ratio EV/Revenue sectoriel.
+    implied_value_ev_ebitda : float, default=ModelDefaults.DEFAULT_IMPLIED_VALUE_EV_EBITDA
+        Valeur impliquée par EV/EBITDA.
+    implied_value_pe : float, default=ModelDefaults.DEFAULT_IMPLIED_VALUE_PE
+        Valeur impliquée par P/E.
+    source : str, default="Yahoo Finance"
+        Source des données.
+    """
     peers: List[PeerMetric] = Field(default_factory=list)
     median_pe: float = ModelDefaults.DEFAULT_MEDIAN_PE
     median_ev_ebitda: float = ModelDefaults.DEFAULT_MEDIAN_EV_EBITDA
@@ -200,18 +435,46 @@ class MultiplesData(BaseModel):
 
     @property
     def peer_count(self) -> int:
-        """Nombre de sociétés comparables dans le panel."""
+        """Nombre de sociétés comparables dans le panel.
+
+        Returns
+        -------
+        int
+            Nombre d'entreprises dans la liste des comparables.
+        """
         return len(self.peers)
 
 
 class MultiplesValuationResult(ValuationResult):
-    """Resultat de valorisation par multiples."""
+    """Résultat de valorisation par multiples.
+
+    Résultat d'une valorisation basée sur les ratios de marché
+    des entreprises comparables.
+
+    Attributes
+    ----------
+    pe_based_price : float, default=ModelDefaults.DEFAULT_PE_BASED_PRICE
+        Prix estimé par ratio P/E.
+    ebitda_based_price : float, default=ModelDefaults.DEFAULT_EBITDA_BASED_PRICE
+        Prix estimé par ratio EV/EBITDA.
+    rev_based_price : float, default=ModelDefaults.DEFAULT_REV_BASED_PRICE
+        Prix estimé par ratio EV/Revenue.
+    multiples_data : MultiplesData
+        Données des comparables utilisées.
+    """
     pe_based_price: float = ModelDefaults.DEFAULT_PE_BASED_PRICE
     ebitda_based_price: float = ModelDefaults.DEFAULT_EBITDA_BASED_PRICE
     rev_based_price: float = ModelDefaults.DEFAULT_REV_BASED_PRICE
     multiples_data: MultiplesData
 
     def build_output_contract(self) -> ValuationOutputContract:
+        """Construit le contrat de sortie pour un résultat par multiples.
+
+        Returns
+        -------
+        ValuationOutputContract
+            Contrat spécifiant les éléments disponibles.
+        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=False,

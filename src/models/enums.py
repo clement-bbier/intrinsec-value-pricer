@@ -1,18 +1,9 @@
 """
-src/domain/models/enums.py
-
 Énumérations et alias de types du domaine de valorisation.
 
-Version : V2.0 — ST-1.2 Type-Safe Resolution
-Pattern : Value Objects + Type Aliases
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Les enums définissent les modes de valorisation disponibles
-- Une erreur de mapping peut conduire à utiliser le mauvais modèle
-
-DEPENDANCES CRITIQUES:
-- Aucune dépendance externe (module autonome)
+Ce module définit les types énumérés et alias utilisés dans
+le domaine de la valorisation financière, assurant la
+consistance des valeurs acceptées.
 """
 
 from __future__ import annotations
@@ -50,9 +41,13 @@ Ratio: TypeAlias = float
 
 
 class ValuationMode(str, Enum):
-    """Modes de valorisation disponibles."""
-    
-    # Approche Entite (Firm Value)
+    """Modes de valorisation disponibles.
+
+    Énumération des différentes méthodes de valorisation
+    implémentées dans le système.
+    """
+
+    # Approche Entité (Firm Value)
     FCFF_STANDARD = "DCF - Free Cash Flow to Firm"
     FCFF_NORMALIZED = "DCF - Normalized Free Cash Flow"
     FCFF_GROWTH = "DCF - Revenue-Driven Growth"
@@ -61,18 +56,30 @@ class ValuationMode(str, Enum):
     FCFE = "DCF - Free Cash Flow to Equity"
     DDM = "Dividend Discount Model"
 
-    # Autres Modeles
+    # Autres Modèles
     RIM = "Residual Income Model"
     GRAHAM = "Graham Intrinsic Value"
 
     @property
     def supports_monte_carlo(self) -> bool:
-        """Indique si le mode supporte les simulations Monte Carlo."""
+        """Indique si le mode supporte les simulations Monte Carlo.
+
+        Returns
+        -------
+        bool
+            True si les simulations Monte Carlo sont disponibles.
+        """
         return self != ValuationMode.GRAHAM
 
     @property
     def is_direct_equity(self) -> bool:
-        """Determine si le modele calcule directement la valeur actionnariale."""
+        """Détermine si le modèle calcule directement la valeur actionnariale.
+
+        Returns
+        -------
+        bool
+            True si le modèle produit directement la valeur par action.
+        """
         return self in [
             ValuationMode.FCFE,
             ValuationMode.DDM,
@@ -82,34 +89,59 @@ class ValuationMode(str, Enum):
 
 
 class InputSource(str, Enum):
-    """Source des parametres d'entree."""
+    """Source des paramètres d'entrée.
+
+    Définit l'origine des paramètres utilisés dans
+    le calcul de valorisation.
+    """
+
     AUTO = "AUTO"
     MANUAL = "MANUAL"
     SYSTEM = "SYSTEM"
 
 
 class TerminalValueMethod(str, Enum):
-    """Methode de calcul de la valeur terminale."""
+    """Méthode de calcul de la valeur terminale.
+
+    Approches disponibles pour estimer la valeur
+    résiduelle au-delà de la période de projection.
+    """
+
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
 
 
 class AuditSeverity(str, Enum):
-    """Niveau de severite des alertes d'audit."""
+    """Niveau de sévérité des alertes d'audit.
+
+    Classification des problèmes détectés pendant
+    l'audit des valorisations.
+    """
+
     CRITICAL = "CRITICAL"
     WARNING = "WARNING"
     INFO = "INFO"
 
 
 class SOTPMethod(str, Enum):
-    """Methodes de valorisation par segment (SOTP)."""
+    """Méthodes de valorisation par segment (SOTP).
+
+    Approches disponibles pour valoriser chaque
+    segment d'activité dans l'analyse SOTP.
+    """
+
     DCF = "DCF"
     MULTIPLES = "MULTIPLES"
     ASSET_VALUE = "ASSET_VALUE"
 
 
 class AuditPillar(str, Enum):
-    """Piliers d'evaluation de l'audit."""
+    """Piliers d'évaluation de l'audit.
+
+    Dimensions fondamentales évaluées lors de
+    l'audit d'une valorisation.
+    """
+
     DATA_CONFIDENCE = "Data Confidence"
     ASSUMPTION_RISK = "Assumption Risk"
     MODEL_RISK = "Model Risk"
