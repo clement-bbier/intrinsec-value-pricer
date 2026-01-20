@@ -1,9 +1,9 @@
 """
-core/valuation/strategies/dcf_equity.py
-MÉTHODE : FREE CASH FLOW TO EQUITY (FCFE) — VERSION V11.0
-Rôle : Valorisation directe des fonds propres via le flux résiduel (Clean Walk).
-Architecture : Audit-Grade s'appuyant sur le Pipeline Unifié et le moteur V11.0.
-Source : Damodaran (Investment Valuation).
+Stratégie FCFE (Free Cash Flow to Equity).
+
+Référence Académique : Damodaran (Investment Valuation)
+Domaine Économique : Entreprises endettées avec valorisation actionnariale directe
+Invariants du Modèle : Reconstruction rigoureuse du flux actionnaire (Clean Walk)
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ class FCFEStrategy(ValuationStrategy):
     economic_domain = "Equity Valuation / Leveraged Firms"
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> EquityDCFValuationResult:
-        """Exécute la valorisation FCFE via le Pipeline Unifié (Sync V11.0)."""
+        """Exécute la valorisation FCFE via le Pipeline Unifié."""
         # =====================================================================
         # 1. RECONSTRUCTION DU FLUX ACTIONNAIRE (CLEAN WALK)
         # =====================================================================
@@ -82,6 +82,8 @@ class FCFEStrategy(ValuationStrategy):
         # 3. FINALISATION
         # =====================================================================
         self._merge_traces(result)
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
 
         return result
 

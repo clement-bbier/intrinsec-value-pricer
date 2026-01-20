@@ -1,9 +1,9 @@
 """
-core/valuation/strategies/abstract.py
+Stratégie de valorisation abstraite.
 
-SOCLE ABSTRAIT — VERSION V10.0 (Architecture Unifiée Sprint 2)
-Rôle : Définition des contrats et gestion de la traçabilité Glass Box.
-Architecture : Délégation des calculs DCF au pipeline centralisé.
+Référence Académique : Pattern Strategy (Gang of Four)
+Domaine Économique : Valorisation financière institutionnelle
+Invariants du Modèle : Validation systématique des contrats de sortie
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from typing import List, Optional
 from src.exceptions import CalculationError
 from src.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
-    TraceHypothesis, ValuationResult
+    TraceHypothesis, ValuationResult, DCFValuationResult,
+    RIMValuationResult, GrahamValuationResult, MultiplesValuationResult
 )
 # Import depuis core.i18n
 from src.i18n import CalculationErrors
@@ -85,6 +86,44 @@ class ValuationStrategy(ABC):
             result=result,
             interpretation=interpretation
         ))
+
+    def generate_audit_report(self, result: ValuationResult) -> None:
+        """Génère le rapport d'audit pour le résultat de valorisation."""
+        from infra.auditing.audit_engine import AuditEngine, AuditorFactory
+
+        if result.request is None:
+            # Créer une requête minimale si elle n'existe pas
+            from src.models import ValuationRequest, InputSource, ValuationMode
+
+            # Déterminer le mode basé sur le type de résultat
+            if isinstance(result, DCFValuationResult):
+                mode = ValuationMode.FCFF_STANDARD  # Mode par défaut pour DCF
+            elif isinstance(result, RIMValuationResult):
+                mode = ValuationMode.RIM
+            elif isinstance(result, GrahamValuationResult):
+                mode = ValuationMode.GRAHAM
+            elif hasattr(result, 'multiples_data'):  # MultiplesValuationResult
+                mode = ValuationMode.FCFF_STANDARD  # Utiliser DCFAuditor par défaut pour l'instant
+            else:
+                mode = ValuationMode.FCFF_STANDARD  # Fallback
+
+            result.request = ValuationRequest(
+                ticker=result.financials.ticker,
+                projection_years=result.params.growth.projection_years,
+                mode=mode,
+                input_source=InputSource.AUTO,
+                manual_params=None,
+                options={}
+            )
+
+        # Utiliser l'auditeur approprié basé sur le type de résultat
+        if isinstance(result, MultiplesValuationResult):
+            from infra.auditing.auditors import MultiplesAuditor
+            auditor = MultiplesAuditor()
+        else:
+            auditor = AuditorFactory.get_auditor(result.request.mode)
+
+        result.audit_report = AuditEngine.compute_audit(result, auditor)
 
     def verify_output_contract(self, result: ValuationResult) -> None:
         """Vérifie que l'objet résultat respecte les invariants du modèle (SOLID)."""

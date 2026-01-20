@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple, Any
 
 from src.models import (
     ValuationResult, DCFValuationResult, RIMValuationResult, GrahamValuationResult,
-    EquityDCFValuationResult, AuditPillar, AuditPillarScore,
+    EquityDCFValuationResult, MultiplesValuationResult, AuditPillar, AuditPillarScore,
     InputSource, DCFParameters, AuditStep, AuditSeverity
 )
 # Migration DT-001/002: Import depuis core.i18n au lieu de app.ui.components
@@ -359,6 +359,58 @@ class GrahamAuditor(BaseAuditor):
             AuditPillar.METHOD_FIT: AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=fit_score, check_count=1),
             AuditPillar.MODEL_RISK: AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=100.0, check_count=1)
         }
+
+class MultiplesAuditor(BaseAuditor):
+    def get_max_potential_checks(self) -> int: return 3
+
+    def audit_pillars(self, result: MultiplesValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+        f, p, m = result.financials, result.params, result.multiples_data
+
+        # 1. DATA CONFIDENCE - Qualité des données de pairs
+        score, checks = self._audit_data_confidence(result)
+        peer_count = len(m.peers)
+        score -= self.add_audit_step(
+            key="AUDIT_MULTIPLES_PEERS", value=peer_count, threshold=">= 3",
+            severity=AuditSeverity.WARNING, condition=(peer_count >= 3), penalty=self.PENALTY_MEDIUM
+        )
+        pillars = {}
+        pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(
+            pillar=AuditPillar.DATA_CONFIDENCE, score=max(0.0, score), check_count=checks + 1
+        )
+
+        # 2. ASSUMPTION RISK - Cohérence des multiples
+        a_score = 100.0
+        # Vérifier que les multiples sont dans des plages raisonnables
+        if m.median_pe > 0:
+            a_score -= self.add_audit_step(
+                key="AUDIT_MULTIPLES_PE_RANGE", value=m.median_pe, threshold="5-50x",
+                severity=AuditSeverity.WARNING, condition=(5 <= m.median_pe <= 50), penalty=self.PENALTY_LOW
+            )
+
+        pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(
+            pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, a_score), check_count=1
+        )
+
+        # 3. METHOD FIT - Applicable aux entreprises comparables
+        fit_score = 100.0
+        # Vérifier que les métriques de base sont disponibles
+        has_metrics = (f.net_income_ttm or 0) > 0 or (f.ebitda_ttm or 0) > 0 or (f.revenue_ttm or 0) > 0
+        fit_score -= self.add_audit_step(
+            key="AUDIT_MULTIPLES_METRICS", value=int(has_metrics), threshold="= 1",
+            severity=AuditSeverity.CRITICAL, condition=has_metrics, penalty=self.PENALTY_HIGH
+        )
+
+        pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(
+            pillar=AuditPillar.METHOD_FIT, score=max(0.0, fit_score), check_count=1
+        )
+
+        # 4. MODEL RISK - Méthode statique, peu de risque
+        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(
+            pillar=AuditPillar.MODEL_RISK, score=100.0, check_count=1
+        )
+
+        return pillars
+
 
 class StandardValuationAuditor(DCFAuditor):
     pass

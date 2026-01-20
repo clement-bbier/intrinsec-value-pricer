@@ -1,9 +1,9 @@
 """
-core/valuation/strategies/graham_value.py
+Stratégie Graham Intrinsic Value.
 
-MÉTHODE : GRAHAM INTRINSIC VALUE — VERSION V9.0 (Segmenté & i18n Secured)
-Rôle : Estimation "Value" (1974 Revised) avec transparence totale.
-Architecture : Audit-Grade utilisant les segments Rates & Growth.
+Référence Académique : Benjamin Graham (1974 Revised)
+Domaine Économique : Value investing et entreprises défensives
+Invariants du Modèle : Multiplicateur de croissance plafonné avec rendement AAA
 """
 
 from __future__ import annotations
@@ -101,7 +101,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         # =====================================================================
         audit_metrics = self._compute_graham_audit_metrics(financials, eps)
 
-        return GrahamValuationResult(
+        result = GrahamValuationResult(
             request=None,
             financials=financials,
             params=params,
@@ -115,6 +115,10 @@ class GrahamNumberStrategy(ValuationStrategy):
             graham_multiplier=growth_multiplier,
             payout_ratio_observed=audit_metrics["payout"]
         )
+
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
+        return result
 
     def _select_eps(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
         """Souveraineté via segment growth."""

@@ -1,7 +1,9 @@
 """
-core/valuation/strategies/dcf_fundamental.py
-MÉTHODE : FCFF NORMALIZED — VERSION V10.0 (Architecture Unifiée Sprint 2)
-Rôle : Normalisation des flux cycliques et exécution via le Pipeline DCF.
+Stratégie DCF Fundamental (Normalized Cash Flows).
+
+Référence Académique : CFA Institute / Damodaran
+Domaine Économique : Entreprises cycliques avec normalisation des flux
+Invariants du Modèle : Utilisation de flux normalisés pour l'ancrage
 """
 
 from __future__ import annotations
@@ -50,6 +52,8 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
         # 3. Finalisation
         self._merge_traces(result)
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
         return result
 
     def _select_normalized_fcf(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:

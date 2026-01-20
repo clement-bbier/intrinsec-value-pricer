@@ -1,7 +1,9 @@
 """
-core/valuation/strategies/dcf_standard.py
-MÉTHODE : FCFF TWO-STAGE — VERSION V10.0 (Architecture Unifiée Sprint 2)
-Rôle : Sélection du flux de départ et exécution via le Pipeline DCF.
+Stratégie DCF Standard (Free Cash Flow to Firm).
+
+Référence Académique : Damodaran (Investment Valuation)
+Domaine Économique : Entreprises matures avec flux stables
+Invariants du Modèle : Projection two-stage avec terminal value
 """
 
 from __future__ import annotations
@@ -51,6 +53,8 @@ class StandardFCFFStrategy(ValuationStrategy):
 
         # 3. Finalisation
         self._merge_traces(result)
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
         return result
 
     def _select_base_fcf(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:

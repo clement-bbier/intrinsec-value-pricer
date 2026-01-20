@@ -1,7 +1,9 @@
 """
-core/valuation/strategies/dcf_growth.py
-MÉTHODE : REVENUE-DRIVEN FCFF — VERSION V10.0 (Architecture Unifiée Sprint 2)
-Rôle : Valorisation par revenus avec convergence des marges via Pipeline DCF.
+Stratégie DCF Growth (Revenue-Driven).
+
+Référence Académique : Damodaran / McKinsey
+Domaine Économique : Entreprises en croissance avec convergence de marges
+Invariants du Modèle : Projection avec fade-down linéaire des marges
 """
 
 from __future__ import annotations
@@ -51,6 +53,8 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         # 3. Finalisation
         self._merge_traces(result)
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
         return result
 
     def _select_revenue_base(self, financials: CompanyFinancials, params: DCFParameters) -> float:

@@ -1,9 +1,9 @@
 """
-core/valuation/strategies/dcf_dividend.py
-MÉTHODE : DIVIDEND DISCOUNT MODEL (DDM) — VERSION V11.0
-Rôle : Valorisation actionnariale basée sur la distribution future des dividendes.
-Architecture : Audit-Grade s'appuyant sur le Pipeline Unifié et le Registre V11.0.
-Source : CFA Institute / Gordon & Shapiro.
+Stratégie Dividend Discount Model (DDM).
+
+Référence Académique : Gordon & Shapiro
+Domaine Économique : Entreprises distributives matures et utilities
+Invariants du Modèle : Valorisation par valeur actuelle des dividendes futurs
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class DividendDiscountStrategy(ValuationStrategy):
 
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> EquityDCFValuationResult:
         """
-        Exécute la valorisation DDM via le Pipeline Unifié (Sync V11.0).
+        Exécute la valorisation DDM via le Pipeline Unifié.
         Note : Utilise la masse totale des dividendes pour assurer la cohérence du calcul final par action.
         """
 
@@ -93,6 +93,8 @@ class DividendDiscountStrategy(ValuationStrategy):
         # 3. FINALISATION
         # =====================================================================
         self._merge_traces(result)
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
 
         return result
 

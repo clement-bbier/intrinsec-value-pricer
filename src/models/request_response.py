@@ -480,5 +480,5 @@ class MultiplesValuationResult(ValuationResult):
             has_projection=False,
             has_terminal_value=False,
             has_intrinsic_value=True,
-            has_audit=True
+            has_audit=self.audit_report is not None
         )

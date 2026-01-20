@@ -1,17 +1,9 @@
 """
-src/valuation/strategies/multiples.py
+Stratégie de valorisation par multiples comparables.
 
-STRATÉGIE DE VALORISATION PAR MULTIPLES — VERSION V2.0 (Sprint 4)
-
-Rôle : Application des médianes sectorielles aux fondamentaux de l'entreprise.
-
-Version : V2.1 — ST-1.2 Type-Safe Resolution
-Pattern : Strategy (GoF)
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Les multiples sont sensibles à la qualité de la cohorte de pairs
-- Une médiane mal calculée peut biaiser la triangulation
+Référence Académique : Damodaran (Investment Valuation)
+Domaine Économique : Valorisation relative par secteur d'activité
+Invariants du Modèle : Triangulation de signaux P/E, EV/EBITDA, EV/Revenue
 """
 
 from __future__ import annotations
@@ -66,6 +58,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
             calculation_trace=self.calculation_trace
         )
 
+        self.generate_audit_report(result)
         self.verify_output_contract(result) # Respect du contrat SOLID
         return result
 

@@ -1,8 +1,9 @@
 """
-core/valuation/strategies/monte_carlo.py
-MOTEUR STOCHASTIQUE — VERSION V9.0 (Segmenté & i18n Secured)
-Rôle : Simulation multivariée avec garantie de convergence et transparence d'audit.
-Architecture : Écrêtage économique (Sanity Clamping) et segmentation des paramètres.
+Stratégie Monte Carlo pour analyse de sensibilité.
+
+Référence Académique : Méthodes stochastiques en finance
+Domaine Économique : Analyse probabiliste des valorisations
+Invariants du Modèle : Simulation multivariée avec clamping économique
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     Désormais aligné sur la segmentation Rates / Growth / MonteCarloConfig.
     """
 
-    # Configuration centralisée (Sprint 4)
+    # Configuration centralisée
     DEFAULT_SIMULATIONS = SIMULATION_CONFIG.default_simulations
     MIN_VALID_RATIO = SIMULATION_CONFIG.min_valid_ratio
     GROWTH_SAFETY_MARGIN = SIMULATION_CONFIG.growth_safety_margin
@@ -204,6 +205,8 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         # Fusion de la trace du wrapper Monte Carlo avec la trace du modèle sous-jacent
         final_result.calculation_trace = self.calculation_trace + final_result.calculation_trace
 
+        self.generate_audit_report(final_result)
+        self.verify_output_contract(final_result)
         return final_result
 
     # ==========================================================================

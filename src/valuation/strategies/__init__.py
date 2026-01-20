@@ -1,25 +1,12 @@
 """
-src/valuation/strategies/__init__.py
-
 Package des stratégies de valorisation.
 
-Version : V2.0 — ST-1.3 Encapsulation Resolution
-Pattern : Strategy (GoF)
-Style : Numpy Style docstrings
-
-Ce package expose uniquement les stratégies publiques via __all__.
-Les classes internes (MonteCarloGenericStrategy, ValuationStrategy) sont
-accessibles mais ne font pas partie de l'API garantie.
+Ce package regroupe toutes les stratégies de valorisation disponibles,
+organisées par approche économique : DCF, modèles actionnariaux,
+modèles spécifiques sectoriels et méthodes relatives.
 
 Usage recommandé:
     from src.valuation.strategies import StandardFCFFStrategy, FCFEStrategy
-
-Note: Les stratégies sont généralement accédées via le registre centralisé
-      (src.valuation.registry) plutôt que par import direct.
-
-RISQUES FINANCIERS:
-- Chaque stratégie implémente un modèle de valorisation différent
-- Un changement d'API peut casser les imports existants
 """
 
 from __future__ import annotations

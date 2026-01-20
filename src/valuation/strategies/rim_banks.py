@@ -1,9 +1,9 @@
 """
-core/valuation/strategies/rim_banks.py
+Stratégie Residual Income Model (RIM) pour institutions financières.
 
-MÉTHODE : RESIDUAL INCOME MODEL (RIM) — VERSION V9.0 (Segmenté & i18n Secured)
-Rôle : Valorisation des institutions financières via les profits résiduels (Ohlson).
-Architecture : Audit-Grade utilisant les segments Rates & Growth du modèle V9.
+Référence Académique : Penman / Ohlson
+Domaine Économique : Banques, assurances et institutions financières
+Invariants du Modèle : Valorisation par revenus résiduels avec facteur de persistance ω
 """
 
 from __future__ import annotations
@@ -143,7 +143,7 @@ class RIMBankingStrategy(ValuationStrategy):
         audit_metrics = self._compute_rim_audit_metrics(financials, eps_base, bv_per_share, ke)
         shares = g.manual_shares_outstanding if g.manual_shares_outstanding is not None else financials.shares_outstanding
 
-        return RIMValuationResult(
+        result = RIMValuationResult(
             request=None, financials=financials, params=params, intrinsic_value_per_share=final_iv,
             market_price=financials.current_price, cost_of_equity=ke, current_book_value=bv_per_share,
             projected_residual_incomes=ri_vectors, projected_book_values=bv_vectors,
@@ -153,6 +153,10 @@ class RIMBankingStrategy(ValuationStrategy):
             roe_observed=audit_metrics["roe"], payout_ratio_observed=payout_ratio,
             spread_roe_ke=audit_metrics["roe_ke"], pb_ratio_observed=audit_metrics["pb"]
         )
+
+        self.generate_audit_report(result)
+        self.verify_output_contract(result)
+        return result
 
     # ==========================================================================
     # MÉTHODES PRIVÉES (V9 & i18n Secured)
