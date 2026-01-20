@@ -9,4 +9,3 @@ pydantic>=2.6.0
 pyyaml>=6.0
 scipy>=1.12.0
 pytest>=8.0.0
-fpdf>=2.7.0
