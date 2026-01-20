@@ -29,6 +29,7 @@ import numpy as np
 pd.set_option('future.no_silent_downcasting', True)
 
 from src.domain.models import ValuationResult
+from src.i18n import ScenarioTexts
 from app.ui.base import ResultTabBase
 from src.utilities.formatting import format_smart_number
 
@@ -111,8 +112,8 @@ class ScenarioAnalysisTab(ResultTabBase):
         scenario_synthesis = result.scenario_synthesis
         currency = result.financials.currency
 
-        st.markdown("**ANALYSE DE SCÉNARIOS**")
-        st.caption("Valorisation sous différentes hypothèses de croissance")
+        st.markdown(f"**{ScenarioTexts.TITLE_ANALYSIS}**")
+        st.caption(ScenarioTexts.CAPTION_ANALYSIS)
 
         # Tableau des scénarios
         with st.container(border=True):
@@ -123,26 +124,26 @@ class ScenarioAnalysisTab(ResultTabBase):
                 upside_pct = ((scenario.intrinsic_value - market_price) / market_price) if market_price > 0 else 0.0
 
                 scenario_data.append({
-                    "Scénario": scenario.label.upper(),
-                    "Probabilité": scenario.probability,  # Valeur brute float
-                    "Croissance": scenario.growth_used,   # Valeur brute float
-                    "Marge FCF": scenario.margin_used if scenario.margin_used and scenario.margin_used != 0 else None,  # Valeur brute ou None
-                    "Valeur/Action": scenario.intrinsic_value,  # Valeur brute float
-                    "Upside": upside_pct,  # Valeur brute float
+                    ScenarioTexts.COL_SCENARIO: scenario.label.upper(),
+                    ScenarioTexts.COL_PROBABILITY: scenario.probability,  # Valeur brute float
+                    ScenarioTexts.COL_GROWTH: scenario.growth_used,   # Valeur brute float
+                    ScenarioTexts.COL_MARGIN_FCF: scenario.margin_used if scenario.margin_used and scenario.margin_used != 0 else None,  # Valeur brute ou None
+                    ScenarioTexts.COL_VALUE_PER_SHARE: scenario.intrinsic_value,  # Valeur brute float
+                    ScenarioTexts.COL_UPSIDE: upside_pct,  # Valeur brute float
                 })
 
             df = pd.DataFrame(scenario_data)
 
             # Traitement des données pour robustesse
-            df['Marge FCF'] = df['Marge FCF'].fillna(np.nan).infer_objects(copy=False)
+            df[ScenarioTexts.COL_MARGIN_FCF] = df[ScenarioTexts.COL_MARGIN_FCF].fillna(np.nan).infer_objects(copy=False)
 
             # Configuration des colonnes avec formatage Streamlit
             column_config = {
-                "Probabilité": st.column_config.NumberColumn(format="%.0f%%"),
-                "Croissance": st.column_config.NumberColumn(format="%.1f%%"),
-                "Marge FCF": st.column_config.NumberColumn(format="%.1f%%"),
-                "Valeur/Action": st.column_config.NumberColumn(format=f"%.2f {currency}"),
-                "Upside": st.column_config.NumberColumn(format="%.1f%%"),  # Format sans signe + pour éviter les crashes
+                ScenarioTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
+                ScenarioTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.1f%%"),
+                ScenarioTexts.COL_MARGIN_FCF: st.column_config.NumberColumn(format="%.1f%%"),
+                ScenarioTexts.COL_VALUE_PER_SHARE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
+                ScenarioTexts.COL_UPSIDE: st.column_config.NumberColumn(format="%.1f%%"),  # Format sans signe + pour éviter les crashes
             }
 
             st.dataframe(df, hide_index=True, width='stretch', column_config=column_config)
@@ -156,11 +157,11 @@ class ScenarioAnalysisTab(ResultTabBase):
             with st.container(border=True):
                 col1, col2 = st.columns(2)
                 col1.metric(
-                    "Valeur Pondérée",
+                    ScenarioTexts.METRIC_WEIGHTED_VALUE,
                     format_smart_number(expected_value, currency)
                 )
                 col2.metric(
-                    "Upside Pondéré",
+                    ScenarioTexts.METRIC_WEIGHTED_UPSIDE,
                     f"{weighted_upside:+.1%}"
                 )
     

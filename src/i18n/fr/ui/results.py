@@ -295,3 +295,5 @@ class ChartTexts:
 
     # Correlation
     CORREL_CAPTION = "Matrice de Correlation des Inputs (Stochastique)"
+
+

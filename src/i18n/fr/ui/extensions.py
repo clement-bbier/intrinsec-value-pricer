@@ -47,3 +47,43 @@ class BacktestTexts:
     METRIC_MAE = "Erreur Moyenne Absolue (MAE)"
 
     HELP_BACKTEST = "Compare l'IV calculee sur les bilans passes avec les cours reels de l'epoque."
+
+
+class SOTPResultTexts:
+    """Textes pour l'affichage des résultats Sum-of-the-Parts (SOTP)."""
+
+    # Titres et sous-titres
+    TITLE_SEGMENTATION = "VALORISATION PAR SEGMENTS"
+    CAPTION_SEGMENTATION = "Somme des parties avec multiples sectoriels"
+
+    # En-têtes de colonnes du tableau
+    COL_SEGMENT = "Segment"
+    COL_REVENUE = "Revenu"
+    COL_MULTIPLE = "Multiple"
+    COL_VALUE = "Valeur"
+    COL_CONTRIBUTION = "Contribution"
+
+    # Métriques de synthèse
+    METRIC_GROSS_VALUE = "Valeur Brute SOTP"
+    METRIC_HOLDING_DISCOUNT = "Décote Holding"
+    METRIC_NET_VALUE = "Valeur Nette SOTP"
+
+
+class ScenarioTexts:
+    """Textes pour l'affichage des scénarios déterministes."""
+
+    # Titres et sous-titres
+    TITLE_ANALYSIS = "ANALYSE DE SCÉNARIOS"
+    CAPTION_ANALYSIS = "Valorisation sous différentes hypothèses de croissance"
+
+    # En-têtes de colonnes du tableau
+    COL_SCENARIO = "Scénario"
+    COL_PROBABILITY = "Probabilité"
+    COL_GROWTH = "Croissance"
+    COL_MARGIN_FCF = "Marge FCF"
+    COL_VALUE_PER_SHARE = "Valeur/Action"
+    COL_UPSIDE = "Upside"
+
+    # Métriques de synthèse
+    METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
+    METRIC_WEIGHTED_UPSIDE = "Upside Pondéré"

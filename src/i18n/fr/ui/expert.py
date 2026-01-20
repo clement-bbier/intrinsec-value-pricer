@@ -198,6 +198,18 @@ class ExpertTerminalTexts:
     LBL_PEERS_SELECTED = "Peers selectionnes : {peers}"
 
     # ==========================================================================
+    # LABELS DE CATÉGORIES ET ÉLÉMENTS UI
+    # ==========================================================================
+    # Catégories de modèles dans la factory
+    CATEGORY_DEFENSIVE = "Défensif"
+    CATEGORY_RELATIVE_SECTORIAL = "Relatif / Sectoriel"
+    CATEGORY_FUNDAMENTAL_DCF = "Fondamental (DCF)"
+    CATEGORY_OTHER = "Autre"
+
+    # Labels spécifiques
+    LABEL_DILUTION_SBC = "Dilution / SBC"
+
+    # ==========================================================================
     # FORMULES MATHÉMATIQUES (LATEX)
     # ==========================================================================
     FORMULA_KE_EQUITY = r"k_e = R_f + \beta \times MRP"

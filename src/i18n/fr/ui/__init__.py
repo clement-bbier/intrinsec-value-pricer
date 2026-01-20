@@ -24,7 +24,9 @@ from src.i18n.fr.ui.results import (
 
 from src.i18n.fr.ui.extensions import (
     SOTPTexts,
+    SOTPResultTexts,
     BacktestTexts,
+    ScenarioTexts,
 )
 
 __all__ = [
@@ -40,5 +42,7 @@ __all__ = [
     "AuditTexts",
     "ChartTexts",
     "SOTPTexts",
+    "SOTPResultTexts",
     "BacktestTexts",
+    "ScenarioTexts",
 ]

@@ -11,6 +11,7 @@ import streamlit as st
 import pandas as pd
 
 from src.domain.models import ValuationResult
+from src.i18n import SOTPResultTexts as SOTPTexts
 from app.ui.base import ResultTabBase
 from src.utilities.formatting import format_smart_number
 
@@ -36,19 +37,19 @@ class SOTPBreakdownTab(ResultTabBase):
         sotp = result.sotp_results
         currency = result.financials.currency
         
-        st.markdown("**VALORISATION PAR SEGMENTS**")
-        st.caption("Somme des parties avec multiples sectoriels")
+        st.markdown(f"**{SOTPTexts.TITLE_SEGMENTATION}**")
+        st.caption(SOTPTexts.CAPTION_SEGMENTATION)
         
         # Tableau des segments
         with st.container(border=True):
             segments_data = []
             for seg in sotp.segments:
                 segments_data.append({
-                    "Segment": seg.name,
-                    "Revenu": format_smart_number(seg.revenue, currency),
-                    "Multiple": f"{seg.multiple:.1f}x",
-                    "Valeur": format_smart_number(seg.value, currency),
-                    "Contribution": f"{seg.contribution_pct:.1%}",
+                    SOTPTexts.COL_SEGMENT: seg.name,
+                    SOTPTexts.COL_REVENUE: format_smart_number(seg.revenue, currency),
+                    SOTPTexts.COL_MULTIPLE: f"{seg.multiple:.1f}x",
+                    SOTPTexts.COL_VALUE: format_smart_number(seg.value, currency),
+                    SOTPTexts.COL_CONTRIBUTION: f"{seg.contribution_pct:.1%}",
                 })
             
             df = pd.DataFrame(segments_data)
@@ -59,15 +60,15 @@ class SOTPBreakdownTab(ResultTabBase):
             col1, col2, col3 = st.columns(3)
             
             col1.metric(
-                "Valeur Brute SOTP",
+                SOTPTexts.METRIC_GROSS_VALUE,
                 format_smart_number(sotp.gross_value, currency)
             )
             col2.metric(
-                "Décote Holding",
+                SOTPTexts.METRIC_HOLDING_DISCOUNT,
                 f"{sotp.holding_discount:.1%}"
             )
             col3.metric(
-                "Valeur Nette SOTP",
+                SOTPTexts.METRIC_NET_VALUE,
                 format_smart_number(sotp.net_value, currency)
             )
     

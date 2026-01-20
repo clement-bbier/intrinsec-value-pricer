@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 
 from src.domain.models import ValuationMode
+from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 
 # Import des terminaux concrets
@@ -106,7 +107,7 @@ class ExpertTerminalFactory:
             terminal_cls=GrahamValueTerminal,
             tier=AnalyticalTier.DEFENSIVE,
             sort_order=1,
-            category_label="Défensif"
+            category_label=ExpertTerminalTexts.CATEGORY_DEFENSIVE
         ),
         
         # ══════════════════════════════════════════════════════════════════
@@ -116,13 +117,13 @@ class ExpertTerminalFactory:
             terminal_cls=RIMBankTerminal,
             tier=AnalyticalTier.RELATIVE,
             sort_order=1,
-            category_label="Relatif / Sectoriel"
+            category_label=ExpertTerminalTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
         ValuationMode.DDM: TerminalMetadata(
             terminal_cls=DDMTerminal,
             tier=AnalyticalTier.RELATIVE,
             sort_order=2,
-            category_label="Relatif / Sectoriel"
+            category_label=ExpertTerminalTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
         
         # ══════════════════════════════════════════════════════════════════
@@ -132,25 +133,25 @@ class ExpertTerminalFactory:
             terminal_cls=FCFFStandardTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=1,
-            category_label="Fondamental (DCF)"
+            category_label=ExpertTerminalTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMode.FCFF_NORMALIZED: TerminalMetadata(
             terminal_cls=FCFFNormalizedTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=2,
-            category_label="Fondamental (DCF)"
+            category_label=ExpertTerminalTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMode.FCFF_GROWTH: TerminalMetadata(
             terminal_cls=FCFFGrowthTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=3,
-            category_label="Fondamental (DCF)"
+            category_label=ExpertTerminalTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMode.FCFE: TerminalMetadata(
             terminal_cls=FCFETerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=4,
-            category_label="Fondamental (DCF)"
+            category_label=ExpertTerminalTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
     }
     
@@ -266,7 +267,7 @@ class ExpertTerminalFactory:
             Label de catégorie (ex: "Défensif", "Fondamental (DCF)").
         """
         meta = cls._REGISTRY.get(mode)
-        return meta.category_label if meta else "Autre"
+        return meta.category_label if meta else ExpertTerminalTexts.CATEGORY_OTHER
 
 
 def create_expert_terminal(mode: ValuationMode, ticker: str) -> ExpertTerminalBase:

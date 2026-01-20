@@ -64,6 +64,7 @@ class GrowthParameters(BaseModel):
     target_equity_weight: Optional[float] = None
     target_debt_weight: Optional[float] = None
     target_fcf_margin: Optional[float] = None
+    annual_dilution_rate: Optional[float] = None
 
     # Surcharges Analyste
     manual_fcf_base: Optional[float] = None
@@ -77,7 +78,7 @@ class GrowthParameters(BaseModel):
     manual_net_borrowing: Optional[float] = None
     manual_dividend_base: Optional[float] = None
 
-    @field_validator('fcf_growth_rate', 'perpetual_growth_rate', mode='before')
+    @field_validator('fcf_growth_rate', 'perpetual_growth_rate', 'annual_dilution_rate', mode='before')
     @classmethod
     def enforce_decimal(cls, v: Any) -> Any:
         return _decimal_guard(v)

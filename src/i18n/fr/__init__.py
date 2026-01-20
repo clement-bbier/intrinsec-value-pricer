@@ -21,7 +21,9 @@ from src.i18n.fr.ui import (
     AuditTexts,
     ChartTexts,
     SOTPTexts,
+    SOTPResultTexts,
     BacktestTexts,
+    ScenarioTexts,
 )
 
 # Backend
@@ -52,7 +54,9 @@ __all__ = [
     "AuditTexts",
     "ChartTexts",
     "SOTPTexts",
+    "SOTPResultTexts",
     "BacktestTexts",
+    "ScenarioTexts",
     # Backend
     "WorkflowTexts",
     "DiagnosticTexts",
