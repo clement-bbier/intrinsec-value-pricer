@@ -401,3 +401,25 @@ class DiagnosticRegistry:
             technical_detail=error,
             remediation_hint="Les données de fallback sectoriel sont utilisées automatiquement."
         )
+
+    @staticmethod
+    def risk_missing_sbc_dilution(sector: str, current_dilution: float) -> DiagnosticEvent:
+        """
+        Détecte une absence d'hypothèse de dilution pour un secteur à risque (Tech).
+
+        ST-4.2 : Entièrement internationalisé via DiagnosticTexts.
+        """
+        return DiagnosticEvent(
+            code="RISK_MISSING_SBC_DILUTION",
+            severity=SeverityLevel.WARNING,
+            domain=DiagnosticDomain.USER_INPUT,
+            message=DiagnosticTexts.RISK_MISSING_SBC_MSG.format(sector=sector),
+            remediation_hint=DiagnosticTexts.RISK_MISSING_SBC_HINT,
+            financial_context=FinancialContext(
+                parameter_name=DiagnosticTexts.LBL_ANNUAL_DILUTION,
+                current_value=current_dilution,
+                typical_range=(0.015, 0.04),
+                statistical_risk=DiagnosticTexts.RISK_MISSING_SBC_RISK,
+                recommendation=DiagnosticTexts.RISK_MISSING_SBC_RECO.format(sector=sector)
+            )
+        )

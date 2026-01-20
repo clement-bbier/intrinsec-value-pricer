@@ -222,3 +222,8 @@ class ExpertTerminalTexts:
     # ==========================================================================
     NOTE_GRAHAM = "Formule de Graham : approximation historique. A utiliser comme screening, pas comme valorisation definitive."
     NOTE_DDM_SGR = "Rappel : g doit etre soutenable. SGR = ROE x (1 - Payout) est une borne superieure."
+
+    # SBC / Dilution
+    INP_SBC_DILUTION = "Dilution Annuelle Attendue (SBC %)"
+    HELP_SBC_DILUTION = "Taux d'émission d'actions nouvelles pour la rémunération (Stock-Based Compensation)."
+    WARN_SBC_TECH = "Le SBC dilue votre part. Prévoyez 1-3% pour les entreprises Tech (ex: NVDA, PLTR)."

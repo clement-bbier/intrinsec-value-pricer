@@ -60,6 +60,18 @@ class DiagnosticTexts:
     MODEL_SGR_DIV_MSG = r"CROISSANCE INSOUTENABLE : g ({g:.1%}) > SGR ({sgr:.1%})."
     MODEL_SGR_DIV_HINT = "La croissance depasse la capacite d'autofinancement."
 
+    # SBC / Dilution Diagnostics
+    RISK_MISSING_SBC_MSG = "Absence de dilution SBC pour le secteur {sector}."
+    RISK_MISSING_SBC_HINT = "Les entreprises Tech rémunèrent massivement en actions. Envisagez un taux de 1.5% à 3%."
+    RISK_MISSING_SBC_RISK = (
+        "Ignorer la dilution SBC surévalue artificiellement le prix par action cible "
+        "en ignorant l'augmentation future du nombre de parts (Share Count)."
+    )
+    RISK_MISSING_SBC_RECO = "Appliquer le taux historique ou la moyenne sectorielle pour {sector}."
+
+    # Paramètre labels pour le FinancialContext
+    LBL_ANNUAL_DILUTION = "Taux de dilution annuel (SBC)"
+
 
 class CalculationErrors:
     """Messages d'erreurs leves lors des phases de calcul."""

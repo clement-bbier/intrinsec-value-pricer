@@ -932,3 +932,36 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
     )
 
     return DCFParameters.from_legacy(merged)
+
+
+def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
+    """
+    Widget pour la saisie de la dilution annuelle (SBC).
+
+    Parameters
+    ----------
+    default_val : float, optional
+        Valeur par défaut (souvent issue du mode Auto).
+
+    Returns
+    -------
+    float
+        Taux de dilution sélectionné.
+    """
+    st.markdown(f"**{ExpertTerminalTexts.LABEL_DILUTION_SBC}**")
+
+    # Input numérique pour la précision
+    val = st.number_input(
+        ExpertTerminalTexts.INP_SBC_DILUTION,
+        min_value=0.0,
+        max_value=0.10,
+        value=default_val if default_val is not None else 0.0,
+        format="%.3f",
+        step=0.005,
+        help=ExpertTerminalTexts.HELP_SBC_DILUTION
+    )
+
+    # Message pédagogique dynamique
+    st.info(ExpertTerminalTexts.WARN_SBC_TECH)
+
+    return val

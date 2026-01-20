@@ -1,11 +1,10 @@
 """
 infra/auditing/audit_engine.py
-Audit Engine — VERSION V14.0 (DT-009 Resolution)
-Rôle : Routage dynamique et Audit d'intégrité SOTP (Conglomérat).
+Audit Engine — VERSION V15.0 (Sprint 4 Integration)
+Rôle : Routage dynamique, Audit d'intégrité SOTP et vérification Dilution SBC.
 Standards : SOLID, Zéro Hardcoding, Centralized Registry.
 
-Note DT-009: Le mapping manuel AuditorFactory a été remplacé par
-le registre centralisé dans core/valuation/registry.py
+Note Sprint 4 : Ajout de la règle de cohérence SBC pour le secteur Technology.
 """
 
 from __future__ import annotations
@@ -31,14 +30,13 @@ logger = logging.getLogger(__name__)
 class AuditorFactory:
     """
     Fabrique de routage des auditeurs par mode de valorisation.
-    
-    DT-009: Utilise maintenant le registre centralisé au lieu d'un mapping manuel.
+    Utilise le registre centralisé pour l'injection de dépendances.
     """
     @staticmethod
     def get_auditor(mode: ValuationMode):
-        # Import depuis le registre centralisé (DT-009)
         from src.valuation.registry import get_auditor
         return get_auditor(mode)
+
 
 class AuditEngine:
     """
@@ -59,7 +57,16 @@ class AuditEngine:
             raw_pillars = auditor.audit_pillars(cast(Any, result))
             all_steps: List[AuditStep] = getattr(auditor, "_audit_steps", [])
 
-            # --- AJOUT SPRINT 6 : Audit d'intégrité SOTP ---
+            # --- SPRINT 4 : AUDIT DE COHÉRENCE SBC ---
+            sbc_steps = AuditEngine._audit_sbc_integrity(result)
+            all_steps.extend(sbc_steps)
+
+            # Pénalité automatique sur ASSUMPTION_RISK si dilution nulle en Tech
+            if any(s.step_key == "SBC_DILUTION_CHECK" and not s.verdict for s in sbc_steps):
+                if AuditPillar.ASSUMPTION_RISK in raw_pillars:
+                    raw_pillars[AuditPillar.ASSUMPTION_RISK].score *= 0.85 # -15%
+
+            # Audit d'intégrité SOTP (Conglomérats)
             if result.params.sotp.enabled:
                 sotp_steps = AuditEngine._audit_sotp_integrity(result)
                 all_steps.extend(sotp_steps)
@@ -69,10 +76,13 @@ class AuditEngine:
                     if AuditPillar.DATA_CONFIDENCE in raw_pillars:
                         raw_pillars[AuditPillar.DATA_CONFIDENCE].score *= 0.70 # -30%
 
-            max_potential_checks = auditor.get_max_potential_checks() + (2 if result.params.sotp.enabled else 0)
+            # Calcul du nombre maximal de checks (Base + SOTP + SBC)
+            max_potential_checks = auditor.get_max_potential_checks() + \
+                                   (2 if result.params.sotp.enabled else 0) + 1
+
             source_mode = result.request.input_source
 
-            # 2. Pondération par pilier selon le profil de l'utilisateur
+            # 2. Pondération par pilier selon le profil de l'utilisateur (Smart Merge)
             weights_profile = MODE_WEIGHTS.get(source_mode, MODE_WEIGHTS[InputSource.AUTO])
             weighted_pillars: Dict[AuditPillar, AuditPillarScore] = {}
             total_weighted_score, total_checks_executed = 0.0, 0
@@ -89,14 +99,15 @@ class AuditEngine:
                 )
                 total_weighted_score += contribution
 
-            # 3. Calcul du score final
+            # 3. Calcul du score final et rating
             coverage = AuditEngine._calculate_coverage(total_checks_executed, max_potential_checks)
             final_global_score = total_weighted_score * coverage
             rating = AuditEngine._compute_rating(final_global_score)
 
-            # 4. Synchronisation des logs
+            # 4. Synchronisation des logs pour compatibilité
             legacy_logs = AuditEngine._sync_legacy_logs(all_steps)
 
+            # Verrouillage Monte Carlo si l'audit est critique
             is_blocked_mc = (
                 final_global_score <= 0 or
                 any(s.severity == AuditSeverity.CRITICAL and not s.verdict for s in all_steps)
@@ -124,8 +135,30 @@ class AuditEngine:
             return AuditEngine._fallback_report(str(e))
 
     @staticmethod
+    def _audit_sbc_integrity(result: ValuationResult) -> List[AuditStep]:
+        """
+        Vérifie la cohérence des hypothèses de dilution Stock-Based Compensation (Sprint 4).
+        Standard institutionnel : Tech Sector > 0% Dilution attendue.
+        """
+        steps = []
+        sector = result.financials.sector
+        dilution = result.params.growth.annual_dilution_rate or 0.0
+
+        # Seuil technique : On lève une alerte si Tech et dilution < 0.1%
+        if sector == "Technology" and dilution <= 0.001:
+            steps.append(AuditStep(
+                step_key="SBC_DILUTION_CHECK",
+                label=getattr(AuditTexts, "LBL_SBC_DILUTION_CHECK", "Coherence Dilution (SBC)"),
+                verdict=False,
+                severity=AuditSeverity.WARNING,
+                evidence=getattr(AuditMessages, "SBC_DILUTION_MISSING",
+                                 "Hypothese de dilution nulle inhabituelle pour le secteur {sector}").format(sector=sector)
+            ))
+        return steps
+
+    @staticmethod
     def _audit_sotp_integrity(result: ValuationResult) -> List[AuditStep]:
-        """Règles spécifiques pour les conglomérats (ST 4.3)."""
+        """Règles spécifiques pour les conglomérats (Somme des parties)."""
         steps = []
         p = result.params.sotp
         f = result.financials
@@ -133,7 +166,7 @@ class AuditEngine:
         if not p.segments:
             return steps
 
-        # TEST 1 : Réconciliation des Revenus (DT-010: seuils centralisés)
+        # TEST 1 : Réconciliation des Revenus (écart vs consolidé)
         seg_revenues = [s.revenue for s in p.segments if s.revenue is not None]
         if len(seg_revenues) == len(p.segments) and f.revenue_ttm and f.revenue_ttm > 0:
             gap = abs(sum(seg_revenues) - f.revenue_ttm) / f.revenue_ttm
@@ -145,7 +178,7 @@ class AuditEngine:
                 evidence=AuditMessages.SOTP_REVENUE_MISMATCH.format(gap=gap)
             ))
 
-        # TEST 2 : Prudence de la Décote (DT-010: seuil centralisé)
+        # TEST 2 : Prudence de la Décote de conglomérat
         if p.conglomerate_discount > AuditThresholds.SOTP_DISCOUNT_MAX:
             steps.append(AuditStep(
                 step_key="SOTP_DISCOUNT_CHECK",
@@ -159,11 +192,13 @@ class AuditEngine:
 
     @staticmethod
     def _calculate_coverage(executed: int, max_potential: int) -> float:
+        """Calcule le ratio de complétion de l'audit."""
         if max_potential <= 0: return 0.0
         return min(1.0, (executed / max_potential))
 
     @staticmethod
     def _compute_rating(score: float) -> str:
+        """Convertit le score numérique en notation financière (Rating)."""
         if score >= 90: return "AAA"
         if score >= 75: return "AA"
         if score >= 60: return "BBB"
@@ -172,6 +207,7 @@ class AuditEngine:
 
     @staticmethod
     def _sync_legacy_logs(steps: List[AuditStep]) -> List[AuditLog]:
+        """Convertit les steps modernes en format log legacy pour l'affichage."""
         logs = []
         for step in steps:
             if not step.verdict:
@@ -185,6 +221,7 @@ class AuditEngine:
 
     @staticmethod
     def _fallback_report(error: str) -> AuditReport:
+        """Génère un rapport de sécurité en cas de crash du moteur d'audit."""
         return AuditReport(
             global_score=0.0, rating=AuditEngineTexts.FALLBACK_RATING, audit_depth=0,
             audit_mode=InputSource.SYSTEM, audit_coverage=0.0,
@@ -196,13 +233,12 @@ class AuditEngine:
             pillar_breakdown=None, block_monte_carlo=True, critical_warning=True
         )
 
-# PONDÉRATIONS STANDARDS (DT-013: Facade vers constantes centralisées)
-# Note: Les valeurs sont définies dans core/config/constants.py
+
 def _build_mode_weights() -> Dict[InputSource, Dict[AuditPillar, float]]:
-    """Construit le mapping depuis les constantes centralisées."""
+    """Construit le dictionnaire de pondération via les constantes centralisées."""
     auto_weights = AuditWeights.AUTO
     manual_weights = AuditWeights.MANUAL
-    
+
     return {
         InputSource.AUTO: {
             AuditPillar.DATA_CONFIDENCE: auto_weights["DATA_CONFIDENCE"],
@@ -218,4 +254,5 @@ def _build_mode_weights() -> Dict[InputSource, Dict[AuditPillar, float]]:
         }
     }
 
+# Initialisation statique des poids
 MODE_WEIGHTS = _build_mode_weights()
