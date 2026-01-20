@@ -29,10 +29,10 @@ Usage :
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, Type, Optional, Callable, Any, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import Dict, Type, Optional, Callable, TYPE_CHECKING
 
-from src.domain.models import ValuationMode
+from src.models import ValuationMode
 
 if TYPE_CHECKING:
     from src.valuation.strategies.abstract import ValuationStrategy

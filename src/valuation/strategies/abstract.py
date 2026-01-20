@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from src.exceptions import CalculationError
-from src.domain.models import (
+from src.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
     TraceHypothesis, ValuationResult
 )

@@ -5,8 +5,6 @@ Tests End-to-End — Workflow Mode Expert
 Ces tests simulent le parcours d'un analyste expert.
 """
 
-import pytest
-
 
 class TestExpertModeWorkflow:
     """Tests du workflow Expert complet."""
@@ -14,7 +12,7 @@ class TestExpertModeWorkflow:
     def test_expert_can_override_parameters(self, sample_financials, sample_params):
         """L'expert peut surcharger les paramètres automatiques."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMode, InputSource
         
         # L'expert définit ses propres paramètres
         sample_params.rates.risk_free_rate = 0.035  # Override
@@ -38,7 +36,7 @@ class TestExpertModeWorkflow:
     def test_expert_mode_uses_reduced_data_weight(self, sample_financials, sample_params):
         """Le mode Expert réduit le poids du pilier DATA_CONFIDENCE."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import (
+        from src.models import (
             ValuationRequest, ValuationMode, InputSource, AuditPillar
         )
         
@@ -66,7 +64,7 @@ class TestExpertModeScenarios:
     def test_pessimistic_scenario(self, sample_financials, sample_params):
         """Scénario pessimiste avec croissance faible."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMode, InputSource
         
         # Paramètres pessimistes
         sample_params.growth.fcf_growth_rate = 0.01  # 1%
@@ -87,7 +85,7 @@ class TestExpertModeScenarios:
     def test_optimistic_scenario(self, sample_financials, sample_params):
         """Scénario optimiste avec croissance élevée."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMode, InputSource
         
         # Paramètres optimistes
         sample_params.growth.fcf_growth_rate = 0.15  # 15%
@@ -127,7 +125,7 @@ class TestExpertModeValidation:
     def test_expert_parameters_preserved(self, sample_financials, sample_params):
         """Les paramètres Expert sont préservés dans le résultat."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMode, InputSource
         
         custom_rate = 0.0375  # Taux personnalisé
         sample_params.rates.risk_free_rate = custom_rate

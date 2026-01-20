@@ -9,8 +9,8 @@ import pytest
 from unittest.mock import MagicMock
 
 from src.valuation.sotp_engine import run_sotp_valuation
-from src.domain.models import (
-    SOTPParameters, CompanyFinancials, BusinessUnit, CalculationStep
+from src.models import (
+    SOTPParameters, CompanyFinancials, BusinessUnit
 )
 
 class TestSOTPValuation:

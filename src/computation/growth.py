@@ -17,7 +17,7 @@ from src.utilities.formatting import format_smart_number
 from src.config.constants import GrowthCalculationDefaults
 
 if TYPE_CHECKING:
-    from src.domain.models import CompanyFinancials, DCFParameters
+    from src.models import CompanyFinancials, DCFParameters
 
 logger = logging.getLogger(__name__)
 

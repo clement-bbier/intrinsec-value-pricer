@@ -1,12 +1,10 @@
 import pytest
-from typing import Dict
 from src.computation.financial_math import (
     calculate_discount_factors,
     calculate_npv,
     calculate_terminal_value_gordon,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_pe,
-    calculate_cost_of_equity_capm,
     unlever_beta,
     relever_beta,
     calculate_cost_of_equity,
@@ -16,14 +14,13 @@ from src.computation.financial_math import (
     calculate_fcfe_base,
     calculate_sustainable_growth,
     calculate_graham_1974_value,
-    calculate_rim_vectors,
     compute_proportions,
     calculate_price_from_pe_multiple,
     calculate_price_from_ev_multiple,
     calculate_triangulated_price
 )
 from src.exceptions import CalculationError
-from src.domain.models import CompanyFinancials, DCFParameters
+
 
 # ==============================================================================
 # 1. TESTS TIME VALUE OF MONEY & TV (Lignes 60-90)

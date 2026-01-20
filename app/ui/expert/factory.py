@@ -38,7 +38,7 @@ from typing import Dict, Type, List, Tuple
 from dataclasses import dataclass
 from enum import IntEnum
 
-from src.domain.models import ValuationMode
+from src.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 

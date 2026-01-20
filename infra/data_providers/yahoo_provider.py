@@ -34,7 +34,7 @@ from src.computation.financial_math import (
     calculate_sustainable_growth
 )
 from src.exceptions import ExternalServiceError, TickerNotFoundError
-from src.domain.models import (
+from src.models import (
     CompanyFinancials,
     DCFParameters,
     CoreRateParameters,
@@ -48,7 +48,7 @@ from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.extraction_utils import calculate_historical_cagr, safe_api_call
 from infra.macro.yahoo_macro_provider import MacroContext, YahooMacroProvider
 from infra.ref_data.country_matrix import get_country_context
-from infra.ref_data.sector_fallback import get_sector_fallback_with_metadata, SectorFallbackResult
+from infra.ref_data.sector_fallback import get_sector_fallback_with_metadata
 # Migration DT-001/002: Import depuis core.i18n au lieu de app.ui.components
 from src.i18n import StrategySources, WorkflowTexts
 from src.config import PeerDefaults

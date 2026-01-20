@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import traceback
 from datetime import datetime, date
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import streamlit as st
 
@@ -24,7 +24,7 @@ from src.interfaces import IResultRenderer, NullResultRenderer
 from src.i18n import WorkflowTexts, DiagnosticTexts
 from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
 from src.exceptions import ValuationException
-from src.domain.models import (
+from src.models import (
     DCFParameters,
     InputSource,
     ValuationRequest,
@@ -35,7 +35,7 @@ from src.domain.models import (
     HistoricalPoint
 )
 from src.valuation.engines import run_valuation
-from src.quant_logger import QuantLogger, LogDomain
+from src.quant_logger import QuantLogger
 from infra.auditing.backtester import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider

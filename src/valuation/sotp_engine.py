@@ -19,7 +19,7 @@ RISQUES FINANCIERS:
 from __future__ import annotations
 
 from typing import List, Tuple
-from src.domain.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
+from src.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
 # DT-001/002: Import depuis core.i18n
 from src.i18n import SOTPTexts, RegistryTexts, KPITexts
 

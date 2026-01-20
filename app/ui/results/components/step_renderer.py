@@ -25,7 +25,7 @@ from typing import Dict
 
 import streamlit as st
 
-from src.domain.models import CalculationStep, VariableInfo, VariableSource
+from src.models import CalculationStep, VariableInfo, VariableSource
 from src.i18n import KPITexts
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 

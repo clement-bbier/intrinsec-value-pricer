@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from src.exceptions import CalculationError
-from src.domain.models import (
+from src.models import (
     CompanyFinancials,
     DCFParameters,
     EquityDCFValuationResult,
@@ -26,8 +26,7 @@ from src.i18n import (
     StrategyInterpretations,
     StrategyFormulas,
     CalculationErrors,
-    StrategySources,
-    KPITexts
+    StrategySources
 )
 
 logger = logging.getLogger(__name__)

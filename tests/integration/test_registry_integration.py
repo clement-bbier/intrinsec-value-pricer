@@ -6,8 +6,7 @@ Ces tests vérifient la cohérence entre les différents registres.
 Migration depuis test_integration_registry.py (legacy).
 """
 
-import pytest
-from src.domain.models import ValuationMode
+from src.models import ValuationMode
 
 
 class TestRegistrySynchronization:

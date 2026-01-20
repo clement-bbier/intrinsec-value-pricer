@@ -29,10 +29,10 @@ from __future__ import annotations
 
 import pytest
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List
 from decimal import Decimal, ROUND_HALF_UP
 
-from src.domain.models import (
+from src.models import (
     ValuationMode,
     CompanyFinancials,
     DCFParameters,

@@ -16,10 +16,9 @@ RISQUES FINANCIERS:
 
 from __future__ import annotations
 
-from typing import Dict, Optional
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.utilities.formatting import format_smart_number
-from src.domain.models import (
+from src.models import (
     CompanyFinancials, DCFParameters, MultiplesValuationResult,
     MultiplesData, TraceHypothesis
 )
@@ -29,7 +28,8 @@ from src.computation.financial_math import (
     calculate_triangulated_price
 )
 # Import depuis core.i18n
-from src.i18n import StrategyInterpretations, StrategyFormulas
+from src.i18n import StrategyInterpretations
+
 
 class MarketMultiplesStrategy(ValuationStrategy):
     """Implémente la triangulation par multiples comparables."""

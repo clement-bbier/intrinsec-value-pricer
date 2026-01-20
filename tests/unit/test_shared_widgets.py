@@ -5,9 +5,7 @@ Tests pour app/ui/expert/terminals/shared_widgets.py.
 Mock intensif de streamlit pour tester les widgets UI.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
@@ -19,7 +17,7 @@ from app.ui.expert.terminals.shared_widgets import (
     widget_peer_triangulation,
     build_dcf_parameters
 )
-from src.domain.models import ValuationMode
+from src.models import ValuationMode
 
 
 class TestBasicWidgets:
@@ -139,7 +137,7 @@ class TestTerminalValueWidget:
     @patch('app.ui.expert.terminals.shared_widgets.st')
     def test_widget_terminal_value_gordon_method(self, mock_st):
         """Test widget valeur terminale - méthode Gordon."""
-        from src.domain.models.enums import TerminalValueMethod
+        from src.models.enums import TerminalValueMethod
         col1_mock = Mock()
         col1_mock.number_input = mock_st.number_input
         mock_st.columns.return_value = [col1_mock, Mock()]  # Mock pour st.columns(2)

@@ -28,7 +28,7 @@ from typing import Dict, Any
 
 import streamlit as st
 
-from src.domain.models import ValuationMode
+from src.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (

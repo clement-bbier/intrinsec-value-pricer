@@ -6,11 +6,11 @@ Valide la triangulation des multiples et la gestion de l'Equity Bridge.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from src.valuation.strategies.multiples import MarketMultiplesStrategy
-from src.domain.models import (
-    CompanyFinancials, DCFParameters, MultiplesData, MultiplesValuationResult,
+from src.models import (
+    MultiplesData, MultiplesValuationResult,
     PeerMetric
 )
 

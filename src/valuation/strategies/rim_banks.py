@@ -9,17 +9,15 @@ Architecture : Audit-Grade utilisant les segments Rates & Growth du modèle V9.
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from src.computation.financial_math import (
     calculate_cost_of_equity_capm,
     calculate_discount_factors,
-    calculate_npv,
     calculate_rim_vectors,
 )
 from src.config.constants import ValuationEngineDefaults
 from src.exceptions import CalculationError
-from src.domain.models import CompanyFinancials, DCFParameters, RIMValuationResult
+from src.models import CompanyFinancials, DCFParameters, RIMValuationResult
 from src.valuation.strategies.abstract import ValuationStrategy
 
 # Import depuis core.i18n

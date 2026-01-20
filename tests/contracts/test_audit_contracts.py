@@ -7,7 +7,6 @@ Ces tests garantissent que l'API d'audit reste stable.
 RÈGLE D'OR : Ces tests NE DOIVENT PAS CHANGER lors des refactorings.
 """
 
-import pytest
 from inspect import signature
 
 
@@ -40,7 +39,7 @@ class TestAuditEngineContract:
     def test_compute_audit_returns_audit_report(self, sample_financials, sample_params):
         """Vérifie que compute_audit retourne un AuditReport."""
         from infra.auditing.audit_engine import AuditEngine
-        from src.domain.models import (
+        from src.models import (
             AuditReport, ValuationRequest, ValuationMode, InputSource
         )
         from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
@@ -82,7 +81,7 @@ class TestAuditorFactoryContract:
         """Vérifie que les bons types d'auditeurs sont retournés."""
         from infra.auditing.audit_engine import AuditorFactory
         from infra.auditing.auditors import DCFAuditor, RIMAuditor, GrahamAuditor
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         # DCF modes → DCFAuditor
         for mode in [ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_NORMALIZED]:
@@ -103,7 +102,7 @@ class TestAuditSeverityContract:
     
     def test_severity_levels_exist(self):
         """Vérifie que les niveaux de sévérité existent."""
-        from src.domain.models import AuditSeverity
+        from src.models import AuditSeverity
         
         # Niveaux réels du modèle (pas de ERROR)
         expected = ["INFO", "WARNING", "CRITICAL"]
@@ -118,7 +117,7 @@ class TestAuditPillarContract:
     
     def test_pillars_exist(self):
         """Vérifie que les piliers d'audit existent."""
-        from src.domain.models import AuditPillar
+        from src.models import AuditPillar
         
         expected = [
             "DATA_CONFIDENCE",

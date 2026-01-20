@@ -51,14 +51,15 @@ from app.ui.components import SomeWidget
 ```
 
 **AUTORISÉ :**
+
 ```python
 # ✅ CORRECT dans src/ : Imports internes au core
-from src.domain.models import ValuationRequest
+from src.models import ValuationRequest
 from src.computation.financial_math import calculate_wacc
 
 # ✅ CORRECT dans app/ : Import depuis src/
 from src.valuation.engines import run_valuation
-from src.domain.models import CompanyFinancials
+from src.models import CompanyFinancials
 ```
 
 ### Inversion de Dépendances (Pattern DIP)
@@ -181,7 +182,7 @@ from typing import Dict, Optional
 import pandas as pd
 
 # Local
-from src.domain.models import ValuationMode, ValuationRequest
+from src.models import ValuationMode, ValuationRequest
 ```
 
 **Règles :**

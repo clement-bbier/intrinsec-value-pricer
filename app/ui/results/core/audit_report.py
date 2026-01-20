@@ -9,7 +9,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.domain.models import ValuationResult, AuditReport, AuditStep, AuditSeverity
+from src.models import ValuationResult, AuditReport, AuditStep, AuditSeverity
 from src.i18n import AuditTexts, UIMessages
 from app.ui.base import ResultTabBase
 

@@ -12,8 +12,8 @@ from app.adapters.streamlit_adapters import (
     StreamlitProgressHandler,
     StreamlitResultRenderer
 )
-from src.domain.models import ValuationResult
-from src.interfaces import IUIProgressHandler, IResultRenderer
+from src.models import ValuationResult
+from src.interfaces import IUIProgressHandler
 
 
 class TestStreamlitProgressHandler:

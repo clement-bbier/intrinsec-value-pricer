@@ -8,11 +8,11 @@ Affiche chaque étape du calcul avec :
 - Résultat intermédiaire
 """
 
-from typing import Any, List
+from typing import Any
 
 import streamlit as st
 
-from src.domain.models import ValuationResult, CalculationStep
+from src.models import ValuationResult
 from src.i18n import KPITexts, UIMessages
 from app.ui.base import ResultTabBase
 from app.ui.results.components.step_renderer import render_calculation_step

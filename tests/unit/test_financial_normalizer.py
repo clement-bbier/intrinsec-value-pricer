@@ -7,11 +7,10 @@ Couvre la logique de normalisation des données financières brutes.
 
 import pytest
 from unittest.mock import Mock, patch
-from typing import Dict, Any, List
 
 from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
-from src.domain.models import CompanyFinancials, PeerMetric, MultiplesData
+from src.models import CompanyFinancials, MultiplesData
 
 
 class TestFinancialNormalizer:

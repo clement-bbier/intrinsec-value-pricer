@@ -27,7 +27,7 @@ from dataclasses import dataclass
 # DT-001/002: Import depuis core.i18n
 from src.i18n import CalculationErrors, StrategySources
 from src.exceptions import CalculationError
-from src.domain.models import CompanyFinancials, DCFParameters
+from src.models import CompanyFinancials, DCFParameters
 from src.config.constants import ValuationEngineDefaults, TechnicalDefaults, MacroDefaults
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,36 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
     if pe_multiple <= 0:
         raise CalculationError("Le multiple P/E doit être strictement positif.")
     return final_net_income * pe_multiple
+
+def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float:
+    """
+    Calcule le facteur de dilution cumulé sur la période de projection.
+
+    Si une entreprise émet 2% d'actions nouvelles par an (SBC) pendant 5 ans,
+    la part des actionnaires actuels est divisée par (1 + 0.02)^5.
+
+    Parameters
+    ----------
+    annual_rate : float, optional
+        Taux de dilution annuel (ex: 0.02 pour 2%).
+    years : int
+        Nombre d'années de projection.
+
+    Returns
+    -------
+    float
+        Le multiplicateur de shares à appliquer au dénominateur (défaut: 1.0).
+    """
+    if annual_rate is None or annual_rate <= 0:
+        return 1.0
+    return (1.0 + annual_rate) ** years
+
+
+def apply_dilution_to_price(price: float, dilution_factor: float) -> float:
+    """Applique le facteur de dilution au prix par action final."""
+    if dilution_factor <= 1.0:
+        return price
+    return price / dilution_factor
 
 # ==============================================================================
 # 2. COÛT DU CAPITAL (WACC / Ke / SYNTETHIC DEBT)

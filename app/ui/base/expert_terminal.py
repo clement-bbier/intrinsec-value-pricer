@@ -37,12 +37,10 @@ from typing import Optional, Dict, Any, List
 
 import streamlit as st
 
-from src.domain.models import (
-    DCFParameters,
+from src.models import (
     InputSource,
     ValuationMode,
     ValuationRequest,
-    TerminalValueMethod,
     ScenarioParameters,
 )
 from src.i18n import ExpertTerminalTexts
@@ -282,8 +280,6 @@ class ExpertTerminalBase(ABC):
             widget_monte_carlo,
             widget_scenarios,
             widget_peer_triangulation,
-            widget_sotp,
-            build_dcf_parameters,
         )
 
         # Monte Carlo

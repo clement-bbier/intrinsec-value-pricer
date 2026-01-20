@@ -8,7 +8,6 @@ Même après refactoring interne, ces signatures DOIVENT rester compatibles.
 RÈGLE D'OR : Ces tests NE DOIVENT PAS CHANGER lors des refactorings.
 """
 
-import pytest
 from inspect import signature
 
 
@@ -36,7 +35,7 @@ class TestRunValuationContract:
     def test_return_type_is_valuation_result(self, sample_financials, sample_params):
         """Vérifie que run_valuation retourne un ValuationResult."""
         from src.valuation.engines import run_valuation
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource, ValuationResult
+        from src.models import ValuationRequest, ValuationMode, InputSource, ValuationResult
         
         request = ValuationRequest(
             ticker="TEST",
@@ -65,7 +64,7 @@ class TestStrategyRegistryContract:
     def test_all_modes_have_strategies(self):
         """Vérifie que tous les modes ont une stratégie."""
         from src.valuation.engines import STRATEGY_REGISTRY
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         expected_modes = [
             ValuationMode.FCFF_STANDARD,
@@ -102,7 +101,7 @@ class TestCentralizedRegistryContract:
     def test_get_display_names_returns_dict(self):
         """Vérifie que get_display_names retourne un dict."""
         from src.valuation.registry import get_display_names
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         names = get_display_names()
         
@@ -117,7 +116,7 @@ class TestCentralizedRegistryContract:
         """Vérifie que get_strategy retourne une classe."""
         from src.valuation.registry import get_strategy
         from src.valuation.strategies.abstract import ValuationStrategy
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         strategy_cls = get_strategy(ValuationMode.FCFF_STANDARD)
         
@@ -127,7 +126,7 @@ class TestCentralizedRegistryContract:
     def test_get_auditor_returns_instance(self):
         """Vérifie que get_auditor retourne une instance."""
         from src.valuation.registry import get_auditor
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         auditor = get_auditor(ValuationMode.FCFF_STANDARD)
         

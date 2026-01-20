@@ -18,12 +18,12 @@ Note : Les widgets reproduisent fidèlement les fonctionnalités du legacy
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 import streamlit as st
 import pandas as pd
 
-from src.domain.models import (
+from src.models import (
     DCFParameters,
     ValuationMode,
     TerminalValueMethod,
@@ -31,7 +31,6 @@ from src.domain.models import (
     ScenarioVariant,
     BusinessUnit,
     SOTPMethod,
-    SOTPParameters,
 )
 from src.i18n import ExpertTerminalTexts, SOTPTexts
 from src.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG

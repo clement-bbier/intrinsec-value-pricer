@@ -15,7 +15,7 @@ from typing import List, Any, Optional, Dict
 
 import streamlit as st
 
-from src.domain.models import ValuationResult
+from src.models import ValuationResult
 # Import PitchbookData supprimé car lié à l'export PDF
 from app.ui.base import ResultTabBase
 from src.i18n import UIMessages

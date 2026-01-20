@@ -61,7 +61,8 @@ pytest tests/contracts/test_architecture_contracts.py -v
 
 ```python
 # Vérification du modèle
-from src.domain.models.glass_box import CalculationStep, VariableInfo
+from src.models.glass_box import CalculationStep, VariableInfo
+
 assert hasattr(CalculationStep, "actual_calculation")
 assert hasattr(CalculationStep, "variables_map")
 ```
@@ -144,11 +145,12 @@ QuantLogger.log_success(ticker="AAPL", mode="FCFF_STANDARD", iv=185.20)
 ```python
 # Vérification du TextRegistry
 from src.i18n.text_registry import TextRegistry, t
+
 TextRegistry.set_language("fr")
 assert t("sidebar.title") == "Intrinsic Value Pricer"
 
 # Vérification du PDF
-from src.domain.models.pitchbook import PitchbookData
+from src.models import PitchbookData
 from src.reporting import generate_pitchbook_pdf
 # (Nécessite un ValuationResult pour test complet)
 ```

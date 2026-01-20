@@ -8,9 +8,9 @@ Note : Alignement strict sur ui_glass_box_registry.py V11.0 pour éviter les Key
 
 from __future__ import annotations
 import logging
-from typing import List, Optional, Dict
+from typing import List, Optional
 
-from src.domain.models import (
+from src.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
     ValuationResult, DCFValuationResult, EquityDCFValuationResult,
     TerminalValueMethod, TraceHypothesis, ValuationMode

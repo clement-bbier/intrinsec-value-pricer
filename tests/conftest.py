@@ -7,7 +7,7 @@ Elles sont automatiquement disponibles dans tous les fichiers de test.
 """
 
 import pytest
-from src.domain.models import (
+from src.models import (
     CompanyFinancials,
     DCFParameters,
     CoreRateParameters,

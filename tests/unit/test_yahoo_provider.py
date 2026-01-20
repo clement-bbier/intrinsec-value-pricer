@@ -7,15 +7,14 @@ Suppression des hallucinations et sécurisation des calculs arithmétiques.
 
 import pytest
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
-from typing import Optional
+from unittest.mock import patch, MagicMock
 
 from infra.data_providers.yahoo_provider import (
     YahooFinanceProvider,
     DataProviderStatus
 )
-from src.domain.models import CompanyFinancials, DCFParameters, MultiplesData, InputSource
-from src.exceptions import ExternalServiceError, TickerNotFoundError
+from src.models import CompanyFinancials, DCFParameters, MultiplesData
+from src.exceptions import TickerNotFoundError
 
 
 class TestDataProviderStatus:
@@ -113,7 +112,7 @@ class TestYahooFinanceProvider:
 
         # Setup objet réel pour éviter les problèmes de sérialisation pickle
         from infra.ref_data.sector_fallback import SectorFallbackResult
-        from src.domain.models import MultiplesData
+        from src.models import MultiplesData
 
         real_multiples = MultiplesData()
         real_fallback = SectorFallbackResult(

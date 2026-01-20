@@ -1,10 +1,9 @@
 """
 tests/unit/test_workflow.py - Version "Deep Mock"
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from app.workflow import run_workflow, run_workflow_and_display, map_request_to_params
-from src.domain.models import ValuationRequest, ValuationMode, InputSource
+from unittest.mock import patch, MagicMock
+from app.workflow import run_workflow
+from src.models import ValuationRequest, ValuationMode, InputSource
 
 class TestWorkflowCore:
     @patch('app.workflow.st')

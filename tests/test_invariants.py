@@ -2,7 +2,7 @@ import pytest
 from src.exceptions import CalculationError
 # CORRECTION : On pointe vers le nouveau module
 from src.computation.financial_math import calculate_terminal_value_gordon, calculate_wacc
-from src.domain.models import CompanyFinancials, DCFParameters
+
 
 def test_invariant_wacc_gt_growth():
     """

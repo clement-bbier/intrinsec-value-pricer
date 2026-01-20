@@ -31,7 +31,7 @@ from typing import Dict, Optional, Any
 
 import yaml
 
-from src.domain.models import MultiplesData
+from src.models import MultiplesData
 
 logger = logging.getLogger(__name__)
 

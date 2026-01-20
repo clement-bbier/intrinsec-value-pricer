@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 
 from src.exceptions import CalculationError
-from src.domain.models import CompanyFinancials, DCFParameters, DCFValuationResult, TraceHypothesis, ValuationMode
+from src.models import CompanyFinancials, DCFParameters, DCFValuationResult, TraceHypothesis, ValuationMode
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector

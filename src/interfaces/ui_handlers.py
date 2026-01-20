@@ -39,7 +39,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.domain.models import ValuationResult
+    from src.models import ValuationResult
     from types import TracebackType
 
 

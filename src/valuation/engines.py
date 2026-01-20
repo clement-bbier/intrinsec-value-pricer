@@ -25,13 +25,12 @@ from src.exceptions import (
     DiagnosticDomain,
     CalculationError
 )
-from src.domain.models import (
+from src.models import (
     ValuationRequest,
     ValuationMode,
     CompanyFinancials,
     DCFParameters,
-    ValuationResult,
-    MultiplesData
+    ValuationResult
 )
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy

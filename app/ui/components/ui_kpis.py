@@ -29,24 +29,15 @@ Contenu :
 
 from __future__ import annotations
 
-import logging
-from typing import Any, List, Optional
-
-import numpy as np
-import pandas as pd
-import streamlit as st
-
 # Standard library
-import logging
-from typing import Any, List, Optional
+from typing import List, Optional
 
 # Third-party
 import numpy as np
-import pandas as pd
 import streamlit as st
 
 # Local
-from src.domain.models import AuditStep, AuditSeverity, CalculationStep
+from src.models import AuditStep, AuditSeverity, CalculationStep
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 from src.i18n import KPITexts, AuditTexts
 

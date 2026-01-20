@@ -12,7 +12,7 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
-from src.domain.models import ValuationResult
+from src.models import ValuationResult
 from src.i18n import KPITexts
 from app.ui.base import ResultTabBase
 

@@ -10,7 +10,7 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
-from src.domain.models import ValuationResult
+from src.models import ValuationResult
 from src.i18n import SOTPResultTexts as SOTPTexts
 from app.ui.base import ResultTabBase
 from src.utilities.formatting import format_smart_number

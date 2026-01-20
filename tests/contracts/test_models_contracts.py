@@ -8,16 +8,13 @@ Si un champ obligatoire est supprimé ou renommé, ces tests échoueront.
 RÈGLE D'OR : Ces tests NE DOIVENT PAS CHANGER lors des refactorings.
 """
 
-import pytest
-from pydantic import ValidationError
-
 
 class TestCompanyFinancialsContract:
     """Contrat de stabilité pour CompanyFinancials."""
     
     def test_required_fields_exist(self):
         """Vérifie que les champs obligatoires existent."""
-        from src.domain.models import CompanyFinancials
+        from src.models import CompanyFinancials
         
         # Ces champs DOIVENT exister et être obligatoires
         required_fields = [
@@ -35,7 +32,7 @@ class TestCompanyFinancialsContract:
     
     def test_minimal_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les champs minimaux."""
-        from src.domain.models import CompanyFinancials
+        from src.models import CompanyFinancials
         
         # Doit fonctionner avec les champs minimaux
         financials = CompanyFinancials(
@@ -54,7 +51,7 @@ class TestDCFParametersContract:
     
     def test_segmented_architecture(self):
         """Vérifie l'architecture segmentée V9.0+ (rates, growth, monte_carlo)."""
-        from src.domain.models import DCFParameters
+        from src.models import DCFParameters
         
         schema = DCFParameters.model_json_schema()
         properties = schema.get("properties", {})
@@ -66,7 +63,7 @@ class TestDCFParametersContract:
     
     def test_default_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les défauts."""
-        from src.domain.models import DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
+        from src.models import DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
         
         params = DCFParameters(
             rates=CoreRateParameters(),
@@ -84,7 +81,7 @@ class TestValuationResultContract:
     
     def test_core_output_fields(self):
         """Vérifie que les champs de sortie principaux existent."""
-        from src.domain.models import DCFValuationResult
+        from src.models import DCFValuationResult
         
         schema = DCFValuationResult.model_json_schema()
         properties = schema.get("properties", {})
@@ -106,7 +103,7 @@ class TestValuationRequestContract:
     
     def test_request_fields(self):
         """Vérifie les champs de requête."""
-        from src.domain.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMode, InputSource
         
         request = ValuationRequest(
             ticker="AAPL",
@@ -125,7 +122,7 @@ class TestValuationModeContract:
     
     def test_all_modes_exist(self):
         """Vérifie que tous les modes de valorisation existent."""
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         # Ces modes DOIVENT exister
         expected_modes = [
@@ -145,7 +142,7 @@ class TestValuationModeContract:
     
     def test_monte_carlo_support_property(self):
         """Vérifie que la propriété supports_monte_carlo existe."""
-        from src.domain.models import ValuationMode
+        from src.models import ValuationMode
         
         # Cette propriété DOIT exister sur chaque mode
         for mode in ValuationMode:
@@ -157,7 +154,7 @@ class TestAuditReportContract:
     
     def test_audit_output_fields(self):
         """Vérifie les champs de sortie d'audit."""
-        from src.domain.models import AuditReport
+        from src.models import AuditReport
         
         schema = AuditReport.model_json_schema()
         properties = schema.get("properties", {})

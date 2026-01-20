@@ -7,9 +7,8 @@ pas des financials/params séparés. Ces tests utilisent donc une stratégie
 de valorisation pour générer le résultat avant de l'auditer.
 """
 
-import pytest
 from infra.auditing.audit_engine import AuditEngine
-from src.domain.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
+from src.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
 from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
 
 

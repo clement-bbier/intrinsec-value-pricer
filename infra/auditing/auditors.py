@@ -8,15 +8,14 @@ Note : Migration intégrale V9.0 + Rigueur Hedge Fund pour FCFE et DDM.
 from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Any
 
-from src.domain.models import (
+from src.models import (
     ValuationResult, DCFValuationResult, RIMValuationResult, GrahamValuationResult,
-    EquityDCFValuationResult, AuditLog, AuditPillar, AuditPillarScore,
+    EquityDCFValuationResult, AuditPillar, AuditPillarScore,
     InputSource, DCFParameters, AuditStep, AuditSeverity
 )
 # Migration DT-001/002: Import depuis core.i18n au lieu de app.ui.components
-from src.i18n import AuditMessages, AuditCategories
 from src.config import AuditPenalties, AuditThresholds, TechnicalDefaults
 
 logger = logging.getLogger(__name__)

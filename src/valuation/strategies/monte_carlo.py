@@ -25,15 +25,13 @@ from src.exceptions import (
     ModelDivergenceError,
     MonteCarloInstabilityError,
 )
-from src.domain.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
+from src.models import CompanyFinancials, DCFParameters, ValuationResult, TerminalValueMethod
 from src.valuation.strategies.abstract import ValuationStrategy
 
 # Import depuis core.i18n
 from src.i18n import (
     RegistryTexts,
     StrategyInterpretations,
-    CalculationErrors,
-    StrategySources,
     KPITexts
 )
 
