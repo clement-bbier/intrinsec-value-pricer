@@ -155,6 +155,7 @@ class FinancialDataNormalizer:
     # =========================================================================
 
     def _reconstruct_shares(self, info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:
+        """Extrait le nombre d'actions actuel (inchangé)."""
         shares = info.get("sharesOutstanding")
         if not shares and bs is not None:
             shares = extract_most_recent_value(bs, ["Ordinary Shares Number", "Share Issued"])
@@ -163,6 +164,24 @@ class FinancialDataNormalizer:
             if mcap > 0 and price > 0:
                 shares = mcap / price
         return float(shares) if shares else 1.0
+
+    def extract_shares_history(self, bs: Optional[pd.DataFrame]) -> List[float]:
+        """
+        Extrait la série historique des actions.
+        Retourne la liste ordonnée du passé vers le présent.
+        """
+        if bs is None or bs.empty:
+            return []
+
+        keys = ["Ordinary Shares Number", "Share Issued"]
+        for key in keys:
+            if key in bs.index:
+                # On récupère les valeurs, on enlève les NaN et on inverse l'ordre
+                # (Yahoo livre du plus récent au plus ancien)
+                series = bs.loc[key].dropna().iloc[::-1].tolist()
+                if len(series) >= 2:
+                    return [float(v) for v in series]
+        return []
 
     def _reconstruct_capital_structure(
             self,

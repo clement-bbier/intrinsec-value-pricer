@@ -31,8 +31,10 @@ from pydantic import ValidationError
 
 from src.computation.financial_math import (
     calculate_synthetic_cost_of_debt,
-    calculate_sustainable_growth
+    calculate_sustainable_growth,
+    calculate_historical_share_growth
 )
+from infra.ref_data.country_matrix import get_country_context
 from src.exceptions import ExternalServiceError, TickerNotFoundError
 from src.models import (
     CompanyFinancials,
@@ -314,34 +316,64 @@ class YahooFinanceProvider(DataProvider):
         }
 
     def get_company_financials_and_parameters(
-        self,
-        ticker: str,
-        projection_years: int
+            self,
+            ticker: str,
+            projection_years: int
     ) -> Tuple[CompanyFinancials, DCFParameters]:
-        """Workflow Auto-Mode : Construit les paramètres avec macro localisée et arbitrage SGR."""
+        """
+        Workflow Auto-Mode : Construit les paramètres avec macro localisée, arbitrage SGR
+        et estimation de la dilution SBC.
+        """
+
         financials = self.get_company_financials(ticker)
         macro = self._fetch_macro_context(financials)
 
         # 1. Estimation de la croissance hybride
         growth_hist = self._estimate_dynamic_growth(ticker)
 
-        # 2. Arbitrage SGR
-        payout = (financials.dividend_share * financials.shares_outstanding) / financials.net_income_ttm if financials.net_income_ttm and financials.net_income_ttm > 0 else 0.0
-        roe = financials.net_income_ttm / financials.book_value if financials.book_value and financials.book_value > 0 else 0.0
+        # 2. Estimation de la dilution annuelle (Sprint 3.2)
+        # Extraction de la série historique via le normaliseur
+        shares_history = self.normalizer.extract_shares_history(
+            self.last_raw_data.balance_sheet if self.last_raw_data else None
+        )
+
+        # Calcul du CAGR historique de la dilution
+        dilution_auto = calculate_historical_share_growth(shares_history)
+
+        # Fallback sectoriel intelligent si l'historique est plat ou absent
+        if dilution_auto < 0.001:
+            sector_map = {
+                "Technology": 0.020,
+                "Communication Services": 0.015,
+                "Healthcare": 0.010,
+                "Consumer Cyclical": 0.005
+            }
+            dilution_auto = sector_map.get(financials.sector, 0.0)
+
+        # 3. Arbitrage du taux de croissance soutenable (SGR)
+        payout = (financials.dividend_share * financials.shares_outstanding) / financials.net_income_ttm \
+            if financials.net_income_ttm and financials.net_income_ttm > 0 else 0.0
+
+        roe = financials.net_income_ttm / financials.book_value \
+            if financials.book_value and financials.book_value > 0 else 0.0
+
         growth_sgr = calculate_sustainable_growth(roe, payout)
         growth_final = max(0.01, min(growth_hist, growth_sgr or 0.05, 0.08))
 
-        # 3. Paramétrage des taux avec traçabilité "Glass Box" (Phase 1 & 2)
+        # 4. Paramétrage des taux et de la structure du capital
         country_data = get_country_context(financials.country)
 
         params = DCFParameters(
             rates=CoreRateParameters(
                 risk_free_rate=macro.risk_free_rate,
-                risk_free_source=macro.risk_free_source, #
+                risk_free_source=macro.risk_free_source,
                 market_risk_premium=macro.market_risk_premium,
                 corporate_aaa_yield=macro.corporate_aaa_yield,
                 cost_of_debt=calculate_synthetic_cost_of_debt(
-                    macro.risk_free_rate, financials.ebit_ttm, financials.interest_expense, financials.market_cap
+                    macro.risk_free_rate,
+                    financials.ebit_ttm,
+                    financials.interest_expense,
+                    financials.market_cap
                 ),
                 tax_rate=float(country_data["tax_rate"])
             ),
@@ -349,12 +381,14 @@ class YahooFinanceProvider(DataProvider):
                 fcf_growth_rate=growth_final,
                 perpetual_growth_rate=macro.perpetual_growth_rate,
                 projection_years=projection_years,
+                annual_dilution_rate=dilution_auto,
                 target_equity_weight=financials.market_cap,
                 target_debt_weight=financials.total_debt,
                 manual_dividend_base=financials.dividend_share
             ),
             monte_carlo=MonteCarloConfig()
         )
+
         params.normalize_weights()
         return financials, params
 

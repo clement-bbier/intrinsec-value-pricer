@@ -84,38 +84,111 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
         raise CalculationError("Le multiple P/E doit être strictement positif.")
     return final_net_income * pe_multiple
 
+# ==============================================================================
+# 2. AJUSTEMENTS DE STRUCTURE & DILUTION
+# ==============================================================================
+
+def calculate_historical_share_growth(shares_series: List[float]) -> float:
+    """
+    Calcule le taux de croissance annuel moyen (CAGR) du nombre d'actions.
+
+    Cette métrique est cruciale en mode 'Auto' pour estimer la dilution future
+    basée sur le comportement historique de l'entreprise (Stock-Based Compensation).
+
+    Parameters
+    ----------
+    shares_series : List[float]
+        Série chronologique du nombre d'actions (de la plus ancienne à la plus récente).
+
+    Returns
+    -------
+    float
+        Taux de croissance annuel moyen plafonné à 10% par mesure de prudence.
+    """
+    if len(shares_series) < 2:
+        return 0.0
+
+    start_val = shares_series[0]
+    end_val = shares_series[-1]
+
+    if start_val <= 0 or end_val <= 0:
+        return 0.0
+
+    n_periods = len(shares_series) - 1
+
+    # Formule du CAGR : (End / Start)^(1/n) - 1
+    cagr = (end_val / start_val) ** (1.0 / n_periods) - 1.0
+
+    # Sanity Clamping : On ignore les croissances négatives (rachats d'actions)
+    # pour la dilution et on plafonne à 10% pour éviter les anomalies de données.
+    return max(0.0, min(TechnicalDefaults.MAX_DILUTION_CLAMPING, cagr))
+
+
 def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float:
     """
-    Calcule le facteur de dilution cumulé sur la période de projection.
-
-    Si une entreprise émet 2% d'actions nouvelles par an (SBC) pendant 5 ans,
-    la part des actionnaires actuels est divisée par (1 + 0.02)^5.
+    Calcule le facteur de dilution cumulé (effet composé) sur l'horizon.
 
     Parameters
     ----------
     annual_rate : float, optional
-        Taux de dilution annuel (ex: 0.02 pour 2%).
+        Taux de dilution annuel moyen (ex: 0.02 pour 2%).
     years : int
         Nombre d'années de projection.
 
     Returns
     -------
     float
-        Le multiplicateur de shares à appliquer au dénominateur (défaut: 1.0).
+        Le multiplicateur de shares (ex: 1.104 pour 2% sur 5 ans).
     """
     if annual_rate is None or annual_rate <= 0:
         return 1.0
     return (1.0 + annual_rate) ** years
 
 
+def compute_diluted_shares(current_shares: float, annual_rate: Optional[float], years: int) -> float:
+    """
+    Calcule le nombre d'actions projeté après n années de dilution.
+
+    Parameters
+    ----------
+    current_shares : float
+        Nombre d'actions actuel en circulation.
+    annual_rate : float, optional
+        Taux de dilution annuel moyen.
+    years : int
+        Horizon de projection.
+
+    Returns
+    -------
+    float
+        Nombre d'actions total à l'issue de la période.
+    """
+    factor = calculate_dilution_factor(annual_rate, years)
+    return current_shares * factor
+
+
 def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
-    """Applique le facteur de dilution au prix par action final."""
+    """
+    Applique le facteur de dilution au prix par action final.
+
+    Parameters
+    ----------
+    price : float
+        Prix intrinsèque initial (non dilué).
+    dilution_factor : float
+        Facteur cumulé calculé via calculate_dilution_factor.
+
+    Returns
+    -------
+    float
+        Prix par action ajusté.
+    """
     if dilution_factor <= 1.0:
         return price
     return price / dilution_factor
 
 # ==============================================================================
-# 2. COÛT DU CAPITAL (WACC / Ke / SYNTETHIC DEBT)
+# 3. COÛT DU CAPITAL (WACC / Ke / SYNTETHIC DEBT)
 # ==============================================================================
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
@@ -211,7 +284,7 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     )
 
 # ==============================================================================
-# 3. MODÈLES ACTIONNAIRES (FCFE & DDM)
+# 4. MODÈLES ACTIONNAIRES (FCFE & DDM)
 # ==============================================================================
 
 def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: float) -> float:
@@ -227,7 +300,7 @@ def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
     return roe * (1.0 - (payout_ratio or 0.0))
 
 # ==============================================================================
-# 4. MODÈLES SPÉCIFIQUES (RIM & GRAHAM)
+# 5. MODÈLES SPÉCIFIQUES (RIM & GRAHAM)
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
@@ -255,7 +328,7 @@ def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> Li
     return [v / total for v in clean_values]
 
 # ==============================================================================
-# 5. MULTIPLES & TRIANGULATION (RELATIVE VALUATION)
+# 6. MULTIPLES & TRIANGULATION (RELATIVE VALUATION)
 # ==============================================================================
 
 def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares: float) -> float:

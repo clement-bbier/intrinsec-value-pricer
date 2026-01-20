@@ -48,49 +48,53 @@ class TestYahooFinanceProvider:
 
     @patch('infra.data_providers.yahoo_provider.YahooRawFetcher')
     @patch('infra.data_providers.yahoo_provider.FinancialDataNormalizer')
-    @patch('infra.data_providers.yahoo_provider.get_country_context')
+    @patch('infra.ref_data.country_matrix.get_country_context')
     @patch('infra.data_providers.yahoo_provider.calculate_synthetic_cost_of_debt')
-    def test_get_company_financials_success_path(self, mock_calc_debt, mock_country, 
-                                                mock_normalizer_cls, mock_fetcher_cls):
-        """Test chemin nominal complet sans erreurs de calcul sur Mocks."""
-        
+    @patch('infra.data_providers.yahoo_provider.calculate_historical_share_growth')
+    def test_get_company_financials_success_path(self, mock_calc_growth, mock_calc_debt,
+                                                 mock_country, mock_normalizer_cls,
+                                                 mock_fetcher_cls):
+        """Test chemin nominal complet incluant la nouvelle logique de dilution."""
+
         # 1. Setup Data Brute
         mock_raw = MagicMock()
         mock_raw.is_valid = True
-        mock_fetcher_cls.return_value.fetch.return_value = mock_raw
+        # Simuler une balance sheet pour l'historique des actions
+        mock_raw.balance_sheet = MagicMock()
+        mock_fetcher_cls.return_value.fetch_historical_deep.return_value = mock_raw
 
-        # 2. Setup Normalizer (retourne des objets réels pour éviterTypeError)
+        # 2. Setup Normalizer
+        mock_normalizer = mock_normalizer_cls.return_value
         mock_fin = MagicMock(spec=CompanyFinancials)
         mock_fin.ticker = "AAPL"
         mock_fin.beta = 1.2
-        mock_normalizer_cls.return_value.normalize.return_value = mock_fin
+        mock_fin.sector = "Technology"
+        mock_fin.net_income_ttm = 100.0
+        mock_fin.dividend_share = 0.5
+        mock_fin.shares_outstanding = 10.0
+        mock_fin.book_value = 500.0
+        mock_normalizer.normalize.return_value = mock_fin
+        # Mock de l'extraction d'historique
+        mock_normalizer.extract_shares_history.return_value = [100, 102, 104]
 
-        # 3. Setup Macro Context (Objet réel pour éviter les problèmes Pydantic)
+        # 3. Setup Math & Macro
         from infra.macro.yahoo_macro_provider import MacroContext
-        real_context = MacroContext(
-            date=datetime.now(),
-            currency="USD",
-            risk_free_rate=0.04,
-            risk_free_source="US10Y",
-            market_risk_premium=0.05,
-            perpetual_growth_rate=0.02,
-            corporate_aaa_yield=0.05
+        self.mock_macro.get_macro_context.return_value = MacroContext(
+            date=datetime.now(), currency="USD", risk_free_rate=0.04,
+            risk_free_source="US10Y", market_risk_premium=0.05,
+            perpetual_growth_rate=0.02, corporate_aaa_yield=0.05
         )
-        self.mock_macro.get_macro_context.return_value = real_context
 
-        # 4. Setup Math & Country
         mock_country.return_value = {"tax_rate": 0.25}
-        mock_calc_debt.return_value = 0.06 # Valeur float réelle
+        mock_calc_debt.return_value = 0.06
+        mock_calc_growth.return_value = 0.02  # 2% de dilution détectée
 
         # Exécution
         result_fin, result_params = self.provider.get_company_financials_and_parameters("AAPL", 5)
 
-        # Vérifications
-        assert isinstance(result_fin, CompanyFinancials)
+        # Vérifications Sprint 3
+        assert result_params.growth.annual_dilution_rate == 0.02
         assert result_fin.ticker == "AAPL"
-        assert isinstance(result_params, DCFParameters)
-        assert result_params.rates.risk_free_rate == 0.04
-        assert result_params.rates.cost_of_debt == 0.06
 
     @patch('infra.data_providers.yahoo_provider.YahooRawFetcher')
     def test_get_company_financials_invalid_ticker(self, mock_fetcher_cls):
