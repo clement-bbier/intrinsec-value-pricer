@@ -381,8 +381,8 @@ def render_equity_bridge_inputs(
     >>> bridge_data = render_equity_bridge_inputs(key_prefix="mult")
     """
     if show_header:
-        st.markdown("#### Equity Bridge")
-        st.caption("Passage de la Valeur d'Entreprise à la Valeur par Action")
+        st.markdown(ExpertTerminalTexts.BRIDGE_TITLE)
+        st.caption(ExpertTerminalTexts.BRIDGE_SUBTITLE)
         st.latex(r"P = \frac{EV - \text{Dette} + \text{Cash} - \text{Minorities}}{\text{Actions}}")
     
     if is_direct_equity:
@@ -402,7 +402,7 @@ def render_equity_bridge_inputs(
     
     with st.container(border=True):
         # Ligne 1 : Dette et Cash (les 2 composantes majeures)
-        st.markdown("**Composantes de Structure**")
+        st.markdown(ExpertTerminalTexts.BRIDGE_COMPONENTS)
         col_debt, col_cash = st.columns(2)
         
         debt = col_debt.number_input(
@@ -422,7 +422,7 @@ def render_equity_bridge_inputs(
         
         # Ligne 2 : Ajustements secondaires
         st.divider()
-        st.markdown("**Ajustements**")
+        st.markdown(ExpertTerminalTexts.BRIDGE_ADJUSTMENTS)
         col_min, col_pen, col_shares = st.columns(3)
         
         minorities = col_min.number_input(
@@ -559,7 +559,7 @@ def widget_monte_carlo(
         st.divider()
 
         # 2. Volatilités
-        st.caption("**Calibration des volatilites (ecarts-types)**")
+        st.caption(ExpertTerminalTexts.MC_VOLATILITIES)
         v_col1, v_col2 = st.columns(2)
 
         # Volatilité flux de base (Y0)
@@ -662,7 +662,7 @@ def widget_peer_triangulation() -> Dict[str, Any]:
         if raw_input.strip():
             peers_list = [t.strip().upper() for t in raw_input.split(",") if t.strip()]
             if peers_list:
-                st.caption(f"*Peers sélectionnés : {', '.join(peers_list)}*")
+                st.caption(ExpertTerminalTexts.PEERS_SELECTED.format(peers=', '.join(peers_list)))
 
         return {
             "enable_peer_multiples": True,
@@ -873,7 +873,7 @@ def widget_sotp(params: DCFParameters) -> None:
         ]
 
         # Décote de conglomérat
-        st.markdown(SOTPTexts.SEC_ADJUSTMENTS if hasattr(SOTPTexts, 'SEC_ADJUSTMENTS') else "**Ajustements**")
+        st.markdown(getattr(SOTPTexts, 'SEC_ADJUSTMENTS', ExpertTerminalTexts.BRIDGE_ADJUSTMENTS))
         params.sotp.conglomerate_discount = st.slider(
             SOTPTexts.LBL_DISCOUNT if hasattr(SOTPTexts, 'LBL_DISCOUNT') else "Decote conglomerat (%)",
             min_value=0,

@@ -1,46 +1,40 @@
 # Intrinsic Value Pricer
 
-**Glass-Box Valuation Engine — Production-Ready**
-
-**Version** : 3.0 — Janvier 2026  
-**Architecture** : V2.0  
-**Sprints** : 1-5 Complétés
-
-> Éducation • Analyse financière • Modélisation avancée • Transparence totale
+Application de valorisation d'entreprises cotées avec transparence totale des calculs.
 
 ---
 
-## Objectif du Projet
+## Présentation
 
-**Intrinsic Value Pricer** est une application open-source de valorisation d'entreprises cotées, conçue pour être :
+**Intrinsic Value Pricer** est une application open-source conçue pour l'analyse financière institutionnelle. Elle offre une valorisation rigoureuse des entreprises cotées en rendant explicite chaque étape de calcul, chaque hypothèse et chaque source de données.
 
-- **Rigoureuse** sur le plan financier,
-- **Transparente** sur le plan méthodologique ("Glass Box V2"),
-- **Pédagogique** dans son exposition (diagnostics ST-4.2),
-- **Auditable** dans ses résultats (Pitchbook PDF ST-5.2),
-- **Résiliente** face aux pannes (Mode Dégradé ST-4.1).
+Le projet privilégie la pédagogie sur l'automatisation : il explique comment une valeur intrinsèque est construite plutôt que de fournir un résultat opaque.
 
-Le projet vise à **expliquer comment une valeur intrinsèque est construite**, et non à fournir un chiffre opaque ou une promesse de surperformance.
-
-> **Disclaimer**  
-> Ce projet est strictement **éducatif et analytique**.  
-> Il ne constitue **en aucun cas** une recommandation d'investissement.
+> **Avertissement**  
+> Cette application est strictement éducative et analytique.  
+> Elle ne constitue en aucun cas un conseil d'investissement.
 
 ---
 
-## Fonctionnalités Clés
+## Fonctionnalités
 
-| Fonctionnalité | Description |
-|----------------|-------------|
-| **9 Méthodes de Valorisation** | DCF, RIM, Graham, Multiples, DDM |
-| **Glass Box V2** | Traçabilité complète avec source de chaque variable |
-| **Monte Carlo** | Distribution probabiliste de la valeur |
-| **Scénarios Bull/Base/Bear** | Analyse de sensibilité |
-| **Backtest Historique** | Validation sur 3 années passées |
-| **Mode Dégradé** | Fallback automatique (ST-4.1) |
-| **Diagnostic Pédagogique** | Erreurs traduites en conseils (ST-4.2) |
-| **Pitchbook PDF** | Export professionnel 3 pages (ST-5.2) |
-| **Internationalisation** | Classes Python centralisées (FR) |
+### Méthodes de Valorisation
+- **Discounted Cash Flow (DCF)** : 5 variantes (FCFF Standard, Growth, Fundamental, FCFE, DDM)
+- **Residual Income Model (RIM)** : Valorisation par revenus résiduels
+- **Benjamin Graham Formula** : Screening rapide
+- **Multiples de marché** : Valorisation relative sectorielle
+- **Simulations Monte Carlo** : Analyse probabiliste des risques
+
+### Transparence et Auditabilité
+- **Glass Box** : Traçabilité complète de chaque variable et calcul
+- **Rapports d'audit** : Évaluation systématique de la qualité des données et hypothèses
+- **Export PDF professionnel** : Documentation complète des valorisations
+- **Internationalisation** : Support multilingue (Français, Anglais à venir)
+
+### Robustesse
+- **Mode dégradé** : Fallback automatique sur données sectorielles
+- **Validation des données** : Détection automatique des anomalies
+- **Backtesting historique** : Validation des modèles sur périodes passées
 
 ---
 
@@ -48,229 +42,126 @@ Le projet vise à **expliquer comment une valeur intrinsèque est construite**, 
 
 ```
 intrinsec-value-pricer/
-├── src/                       # Logique métier pure (Zéro Streamlit)
-│   ├── domain/models/         # 9 modèles Pydantic
-│   ├── valuation/             # Moteur + 9 stratégies
+├── src/                       # Logique métier pure
+│   ├── models/                # Modèles de données Pydantic
+│   ├── valuation/             # Moteur et stratégies de valorisation
 │   ├── computation/           # Fonctions mathématiques
 │   ├── config/                # Constantes centralisées
-│   ├── i18n/                  # Classes i18n centralisées (FR)
-│   ├── reporting/             # Pitchbook PDF (FPDF2)
-│   ├── diagnostics.py         # DiagnosticEvent + FinancialContext
+│   ├── i18n/                  # Internationalisation
+│   ├── diagnostics.py         # Système de diagnostics
 │   └── quant_logger.py        # Logging institutionnel
 │
-├── app/                       # Couche présentation (Streamlit)
-│   ├── ui/expert/terminals/   # 7 terminaux + Factory
-│   ├── ui/results/            # Orchestrator + Onglets
-│   └── adapters/              # Injection de dépendances
+├── app/                       # Interface utilisateur Streamlit
+│   ├── ui/                    # Composants d'interface
+│   └── adapters/              # Couche d'adaptation
 │
 ├── infra/                     # Infrastructure
-│   ├── data_providers/        # Yahoo Finance + Fallback
-│   ├── auditing/              # AuditEngine + Backtester
-│   └── ref_data/              # Multiples sectoriels
+│   ├── data_providers/        # Fournisseurs de données
+│   ├── auditing/              # Moteur d'audit
+│   └── ref_data/              # Données de référence
 │
-├── config/                    # Configuration YAML
-├── docs/                      # Documentation complète
-└── tests/                     # 51+ tests de contrats
+├── docs/                      # Documentation
+├── tests/                     # Tests unitaires et d'intégration
+└── config/                    # Configuration
 ```
 
-### Étanchéité Architecturale
+### Principes Architecturaux
 
-- `src/` n'importe **jamais** de `app/` ni de `streamlit`
-- `infra/` peut importer de `src/` mais pas de `app/`
-- Validation : `pytest tests/contracts/ -v`
+- **Séparation des préoccupations** : Logique métier indépendante de l'interface
+- **Injection de dépendances** : Registre centralisé pour la configuration
+- **Tests contractuels** : Validation systématique des interfaces
 
 ---
 
 ## Méthodes de Valorisation
 
-### DCF (Discounted Cash Flow)
+### Approches DCF (Flux Actualisés)
+- **FCFF Standard** : Valorisation d'entreprises matures avec flux stables
+- **FCFF Fundamental** : Normalisation des flux cycliques
+- **FCFF Growth** : Convergence de marges pour entreprises en croissance
+- **FCFE** : Valorisation directe des fonds propres
+- **DDM** : Modèle de dividende actualisé
 
-| Méthode | Cible | Fichier |
-|---------|-------|---------|
-| **FCFF Standard** | Entreprises matures | `dcf_standard.py` |
-| **FCFF Normalisé** | Cycliques / industrielles | `dcf_fundamental.py` |
-| **FCFF Growth** | Tech / forte croissance | `dcf_growth.py` |
-| **FCFE** | Sociétés endettées stables | `dcf_equity.py` |
-| **DDM** | Dividendes réguliers | `dcf_dividend.py` |
+### Autres Approches
+- **RIM** : Modèle du revenu résiduel (banques et assurances)
+- **Graham** : Formule de Benjamin Graham pour screening
+- **Multiples** : Valorisation relative par comparables sectoriels
 
-### Autres Méthodes
+### Analyse de Risque
+- **Monte Carlo** : Simulation probabiliste des valorisations
+- **Scénarios** : Analyse de sensibilité déterministe
+- **Backtesting** : Validation historique des modèles
 
-| Méthode | Cible | Fichier |
-|---------|-------|---------|
-| **Graham 1974** | Screening rapide | `graham_value.py` |
-| **RIM Banks** | Banques / assurances | `rim_banks.py` |
-| **Multiples** | Triangulation relative | `multiples.py` |
-
-### Extensions
-
-| Extension | Rôle | Fichier |
-|-----------|------|---------|
-| **Monte Carlo** | Quantification de l'incertitude | `monte_carlo.py` |
-
-Documentation détaillée : `docs/methodology/`
+Documentation complète : `docs/methodology/`
 
 ---
 
 ## Modes d'Utilisation
 
-### Mode AUTO
+### Mode Automatique
+Acquisition automatique des données via Yahoo Finance avec hypothèses normatives du système. Garde-fous économiques intégrés et mode dégradé en cas de panne API.
 
-- Hypothèses normatives (système)
-- Données automatiques (Yahoo Finance)
-- Garde-fous économiques stricts
-- Mode dégradé automatique si panne API
+**Public cible** : Apprentissage, screening rapide, utilisateurs débutants.
 
-**Idéal pour** : Débutants, screening, apprentissage
+### Mode Expert
+Contrôle total des paramètres via terminaux spécialisés. Workflow séquencé permettant la configuration précise de chaque hypothèse de valorisation.
 
-### Mode EXPERT
+**Public cible** : Analystes professionnels, valorisations approfondies, recherche institutionnelle.
 
-- 7 terminaux spécialisés
-- Contrôle total des hypothèses
-- Workflow séquencé "Logical Path"
-- Responsabilité utilisateur
-
-**Idéal pour** : Analystes, valorisations approfondies
-
-Documentation : `docs/usage/`
+Documentation utilisateur : `docs/usage/`
 
 ---
 
-## Installation & Lancement
+## Installation et Utilisation
 
 ### Prérequis
-
-- Python 3.10+
+- Python 3.10 ou supérieur
 - pip
 
 ### Installation
-
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Lancement
-
 ```bash
 streamlit run app/main.py
 ```
 
 ### Tests
-
 ```bash
-# Tests de contrats (51+)
+# Tests contractuels
 pytest tests/contracts/ -v
 
-# Tous les tests
+# Suite complète
 pytest tests/ -v
 ```
 
----
-
-## Nouvelles Fonctionnalités (Sprints 4-5)
-
-### Mode Dégradé (ST-4.1)
-
-Si Yahoo Finance échoue :
-- Fallback automatique sur multiples sectoriels (Damodaran)
-- Bandeau d'avertissement affiché
-- Score de confiance réduit (70%)
-
-### Diagnostic Pédagogique (ST-4.2)
-
-Les erreurs techniques sont traduites en conseils métier :
-
-```
-❌ Avant : "Math Error: Division by zero"
-
-✅ Après : "La croissance perpétuelle (5.00%) dépasse le WACC (4.50%).
-           Le modèle de Gordon ne peut pas converger.
-           Recommandation : Réduire g en dessous de 3%."
-```
-
-### QuantLogger (ST-4.2)
-
-Format de log institutionnel :
-
-```
-[VALUATION][SUCCESS] Ticker: AAPL | Model: FCFF_STANDARD | IV: 185.20 | AuditScore: 88.5%
-```
-
-### Pitchbook PDF (ST-5.2)
-
-Export professionnel de 3 pages :
-1. Résumé exécutif (IV, prix, upside, audit)
-2. Preuves de calcul (formules, paramètres)
-3. Analyse de risque (Monte Carlo, scénarios)
 
 ---
 
-## Audit & Confidence Score
+## Système d'Audit
 
-Chaque valorisation génère un **AuditReport** structuré :
+Chaque valorisation fait l'objet d'un audit systématique évaluant :
 
-| Pilier | Description |
-|--------|-------------|
-| **Profitabilité** | ROE, marges |
-| **Solvabilité** | ICR, D/E |
-| **Valorisation** | g < WACC, Beta |
-| **Marché** | Données disponibles |
+- **Qualité des données** : Disponibilité et cohérence des métriques financières
+- **Robustesse des hypothèses** : Plausibilité économique des paramètres utilisés
+- **Cohérence méthodologique** : Adéquation du modèle choisi
+- **Risques de valorisation** : Sensibilité aux variations de paramètres
 
-### Grades
-
-| Score | Grade | Signification |
-|-------|-------|---------------|
-| 90-100 | A | Excellent |
-| 80-89 | B | Bon |
-| 70-79 | C | Acceptable |
-| 60-69 | D | Risqué |
-| 0-59 | F | Critique |
+Le rapport d'audit fournit un score de confiance pondéré selon ces critères.
 
 ---
 
 ## Documentation
 
-| Section | Contenu |
-|---------|---------|
-| `docs/methodology/` | Théorie financière, formules |
-| `docs/technical/` | Architecture, patterns |
-| `docs/usage/` | Guide utilisateur |
-| `docs/references/` | Sources externes |
+- `docs/methodology/` : Théorie financière et formules mathématiques
+- `docs/technical/` : Architecture et principes de conception
+- `docs/usage/` : Guides utilisateur détaillés
+- `docs/references/` : Sources académiques et bibliographiques
 
----
+## Licence et Usage
 
-## Philosophie du Projet
+Ce projet est fourni à des fins éducatives, analytiques et de recherche. Il ne constitue en aucun cas un conseil financier, une incitation à investir, ou une recommandation d'achat ou de vente de titres financiers.
 
-> **Le moteur ne décide jamais.**  
-> Il rend explicites les hypothèses,  
-> calcule leurs conséquences économiques,  
-> et laisse le jugement final à l'humain.
-
-La valeur intrinsèque est un **outil d'analyse**,
-pas une vérité absolue ni une prédiction de marché.
-
----
-
-## Roadmap
-
-### Complétés
-
-- [x] Sprint 1 : Souveraineté Technique
-- [x] Sprint 2 : Glass Box V2
-- [x] Sprint 3 : UX Pitchbook
-- [x] Sprint 4 : Résilience & Intelligence
-- [x] Sprint 5 : Internationalisation & PDF
-- [x] Sprint 6 : Zero Debt & Hardening
-
-### Futurs
-
-- [ ] Sprint 7 : Multi-Langue (EN)
-- [ ] Sprint 8 : Analytics & Monitoring
-
----
-
-## Disclaimer Final
-
-Ce projet est fourni **à des fins éducatives, analytiques et de recherche**.  
-Il ne constitue **en aucun cas** un conseil financier,
-une incitation à investir,
-ou une recommandation d'achat ou de vente de titres financiers.
+La valeur intrinsèque est un outil d'analyse permettant d'évaluer la décote ou la prime d'un titre par rapport à ses fondamentaux économiques. Elle ne constitue pas une prédiction de cours ni une garantie de performance.

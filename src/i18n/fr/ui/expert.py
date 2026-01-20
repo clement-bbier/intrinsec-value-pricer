@@ -43,9 +43,26 @@ class ExpertTerminalTexts:
     SEC_4_TERMINAL = "#### 4. Valeur de continuation (Sortie)"
     SEC_5_TERMINAL = "#### 5. Valeur terminale"
     SEC_5_BRIDGE = "#### 5. Ajustements de structure (Equity Bridge)"
+    SEC_5_SBC = "#### 5.5. Dilution SBC (Stock-Based Compensation)"
     SEC_6_MC = "#### 6. Simulation Probabiliste (Incertitude)"
     SEC_7_PEERS = "#### 7. Cohorte de Comparables (Triangulation)"
     SEC_8_SCENARIOS = "#### 8. Analyse de Scenarios Deterministes (Bull/Base/Bear)"
+
+    # Labels pour Equity Bridge
+    BRIDGE_TITLE = "#### Equity Bridge"
+    BRIDGE_SUBTITLE = "Passage de la Valeur d'Entreprise à la Valeur par Action"
+    BRIDGE_COMPONENTS = "**Composantes de Structure**"
+    BRIDGE_ADJUSTMENTS = "**Ajustements**"
+
+    # Labels pour Monte Carlo
+    MC_VOLATILITIES = "**Calibration des volatilités (écarts-types)**"
+
+    # Labels pour Peers
+    PEERS_SELECTED = "*Peers sélectionnés : {peers}*"
+
+    # Labels pour SBC
+    SBC_DILUTION_LABEL = "Dilution Annuelle SBC"
+    SBC_WARNING = "**Impact sur la valorisation** : Une dilution de {rate:.1%} réduit la valeur par action de {impact:.1%} sur l'horizon de projection."
 
     # ==========================================================================
     # LABELS DES INPUTS

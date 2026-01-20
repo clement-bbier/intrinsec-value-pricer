@@ -112,6 +112,7 @@ class ExpertTerminalBase(ABC):
     SHOW_SCENARIOS: bool = True
     SHOW_SOTP: bool = False
     SHOW_PEER_TRIANGULATION: bool = True
+    SHOW_SBC_SECTION: bool = True
 
     # Formules LaTeX par défaut (peuvent être surchargées)
     TERMINAL_VALUE_FORMULA: str = r"TV_n = f(FCF_n, g_n, WACC)"
@@ -200,6 +201,14 @@ class ExpertTerminalBase(ABC):
             self._collected_data.update(bridge_data or {})
 
         # ══════════════════════════════════════════════════════════════════
+        # SECTION 5.5 : SBC DILUTION (Stock-Based Compensation)
+        # Ajustement pour la dilution des actionnaires historiques
+        # ══════════════════════════════════════════════════════════════════
+        if self.SHOW_SBC_SECTION:
+            sbc_data = self._render_sbc_dilution()
+            self._collected_data.update(sbc_data or {})
+
+        # ══════════════════════════════════════════════════════════════════
         # SECTION 6 : EXTENSIONS (Monte Carlo, Scénarios, SOTP)
         # Analyses complémentaires optionnelles
         # ══════════════════════════════════════════════════════════════════
@@ -268,6 +277,23 @@ class ExpertTerminalBase(ABC):
         """
         from app.ui.expert.terminals.shared_widgets import widget_equity_bridge
         return widget_equity_bridge(self.BRIDGE_FORMULA, self.MODE)
+
+    def _render_sbc_dilution(self) -> Dict[str, Any]:
+        """
+        Section : Dilution SBC (Stock-Based Compensation).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Taux de dilution annuel SBC.
+        """
+        from app.ui.expert.terminals.shared_widgets import widget_sbc_dilution
+
+        # Valeur par défaut du mode Auto (calculée automatiquement)
+        default_sbc = self._collected_data.get("auto_sbc_rate")
+
+        dilution_rate = widget_sbc_dilution(default_val=default_sbc)
+        return {"annual_dilution_rate": dilution_rate}
 
     def _render_optional_features(self) -> None:
         """

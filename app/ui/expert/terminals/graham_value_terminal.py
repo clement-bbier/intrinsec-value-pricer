@@ -55,6 +55,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
     SHOW_DISCOUNT_SECTION = False  # Pas de WACC/Ke explicite
     SHOW_TERMINAL_SECTION = False  # Pas de TV
     SHOW_BRIDGE_SECTION = False    # Valorise directement l'action
+    SHOW_SBC_SECTION = False       # Statique, pas de flux explicite
     SHOW_MONTE_CARLO = False       # Pas adapté
     SHOW_SCENARIOS = True          # On peut tester différents g
     SHOW_PEER_TRIANGULATION = True
