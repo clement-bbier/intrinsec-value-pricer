@@ -1,7 +1,8 @@
 """
-core/computation/statistics.py
+Outils statistiques pour les simulations Monte Carlo.
 
-OUTILS STATISTIQUES — EXTENSION MONTE CARLO
+Ce module fournit les fonctions de génération de tirages aléatoires
+utilisées dans les analyses de sensibilité probabilistes.
 """
 
 from __future__ import annotations

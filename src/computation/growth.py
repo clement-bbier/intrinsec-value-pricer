@@ -1,8 +1,9 @@
 """
-core/computation/growth.py
-MOTEUR DE PROJECTION DES FLUX — VERSION V4.0 (Sprint 2 : Pipeline Unifié)
-Rôle : Calcul des trajectoires de croissance multi-phases avec support Glass Box.
-Architecture : SOLID Projectors (Simple & Margin Convergence).
+Projection des flux de trésorerie avec trajectoires de croissance.
+
+Ce module gère les projections de flux selon différentes stratégies :
+croissance simple, convergence de marges, avec support complet
+de traçabilité Glass Box.
 """
 
 from __future__ import annotations

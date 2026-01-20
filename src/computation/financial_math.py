@@ -1,21 +1,9 @@
 """
-src/computation/financial_math.py
+Calculs mathématiques financiers atomiques.
 
-MOTEUR MATHÉMATIQUE FINANCIER — VERSION V12.0 (Institutional Grade)
-
-Sprint 4 : Finalisation Triangulation & Localisation Macro
-Rôle : Calculs financiers atomiques, WACC, Ke et moteur de synthèse hybride.
-Sources : Damodaran (Investment Valuation), McKinsey (Valuation).
-
-Pattern : Pure Functions (Stateless)
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Point critique : erreur de formule = valorisation incorrecte
-- Toute modification doit être validée contre le Golden Dataset
-
-DEPENDANCES CRITIQUES:
-- Aucune dépendance externe (mathématiques pures)
+Ce module implémente les formules financières fondamentales utilisées
+dans les valorisations : WACC, coûts du capital, valeurs terminales,
+actualisation et ajustements de dilution.
 """
 
 from __future__ import annotations
@@ -62,24 +50,99 @@ def calculate_discount_factors(rate: float, years: int) -> List[float]:
     return [1.0 / ((1.0 + rate) ** t) for t in range(1, years + 1)]
 
 def calculate_npv(flows: List[float], rate: float) -> float:
-    """Valeur Actuelle Nette (NPV) d'une série de flux."""
+    r"""Valeur Actuelle Nette (NPV) d'une série de flux.
+
+    Formule : $NPV = \sum_{t=1}^{n} \frac{CF_t}{(1 + r)^t}$
+
+    Parameters
+    ----------
+    flows : List[float]
+        Flux de trésorerie à actualiser (CF₁, CF₂, ..., CFₙ).
+    rate : float
+        Taux d'actualisation r.
+
+    Returns
+    -------
+    float
+        Valeur actuelle nette des flux.
+    """
     factors = calculate_discount_factors(rate, len(flows))
     return sum(f * d for f, d in zip(flows, factors))
 
 def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
-    """Modèle de croissance perpétuelle (Gordon Growth)."""
+    """Modèle de croissance perpétuelle (Gordon Growth).
+
+    Formule : $TV = \frac{CF_n \times (1 + g)}{r - g}$
+
+    Où :
+    - $CF_n$ : dernier flux de trésorerie projeté
+    - $g$ : taux de croissance perpétuelle
+    - $r$ : taux d'actualisation
+
+    Parameters
+    ----------
+    final_flow : float
+        Dernier flux de trésorerie projeté.
+    rate : float
+        Taux d'actualisation.
+    g_perp : float
+        Taux de croissance perpétuelle.
+
+    Returns
+    -------
+    float
+        Valeur terminale actualisée.
+    """
     if rate <= g_perp:
         raise CalculationError(CalculationErrors.CONVERGENCE_IMPOSSIBLE.format(rate=rate, g=g_perp))
     return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
 
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
-    """Modèle de sortie par multiple (EBITDA ou Revenus)."""
+    """Modèle de sortie par multiple (EBITDA ou Revenus).
+
+    Formule : $TV = Metric_n \times Multiple$
+
+    Où :
+    - $Metric_n$ : dernière valeur de la métrique (EBITDA, revenus, etc.)
+    - $Multiple$ : multiple de sortie appliqué
+
+    Parameters
+    ----------
+    final_metric : float
+        Dernière valeur de la métrique.
+    multiple : float
+        Multiple de valorisation appliqué.
+
+    Returns
+    -------
+    float
+        Valeur terminale basée sur le multiple.
+    """
     if multiple < 0:
         raise CalculationError(CalculationErrors.NEGATIVE_EXIT_MULTIPLE)
     return final_metric * multiple
 
 def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> float:
-    """Valeur terminale Equity : Applique un multiple P/E au résultat net terminal."""
+    """Valeur terminale Equity : Applique un multiple P/E au résultat net terminal.
+
+    Formule : $TV = NI_n \times P/E$
+
+    Où :
+    - $NI_n$ : dernier résultat net projeté
+    - $P/E$ : ratio cours/bénéfice appliqué
+
+    Parameters
+    ----------
+    final_net_income : float
+        Dernier résultat net projeté.
+    pe_multiple : float
+        Multiple P/E appliqué.
+
+    Returns
+    -------
+    float
+        Valeur terminale basée sur le ratio P/E.
+    """
     if pe_multiple <= 0:
         raise CalculationError(CalculationErrors.NEGATIVE_PE_RATIO)
     return final_net_income * pe_multiple
@@ -89,8 +152,9 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
 # ==============================================================================
 
 def calculate_historical_share_growth(shares_series: List[float]) -> float:
-    """
-    Calcule le taux de croissance annuel moyen (CAGR) du nombre d'actions.
+    r"""Calcule le taux de croissance annuel moyen (CAGR) du nombre d'actions.
+
+    Formule : $CAGR = \left( \frac{Shares_{final}}{Shares_{initial}} \right)^{\frac{1}{n}} - 1$
 
     Cette métrique est cruciale en mode 'Auto' pour estimer la dilution future
     basée sur le comportement historique de l'entreprise (Stock-Based Compensation).
@@ -125,8 +189,13 @@ def calculate_historical_share_growth(shares_series: List[float]) -> float:
 
 
 def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float:
-    """
-    Calcule le facteur de dilution cumulé (effet composé) sur l'horizon.
+    """Calcule le facteur de dilution cumulé (effet composé) sur l'horizon.
+
+    Formule : $Factor = (1 + d)^t$
+
+    Où :
+    - $d$ : taux de dilution annuel
+    - $t$ : nombre d'années
 
     Parameters
     ----------
@@ -168,8 +237,13 @@ def compute_diluted_shares(current_shares: float, annual_rate: Optional[float], 
 
 
 def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
-    """
-    Applique le facteur de dilution au prix par action final.
+    """Applique le facteur de dilution au prix par action final.
+
+    Formule : $Price_{diluted} = \frac{Price_{initial}}{Factor}$
+
+    Où :
+    - $Price_{initial}$ : valeur intrinsèque non diluée
+    - $Factor$ : facteur de dilution cumulé
 
     Parameters
     ----------
@@ -181,7 +255,7 @@ def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
     Returns
     -------
     float
-        Prix par action ajusté.
+        Prix par action ajusté pour la dilution.
     """
     if dilution_factor <= 1.0:
         return price
@@ -241,7 +315,29 @@ def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float], interest_
     return rf + 0.1900
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """Calcul centralisé du WACC (Firm Value Approach)."""
+    """Calcul centralisé du WACC (Firm Value Approach).
+
+    Formule : $WACC = w_e \times k_e + w_d \times k_d \times (1 - T)$
+
+    Où :
+    - $w_e$ : poids des fonds propres dans le capital
+    - $k_e$ : coût des fonds propres (CAPM)
+    - $w_d$ : poids de la dette dans le capital
+    - $k_d$ : coût de la dette après impôts
+    - $T$ : taux d'imposition effectif
+
+    Parameters
+    ----------
+    financials : CompanyFinancials
+        Données financières de l'entreprise.
+    params : DCFParameters
+        Paramètres de calcul DCF.
+
+    Returns
+    -------
+    WACCBreakdown
+        Décomposition détaillée du WACC avec tous les composants.
+    """
     r, g = params.rates, params.growth
     ke = calculate_cost_of_equity(financials, params)
 
@@ -292,11 +388,55 @@ def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: 
     return ni + adjustments + net_borrowing
 
 def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borrowing: float) -> float:
-    """Formule classique du FCFE dérivée du FCFF."""
+    """Formule classique du FCFE dérivée du FCFF.
+
+    Formule : $FCFE = FCFF - Interest \times (1 - T) + Net Borrowing$
+
+    Où :
+    - $FCFF$ : Free Cash Flow to Firm
+    - $Interest$ : charges d'intérêts
+    - $T$ : taux d'imposition
+    - $Net Borrowing$ : variation nette de l'endettement
+
+    Parameters
+    ----------
+    fcff : float
+        Free Cash Flow to Firm.
+    interest : float
+        Charges d'intérêts.
+    tax_rate : float
+        Taux d'imposition effectif.
+    net_borrowing : float
+        Variation nette de l'endettement.
+
+    Returns
+    -------
+    float
+        Free Cash Flow to Equity.
+    """
     return fcff - (interest * (1.0 - tax_rate)) + net_borrowing
 
 def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
-    """$g = ROE \times (1 - Payout)$"""
+    """Calcule le taux de croissance soutenable selon la formule de Gordon.
+
+    Formule : $g = ROE \times (1 - Payout Ratio)$
+
+    Où :
+    - $ROE$ : Return on Equity
+    - $Payout Ratio$ : ratio de distribution des dividendes
+
+    Parameters
+    ----------
+    roe : float
+        Return on Equity.
+    payout_ratio : float
+        Ratio de distribution des dividendes.
+
+    Returns
+    -------
+    float
+        Taux de croissance soutenable.
+    """
     return roe * (1.0 - (payout_ratio or 0.0))
 
 # ==============================================================================
@@ -304,7 +444,29 @@ def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
-    """Formule Révisée de Graham (1974)."""
+    """Formule Révisée de Graham (1974).
+
+    Formule : $Value = EPS \times (8.5 + 2 \times g) \times 4.4 / y$
+
+    Où :
+    - $EPS$ : bénéfice par action
+    - $g$ : taux de croissance annuel (%)
+    - $y$ : rendement des obligations AAA (%)
+
+    Parameters
+    ----------
+    eps : float
+        Bénéfice par action.
+    growth_rate : float
+        Taux de croissance annuel (décimal).
+    aaa_yield : float
+        Rendement des obligations AAA (décimal).
+
+    Returns
+    -------
+    float
+        Valeur intrinsèque selon Graham.
+    """
     y = aaa_yield if (aaa_yield and aaa_yield > 0) else TechnicalDefaults.DEFAULT_AAA_YIELD
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
