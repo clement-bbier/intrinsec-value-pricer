@@ -48,6 +48,7 @@ except ImportError:
     FPDF = None
 
 from src.domain.models.pitchbook import PitchbookData
+from src.utilities.formatting import format_smart_number
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +169,11 @@ class PitchbookPDFGenerator:
         self.pdf.set_y(60)
         
         # Tableau 2x2 des KPIs
+        currency = exec_data.get('currency', '')
         kpi_data = [
-            ("Valeur Intrinsèque", f"{exec_data.get('intrinsic_value', 0):,.2f} {exec_data.get('currency', '')}"),
-            ("Prix de Marché", f"{exec_data.get('market_price', 0):,.2f} {exec_data.get('currency', '')}"),
-            ("Potentiel", f"{exec_data.get('upside_pct', 0):+.1f}%"),
+            ("Valeur Intrinsèque", format_smart_number(exec_data.get('intrinsic_value', 0), currency)),
+            ("Prix de Marché", format_smart_number(exec_data.get('market_price', 0), currency)),
+            ("Potentiel", format_smart_number(exec_data.get('upside_pct', 0), "", True)),
             ("Recommandation", exec_data.get('recommendation', 'N/A')),
         ]
         
@@ -199,9 +201,9 @@ class PitchbookPDFGenerator:
         
         key_metrics = exec_data.get('key_metrics', {})
         assumptions = [
-            ("WACC", f"{key_metrics.get('wacc', 0) * 100:.2f}%" if key_metrics.get('wacc') else "N/A"),
-            ("Croissance perpétuelle", f"{key_metrics.get('perpetual_growth', 0) * 100:.2f}%" if key_metrics.get('perpetual_growth') else "N/A"),
-            ("Valeur d'Entreprise", f"{key_metrics.get('enterprise_value', 0) / 1e6:,.0f}M" if key_metrics.get('enterprise_value') else "N/A"),
+            ("WACC", format_smart_number(key_metrics.get('wacc', 0), "", True) if key_metrics.get('wacc') else "N/A"),
+            ("Croissance perpétuelle", format_smart_number(key_metrics.get('perpetual_growth', 0), "", True) if key_metrics.get('perpetual_growth') else "N/A"),
+            ("Valeur d'Entreprise", format_smart_number(key_metrics.get('enterprise_value', 0), "") if key_metrics.get('enterprise_value') else "N/A"),
         ]
         
         self._render_assumptions_table(assumptions)
@@ -227,10 +229,10 @@ class PitchbookPDFGenerator:
         
         dcf = calc_data.get('dcf_components', {})
         components = [
-            ("Valeur Actualisée des Flux", f"{dcf.get('pv_explicit_flows', 0) / 1e6:,.0f}M"),
-            ("Valeur Terminale", f"{dcf.get('terminal_value', 0) / 1e6:,.0f}M"),
-            ("Valeur d'Entreprise", f"{dcf.get('enterprise_value', 0) / 1e6:,.0f}M"),
-            ("Valeur des Capitaux Propres", f"{dcf.get('equity_value', 0) / 1e6:,.0f}M"),
+            ("Valeur Actualisée des Flux", format_smart_number(dcf.get('pv_explicit_flows', 0), "")),
+            ("Valeur Terminale", format_smart_number(dcf.get('terminal_value', 0), "")),
+            ("Valeur d'Entreprise", format_smart_number(dcf.get('enterprise_value', 0), "")),
+            ("Valeur des Capitaux Propres", format_smart_number(dcf.get('equity_value', 0), "")),
         ]
         
         self._render_waterfall_text(components)
@@ -241,11 +243,11 @@ class PitchbookPDFGenerator:
         
         assumptions = calc_data.get('key_assumptions', {})
         params = [
-            ("Taux sans risque (Rf)", f"{assumptions.get('risk_free_rate', 0) * 100:.2f}%" if assumptions.get('risk_free_rate') else "N/A"),
-            ("Prime de risque marché", f"{assumptions.get('market_risk_premium', 0) * 100:.2f}%" if assumptions.get('market_risk_premium') else "N/A"),
-            ("Bêta", f"{assumptions.get('beta', 0):.2f}" if assumptions.get('beta') else "N/A"),
-            ("Coût de la dette", f"{assumptions.get('cost_of_debt', 0) * 100:.2f}%" if assumptions.get('cost_of_debt') else "N/A"),
-            ("Taux d'imposition", f"{assumptions.get('tax_rate', 0) * 100:.0f}%" if assumptions.get('tax_rate') else "N/A"),
+            ("Taux sans risque (Rf)", format_smart_number(assumptions.get('risk_free_rate', 0), "", True) if assumptions.get('risk_free_rate') else "N/A"),
+            ("Prime de risque marché", format_smart_number(assumptions.get('market_risk_premium', 0), "", True) if assumptions.get('market_risk_premium') else "N/A"),
+            ("Bêta", format_smart_number(assumptions.get('beta', 0), "") if assumptions.get('beta') else "N/A"),
+            ("Coût de la dette", format_smart_number(assumptions.get('cost_of_debt', 0), "", True) if assumptions.get('cost_of_debt') else "N/A"),
+            ("Taux d'imposition", format_smart_number(assumptions.get('tax_rate', 0), "", True) if assumptions.get('tax_rate') else "N/A"),
         ]
         
         self._render_assumptions_table(params)
@@ -272,11 +274,11 @@ class PitchbookPDFGenerator:
             self._render_section_title("DISTRIBUTION MONTE CARLO")
             
             mc_info = [
-                ("Nombre de simulations", f"{mc_stats.get('count', 0):,}"),
-                ("Médiane (P50)", f"{mc_stats.get('median', 0):,.2f}"),
-                ("Percentile 10", f"{mc_stats.get('p10', 0):,.2f}"),
-                ("Percentile 90", f"{mc_stats.get('p90', 0):,.2f}"),
-                ("Écart-type", f"{mc_stats.get('std', 0):,.2f}"),
+                ("Nombre de simulations", format_smart_number(mc_stats.get('count', 0), "")),
+                ("Médiane (P50)", format_smart_number(mc_stats.get('median', 0), "")),
+                ("Percentile 10", format_smart_number(mc_stats.get('p10', 0), "")),
+                ("Percentile 90", format_smart_number(mc_stats.get('p90', 0), "")),
+                ("Écart-type", format_smart_number(mc_stats.get('std', 0), "")),
             ]
             
             self._render_assumptions_table(mc_info)
@@ -288,7 +290,7 @@ class PitchbookPDFGenerator:
             self._render_section_title("ANALYSE DE SCÉNARIOS")
             
             scenario_list = [
-                (label, f"{value:,.2f}")
+                (label, format_smart_number(value, ""))
                 for label, value in scenarios.items()
             ]
             

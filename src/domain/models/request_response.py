@@ -100,6 +100,11 @@ class ValuationResult(BaseModel, ABC):
         """Retourne le ticker du résultat ou 'UNKNOWN' si non disponible."""
         return self.request.ticker if self.request else "UNKNOWN"
 
+    @property
+    def mode(self) -> Optional[ValuationMode]:
+        """Retourne le mode de valorisation ou None si non disponible."""
+        return self.request.mode if self.request else None
+
     @abstractmethod
     def build_output_contract(self) -> ValuationOutputContract:
         raise NotImplementedError

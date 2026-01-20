@@ -380,6 +380,36 @@ class TechnicalDefaults:
 
 
 # ==============================================================================
+# 12. CONFIGURATION DE RAPPORT
+# ==============================================================================
+
+@dataclass(frozen=True)
+class ReportingConfig:
+    """Configuration pour la génération de rapports PDF."""
+
+    # Dimensions A4 (en points pour PDF)
+    PAGE_WIDTH_A4: float = 595.28  # Largeur A4 en points (210mm)
+    PAGE_HEIGHT_A4: float = 841.89  # Hauteur A4 en points (297mm)
+
+    # Marges par défaut (en points)
+    MARGIN_LEFT: float = 50.0
+    MARGIN_RIGHT: float = 50.0
+    MARGIN_TOP: float = 50.0
+    MARGIN_BOTTOM: float = 50.0
+
+    # Largeur et hauteur utilisables (après marges)
+    @property
+    def usable_width(self) -> float:
+        """Largeur utilisable après marges."""
+        return self.PAGE_WIDTH_A4 - self.MARGIN_LEFT - self.MARGIN_RIGHT
+
+    @property
+    def usable_height(self) -> float:
+        """Hauteur utilisable après marges."""
+        return self.PAGE_HEIGHT_A4 - self.MARGIN_TOP - self.MARGIN_BOTTOM
+
+
+# ==============================================================================
 # 5. AUDIT - PONDÉRATIONS PAR MODE
 # ==============================================================================
 
@@ -428,7 +458,6 @@ class SystemDefaults:
     
     # Taux par défaut (fallback)
     DEFAULT_RISK_FREE_RATE: float = 0.04  # 4%
-    DEFAULT_MARKET_RISK_PREMIUM: float = 0.05  # 5%
     DEFAULT_TAX_RATE: float = 0.25  # 25%
     
     # Croissance terminale par défaut
@@ -492,4 +521,5 @@ __all__ = [
     "UIWidgetDefaults",
     "GrowthCalculationDefaults",
     "TechnicalDefaults",
+    "ReportingConfig",
 ]

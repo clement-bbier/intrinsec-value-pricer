@@ -156,6 +156,85 @@ class KPITexts:
     LABEL_EV_REVENUE = "Multiple EV/Revenue"
 
 
+class PDFTexts:
+    """Textes pour la génération du Pitchbook PDF."""
+
+    # Titres des pages
+    PAGE_EXECUTIVE_SUMMARY = "RAPPORT DE VALORISATION"
+    PAGE_CALCULATION_PROOF = "PREUVE DE CALCUL"
+    PAGE_RISK_ANALYSIS = "ANALYSE DE RISQUE"
+
+    # Sections Executive Summary
+    SECTION_VALORISATION = "VALORISATION"
+    SECTION_AUDIT_SCORE = "SCORE D'AUDIT"
+    SECTION_KEY_ASSUMPTIONS = "HYPOTHÈSES CLÉS"
+
+    # Labels KPIs
+    LABEL_INTRINSIC_VALUE = "Valeur Intrinsèque"
+    LABEL_MARKET_PRICE = "Prix de Marché"
+    LABEL_UPSIDE = "Potentiel"
+    LABEL_RECOMMENDATION = "Recommandation"
+
+    # Labels métriques clés
+    LABEL_WACC = "WACC (Coût du Capital)"
+    LABEL_COST_OF_EQUITY = "Coût des Fonds Propres (Ke)"
+    LABEL_PERPETUAL_GROWTH = "Croissance Perpétuelle (gn)"
+    LABEL_ENTERPRISE_VALUE = "Valeur d'Entreprise"
+    LABEL_TERMINAL_VALUE = "Valeur Terminale"
+
+    # Sections Calculation Proof
+    SECTION_DCF_COMPONENTS = "DÉCOMPOSITION DE LA VALEUR"
+    SECTION_PARAMETERS = "PARAMÈTRES D'ENTRÉE"
+    SECTION_GLASS_BOX = "TRAÇABILITÉ GLASS BOX"
+
+    # Labels DCF Components
+    LABEL_PV_EXPLICIT_FLOWS = "Valeur Actualisée des Flux Explicites"
+    LABEL_TERMINAL_VALUE_PV = "Valeur Terminale (Actualisée)"
+    LABEL_ENTERPRISE_VALUE_CALC = "Valeur d'Entreprise"
+    LABEL_EQUITY_VALUE_CALC = "Valeur des Capitaux Propres"
+
+    # Labels paramètres
+    LABEL_RISK_FREE_RATE = "Taux sans Risque (Rf)"
+    LABEL_MARKET_RISK_PREMIUM = "Prime de Risque Marché (MRP)"
+    LABEL_BETA = "Bêta (β)"
+    LABEL_COST_OF_DEBT = "Coût de la Dette (Kd)"
+    LABEL_TAX_RATE = "Taux d'Imposition (T)"
+    LABEL_GROWTH_RATE = "Taux de Croissance (g)"
+
+    # Sections Risk Analysis
+    SECTION_MONTE_CARLO = "DISTRIBUTION MONTE CARLO"
+    SECTION_SCENARIOS = "ANALYSE DE SCÉNARIOS"
+    SECTION_SENSITIVITY = "MATRICE DE SENSIBILITÉ"
+    SECTION_RISK_FACTORS = "FACTEURS DE RISQUE IDENTIFIÉS"
+
+    # Labels Monte Carlo
+    LABEL_SIMULATIONS_COUNT = "Nombre de Simulations"
+    LABEL_MEAN = "Moyenne"
+    LABEL_MEDIAN = "Médiane (P50)"
+    LABEL_STANDARD_DEVIATION = "Écart-Type"
+    LABEL_PERCENTILE_5 = "Percentile 5 (P5)"
+    LABEL_PERCENTILE_10 = "Percentile 10 (P10)"
+    LABEL_PERCENTILE_25 = "Percentile 25 (P25)"
+    LABEL_PERCENTILE_75 = "Percentile 75 (P75)"
+    LABEL_PERCENTILE_90 = "Percentile 90 (P90)"
+    LABEL_PERCENTILE_95 = "Percentile 95 (P95)"
+    LABEL_MINIMUM = "Minimum"
+    LABEL_MAXIMUM = "Maximum"
+    LABEL_SKEWNESS = "Asymétrie"
+    LABEL_KURTOSIS = "Kurtosis"
+
+    # Labels scénarios
+    LABEL_SCENARIO_BASE = "Scénario Central (Base)"
+    LABEL_SCENARIO_BULL = "Scénario Optimiste (Bull)"
+    LABEL_SCENARIO_BEAR = "Scénario Pessimiste (Bear)"
+
+    # Pieds de page
+    FOOTER_VALUATION_MODE = "Mode: {mode}"
+    FOOTER_DATA_SOURCE = "Données certifiées Yahoo Finance"
+    FOOTER_ANALYSIS_TYPE = "Analyse de sensibilité {cost_type}/Croissance"
+    FOOTER_GENERATED_BY = "Intrinsic Value Pricer | {date} | Version {version}"
+
+
 class AuditTexts:
     """Textes lies au rapport d'audit et a la simulation Monte Carlo."""
     

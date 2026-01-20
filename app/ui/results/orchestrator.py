@@ -86,7 +86,7 @@ def _compute_result_hash(result: ValuationResult) -> str:
         result.ticker,
         result.intrinsic_value_per_share,
         result.market_price,
-        result.mode.value,
+        result.mode.value if result.mode else "UNKNOWN_MODE",
         len(result.simulation_results) if result.simulation_results else 0,
     )
     hash_input = str(key_components).encode('utf-8')

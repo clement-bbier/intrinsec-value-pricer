@@ -35,7 +35,10 @@ from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel
 
-from src.domain.models.request_response import ValuationResult
+from src.domain.models.request_response import (
+    ValuationResult, DCFValuationResult, RIMValuationResult,
+    EquityDCFValuationResult, GrahamValuationResult
+)
 from src.domain.models.glass_box import CalculationStep
 from src.domain.models.audit import AuditReport
 from src.domain.models.enums import ValuationMode
@@ -169,6 +172,48 @@ class PitchbookData(BaseModel):
         arbitrary_types_allowed = True
     
     @classmethod
+    def _extract_cost_of_capital(cls, result: ValuationResult) -> Optional[float]:
+        """Extrait le coût du capital selon le type de modèle."""
+        if isinstance(result, DCFValuationResult):
+            return result.wacc
+        elif isinstance(result, (RIMValuationResult, EquityDCFValuationResult)):
+            return result.cost_of_equity
+        return None
+
+    @classmethod
+    def _extract_terminal_value(cls, result: ValuationResult) -> Optional[float]:
+        """Extrait la valeur terminale selon le type de modèle."""
+        if isinstance(result, DCFValuationResult):
+            return result.discounted_terminal_value
+        elif isinstance(result, EquityDCFValuationResult):
+            return result.discounted_terminal_value
+        elif isinstance(result, RIMValuationResult):
+            return result.total_equity_value * 0.5  # Approximation pour RIM
+        elif isinstance(result, GrahamValuationResult):
+            return result.eps_used * 8.5  # Graham formula
+        return None
+
+    @classmethod
+    def _extract_calculation_steps(cls, result: ValuationResult) -> List[Dict[str, Any]]:
+        """Extrait les étapes de calcul de la Glass Box."""
+        if result.calculation_trace:
+            return [step.model_dump() for step in result.calculation_trace]
+        return []
+
+    @classmethod
+    def _extract_audit_data(cls, result: ValuationResult) -> Dict[str, Any]:
+        """Extrait les données complètes du rapport d'audit."""
+        if not result.audit_report:
+            return {"global_score": 0, "grade": "F", "steps": []}
+
+        return {
+            "global_score": result.audit_report.global_score,
+            "grade": cls._compute_grade(result.audit_report.global_score),
+            "steps": [step.model_dump() for step in result.audit_report.steps],
+            "alerts": [step.label for step in result.audit_report.steps if not step.verdict]
+        }
+
+    @classmethod
     def from_valuation_result(
         cls,
         result: ValuationResult,
@@ -177,7 +222,7 @@ class PitchbookData(BaseModel):
     ) -> "PitchbookData":
         """
         Crée un PitchbookData depuis un ValuationResult.
-        
+
         Parameters
         ----------
         result : ValuationResult
@@ -186,7 +231,7 @@ class PitchbookData(BaseModel):
             Nom de l'entreprise.
         sector : str, optional
             Secteur d'activité.
-        
+
         Returns
         -------
         PitchbookData
@@ -195,11 +240,10 @@ class PitchbookData(BaseModel):
         # Calcul de la recommandation
         upside = ((result.intrinsic_value_per_share / result.market_price) - 1) * 100 if result.market_price > 0 else 0
         recommendation = cls._compute_recommendation(upside)
-        
-        # Grade d'audit
-        audit_score = result.audit_report.global_score if result.audit_report else 0
-        audit_grade = cls._compute_grade(audit_score)
-        
+
+        # Données d'audit complètes
+        audit_data = cls._extract_audit_data(result)
+
         # Executive Summary
         executive = {
             "ticker": result.ticker,
@@ -212,18 +256,19 @@ class PitchbookData(BaseModel):
             "market_price": result.market_price,
             "upside_pct": upside,
             "recommendation": recommendation,
-            "audit_score": audit_score,
-            "audit_grade": audit_grade,
+            "audit_score": audit_data["global_score"],
+            "audit_grade": audit_data["grade"],
             "key_metrics": {
-                "wacc": result.params.rates.wacc if result.params else None,
+                "cost_of_capital": cls._extract_cost_of_capital(result),
                 "perpetual_growth": result.params.growth.perpetual_growth_rate if result.params else None,
-                "enterprise_value": result.enterprise_value,
+                "enterprise_value": getattr(result, 'enterprise_value', 0),
+                "terminal_value": cls._extract_terminal_value(result),
             }
         }
         
         # Calculation Proof
         calculation = {
-            "steps": [step.model_dump() for step in (result.trace.steps if result.trace else [])],
+            "steps": cls._extract_calculation_steps(result),
             "key_assumptions": {
                 "risk_free_rate": result.params.rates.risk_free_rate if result.params else None,
                 "market_risk_premium": result.params.rates.market_risk_premium if result.params else None,
@@ -233,42 +278,56 @@ class PitchbookData(BaseModel):
             },
             "dcf_components": {
                 "pv_explicit_flows": getattr(result, 'pv_explicit_flows', 0),
-                "terminal_value": getattr(result, 'terminal_value', 0),
-                "enterprise_value": result.enterprise_value,
-                "equity_value": result.equity_value,
+                "terminal_value": cls._extract_terminal_value(result),
+                "enterprise_value": getattr(result, 'enterprise_value', 0),
+                "equity_value": getattr(result, 'equity_value', 0),
             }
         }
         
-        # Risk Analysis
+        # Risk Analysis - Statistiques Monte Carlo complètes
         mc_stats = None
         if result.simulation_results:
             import numpy as np
-            values = [v for v in result.simulation_results if v is not None]
-            if values:
+            values = [v for v in result.simulation_results if v is not None and isinstance(v, (int, float))]
+            if values and len(values) > 10:  # Minimum de données pour être significatif
                 mc_stats = {
                     "count": len(values),
                     "mean": float(np.mean(values)),
                     "median": float(np.median(values)),
-                    "p10": float(np.percentile(values, 10)),
-                    "p90": float(np.percentile(values, 90)),
                     "std": float(np.std(values)),
+                    "min": float(np.min(values)),
+                    "max": float(np.max(values)),
+                    "p5": float(np.percentile(values, 5)),
+                    "p10": float(np.percentile(values, 10)),
+                    "p25": float(np.percentile(values, 25)),
+                    "p75": float(np.percentile(values, 75)),
+                    "p90": float(np.percentile(values, 90)),
+                    "p95": float(np.percentile(values, 95)),
+                    "skewness": float(np.mean(((values - np.mean(values)) / np.std(values)) ** 3)),
+                    "kurtosis": float(np.mean(((values - np.mean(values)) / np.std(values)) ** 4) - 3),
                 }
-        
+
+        # Scénarios
         scenario_results = None
-        if result.scenario_synthesis:
+        if result.scenario_synthesis and result.scenario_synthesis.variants:
             scenario_results = {
                 variant.label: variant.intrinsic_value
                 for variant in result.scenario_synthesis.variants
             }
-        
+
+        # Coût du capital pour la sensibilité
+        cost_of_capital = cls._extract_cost_of_capital(result) or 0.08
+        perpetual_growth = result.params.growth.perpetual_growth_rate if result.params else 0.02
+
         risk = {
             "sensitivity_data": {
-                "base_wacc": result.params.rates.wacc if result.params else 0.08,
-                "base_growth": result.params.growth.perpetual_growth_rate if result.params else 0.02,
+                "base_cost_of_capital": cost_of_capital,
+                "base_growth": perpetual_growth,
             },
             "monte_carlo_stats": mc_stats,
             "scenario_results": scenario_results,
-            "risk_factors": cls._extract_risk_factors(result),
+            "audit_data": audit_data,  # Inclure les données d'audit complètes
+            "risk_factors": audit_data.get("alerts", [])[:8],  # Limiter à 8 facteurs max
         }
         
         return cls(
@@ -310,14 +369,3 @@ class PitchbookData(BaseModel):
         else:
             return "F"
     
-    @staticmethod
-    def _extract_risk_factors(result: ValuationResult) -> List[str]:
-        """Extrait les facteurs de risque depuis le rapport d'audit."""
-        factors = []
-        
-        if result.audit_report:
-            for step in result.audit_report.steps:
-                if not step.verdict:
-                    factors.append(step.label)
-        
-        return factors[:5]  # Max 5 facteurs
