@@ -60,6 +60,9 @@ from src.i18n import (
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)
 from src.valuation.registry import StrategyRegistry, get_display_names
 
+# IMPORT DE LA FACTORY POUR LA CORRECTION DU REGISTRE (Sprint 1.1)
+from app.ui.expert.factory import create_expert_terminal
+
 # ==============================================================================
 # CONFIGURATION & LOGGING
 # ==============================================================================
@@ -74,15 +77,13 @@ logger = logging.getLogger(__name__)
 # DT-008: Ces registres sont maintenant des facades vers le registre centralisé
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
-# Registre des terminaux expert (maintenu pour compatibilité)
-EXPERT_UI_REGISTRY = {
-    ValuationMode.FCFF_STANDARD: "render_expert_fcff_standard",
-    ValuationMode.FCFF_NORMALIZED: "render_expert_fcff_normalized",
-    ValuationMode.FCFF_GROWTH: "render_expert_fcff_growth",
-    ValuationMode.FCFE: "render_expert_fcfe",
-    ValuationMode.DDM: "render_expert_ddm",
-    ValuationMode.RIM: "render_expert_rim",
-    ValuationMode.GRAHAM: "render_expert_graham",
+def _expert_render_wrapper(mode: ValuationMode, ticker: str):
+    """Wrapper pour rendre le terminal expert via la factory (Correction Sprint 1.1)."""
+    return create_expert_terminal(mode, ticker).render()
+
+# Registre des terminaux expert (Correction DT-008/Sprint 1.1 : doit être un callable pour les tests)
+EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
+    mode: _expert_render_wrapper for mode in ValuationMode
 }
 
 

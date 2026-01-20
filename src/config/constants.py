@@ -468,6 +468,9 @@ class SystemDefaults:
     CACHE_TTL_SHORT: int = 3600  # 1 heure
     CACHE_TTL_LONG: int = 14400  # 4 heures
 
+    # Prime de risque marché par défaut
+    DEFAULT_MARKET_RISK_PREMIUM: float = 0.05  # 5%
+
 
 # ==============================================================================
 # 7. VALIDATION AU CHARGEMENT
