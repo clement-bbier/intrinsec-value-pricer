@@ -1,0 +1,1719 @@
+diff --git a/app/main.py b/app/main.py
+index 7751f8e..17b1719 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -185,7 +185,7 @@ def _render_sidebar_source() -> bool:
+         options=SidebarTexts.SOURCE_OPTIONS,
+     )
+     st.divider()
+-    return "Expert" in input_mode
++    return input_mode == SidebarTexts.SOURCE_OPTIONS[1]
+ 
+ 
+ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
+@@ -198,28 +198,9 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
+         value=_DEFAULT_PROJECTION_YEARS,
+     )
+     st.divider()
+-
+-    enable_mc = False
+-    mc_sims = _DEFAULT_MC_SIMULATIONS
+-
+-    if mode.supports_monte_carlo:
+-        st.header(SidebarTexts.SEC_5_RISK)
+-        enable_mc = st.toggle(SidebarTexts.MC_TOGGLE_LABEL, value=False)
+-        if enable_mc:
+-            mc_sims = st.number_input(
+-                SidebarTexts.MC_SIMS_LABEL,
+-                min_value=_MIN_MC_SIMULATIONS,
+-                max_value=_MAX_MC_SIMULATIONS,
+-                value=_DEFAULT_MC_SIMULATIONS,
+-                step=_MC_SIMULATIONS_STEP,
+-            )
+-        st.divider()
+-
+-    return {
+-        "years": years,
+-        "enable_mc": enable_mc,
+-        "mc_sims": mc_sims,
+-    }
++    return {"years": years,
++        "enable_mc": False,
++        "mc_sims": _DEFAULT_MC_SIMULATIONS}
+ 
+ 
+ def _render_sidebar_footer() -> None:
+@@ -313,18 +294,34 @@ def _render_onboarding_guide() -> None:
+     d3.info(OnboardingTexts.DIAG_INFO)
+ 
+ 
+-def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
+-    """Gère l'affichage et le lancement en mode Expert."""
++def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
++    """
++    Gère l'affichage du terminal expert et le lancement de la valorisation.
++
++    Parameters
++    ----------
++    ticker : str
++        Symbole boursier de l'entreprise.
++    mode : ValuationMode
++        Méthodologie de valorisation sélectionnée.
++    external_launch : bool, optional
++        Indique si le calcul est déclenché par un composant externe (ex: Sidebar), par défaut False.
++    """
+     if not ticker:
+         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
+         return
+ 
+-    # : Utilisation de la factory pour les terminaux isolés
+     from app.ui.expert.factory import create_expert_terminal
+     terminal = create_expert_terminal(mode, ticker)
+-    request = terminal.render()
+-    if request:
+-        _set_active_request(request)
++
++    # Toujours afficher le formulaire (widgets persistent dans st.session_state)
++    terminal.render()
++
++    # Si déclenchement externe (bouton sidebar), extraire et lancer le calcul
++    if external_launch:
++        request = terminal.build_request()
++        if request:
++            _set_active_request(request)
+ 
+ 
+ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
+@@ -388,11 +385,12 @@ def main() -> None:
+ 
+         if not is_expert:
+             auto_options = _render_sidebar_auto_options(selected_mode)
+-            launch_analysis = st.button(
+-                CommonTexts.RUN_BUTTON,
+-                type="primary",
+-                width='stretch',
+-            )
++
++        launch_analysis = st.button(
++            CommonTexts.RUN_BUTTON,
++            type="primary",
++            use_container_width=True,
++        )
+ 
+         _render_sidebar_footer()
+ 
+@@ -403,7 +401,7 @@ def main() -> None:
+         run_workflow_and_display(st.session_state.active_request)
+ 
+     elif is_expert:
+-        _handle_expert_mode(ticker, selected_mode)
++        _handle_expert_mode(ticker, selected_mode, external_launch=launch_analysis)
+ 
+     elif launch_analysis:
+         _handle_auto_launch(ticker, selected_mode, auto_options)
+diff --git a/app/ui/base/expert_terminal.py b/app/ui/base/expert_terminal.py
+index 7360102..0735531 100644
+--- a/app/ui/base/expert_terminal.py
++++ b/app/ui/base/expert_terminal.py
+@@ -42,6 +42,7 @@ from src.models import (
+     ValuationMode,
+     ValuationRequest,
+     ScenarioParameters,
++    TerminalValueMethod,
+ )
+ from src.i18n import ExpertTerminalTexts
+ 
+@@ -113,6 +114,7 @@ class ExpertTerminalBase(ABC):
+     SHOW_SOTP: bool = False
+     SHOW_PEER_TRIANGULATION: bool = True
+     SHOW_SBC_SECTION: bool = True
++    SHOW_SUBMIT_BUTTON: bool = False
+ 
+     # Formules LaTeX par défaut (peuvent être surchargées)
+     TERMINAL_VALUE_FORMULA: str = r"TV_n = f(FCF_n, g_n, WACC)"
+@@ -215,8 +217,8 @@ class ExpertTerminalBase(ABC):
+         self._render_optional_features()
+ 
+         # ══════════════════════════════════════════════════════════════════
+-        # SECTION 7 : SUBMIT
+-        # Lancement de la valorisation
++        # SECTION 7 : SUBMIT (conditionnel)
++        # Lancement de la valorisation (seulement si bouton activé)
+         # ══════════════════════════════════════════════════════════════════
+         return self._render_submit()
+ 
+@@ -332,13 +334,20 @@ class ExpertTerminalBase(ABC):
+ 
+     def _render_submit(self) -> Optional[ValuationRequest]:
+         """
+-        Bouton de soumission.
++        Bouton de soumission (conditionnel).
++
++        Le bouton n'est affiché que si SHOW_SUBMIT_BUTTON est True.
++        Dans le nouveau mode centralisé, les terminaux n'affichent plus
++        leur bouton interne.
+ 
+         Returns
+         -------
+         Optional[ValuationRequest]
+             La requête si le bouton est cliqué, None sinon.
+         """
++        if not self.SHOW_SUBMIT_BUTTON:
++            return None
++
+         st.divider()
+ 
+         button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
+@@ -428,3 +437,262 @@ class ExpertTerminalBase(ABC):
+                 "enable_peer_multiples", True
+             ),
+         }
++
++    def build_request(self) -> Optional[ValuationRequest]:
++        """
++        Construit une ValuationRequest en lisant depuis st.session_state.
++
++        Cette méthode ne doit appeler aucun widget Streamlit (pas de st.*).
++        Elle lit directement les valeurs depuis st.session_state en utilisant
++        les clés définies lors du rendu de l'UI.
++
++        Returns
++        -------
++        Optional[ValuationRequest]
++            La requête de valorisation si les données sont valides, None sinon.
++
++        Notes
++        -----
++        Cette méthode est le pendant extractif de render() : elle lit ce que
++        render() a affiché et stocké dans st.session_state.
++        """
++        from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
++
++        # Collecte des données depuis st.session_state avec les clés définies
++        collected_data = {}
++
++        # Clés générales (communes à tous les terminaux)
++        key_prefix = self.MODE.name
++
++        # 1. Projection years
++        projection_key = f"{key_prefix}_years" if hasattr(self, '_collected_data') and "projection_years" in self._collected_data else "projection_years"
++        if projection_key in st.session_state:
++            collected_data["projection_years"] = st.session_state[projection_key]
++
++        # 2. Coût du capital (toujours présent)
++        collected_data.update(self._extract_discount_data(key_prefix))
++
++        # 3. Valeur terminale (si activée)
++        if self.SHOW_TERMINAL_SECTION:
++            collected_data.update(self._extract_terminal_data(key_prefix))
++
++        # 4. Equity Bridge (si activé)
++        if self.SHOW_BRIDGE_SECTION:
++            collected_data.update(self._extract_bridge_data(key_prefix))
++
++        # 5. SBC Dilution (si activée)
++        if self.SHOW_SBC_SECTION:
++            sbc_key = f"{key_prefix}_sbc_dilution"
++            if sbc_key in st.session_state:
++                collected_data["annual_dilution_rate"] = st.session_state[sbc_key]
++
++        # 6. Monte Carlo (si activé)
++        if self.SHOW_MONTE_CARLO:
++            collected_data.update(self._extract_monte_carlo_data(key_prefix))
++
++        # 7. Peer Triangulation (si activée)
++        if self.SHOW_PEER_TRIANGULATION:
++            collected_data.update(self._extract_peer_triangulation_data())
++
++        # 8. Scénarios (si activés)
++        if self.SHOW_SCENARIOS:
++            try:
++                self._scenarios = self._extract_scenarios_data(key_prefix)
++            except Exception as e:
++                logger.warning(f"Erreur lors de l'extraction des scénarios: {e}")
++                self._scenarios = None
++
++        # 9. Données spécifiques au modèle (appel aux sous-classes)
++        model_data = self._extract_model_inputs_data(key_prefix)
++        collected_data.update(model_data)
++
++        # Validation basique : au moins quelques champs remplis
++        if not any(v is not None for v in collected_data.values() if v is not None):
++            return None
++
++        # Construction des paramètres DCF
++        params = build_dcf_parameters(collected_data)
++
++        # Injection des scénarios si configurés
++        if self._scenarios is not None:
++            params.scenarios = self._scenarios
++
++        # SOTP si activé (traitement spécial car modifie params in-place)
++        if self.SHOW_SOTP and hasattr(params, 'sotp'):
++            # Pour SOTP, on doit créer un objet temporaire et le modifier
++            # Cette partie peut nécessiter une adaptation selon l'implémentation actuelle
++            pass
++
++        projection_years = collected_data.get("projection_years", 5)
++
++        return ValuationRequest(
++            ticker=self.ticker,
++            mode=self.MODE,
++            projection_years=projection_years,
++            input_source=InputSource.MANUAL,
++            manual_params=params,
++            options=self._build_options(),
++        )
++
++    def _extract_discount_data(self, key_prefix: str) -> Dict[str, Any]:
++        """Extrait les données du coût du capital depuis st.session_state."""
++        data = {}
++        base_keys = [f"{key_prefix}_rf", f"{key_prefix}_beta", f"{key_prefix}_mrp", f"{key_prefix}_price"]
++
++        # Clés de base (toujours présentes)
++        for key in base_keys:
++            if key in st.session_state and st.session_state[key] is not None:
++                if "_rf" in key:
++                    data["risk_free_rate"] = st.session_state[key]
++                elif "_beta" in key:
++                    data["manual_beta"] = st.session_state[key]
++                elif "_mrp" in key:
++                    data["market_risk_premium"] = st.session_state[key]
++                elif "_price" in key:
++                    data["manual_stock_price"] = st.session_state[key]
++
++        # Clés WACC (si pas Direct Equity)
++        if not self.MODE.is_direct_equity:
++            wacc_keys = [f"{key_prefix}_kd", f"{key_prefix}_tax"]
++            for key in wacc_keys:
++                if key in st.session_state and st.session_state[key] is not None:
++                    if "_kd" in key:
++                        data["cost_of_debt"] = st.session_state[key]
++                    elif "_tax" in key:
++                        data["tax_rate"] = st.session_state[key]
++
++        return data
++
++    def _extract_terminal_data(self, key_prefix: str) -> Dict[str, Any]:
++        """Extrait les données de valeur terminale depuis st.session_state."""
++        data = {}
++
++        # Méthode terminale
++        method_key = f"{key_prefix}_method" if f"{key_prefix}_method" in st.session_state else "terminal_method"
++        if method_key in st.session_state:
++            terminal_method = st.session_state[method_key]
++            data["terminal_method"] = terminal_method
++
++            # Selon la méthode, extraire les paramètres appropriés
++            if terminal_method == TerminalValueMethod.GORDON_GROWTH:
++                gn_key = f"{key_prefix}_gn" if f"{key_prefix}_gn" in st.session_state else "terminal_gn"
++                if gn_key in st.session_state:
++                    data["perpetual_growth_rate"] = st.session_state[gn_key]
++            else:  # EXIT_MULTIPLE
++                mult_key = f"{key_prefix}_exit_mult" if f"{key_prefix}_exit_mult" in st.session_state else "terminal_exit_mult"
++                if mult_key in st.session_state:
++                    data["exit_multiple_value"] = st.session_state[mult_key]
++
++        return data
++
++    def _extract_bridge_data(self, key_prefix: str) -> Dict[str, Any]:
++        """Extrait les données d'equity bridge depuis st.session_state."""
++        data = {}
++        bridge_prefix = f"bridge_{key_prefix}"
++
++        bridge_keys = [
++            f"{bridge_prefix}_debt", f"{bridge_prefix}_cash",
++            f"{bridge_prefix}_min", f"{bridge_prefix}_pen", f"{bridge_prefix}_shares"
++        ]
++
++        for key in bridge_keys:
++            if key in st.session_state and st.session_state[key] is not None:
++                if "_debt" in key:
++                    data["manual_total_debt"] = st.session_state[key]
++                elif "_cash" in key:
++                    data["manual_cash"] = st.session_state[key]
++                elif "_min" in key:
++                    data["manual_minority_interests"] = st.session_state[key]
++                elif "_pen" in key:
++                    data["manual_pension_provisions"] = st.session_state[key]
++                elif "_shares" in key:
++                    data["manual_shares_outstanding"] = st.session_state[key]
++
++        return data
++
++    def _extract_monte_carlo_data(self, key_prefix: str) -> Dict[str, Any]:
++        """Extrait les données Monte Carlo depuis st.session_state."""
++        data = {}
++        mc_prefix = f"{key_prefix}_mc" if f"{key_prefix}_mc_enable" in st.session_state else "mc"
++
++        # Enable
++        enable_key = f"{mc_prefix}_enable"
++        if enable_key in st.session_state and st.session_state[enable_key]:
++            data["enable_monte_carlo"] = True
++
++            # Simulations
++            sims_key = f"{mc_prefix}_sims"
++            if sims_key in st.session_state:
++                data["num_simulations"] = st.session_state[sims_key]
++
++            # Volatilités
++            vol_keys = [f"{mc_prefix}_vol_flow", f"{mc_prefix}_vol_beta", f"{mc_prefix}_vol_growth"]
++            for key in vol_keys:
++                if key in st.session_state:
++                    if "_vol_flow" in key:
++                        data["base_flow_volatility"] = st.session_state[key]
++                    elif "_vol_beta" in key:
++                        data["beta_volatility"] = st.session_state[key]
++                    elif "_vol_growth" in key:
++                        data["growth_volatility"] = st.session_state[key]
++
++            # Volatilité terminale conditionnelle
++            if self.MODE == ValuationMode.RIM:
++                omega_key = f"{mc_prefix}_vol_omega"
++                if omega_key in st.session_state:
++                    data["terminal_growth_volatility"] = st.session_state[omega_key]
++            elif self._collected_data.get("terminal_method") == "GORDON_GROWTH":
++                gn_key = f"{mc_prefix}_vol_gn"
++                if gn_key in st.session_state:
++                    data["terminal_growth_volatility"] = st.session_state[gn_key]
++
++        return data
++
++    def _extract_peer_triangulation_data(self) -> Dict[str, Any]:
++        """Extrait les données de peer triangulation depuis st.session_state."""
++        data = {}
++
++        # Enable peer multiples
++        enable_key = "peer_enable" if "peer_enable" in st.session_state else "enable_peer_multiples"
++        if enable_key in st.session_state:
++            data["enable_peer_multiples"] = st.session_state[enable_key]
++
++        # Manual peers
++        input_key = "peer_input" if "peer_input" in st.session_state else "manual_peers"
++        if input_key in st.session_state and st.session_state[input_key]:
++            raw_input = st.session_state[input_key]
++            if raw_input.strip():
++                peers_list = [t.strip().upper() for t in raw_input.split(",") if t.strip()]
++                if peers_list:
++                    data["manual_peers"] = peers_list
++
++        return data
++
++    def _extract_scenarios_data(self, key_prefix: str) -> Optional[ScenarioParameters]:
++        """Extrait les données de scénarios depuis st.session_state."""
++        from src.models import ScenarioParameters, ScenarioVariant
++
++        # Cette méthode est complexe car elle nécessite de lire plusieurs scénarios
++        # Pour le moment, on retourne None (à implémenter si nécessaire)
++        # Les scénarios sont moins critiques pour le déclenchement centralisé
++        return None
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle depuis st.session_state.
++
++        Cette méthode doit être implémentée par chaque sous-classe pour
++        extraire les données propres à son modèle (FCF, dividendes, etc.).
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode.
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données spécifiques au modèle.
++        """
++        # Méthode abstraite à implémenter par les sous-classes
++        return {}
+diff --git a/app/ui/expert/terminals/ddm_terminal.py b/app/ui/expert/terminals/ddm_terminal.py
+index c5b33bd..7728342 100644
+--- a/app/ui/expert/terminals/ddm_terminal.py
++++ b/app/ui/expert/terminals/ddm_terminal.py
+@@ -57,6 +57,7 @@ class DDMTerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = True
+     SHOW_SCENARIOS = True
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
+     BRIDGE_FORMULA = r"P = \frac{\text{Equity Value}}{\text{Actions}}"
+@@ -86,7 +87,8 @@ class DDMTerminal(ExpertTerminalBase):
+             ExpertTerminalTexts.INP_DIVIDEND_BASE,
+             value=None,
+             format="%.2f",
+-            help=ExpertTerminalTexts.HELP_DIVIDEND_BASE
++            help=ExpertTerminalTexts.HELP_DIVIDEND_BASE,
++            key=f"{self.MODE.name}_dividend_base"
+         )
+ 
+         st.divider()
+@@ -96,14 +98,14 @@ class DDMTerminal(ExpertTerminalBase):
+         col1, col2 = st.columns(2)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="ddm_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_rate = widget_growth_rate(
+                 label="Croissance dividendes (g)",
+                 min_val=0.0,
+                 max_val=0.20,
+-                key="ddm_growth"
++                key_prefix=self.MODE.name
+             )
+ 
+         st.caption(
+@@ -118,3 +120,35 @@ class DDMTerminal(ExpertTerminalBase):
+             "projection_years": n_years,
+             "fcf_growth_rate": g_rate,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle DDM depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (DDM).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données DDM : dividend_base, projection_years, growth_rate.
++        """
++        data = {}
++
++        # Clé dividende spécifique
++        dividend_key = f"{key_prefix}_dividend_base"
++        if dividend_key in st.session_state:
++            data["manual_dividend_base"] = st.session_state[dividend_key]
++
++        # Clés communes (growth, projection years)
++        growth_key = f"{key_prefix}_growth_rate"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/fcfe_terminal.py b/app/ui/expert/terminals/fcfe_terminal.py
+index 3dc8128..36d7301 100644
+--- a/app/ui/expert/terminals/fcfe_terminal.py
++++ b/app/ui/expert/terminals/fcfe_terminal.py
+@@ -58,6 +58,7 @@ class FCFETerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = True
+     SHOW_SCENARIOS = True
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     TERMINAL_VALUE_FORMULA = (
+         r"TV_n = \begin{cases} "
+@@ -96,7 +97,8 @@ class FCFETerminal(ExpertTerminalBase):
+                 ExpertTerminalTexts.INP_FCFE_BASE,
+                 value=None,
+                 format="%.0f",
+-                help=ExpertTerminalTexts.HELP_FCFE_BASE
++                help=ExpertTerminalTexts.HELP_FCFE_BASE,
++                key=f"{self.MODE.name}_fcf_base"
+             )
+ 
+         with col2:
+@@ -104,7 +106,8 @@ class FCFETerminal(ExpertTerminalBase):
+                 ExpertTerminalTexts.INP_NET_BORROWING,
+                 value=None,
+                 format="%.0f",
+-                help=ExpertTerminalTexts.HELP_NET_BORROWING
++                help=ExpertTerminalTexts.HELP_NET_BORROWING,
++                key=f"{self.MODE.name}_net_borrowing"
+             )
+ 
+         st.divider()
+@@ -114,14 +117,14 @@ class FCFETerminal(ExpertTerminalBase):
+         col1, col2 = st.columns(2)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="fcfe_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_rate = widget_growth_rate(
+                 label=ExpertTerminalTexts.INP_GROWTH_G,
+                 min_val=-0.50,
+                 max_val=1.0,
+-                key="fcfe_growth"
++                key_prefix=self.MODE.name
+             )
+ 
+         st.divider()
+@@ -132,3 +135,39 @@ class FCFETerminal(ExpertTerminalBase):
+             "projection_years": n_years,
+             "fcf_growth_rate": g_rate,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle FCFE depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (FCFE).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données FCFE : fcf_base, net_borrowing, projection_years, growth_rate.
++        """
++        data = {}
++
++        # Clés FCFE spécifiques
++        fcf_key = f"{key_prefix}_fcf_base"
++        if fcf_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[fcf_key]
++
++        net_borrowing_key = f"{key_prefix}_net_borrowing"
++        if net_borrowing_key in st.session_state:
++            data["manual_net_borrowing"] = st.session_state[net_borrowing_key]
++
++        # Clés communes (growth, projection years)
++        growth_key = f"{key_prefix}_growth_rate"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/fcff_growth_terminal.py b/app/ui/expert/terminals/fcff_growth_terminal.py
+index e219862..a1c2a04 100644
+--- a/app/ui/expert/terminals/fcff_growth_terminal.py
++++ b/app/ui/expert/terminals/fcff_growth_terminal.py
+@@ -45,6 +45,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = True
+     SHOW_SCENARIOS = True  # Les scénarios incluent la marge pour ce modèle
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{Rev_n \times Margin_{target} \times (1+g_n)}{WACC - g_n}"
+     BRIDGE_FORMULA = r"P = \dfrac{EV - Dette + Cash}{Actions}"
+@@ -77,7 +78,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+             ExpertTerminalTexts.INP_REV_TTM,
+             value=None,
+             format="%.0f",
+-            help=ExpertTerminalTexts.HELP_REV_TTM
++            help=ExpertTerminalTexts.HELP_REV_TTM,
++            key=f"{self.MODE.name}_rev_base"
+         )
+         st.divider()
+ 
+@@ -86,7 +88,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+         col1, col2, col3 = st.columns(3)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="fcff_growth_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_rev = st.number_input(
+@@ -95,7 +97,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+                 max_value=1.0,
+                 value=None,
+                 format="%.3f",
+-                help=ExpertTerminalTexts.HELP_REV_GROWTH
++                help=ExpertTerminalTexts.HELP_REV_GROWTH,
++                key=f"{self.MODE.name}_rev_growth"
+             )
+ 
+         with col3:
+@@ -105,7 +108,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+                 max_value=0.80,
+                 value=None,
+                 format="%.2f",
+-                help=ExpertTerminalTexts.HELP_MARGIN_TARGET
++                help=ExpertTerminalTexts.HELP_MARGIN_TARGET,
++                key=f"{self.MODE.name}_margin_target"
+             )
+ 
+         st.divider()
+@@ -116,3 +120,38 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
+             "fcf_growth_rate": g_rev,
+             "target_fcf_margin": m_target,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle FCFF Growth depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (FCFF_GROWTH).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données FCFF Growth : rev_base, growth_rate, margin_target, projection_years.
++        """
++        data = {}
++
++        # Clés spécifiques
++        rev_key = f"{key_prefix}_rev_base"
++        if rev_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[rev_key]
++
++        growth_key = f"{key_prefix}_rev_growth"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        margin_key = f"{key_prefix}_margin_target"
++        if margin_key in st.session_state:
++            data["target_fcf_margin"] = st.session_state[margin_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/fcff_normalized_terminal.py b/app/ui/expert/terminals/fcff_normalized_terminal.py
+index 2cf4edb..a301d1e 100644
+--- a/app/ui/expert/terminals/fcff_normalized_terminal.py
++++ b/app/ui/expert/terminals/fcff_normalized_terminal.py
+@@ -48,6 +48,7 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = True
+     SHOW_SCENARIOS = True
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
+     BRIDGE_FORMULA = r"P = \dfrac{EV - Dette + Cash}{Actions}"
+@@ -78,7 +79,8 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
+             ExpertTerminalTexts.INP_FCF_SMOOTHED,
+             value=None,
+             format="%.0f",
+-            help=ExpertTerminalTexts.HELP_FCF_SMOOTHED
++            help=ExpertTerminalTexts.HELP_FCF_SMOOTHED,
++            key=f"{self.MODE.name}_fcf_base"
+         )
+         st.divider()
+ 
+@@ -87,14 +89,14 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
+         col1, col2 = st.columns(2)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="fcff_norm_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_rate = widget_growth_rate(
+                 label=ExpertTerminalTexts.INP_GROWTH_G,
+                 min_val=-0.20,
+                 max_val=0.30,
+-                key="fcff_norm_growth"
++                key_prefix=self.MODE.name
+             )
+ 
+         st.divider()
+@@ -104,3 +106,35 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
+             "projection_years": n_years,
+             "fcf_growth_rate": g_rate,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle FCFF Normalized depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (FCFF_NORMALIZED).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données FCFF Normalized : fcf_base, projection_years, growth_rate.
++        """
++        data = {}
++
++        # Clé FCF spécifique
++        fcf_key = f"{key_prefix}_fcf_base"
++        if fcf_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[fcf_key]
++
++        # Clés communes (growth, projection years)
++        growth_key = f"{key_prefix}_growth_rate"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/fcff_standard_terminal.py b/app/ui/expert/terminals/fcff_standard_terminal.py
+index a9f473e..021a111 100644
+--- a/app/ui/expert/terminals/fcff_standard_terminal.py
++++ b/app/ui/expert/terminals/fcff_standard_terminal.py
+@@ -62,6 +62,7 @@ class FCFFStandardTerminal(ExpertTerminalBase):
+     SHOW_SCENARIOS = True
+     SHOW_SOTP = False
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     # Formules LaTeX
+     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
+@@ -95,7 +96,8 @@ class FCFFStandardTerminal(ExpertTerminalBase):
+             ExpertTerminalTexts.INP_FCF_TTM,
+             value=None,
+             format="%.0f",
+-            help=ExpertTerminalTexts.HELP_FCF_TTM
++            help=ExpertTerminalTexts.HELP_FCF_TTM,
++            key=f"{self.MODE.name}_fcf_base"
+         )
+         st.divider()
+ 
+@@ -105,14 +107,14 @@ class FCFFStandardTerminal(ExpertTerminalBase):
+         col1, col2 = st.columns(2)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="fcff_std_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_rate = widget_growth_rate(
+                 label=ExpertTerminalTexts.INP_GROWTH_G,
+                 min_val=-0.50,
+                 max_val=1.0,
+-                key="fcff_std_growth"
++                key_prefix=self.MODE.name
+             )
+ 
+         st.divider()
+@@ -122,3 +124,35 @@ class FCFFStandardTerminal(ExpertTerminalBase):
+             "projection_years": n_years,
+             "fcf_growth_rate": g_rate,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle FCFF Standard depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (FCFF_STANDARD).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données FCFF Standard : fcf_base, projection_years, growth_rate.
++        """
++        data = {}
++
++        # Clé FCF spécifique
++        fcf_key = f"{key_prefix}_fcf_base"
++        if fcf_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[fcf_key]
++
++        # Clés communes (growth, projection years)
++        growth_key = f"{key_prefix}_growth_rate"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/graham_value_terminal.py b/app/ui/expert/terminals/graham_value_terminal.py
+index 8b0b55c..c030f65 100644
+--- a/app/ui/expert/terminals/graham_value_terminal.py
++++ b/app/ui/expert/terminals/graham_value_terminal.py
+@@ -59,6 +59,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = False       # Pas adapté
+     SHOW_SCENARIOS = True          # On peut tester différents g
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     def render_model_inputs(self) -> Dict[str, Any]:
+         """
+@@ -89,7 +90,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
+                 ExpertTerminalTexts.INP_EPS_NORM,
+                 value=None,
+                 format="%.2f",
+-                help=ExpertTerminalTexts.HELP_EPS_NORM
++                help=ExpertTerminalTexts.HELP_EPS_NORM,
++                key=f"{self.MODE.name}_eps_norm"
+             )
+ 
+         with col2:
+@@ -99,7 +101,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
+                 max_value=0.20,
+                 value=None,
+                 format="%.3f",
+-                help=ExpertTerminalTexts.HELP_GROWTH_LT
++                help=ExpertTerminalTexts.HELP_GROWTH_LT,
++                key=f"{self.MODE.name}_growth_lt"
+             )
+ 
+         st.divider()
+@@ -115,7 +118,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
+                 max_value=0.20,
+                 value=None,
+                 format="%.3f",
+-                help=ExpertTerminalTexts.HELP_YIELD_AAA
++                help=ExpertTerminalTexts.HELP_YIELD_AAA,
++                key=f"{self.MODE.name}_yield_aaa"
+             )
+ 
+         with col2:
+@@ -125,7 +129,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
+                 max_value=0.60,
+                 value=None,
+                 format="%.2f",
+-                help=ExpertTerminalTexts.HELP_TAX
++                help=ExpertTerminalTexts.HELP_TAX,
++                key=f"{self.MODE.name}_tax_rate"
+             )
+ 
+         st.divider()
+@@ -143,3 +148,42 @@ class GrahamValueTerminal(ExpertTerminalBase):
+             "projection_years": 1,  # Formule statique
+             "enable_monte_carlo": False,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle Graham depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (GRAHAM).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données Graham : eps_norm, growth_lt, yield_aaa, tax_rate.
++        """
++        data = {}
++
++        # Clés spécifiques
++        eps_key = f"{key_prefix}_eps_norm"
++        if eps_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[eps_key]
++
++        growth_key = f"{key_prefix}_growth_lt"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        yield_key = f"{key_prefix}_yield_aaa"
++        if yield_key in st.session_state:
++            data["corporate_aaa_yield"] = st.session_state[yield_key]
++
++        tax_key = f"{key_prefix}_tax_rate"
++        if tax_key in st.session_state:
++            data["tax_rate"] = st.session_state[tax_key]
++
++        # Valeurs fixes pour Graham
++        data["projection_years"] = 1
++        data["enable_monte_carlo"] = False
++
++        return data
+diff --git a/app/ui/expert/terminals/rim_bank_terminal.py b/app/ui/expert/terminals/rim_bank_terminal.py
+index 22ceeb0..2f735ce 100644
+--- a/app/ui/expert/terminals/rim_bank_terminal.py
++++ b/app/ui/expert/terminals/rim_bank_terminal.py
+@@ -59,6 +59,7 @@ class RIMBankTerminal(ExpertTerminalBase):
+     SHOW_MONTE_CARLO = True
+     SHOW_SCENARIOS = True
+     SHOW_PEER_TRIANGULATION = True
++    SHOW_SUBMIT_BUTTON = False
+ 
+     BRIDGE_FORMULA = r"P = \dfrac{\text{Equity Value}}{\text{Actions}}"
+ 
+@@ -94,7 +95,8 @@ class RIMBankTerminal(ExpertTerminalBase):
+                 ExpertTerminalTexts.INP_BV_INITIAL,
+                 value=None,
+                 format="%.0f",
+-                help=ExpertTerminalTexts.HELP_BV_INITIAL
++                help=ExpertTerminalTexts.HELP_BV_INITIAL,
++                key=f"{self.MODE.name}_bv_initial"
+             )
+ 
+         with col2:
+@@ -102,7 +104,8 @@ class RIMBankTerminal(ExpertTerminalBase):
+                 ExpertTerminalTexts.INP_NI_TTM,
+                 value=None,
+                 format="%.0f",
+-                help=ExpertTerminalTexts.HELP_NI_TTM
++                help=ExpertTerminalTexts.HELP_NI_TTM,
++                key=f"{self.MODE.name}_ni_ttm"
+             )
+ 
+         st.divider()
+@@ -112,21 +115,22 @@ class RIMBankTerminal(ExpertTerminalBase):
+         col1, col2 = st.columns(2)
+ 
+         with col1:
+-            n_years = widget_projection_years(default=5, key="rim_years")
++            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+ 
+         with col2:
+             g_ni = widget_growth_rate(
+                 label="Croissance Net Income (g)",
+                 min_val=0.0,
+                 max_val=0.50,
+-                key="rim_growth"
++                key_prefix=self.MODE.name
+             )
+ 
+         st.divider()
+ 
+         # Valeur terminale RIM (facteur omega)
+         tv_data = widget_terminal_value_rim(
+-            r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
++            r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
++            key_prefix=self.MODE.name
+         )
+ 
+         return {
+@@ -136,3 +140,43 @@ class RIMBankTerminal(ExpertTerminalBase):
+             "fcf_growth_rate": g_ni,
+             **tv_data,
+         }
++
++    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
++        """
++        Extrait les données spécifiques au modèle RIM depuis st.session_state.
++
++        Parameters
++        ----------
++        key_prefix : str
++            Préfixe de clé basé sur le mode (RIM).
++
++        Returns
++        -------
++        Dict[str, Any]
++            Données RIM : bv_initial, ni_ttm, growth_rate, projection_years, omega.
++        """
++        data = {}
++
++        # Clés spécifiques
++        bv_key = f"{key_prefix}_bv_initial"
++        if bv_key in st.session_state:
++            data["manual_book_value"] = st.session_state[bv_key]
++
++        ni_key = f"{key_prefix}_ni_ttm"
++        if ni_key in st.session_state:
++            data["manual_fcf_base"] = st.session_state[ni_key]
++
++        omega_key = f"{key_prefix}_omega"
++        if omega_key in st.session_state:
++            data["exit_multiple_value"] = st.session_state[omega_key]
++
++        # Clés communes (growth, projection years)
++        growth_key = f"{key_prefix}_growth_rate"
++        if growth_key in st.session_state:
++            data["fcf_growth_rate"] = st.session_state[growth_key]
++
++        years_key = f"{key_prefix}_years"
++        if years_key in st.session_state:
++            data["projection_years"] = st.session_state[years_key]
++
++        return data
+diff --git a/app/ui/expert/terminals/shared_widgets.py b/app/ui/expert/terminals/shared_widgets.py
+index c2bf95b..0baacb3 100644
+--- a/app/ui/expert/terminals/shared_widgets.py
++++ b/app/ui/expert/terminals/shared_widgets.py
+@@ -47,7 +47,7 @@ def widget_projection_years(
+     default: int = UIWidgetDefaults.DEFAULT_PROJECTION_YEARS,
+     min_years: int = UIWidgetDefaults.MIN_PROJECTION_YEARS,
+     max_years: int = UIWidgetDefaults.MAX_PROJECTION_YEARS,
+-    key: Optional[str] = None
++    key_prefix: Optional[str] = None
+ ) -> int:
+     """
+     Widget pour sélectionner le nombre d'années de projection.
+@@ -60,20 +60,24 @@ def widget_projection_years(
+         Minimum autorisé, by default 3.
+     max_years : int, optional
+         Maximum autorisé, by default 15.
+-    key : str, optional
+-        Clé Streamlit unique pour le widget.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "projection").
+ 
+     Returns
+     -------
+     int
+         Nombre d'années sélectionné.
+     """
++    # Générer la clé si non fournie
++    if key_prefix is None:
++        key_prefix = "projection"
++
+     return st.slider(
+         ExpertTerminalTexts.SLIDER_PROJ_YEARS,
+         min_value=min_years,
+         max_value=max_years,
+         value=default,
+-        key=key,
++        key=f"{key_prefix}_years",
+         help=ExpertTerminalTexts.HELP_PROJ_YEARS
+     )
+ 
+@@ -83,7 +87,7 @@ def widget_growth_rate(
+     min_val: float = UIWidgetDefaults.MIN_GROWTH_RATE,
+     max_val: float = UIWidgetDefaults.MAX_GROWTH_RATE,
+     default: Optional[float] = None,
+-    key: Optional[str] = None
++    key_prefix: Optional[str] = None
+ ) -> Optional[float]:
+     """
+     Widget pour saisir un taux de croissance.
+@@ -98,21 +102,25 @@ def widget_growth_rate(
+         Valeur maximale.
+     default : float, optional
+         Valeur par défaut (None = Auto Yahoo).
+-    key : str, optional
+-        Clé Streamlit unique.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "growth").
+ 
+     Returns
+     -------
+     Optional[float]
+         Taux de croissance saisi ou None si vide.
+     """
++    # Générer la clé si non fournie
++    if key_prefix is None:
++        key_prefix = "growth"
++
+     return st.number_input(
+         label or ExpertTerminalTexts.INP_GROWTH_G,
+         min_value=min_val,
+         max_value=max_val,
+         value=default,
+         format="%.3f",
+-        key=key,
++        key=f"{key_prefix}_growth_rate",
+         help=ExpertTerminalTexts.HELP_GROWTH_RATE
+     )
+ 
+@@ -121,7 +129,7 @@ def widget_growth_rate(
+ # 2. WIDGET COÛT DU CAPITAL (Section 3)
+ # ==============================================================================
+ 
+-def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
++def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Widget pour la saisie du coût du capital (WACC ou Ke).
+ 
+@@ -132,6 +140,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+     ----------
+     mode : ValuationMode
+         Mode de valorisation pour déterminer si c'est Direct Equity.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: mode.value).
+ 
+     Returns
+     -------
+@@ -144,6 +154,10 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+         - cost_of_debt : Coût de la dette (si WACC)
+         - tax_rate : Taux d'imposition (si WACC)
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = mode.value
++
+     st.markdown(ExpertTerminalTexts.SEC_3_CAPITAL)
+ 
+     is_direct_equity = mode.is_direct_equity
+@@ -161,7 +175,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+         max_value=10000.0,
+         value=None,
+         format="%.2f",
+-        help=ExpertTerminalTexts.HELP_PRICE_WEIGHTS
++        help=ExpertTerminalTexts.HELP_PRICE_WEIGHTS,
++        key=f"{key_prefix}_price"
+     )
+ 
+     col_a, col_b = st.columns(2)
+@@ -172,7 +187,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+         max_value=0.20,
+         value=None,
+         format="%.3f",
+-        help=ExpertTerminalTexts.HELP_RF
++        help=ExpertTerminalTexts.HELP_RF,
++        key=f"{key_prefix}_rf"
+     )
+     beta = col_b.number_input(
+         ExpertTerminalTexts.INP_BETA,
+@@ -180,7 +196,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+         max_value=5.0,
+         value=None,
+         format="%.2f",
+-        help=ExpertTerminalTexts.HELP_BETA
++        help=ExpertTerminalTexts.HELP_BETA,
++        key=f"{key_prefix}_beta"
+     )
+     mrp = col_a.number_input(
+         ExpertTerminalTexts.INP_MRP,
+@@ -188,7 +205,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+         max_value=0.20,
+         value=None,
+         format="%.3f",
+-        help=ExpertTerminalTexts.HELP_MRP
++        help=ExpertTerminalTexts.HELP_MRP,
++        key=f"{key_prefix}_mrp"
+     )
+ 
+     result = {
+@@ -206,7 +224,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+             max_value=0.20,
+             value=None,
+             format="%.3f",
+-            help=ExpertTerminalTexts.HELP_KD
++            help=ExpertTerminalTexts.HELP_KD,
++            key=f"{key_prefix}_kd"
+         )
+         tau = col_a.number_input(
+             ExpertTerminalTexts.INP_TAX,
+@@ -214,7 +233,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+             max_value=0.60,
+             value=None,
+             format="%.2f",
+-            help=ExpertTerminalTexts.HELP_TAX
++            help=ExpertTerminalTexts.HELP_TAX,
++            key=f"{key_prefix}_tax"
+         )
+         result.update({"cost_of_debt": kd, "tax_rate": tau})
+     
+@@ -231,7 +251,7 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+ # 3. WIDGET VALEUR TERMINALE (Section 4)
+ # ==============================================================================
+ 
+-def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
++def widget_terminal_value_dcf(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Widget pour la sélection de la méthode de valeur terminale (DCF).
+ 
+@@ -243,6 +263,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+     ----------
+     formula_latex : str
+         Formule LaTeX à afficher pour illustrer le concept.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "terminal").
+ 
+     Returns
+     -------
+@@ -251,6 +273,10 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+         - perpetual_growth_rate : Taux gn si Gordon
+         - exit_multiple_value : Multiple si Exit
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "terminal"
++
+     st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
+     st.latex(formula_latex)
+ 
+@@ -262,7 +288,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+             if x == TerminalValueMethod.GORDON_GROWTH
+             else ExpertTerminalTexts.TV_EXIT
+         ),
+-        horizontal=True
++        horizontal=True,
++        key=f"{key_prefix}_method"
+     )
+ 
+     col1, _ = st.columns(2)
+@@ -274,7 +301,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+             max_value=0.05,
+             value=None,
+             format="%.3f",
+-            help=ExpertTerminalTexts.HELP_PERP_G
++            help=ExpertTerminalTexts.HELP_PERP_G,
++            key=f"{key_prefix}_gn"
+         )
+         st.divider()
+         logger.debug("Terminal value: Gordon Growth selected, gn=%s", gn)
+@@ -286,14 +314,15 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+             max_value=100.0,
+             value=None,
+             format="%.1f",
+-            help=ExpertTerminalTexts.HELP_EXIT_MULT
++            help=ExpertTerminalTexts.HELP_EXIT_MULT,
++            key=f"{key_prefix}_exit_mult"
+         )
+         st.divider()
+         logger.debug("Terminal value: Exit Multiple selected, mult=%s", exit_m)
+         return {"terminal_method": method, "exit_multiple_value": exit_m}
+ 
+ 
+-def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
++def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Widget pour la valeur terminale du modèle RIM (facteur de persistance).
+ 
+@@ -304,6 +333,8 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
+     ----------
+     formula_latex : str
+         Formule LaTeX du RIM terminal value.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "terminal").
+ 
+     Returns
+     -------
+@@ -311,6 +342,10 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
+         - terminal_method : EXIT_MULTIPLE (convention RIM)
+         - exit_multiple_value : Facteur omega
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "terminal"
++
+     st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
+     st.latex(formula_latex)
+ 
+@@ -321,7 +356,8 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
+         max_value=1.0,
+         value=None,
+         format="%.2f",
+-        help=ExpertTerminalTexts.HELP_OMEGA
++        help=ExpertTerminalTexts.HELP_OMEGA,
++        key=f"{key_prefix}_omega"
+     )
+     logger.debug("RIM terminal value: omega=%s", omega)
+ 
+@@ -458,7 +494,8 @@ def render_equity_bridge_inputs(
+ 
+ def widget_equity_bridge(
+     formula_latex: str,
+-    mode: ValuationMode
++    mode: ValuationMode,
++    key_prefix: Optional[str] = None
+ ) -> Dict[str, Any]:
+     """
+     Widget pour les ajustements de structure (Equity Bridge).
+@@ -474,29 +511,35 @@ def widget_equity_bridge(
+         Formule LaTeX illustrant le bridge.
+     mode : ValuationMode
+         Mode pour déterminer si Direct Equity.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: mode.value).
+ 
+     Returns
+     -------
+     Dict[str, Any]
+         Paramètres de bridge collectés (dette, cash, actions, etc.)
+-    
++
+     Notes
+     -----
+     Cette fonction délègue maintenant à render_equity_bridge_inputs()
+     pour un design unifié (ST-3.4).
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = f"bridge_{mode.value}"
++
+     st.markdown(ExpertTerminalTexts.SEC_5_BRIDGE)
+     st.latex(formula_latex)
+ 
+     is_direct_equity = mode.is_direct_equity
+-    
++
+     # Délégation au widget mutualisé (ST-3.4)
+     result = render_equity_bridge_inputs(
+-        key_prefix=f"bridge_{mode.value}",
++        key_prefix=key_prefix,
+         show_header=False,  # Header déjà affiché ci-dessus
+         is_direct_equity=is_direct_equity
+     )
+-    
++
+     st.divider()
+     return result
+ 
+@@ -507,7 +550,8 @@ def widget_equity_bridge(
+ 
+ def widget_monte_carlo(
+     mode: ValuationMode,
+-    terminal_method: Optional[TerminalValueMethod] = None
++    terminal_method: Optional[TerminalValueMethod] = None,
++    key_prefix: Optional[str] = None
+ ) -> Dict[str, Any]:
+     """
+     Widget pour la configuration Monte Carlo.
+@@ -521,6 +565,8 @@ def widget_monte_carlo(
+         Mode pour adapter les volatilités (RIM vs DCF).
+     terminal_method : TerminalValueMethod, optional
+         Méthode TV pour afficher la bonne volatilité terminale.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "mc").
+ 
+     Returns
+     -------
+@@ -533,12 +579,17 @@ def widget_monte_carlo(
+         - growth_volatility : float
+         - terminal_growth_volatility : float (si applicable)
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "mc"
++
+     st.markdown(ExpertTerminalTexts.SEC_6_MC)
+ 
+     enable = st.toggle(
+         ExpertTerminalTexts.MC_CALIBRATION,
+         value=False,
+-        help=ExpertTerminalTexts.HELP_MC_ENABLE
++        help=ExpertTerminalTexts.HELP_MC_ENABLE,
++        key=f"{key_prefix}_enable"
+     )
+ 
+     if not enable:
+@@ -554,7 +605,8 @@ def widget_monte_carlo(
+                     10000,
+                     SIMULATION_CONFIG.max_simulations],
+             value=SIMULATION_CONFIG.default_simulations,
+-            help=ExpertTerminalTexts.HELP_MC_SIMS
++            help=ExpertTerminalTexts.HELP_MC_SIMS,
++            key=f"{key_prefix}_sims"
+         )
+         st.divider()
+ 
+@@ -569,7 +621,8 @@ def widget_monte_carlo(
+             max_value=0.50,
+             value=0.05,
+             format="%.3f",
+-            help=ExpertTerminalTexts.HELP_MC_VOL_FLOW
++            help=ExpertTerminalTexts.HELP_MC_VOL_FLOW,
++            key=f"{key_prefix}_vol_flow"
+         )
+ 
+         # Volatilité Beta
+@@ -579,7 +632,8 @@ def widget_monte_carlo(
+             max_value=1.0,
+             value=0.10,
+             format="%.3f",
+-            help=ExpertTerminalTexts.HELP_MC_VOL_BETA
++            help=ExpertTerminalTexts.HELP_MC_VOL_BETA,
++            key=f"{key_prefix}_vol_beta"
+         )
+ 
+         # Volatilité croissance
+@@ -589,7 +643,8 @@ def widget_monte_carlo(
+             max_value=0.20,
+             value=0.02,
+             format="%.3f",
+-            help=ExpertTerminalTexts.HELP_MC_VOL_G
++            help=ExpertTerminalTexts.HELP_MC_VOL_G,
++            key=f"{key_prefix}_vol_growth"
+         )
+ 
+         # 3. Volatilité terminale (contextuelle)
+@@ -601,7 +656,8 @@ def widget_monte_carlo(
+                 max_value=0.20,
+                 value=0.05,
+                 format="%.3f",
+-                help=ExpertTerminalTexts.HELP_MC_VOL_OMEGA
++                help=ExpertTerminalTexts.HELP_MC_VOL_OMEGA,
++                key=f"{key_prefix}_vol_omega"
+             )
+         elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
+             v_term = v_col2.number_input(
+@@ -610,7 +666,8 @@ def widget_monte_carlo(
+                 max_value=0.05,
+                 value=0.01,
+                 format="%.3f",
+-                help=ExpertTerminalTexts.HELP_MC_VOL_GN
++                help=ExpertTerminalTexts.HELP_MC_VOL_GN,
++                key=f"{key_prefix}_vol_gn"
+             )
+         else:
+             v_col2.empty()
+@@ -629,24 +686,34 @@ def widget_monte_carlo(
+ # 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)
+ # ==============================================================================
+ 
+-def widget_peer_triangulation() -> Dict[str, Any]:
++def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Widget pour la sélection des peers et triangulation par multiples.
+ 
+     Permet à l'utilisateur de spécifier manuellement une cohorte
+     de comparables pour la valorisation relative.
+ 
++    Parameters
++    ----------
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "peer").
++
+     Returns
+     -------
+     Dict[str, Any]
+         - enable_peer_multiples : bool
+         - manual_peers : List[str] ou None
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "peer"
++
+     with st.expander(ExpertTerminalTexts.SEC_7_PEERS, expanded=False):
+         enable = st.checkbox(
+             "Activer la triangulation par multiples",
+             value=True,
+-            help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION
++            help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION,
++            key=f"{key_prefix}_enable"
+         )
+ 
+         if not enable:
+@@ -655,7 +722,8 @@ def widget_peer_triangulation() -> Dict[str, Any]:
+         raw_input = st.text_input(
+             ExpertTerminalTexts.INP_MANUAL_PEERS,
+             placeholder="ex: AAPL, MSFT, GOOG",
+-            help=ExpertTerminalTexts.HELP_MANUAL_PEERS
++            help=ExpertTerminalTexts.HELP_MANUAL_PEERS,
++            key=f"{key_prefix}_input"
+         )
+ 
+         peers_list = None
+@@ -674,7 +742,7 @@ def widget_peer_triangulation() -> Dict[str, Any]:
+ # 7. WIDGET SCÉNARIOS (Section 8 - Optionnel)
+ # ==============================================================================
+ 
+-def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
++def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
+     """
+     Widget pour l'analyse de scénarios déterministes (Bull/Base/Bear).
+ 
+@@ -685,17 +753,24 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+     ----------
+     mode : ValuationMode
+         Mode pour adapter les inputs (ex: marge FCF pour FCFF_GROWTH).
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "scenario").
+ 
+     Returns
+     -------
+     ScenarioParameters
+         Configuration des scénarios (enabled, bull, base, bear).
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "scenario"
++
+     with st.expander(ExpertTerminalTexts.SEC_8_SCENARIOS, expanded=False):
+         enabled = st.toggle(
+             ExpertTerminalTexts.INP_SCENARIO_ENABLE,
+             value=False,
+-            help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE
++            help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE,
++            key=f"{key_prefix}_enable"
+         )
+ 
+         if not enabled:
+@@ -712,17 +787,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+             p_bull = c1.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
+                 min_value=0.0, max_value=100.0, value=25.0, step=5.0,
+-                key="sc_p_bull"
++                key=f"{key_prefix}_p_bull"
+             ) / 100
+             g_bull = c2.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+-                value=None, format="%.3f", key="sc_g_bull"
++                value=None, format="%.3f", key=f"{key_prefix}_g_bull"
+             )
+             m_bull = None
+             if show_margin:
+                 m_bull = c3.number_input(
+                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+-                    value=None, format="%.2f", key="sc_m_bull"
++                    value=None, format="%.2f", key=f"{key_prefix}_m_bull"
+                 )
+ 
+         # Base Case
+@@ -732,17 +807,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+             p_base = c1.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
+                 min_value=0.0, max_value=100.0, value=50.0, step=5.0,
+-                key="sc_p_base"
++                key=f"{key_prefix}_p_base"
+             ) / 100
+             g_base = c2.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+-                value=None, format="%.3f", key="sc_g_base"
++                value=None, format="%.3f", key=f"{key_prefix}_g_base"
+             )
+             m_base = None
+             if show_margin:
+                 m_base = c3.number_input(
+                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+-                    value=None, format="%.2f", key="sc_m_base"
++                    value=None, format="%.2f", key=f"{key_prefix}_m_base"
+                 )
+ 
+         # Bear Case
+@@ -752,17 +827,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+             p_bear = c1.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
+                 min_value=0.0, max_value=100.0, value=25.0, step=5.0,
+-                key="sc_p_bear"
++                key=f"{key_prefix}_p_bear"
+             ) / 100
+             g_bear = c2.number_input(
+                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+-                value=None, format="%.3f", key="sc_g_bear"
++                value=None, format="%.3f", key=f"{key_prefix}_g_bear"
+             )
+             m_bear = None
+             if show_margin:
+                 m_bear = c3.number_input(
+                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+-                    value=None, format="%.2f", key="sc_m_bear"
++                    value=None, format="%.2f", key=f"{key_prefix}_m_bear"
+                 )
+ 
+         # Validation des probabilités
+@@ -800,7 +875,7 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+ # 8. WIDGET SOTP (Sum-of-the-Parts - Optionnel)
+ # ==============================================================================
+ 
+-def widget_sotp(params: DCFParameters) -> None:
++def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None:
+     """
+     Widget pour la configuration Sum-of-the-Parts.
+ 
+@@ -811,16 +886,23 @@ def widget_sotp(params: DCFParameters) -> None:
+     ----------
+     params : DCFParameters
+         Paramètres à modifier in-place avec la config SOTP.
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "sotp").
+ 
+     Notes
+     -----
+     Ce widget modifie `params.sotp` directement (side-effect).
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "sotp"
++
+     with st.expander(SOTPTexts.TITLE, expanded=False):
+         params.sotp.enabled = st.toggle(
+             SOTPTexts.SEC_SEGMENTS,
+             value=params.sotp.enabled,
+-            help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None
++            help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None,
++            key=f"{key_prefix}_enabled"
+         )
+ 
+         if not params.sotp.enabled:
+@@ -850,7 +932,7 @@ def widget_sotp(params: DCFParameters) -> None:
+             pd.DataFrame(current_data),
+             num_rows="dynamic",
+             width='stretch',
+-            key="sotp_editor",
++            key=f"{key_prefix}_editor",
+             column_config={
+                 SOTPTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(
+                     format="%.2f"
+@@ -880,7 +962,8 @@ def widget_sotp(params: DCFParameters) -> None:
+             max_value=50,
+             value=int(params.sotp.conglomerate_discount * 100),
+             step=5,
+-            help=ExpertTerminalTexts.HELP_SOTP_DISCOUNT
++            help=ExpertTerminalTexts.HELP_SOTP_DISCOUNT,
++            key=f"{key_prefix}_discount"
+         ) / 100.0
+ 
+ 
+@@ -934,7 +1017,7 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
+     return DCFParameters.from_legacy(merged)
+ 
+ 
+-def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
++def widget_sbc_dilution(default_val: Optional[float] = None, key_prefix: Optional[str] = None) -> float:
+     """
+     Widget pour la saisie de la dilution annuelle (SBC).
+ 
+@@ -942,12 +1025,18 @@ def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
+     ----------
+     default_val : float, optional
+         Valeur par défaut (souvent issue du mode Auto).
++    key_prefix : str, optional
++        Préfixe pour les clés Streamlit (défaut: "sbc").
+ 
+     Returns
+     -------
+     float
+         Taux de dilution sélectionné.
+     """
++    # Générer le préfixe de clé si non fourni
++    if key_prefix is None:
++        key_prefix = "sbc"
++
+     st.markdown(f"**{ExpertTerminalTexts.LABEL_DILUTION_SBC}**")
+ 
+     # Input numérique pour la précision
+@@ -958,7 +1047,8 @@ def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
+         value=default_val if default_val is not None else 0.0,
+         format="%.3f",
+         step=0.005,
+-        help=ExpertTerminalTexts.HELP_SBC_DILUTION
++        help=ExpertTerminalTexts.HELP_SBC_DILUTION,
++        key=f"{key_prefix}_dilution"
+     )
+ 
+     # Message pédagogique dynamique
+diff --git a/src/i18n/fr/ui/sidebar.py b/src/i18n/fr/ui/sidebar.py
+index e50f94b..6885a0d 100644
+--- a/src/i18n/fr/ui/sidebar.py
++++ b/src/i18n/fr/ui/sidebar.py
+@@ -1,24 +1,21 @@
+ """
+ core/i18n/fr/ui/sidebar.py
+-Textes de la barre laterale.
++Textes de la barre latérale.
+ """
+ 
+ 
+ class SidebarTexts:
+-    """Labels et en-tetes de la barre laterale."""
+-    SEC_1_COMPANY = "1. Choix de l'entreprise"
+-    SEC_2_METHODOLOGY = "2. Choix de la methodologie"
+-    SEC_3_SOURCE = "3. Source des donnees"
+-    SEC_4_HORIZON = "4. Horizon"
+-    SEC_5_RISK = "5. Analyse de Risque"
++    """Labels et en-têtes de la barre latérale."""
++    SEC_1_COMPANY = "Choix de l'entreprise"
++    SEC_2_METHODOLOGY = "Choix de la méthodologie"
++    SEC_3_SOURCE = "Source des données"
++    SEC_4_HORIZON = "Horizon"
+ 
+     TICKER_LABEL = "Ticker (Yahoo Finance)"
+-    METHOD_LABEL = "Methode de Valorisation"
+-    STRATEGY_LABEL = "Strategie de pilotage"
+-    YEARS_LABEL = "Annees de projection"
+-    MC_TOGGLE_LABEL = "Activer Monte Carlo"
+-    MC_SIMS_LABEL = "Simulations"
++    METHOD_LABEL = "Méthode de Valorisation"
++    STRATEGY_LABEL = "Mode d'analyse"
++    YEARS_LABEL = "Années de projection"
+ 
+-    SOURCE_AUTO = "Auto (Yahoo Finance)"
+-    SOURCE_EXPERT = "Expert (Surcharge Manuelle)"
++    SOURCE_AUTO = "Standard (via Yahoo Finance)"
++    SOURCE_EXPERT = "Approfondi (Paramétrage Manuel)"
+     SOURCE_OPTIONS = [SOURCE_AUTO, SOURCE_EXPERT]

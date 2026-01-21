@@ -45,6 +45,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True  # Les scénarios incluent la marge pour ce modèle
     SHOW_PEER_TRIANGULATION = True
+    SHOW_SUBMIT_BUTTON = False
 
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{Rev_n \times Margin_{target} \times (1+g_n)}{WACC - g_n}"
     BRIDGE_FORMULA = r"P = \dfrac{EV - Dette + Cash}{Actions}"
@@ -77,7 +78,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
             ExpertTerminalTexts.INP_REV_TTM,
             value=None,
             format="%.0f",
-            help=ExpertTerminalTexts.HELP_REV_TTM
+            help=ExpertTerminalTexts.HELP_REV_TTM,
+            key=f"{self.MODE.name}_rev_base"
         )
         st.divider()
 
@@ -86,7 +88,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            n_years = widget_projection_years(default=5, key="fcff_growth_years")
+            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
 
         with col2:
             g_rev = st.number_input(
@@ -95,7 +97,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
                 max_value=1.0,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_REV_GROWTH
+                help=ExpertTerminalTexts.HELP_REV_GROWTH,
+                key=f"{self.MODE.name}_rev_growth"
             )
 
         with col3:
@@ -105,7 +108,8 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
                 max_value=0.80,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_MARGIN_TARGET
+                help=ExpertTerminalTexts.HELP_MARGIN_TARGET,
+                key=f"{self.MODE.name}_margin_target"
             )
 
         st.divider()
@@ -116,3 +120,38 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
             "fcf_growth_rate": g_rev,
             "target_fcf_margin": m_target,
         }
+
+    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
+        """
+        Extrait les données spécifiques au modèle FCFF Growth depuis st.session_state.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Préfixe de clé basé sur le mode (FCFF_GROWTH).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Données FCFF Growth : rev_base, growth_rate, margin_target, projection_years.
+        """
+        data = {}
+
+        # Clés spécifiques
+        rev_key = f"{key_prefix}_rev_base"
+        if rev_key in st.session_state:
+            data["manual_fcf_base"] = st.session_state[rev_key]
+
+        growth_key = f"{key_prefix}_rev_growth"
+        if growth_key in st.session_state:
+            data["fcf_growth_rate"] = st.session_state[growth_key]
+
+        margin_key = f"{key_prefix}_margin_target"
+        if margin_key in st.session_state:
+            data["target_fcf_margin"] = st.session_state[margin_key]
+
+        years_key = f"{key_prefix}_years"
+        if years_key in st.session_state:
+            data["projection_years"] = st.session_state[years_key]
+
+        return data

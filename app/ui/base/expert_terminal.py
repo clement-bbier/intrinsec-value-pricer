@@ -42,6 +42,7 @@ from src.models import (
     ValuationMode,
     ValuationRequest,
     ScenarioParameters,
+    TerminalValueMethod,
 )
 from src.i18n import ExpertTerminalTexts
 
@@ -113,6 +114,7 @@ class ExpertTerminalBase(ABC):
     SHOW_SOTP: bool = False
     SHOW_PEER_TRIANGULATION: bool = True
     SHOW_SBC_SECTION: bool = True
+    SHOW_SUBMIT_BUTTON: bool = False
 
     # Formules LaTeX par défaut (peuvent être surchargées)
     TERMINAL_VALUE_FORMULA: str = r"TV_n = f(FCF_n, g_n, WACC)"
@@ -215,8 +217,8 @@ class ExpertTerminalBase(ABC):
         self._render_optional_features()
 
         # ══════════════════════════════════════════════════════════════════
-        # SECTION 7 : SUBMIT
-        # Lancement de la valorisation
+        # SECTION 7 : SUBMIT (conditionnel)
+        # Lancement de la valorisation (seulement si bouton activé)
         # ══════════════════════════════════════════════════════════════════
         return self._render_submit()
 
@@ -332,13 +334,20 @@ class ExpertTerminalBase(ABC):
 
     def _render_submit(self) -> Optional[ValuationRequest]:
         """
-        Bouton de soumission.
+        Bouton de soumission (conditionnel).
+
+        Le bouton n'est affiché que si SHOW_SUBMIT_BUTTON est True.
+        Dans le nouveau mode centralisé, les terminaux n'affichent plus
+        leur bouton interne.
 
         Returns
         -------
         Optional[ValuationRequest]
             La requête si le bouton est cliqué, None sinon.
         """
+        if not self.SHOW_SUBMIT_BUTTON:
+            return None
+
         st.divider()
 
         button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
@@ -428,3 +437,262 @@ class ExpertTerminalBase(ABC):
                 "enable_peer_multiples", True
             ),
         }
+
+    def build_request(self) -> Optional[ValuationRequest]:
+        """
+        Construit une ValuationRequest en lisant depuis st.session_state.
+
+        Cette méthode ne doit appeler aucun widget Streamlit (pas de st.*).
+        Elle lit directement les valeurs depuis st.session_state en utilisant
+        les clés définies lors du rendu de l'UI.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            La requête de valorisation si les données sont valides, None sinon.
+
+        Notes
+        -----
+        Cette méthode est le pendant extractif de render() : elle lit ce que
+        render() a affiché et stocké dans st.session_state.
+        """
+        from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
+
+        # Collecte des données depuis st.session_state avec les clés définies
+        collected_data = {}
+
+        # Clés générales (communes à tous les terminaux)
+        key_prefix = self.MODE.name
+
+        # 1. Projection years
+        projection_key = f"{key_prefix}_years" if hasattr(self, '_collected_data') and "projection_years" in self._collected_data else "projection_years"
+        if projection_key in st.session_state:
+            collected_data["projection_years"] = st.session_state[projection_key]
+
+        # 2. Coût du capital (toujours présent)
+        collected_data.update(self._extract_discount_data(key_prefix))
+
+        # 3. Valeur terminale (si activée)
+        if self.SHOW_TERMINAL_SECTION:
+            collected_data.update(self._extract_terminal_data(key_prefix))
+
+        # 4. Equity Bridge (si activé)
+        if self.SHOW_BRIDGE_SECTION:
+            collected_data.update(self._extract_bridge_data(key_prefix))
+
+        # 5. SBC Dilution (si activée)
+        if self.SHOW_SBC_SECTION:
+            sbc_key = f"{key_prefix}_sbc_dilution"
+            if sbc_key in st.session_state:
+                collected_data["annual_dilution_rate"] = st.session_state[sbc_key]
+
+        # 6. Monte Carlo (si activé)
+        if self.SHOW_MONTE_CARLO:
+            collected_data.update(self._extract_monte_carlo_data(key_prefix))
+
+        # 7. Peer Triangulation (si activée)
+        if self.SHOW_PEER_TRIANGULATION:
+            collected_data.update(self._extract_peer_triangulation_data())
+
+        # 8. Scénarios (si activés)
+        if self.SHOW_SCENARIOS:
+            try:
+                self._scenarios = self._extract_scenarios_data(key_prefix)
+            except Exception as e:
+                logger.warning(f"Erreur lors de l'extraction des scénarios: {e}")
+                self._scenarios = None
+
+        # 9. Données spécifiques au modèle (appel aux sous-classes)
+        model_data = self._extract_model_inputs_data(key_prefix)
+        collected_data.update(model_data)
+
+        # Validation basique : au moins quelques champs remplis
+        if not any(v is not None for v in collected_data.values() if v is not None):
+            return None
+
+        # Construction des paramètres DCF
+        params = build_dcf_parameters(collected_data)
+
+        # Injection des scénarios si configurés
+        if self._scenarios is not None:
+            params.scenarios = self._scenarios
+
+        # SOTP si activé (traitement spécial car modifie params in-place)
+        if self.SHOW_SOTP and hasattr(params, 'sotp'):
+            # Pour SOTP, on doit créer un objet temporaire et le modifier
+            # Cette partie peut nécessiter une adaptation selon l'implémentation actuelle
+            pass
+
+        projection_years = collected_data.get("projection_years", 5)
+
+        return ValuationRequest(
+            ticker=self.ticker,
+            mode=self.MODE,
+            projection_years=projection_years,
+            input_source=InputSource.MANUAL,
+            manual_params=params,
+            options=self._build_options(),
+        )
+
+    def _extract_discount_data(self, key_prefix: str) -> Dict[str, Any]:
+        """Extrait les données du coût du capital depuis st.session_state."""
+        data = {}
+        base_keys = [f"{key_prefix}_rf", f"{key_prefix}_beta", f"{key_prefix}_mrp", f"{key_prefix}_price"]
+
+        # Clés de base (toujours présentes)
+        for key in base_keys:
+            if key in st.session_state and st.session_state[key] is not None:
+                if "_rf" in key:
+                    data["risk_free_rate"] = st.session_state[key]
+                elif "_beta" in key:
+                    data["manual_beta"] = st.session_state[key]
+                elif "_mrp" in key:
+                    data["market_risk_premium"] = st.session_state[key]
+                elif "_price" in key:
+                    data["manual_stock_price"] = st.session_state[key]
+
+        # Clés WACC (si pas Direct Equity)
+        if not self.MODE.is_direct_equity:
+            wacc_keys = [f"{key_prefix}_kd", f"{key_prefix}_tax"]
+            for key in wacc_keys:
+                if key in st.session_state and st.session_state[key] is not None:
+                    if "_kd" in key:
+                        data["cost_of_debt"] = st.session_state[key]
+                    elif "_tax" in key:
+                        data["tax_rate"] = st.session_state[key]
+
+        return data
+
+    def _extract_terminal_data(self, key_prefix: str) -> Dict[str, Any]:
+        """Extrait les données de valeur terminale depuis st.session_state."""
+        data = {}
+
+        # Méthode terminale
+        method_key = f"{key_prefix}_method" if f"{key_prefix}_method" in st.session_state else "terminal_method"
+        if method_key in st.session_state:
+            terminal_method = st.session_state[method_key]
+            data["terminal_method"] = terminal_method
+
+            # Selon la méthode, extraire les paramètres appropriés
+            if terminal_method == TerminalValueMethod.GORDON_GROWTH:
+                gn_key = f"{key_prefix}_gn" if f"{key_prefix}_gn" in st.session_state else "terminal_gn"
+                if gn_key in st.session_state:
+                    data["perpetual_growth_rate"] = st.session_state[gn_key]
+            else:  # EXIT_MULTIPLE
+                mult_key = f"{key_prefix}_exit_mult" if f"{key_prefix}_exit_mult" in st.session_state else "terminal_exit_mult"
+                if mult_key in st.session_state:
+                    data["exit_multiple_value"] = st.session_state[mult_key]
+
+        return data
+
+    def _extract_bridge_data(self, key_prefix: str) -> Dict[str, Any]:
+        """Extrait les données d'equity bridge depuis st.session_state."""
+        data = {}
+        bridge_prefix = f"bridge_{key_prefix}"
+
+        bridge_keys = [
+            f"{bridge_prefix}_debt", f"{bridge_prefix}_cash",
+            f"{bridge_prefix}_min", f"{bridge_prefix}_pen", f"{bridge_prefix}_shares"
+        ]
+
+        for key in bridge_keys:
+            if key in st.session_state and st.session_state[key] is not None:
+                if "_debt" in key:
+                    data["manual_total_debt"] = st.session_state[key]
+                elif "_cash" in key:
+                    data["manual_cash"] = st.session_state[key]
+                elif "_min" in key:
+                    data["manual_minority_interests"] = st.session_state[key]
+                elif "_pen" in key:
+                    data["manual_pension_provisions"] = st.session_state[key]
+                elif "_shares" in key:
+                    data["manual_shares_outstanding"] = st.session_state[key]
+
+        return data
+
+    def _extract_monte_carlo_data(self, key_prefix: str) -> Dict[str, Any]:
+        """Extrait les données Monte Carlo depuis st.session_state."""
+        data = {}
+        mc_prefix = f"{key_prefix}_mc" if f"{key_prefix}_mc_enable" in st.session_state else "mc"
+
+        # Enable
+        enable_key = f"{mc_prefix}_enable"
+        if enable_key in st.session_state and st.session_state[enable_key]:
+            data["enable_monte_carlo"] = True
+
+            # Simulations
+            sims_key = f"{mc_prefix}_sims"
+            if sims_key in st.session_state:
+                data["num_simulations"] = st.session_state[sims_key]
+
+            # Volatilités
+            vol_keys = [f"{mc_prefix}_vol_flow", f"{mc_prefix}_vol_beta", f"{mc_prefix}_vol_growth"]
+            for key in vol_keys:
+                if key in st.session_state:
+                    if "_vol_flow" in key:
+                        data["base_flow_volatility"] = st.session_state[key]
+                    elif "_vol_beta" in key:
+                        data["beta_volatility"] = st.session_state[key]
+                    elif "_vol_growth" in key:
+                        data["growth_volatility"] = st.session_state[key]
+
+            # Volatilité terminale conditionnelle
+            if self.MODE == ValuationMode.RIM:
+                omega_key = f"{mc_prefix}_vol_omega"
+                if omega_key in st.session_state:
+                    data["terminal_growth_volatility"] = st.session_state[omega_key]
+            elif self._collected_data.get("terminal_method") == "GORDON_GROWTH":
+                gn_key = f"{mc_prefix}_vol_gn"
+                if gn_key in st.session_state:
+                    data["terminal_growth_volatility"] = st.session_state[gn_key]
+
+        return data
+
+    def _extract_peer_triangulation_data(self) -> Dict[str, Any]:
+        """Extrait les données de peer triangulation depuis st.session_state."""
+        data = {}
+
+        # Enable peer multiples
+        enable_key = "peer_enable" if "peer_enable" in st.session_state else "enable_peer_multiples"
+        if enable_key in st.session_state:
+            data["enable_peer_multiples"] = st.session_state[enable_key]
+
+        # Manual peers
+        input_key = "peer_input" if "peer_input" in st.session_state else "manual_peers"
+        if input_key in st.session_state and st.session_state[input_key]:
+            raw_input = st.session_state[input_key]
+            if raw_input.strip():
+                peers_list = [t.strip().upper() for t in raw_input.split(",") if t.strip()]
+                if peers_list:
+                    data["manual_peers"] = peers_list
+
+        return data
+
+    def _extract_scenarios_data(self, key_prefix: str) -> Optional[ScenarioParameters]:
+        """Extrait les données de scénarios depuis st.session_state."""
+        from src.models import ScenarioParameters, ScenarioVariant
+
+        # Cette méthode est complexe car elle nécessite de lire plusieurs scénarios
+        # Pour le moment, on retourne None (à implémenter si nécessaire)
+        # Les scénarios sont moins critiques pour le déclenchement centralisé
+        return None
+
+    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
+        """
+        Extrait les données spécifiques au modèle depuis st.session_state.
+
+        Cette méthode doit être implémentée par chaque sous-classe pour
+        extraire les données propres à son modèle (FCF, dividendes, etc.).
+
+        Parameters
+        ----------
+        key_prefix : str
+            Préfixe de clé basé sur le mode.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Données spécifiques au modèle.
+        """
+        # Méthode abstraite à implémenter par les sous-classes
+        return {}

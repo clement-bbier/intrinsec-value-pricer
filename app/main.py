@@ -185,7 +185,7 @@ def _render_sidebar_source() -> bool:
         options=SidebarTexts.SOURCE_OPTIONS,
     )
     st.divider()
-    return "Expert" in input_mode
+    return input_mode == SidebarTexts.SOURCE_OPTIONS[1]
 
 
 def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
@@ -198,28 +198,9 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
         value=_DEFAULT_PROJECTION_YEARS,
     )
     st.divider()
-
-    enable_mc = False
-    mc_sims = _DEFAULT_MC_SIMULATIONS
-
-    if mode.supports_monte_carlo:
-        st.header(SidebarTexts.SEC_5_RISK)
-        enable_mc = st.toggle(SidebarTexts.MC_TOGGLE_LABEL, value=False)
-        if enable_mc:
-            mc_sims = st.number_input(
-                SidebarTexts.MC_SIMS_LABEL,
-                min_value=_MIN_MC_SIMULATIONS,
-                max_value=_MAX_MC_SIMULATIONS,
-                value=_DEFAULT_MC_SIMULATIONS,
-                step=_MC_SIMULATIONS_STEP,
-            )
-        st.divider()
-
-    return {
-        "years": years,
-        "enable_mc": enable_mc,
-        "mc_sims": mc_sims,
-    }
+    return {"years": years,
+        "enable_mc": False,
+        "mc_sims": _DEFAULT_MC_SIMULATIONS}
 
 
 def _render_sidebar_footer() -> None:
@@ -313,18 +294,34 @@ def _render_onboarding_guide() -> None:
     d3.info(OnboardingTexts.DIAG_INFO)
 
 
-def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
-    """Gère l'affichage et le lancement en mode Expert."""
+def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
+    """
+    Gère l'affichage du terminal expert et le lancement de la valorisation.
+
+    Parameters
+    ----------
+    ticker : str
+        Symbole boursier de l'entreprise.
+    mode : ValuationMode
+        Méthodologie de valorisation sélectionnée.
+    external_launch : bool, optional
+        Indique si le calcul est déclenché par un composant externe (ex: Sidebar), par défaut False.
+    """
     if not ticker:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    # : Utilisation de la factory pour les terminaux isolés
     from app.ui.expert.factory import create_expert_terminal
     terminal = create_expert_terminal(mode, ticker)
-    request = terminal.render()
-    if request:
-        _set_active_request(request)
+
+    # Toujours afficher le formulaire (widgets persistent dans st.session_state)
+    terminal.render()
+
+    # Si déclenchement externe (bouton sidebar), extraire et lancer le calcul
+    if external_launch:
+        request = terminal.build_request()
+        if request:
+            _set_active_request(request)
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
@@ -388,11 +385,12 @@ def main() -> None:
 
         if not is_expert:
             auto_options = _render_sidebar_auto_options(selected_mode)
-            launch_analysis = st.button(
-                CommonTexts.RUN_BUTTON,
-                type="primary",
-                width='stretch',
-            )
+
+        launch_analysis = st.button(
+            CommonTexts.RUN_BUTTON,
+            type="primary",
+            use_container_width=True,
+        )
 
         _render_sidebar_footer()
 
@@ -403,7 +401,7 @@ def main() -> None:
         run_workflow_and_display(st.session_state.active_request)
 
     elif is_expert:
-        _handle_expert_mode(ticker, selected_mode)
+        _handle_expert_mode(ticker, selected_mode, external_launch=launch_analysis)
 
     elif launch_analysis:
         _handle_auto_launch(ticker, selected_mode, auto_options)

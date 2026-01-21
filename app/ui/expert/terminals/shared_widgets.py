@@ -47,7 +47,7 @@ def widget_projection_years(
     default: int = UIWidgetDefaults.DEFAULT_PROJECTION_YEARS,
     min_years: int = UIWidgetDefaults.MIN_PROJECTION_YEARS,
     max_years: int = UIWidgetDefaults.MAX_PROJECTION_YEARS,
-    key: Optional[str] = None
+    key_prefix: Optional[str] = None
 ) -> int:
     """
     Widget pour sélectionner le nombre d'années de projection.
@@ -60,20 +60,24 @@ def widget_projection_years(
         Minimum autorisé, by default 3.
     max_years : int, optional
         Maximum autorisé, by default 15.
-    key : str, optional
-        Clé Streamlit unique pour le widget.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "projection").
 
     Returns
     -------
     int
         Nombre d'années sélectionné.
     """
+    # Générer la clé si non fournie
+    if key_prefix is None:
+        key_prefix = "projection"
+
     return st.slider(
         ExpertTerminalTexts.SLIDER_PROJ_YEARS,
         min_value=min_years,
         max_value=max_years,
         value=default,
-        key=key,
+        key=f"{key_prefix}_years",
         help=ExpertTerminalTexts.HELP_PROJ_YEARS
     )
 
@@ -83,7 +87,7 @@ def widget_growth_rate(
     min_val: float = UIWidgetDefaults.MIN_GROWTH_RATE,
     max_val: float = UIWidgetDefaults.MAX_GROWTH_RATE,
     default: Optional[float] = None,
-    key: Optional[str] = None
+    key_prefix: Optional[str] = None
 ) -> Optional[float]:
     """
     Widget pour saisir un taux de croissance.
@@ -98,21 +102,25 @@ def widget_growth_rate(
         Valeur maximale.
     default : float, optional
         Valeur par défaut (None = Auto Yahoo).
-    key : str, optional
-        Clé Streamlit unique.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "growth").
 
     Returns
     -------
     Optional[float]
         Taux de croissance saisi ou None si vide.
     """
+    # Générer la clé si non fournie
+    if key_prefix is None:
+        key_prefix = "growth"
+
     return st.number_input(
         label or ExpertTerminalTexts.INP_GROWTH_G,
         min_value=min_val,
         max_value=max_val,
         value=default,
         format="%.3f",
-        key=key,
+        key=f"{key_prefix}_growth_rate",
         help=ExpertTerminalTexts.HELP_GROWTH_RATE
     )
 
@@ -121,7 +129,7 @@ def widget_growth_rate(
 # 2. WIDGET COÛT DU CAPITAL (Section 3)
 # ==============================================================================
 
-def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
+def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
     Widget pour la saisie du coût du capital (WACC ou Ke).
 
@@ -132,6 +140,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
     ----------
     mode : ValuationMode
         Mode de valorisation pour déterminer si c'est Direct Equity.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: mode.value).
 
     Returns
     -------
@@ -144,6 +154,10 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
         - cost_of_debt : Coût de la dette (si WACC)
         - tax_rate : Taux d'imposition (si WACC)
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = mode.value
+
     st.markdown(ExpertTerminalTexts.SEC_3_CAPITAL)
 
     is_direct_equity = mode.is_direct_equity
@@ -161,7 +175,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
         max_value=10000.0,
         value=None,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_PRICE_WEIGHTS
+        help=ExpertTerminalTexts.HELP_PRICE_WEIGHTS,
+        key=f"{key_prefix}_price"
     )
 
     col_a, col_b = st.columns(2)
@@ -172,7 +187,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
         max_value=0.20,
         value=None,
         format="%.3f",
-        help=ExpertTerminalTexts.HELP_RF
+        help=ExpertTerminalTexts.HELP_RF,
+        key=f"{key_prefix}_rf"
     )
     beta = col_b.number_input(
         ExpertTerminalTexts.INP_BETA,
@@ -180,7 +196,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
         max_value=5.0,
         value=None,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_BETA
+        help=ExpertTerminalTexts.HELP_BETA,
+        key=f"{key_prefix}_beta"
     )
     mrp = col_a.number_input(
         ExpertTerminalTexts.INP_MRP,
@@ -188,7 +205,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
         max_value=0.20,
         value=None,
         format="%.3f",
-        help=ExpertTerminalTexts.HELP_MRP
+        help=ExpertTerminalTexts.HELP_MRP,
+        key=f"{key_prefix}_mrp"
     )
 
     result = {
@@ -206,7 +224,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
             max_value=0.20,
             value=None,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_KD
+            help=ExpertTerminalTexts.HELP_KD,
+            key=f"{key_prefix}_kd"
         )
         tau = col_a.number_input(
             ExpertTerminalTexts.INP_TAX,
@@ -214,7 +233,8 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
             max_value=0.60,
             value=None,
             format="%.2f",
-            help=ExpertTerminalTexts.HELP_TAX
+            help=ExpertTerminalTexts.HELP_TAX,
+            key=f"{key_prefix}_tax"
         )
         result.update({"cost_of_debt": kd, "tax_rate": tau})
     
@@ -231,7 +251,7 @@ def widget_cost_of_capital(mode: ValuationMode) -> Dict[str, Any]:
 # 3. WIDGET VALEUR TERMINALE (Section 4)
 # ==============================================================================
 
-def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
+def widget_terminal_value_dcf(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
     Widget pour la sélection de la méthode de valeur terminale (DCF).
 
@@ -243,6 +263,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
     ----------
     formula_latex : str
         Formule LaTeX à afficher pour illustrer le concept.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "terminal").
 
     Returns
     -------
@@ -251,6 +273,10 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
         - perpetual_growth_rate : Taux gn si Gordon
         - exit_multiple_value : Multiple si Exit
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "terminal"
+
     st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
     st.latex(formula_latex)
 
@@ -262,7 +288,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
             if x == TerminalValueMethod.GORDON_GROWTH
             else ExpertTerminalTexts.TV_EXIT
         ),
-        horizontal=True
+        horizontal=True,
+        key=f"{key_prefix}_method"
     )
 
     col1, _ = st.columns(2)
@@ -274,7 +301,8 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
             max_value=0.05,
             value=None,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_PERP_G
+            help=ExpertTerminalTexts.HELP_PERP_G,
+            key=f"{key_prefix}_gn"
         )
         st.divider()
         logger.debug("Terminal value: Gordon Growth selected, gn=%s", gn)
@@ -286,14 +314,15 @@ def widget_terminal_value_dcf(formula_latex: str) -> Dict[str, Any]:
             max_value=100.0,
             value=None,
             format="%.1f",
-            help=ExpertTerminalTexts.HELP_EXIT_MULT
+            help=ExpertTerminalTexts.HELP_EXIT_MULT,
+            key=f"{key_prefix}_exit_mult"
         )
         st.divider()
         logger.debug("Terminal value: Exit Multiple selected, mult=%s", exit_m)
         return {"terminal_method": method, "exit_multiple_value": exit_m}
 
 
-def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
+def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
     Widget pour la valeur terminale du modèle RIM (facteur de persistance).
 
@@ -304,6 +333,8 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
     ----------
     formula_latex : str
         Formule LaTeX du RIM terminal value.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "terminal").
 
     Returns
     -------
@@ -311,6 +342,10 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
         - terminal_method : EXIT_MULTIPLE (convention RIM)
         - exit_multiple_value : Facteur omega
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "terminal"
+
     st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
     st.latex(formula_latex)
 
@@ -321,7 +356,8 @@ def widget_terminal_value_rim(formula_latex: str) -> Dict[str, Any]:
         max_value=1.0,
         value=None,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_OMEGA
+        help=ExpertTerminalTexts.HELP_OMEGA,
+        key=f"{key_prefix}_omega"
     )
     logger.debug("RIM terminal value: omega=%s", omega)
 
@@ -458,7 +494,8 @@ def render_equity_bridge_inputs(
 
 def widget_equity_bridge(
     formula_latex: str,
-    mode: ValuationMode
+    mode: ValuationMode,
+    key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Widget pour les ajustements de structure (Equity Bridge).
@@ -474,29 +511,35 @@ def widget_equity_bridge(
         Formule LaTeX illustrant le bridge.
     mode : ValuationMode
         Mode pour déterminer si Direct Equity.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: mode.value).
 
     Returns
     -------
     Dict[str, Any]
         Paramètres de bridge collectés (dette, cash, actions, etc.)
-    
+
     Notes
     -----
     Cette fonction délègue maintenant à render_equity_bridge_inputs()
     pour un design unifié (ST-3.4).
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = f"bridge_{mode.value}"
+
     st.markdown(ExpertTerminalTexts.SEC_5_BRIDGE)
     st.latex(formula_latex)
 
     is_direct_equity = mode.is_direct_equity
-    
+
     # Délégation au widget mutualisé (ST-3.4)
     result = render_equity_bridge_inputs(
-        key_prefix=f"bridge_{mode.value}",
+        key_prefix=key_prefix,
         show_header=False,  # Header déjà affiché ci-dessus
         is_direct_equity=is_direct_equity
     )
-    
+
     st.divider()
     return result
 
@@ -507,7 +550,8 @@ def widget_equity_bridge(
 
 def widget_monte_carlo(
     mode: ValuationMode,
-    terminal_method: Optional[TerminalValueMethod] = None
+    terminal_method: Optional[TerminalValueMethod] = None,
+    key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Widget pour la configuration Monte Carlo.
@@ -521,6 +565,8 @@ def widget_monte_carlo(
         Mode pour adapter les volatilités (RIM vs DCF).
     terminal_method : TerminalValueMethod, optional
         Méthode TV pour afficher la bonne volatilité terminale.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "mc").
 
     Returns
     -------
@@ -533,12 +579,17 @@ def widget_monte_carlo(
         - growth_volatility : float
         - terminal_growth_volatility : float (si applicable)
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "mc"
+
     st.markdown(ExpertTerminalTexts.SEC_6_MC)
 
     enable = st.toggle(
         ExpertTerminalTexts.MC_CALIBRATION,
         value=False,
-        help=ExpertTerminalTexts.HELP_MC_ENABLE
+        help=ExpertTerminalTexts.HELP_MC_ENABLE,
+        key=f"{key_prefix}_enable"
     )
 
     if not enable:
@@ -554,7 +605,8 @@ def widget_monte_carlo(
                     10000,
                     SIMULATION_CONFIG.max_simulations],
             value=SIMULATION_CONFIG.default_simulations,
-            help=ExpertTerminalTexts.HELP_MC_SIMS
+            help=ExpertTerminalTexts.HELP_MC_SIMS,
+            key=f"{key_prefix}_sims"
         )
         st.divider()
 
@@ -569,7 +621,8 @@ def widget_monte_carlo(
             max_value=0.50,
             value=0.05,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_FLOW
+            help=ExpertTerminalTexts.HELP_MC_VOL_FLOW,
+            key=f"{key_prefix}_vol_flow"
         )
 
         # Volatilité Beta
@@ -579,7 +632,8 @@ def widget_monte_carlo(
             max_value=1.0,
             value=0.10,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_BETA
+            help=ExpertTerminalTexts.HELP_MC_VOL_BETA,
+            key=f"{key_prefix}_vol_beta"
         )
 
         # Volatilité croissance
@@ -589,7 +643,8 @@ def widget_monte_carlo(
             max_value=0.20,
             value=0.02,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_G
+            help=ExpertTerminalTexts.HELP_MC_VOL_G,
+            key=f"{key_prefix}_vol_growth"
         )
 
         # 3. Volatilité terminale (contextuelle)
@@ -601,7 +656,8 @@ def widget_monte_carlo(
                 max_value=0.20,
                 value=0.05,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_MC_VOL_OMEGA
+                help=ExpertTerminalTexts.HELP_MC_VOL_OMEGA,
+                key=f"{key_prefix}_vol_omega"
             )
         elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
             v_term = v_col2.number_input(
@@ -610,7 +666,8 @@ def widget_monte_carlo(
                 max_value=0.05,
                 value=0.01,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_MC_VOL_GN
+                help=ExpertTerminalTexts.HELP_MC_VOL_GN,
+                key=f"{key_prefix}_vol_gn"
             )
         else:
             v_col2.empty()
@@ -629,12 +686,17 @@ def widget_monte_carlo(
 # 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)
 # ==============================================================================
 
-def widget_peer_triangulation() -> Dict[str, Any]:
+def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
     Widget pour la sélection des peers et triangulation par multiples.
 
     Permet à l'utilisateur de spécifier manuellement une cohorte
     de comparables pour la valorisation relative.
+
+    Parameters
+    ----------
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "peer").
 
     Returns
     -------
@@ -642,11 +704,16 @@ def widget_peer_triangulation() -> Dict[str, Any]:
         - enable_peer_multiples : bool
         - manual_peers : List[str] ou None
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "peer"
+
     with st.expander(ExpertTerminalTexts.SEC_7_PEERS, expanded=False):
         enable = st.checkbox(
             "Activer la triangulation par multiples",
             value=True,
-            help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION
+            help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION,
+            key=f"{key_prefix}_enable"
         )
 
         if not enable:
@@ -655,7 +722,8 @@ def widget_peer_triangulation() -> Dict[str, Any]:
         raw_input = st.text_input(
             ExpertTerminalTexts.INP_MANUAL_PEERS,
             placeholder="ex: AAPL, MSFT, GOOG",
-            help=ExpertTerminalTexts.HELP_MANUAL_PEERS
+            help=ExpertTerminalTexts.HELP_MANUAL_PEERS,
+            key=f"{key_prefix}_input"
         )
 
         peers_list = None
@@ -674,7 +742,7 @@ def widget_peer_triangulation() -> Dict[str, Any]:
 # 7. WIDGET SCÉNARIOS (Section 8 - Optionnel)
 # ==============================================================================
 
-def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
+def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
     """
     Widget pour l'analyse de scénarios déterministes (Bull/Base/Bear).
 
@@ -685,17 +753,24 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
     ----------
     mode : ValuationMode
         Mode pour adapter les inputs (ex: marge FCF pour FCFF_GROWTH).
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "scenario").
 
     Returns
     -------
     ScenarioParameters
         Configuration des scénarios (enabled, bull, base, bear).
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "scenario"
+
     with st.expander(ExpertTerminalTexts.SEC_8_SCENARIOS, expanded=False):
         enabled = st.toggle(
             ExpertTerminalTexts.INP_SCENARIO_ENABLE,
             value=False,
-            help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE
+            help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE,
+            key=f"{key_prefix}_enable"
         )
 
         if not enabled:
@@ -712,17 +787,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
             p_bull = c1.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
                 min_value=0.0, max_value=100.0, value=25.0, step=5.0,
-                key="sc_p_bull"
+                key=f"{key_prefix}_p_bull"
             ) / 100
             g_bull = c2.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key="sc_g_bull"
+                value=None, format="%.3f", key=f"{key_prefix}_g_bull"
             )
             m_bull = None
             if show_margin:
                 m_bull = c3.number_input(
                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key="sc_m_bull"
+                    value=None, format="%.2f", key=f"{key_prefix}_m_bull"
                 )
 
         # Base Case
@@ -732,17 +807,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
             p_base = c1.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
                 min_value=0.0, max_value=100.0, value=50.0, step=5.0,
-                key="sc_p_base"
+                key=f"{key_prefix}_p_base"
             ) / 100
             g_base = c2.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key="sc_g_base"
+                value=None, format="%.3f", key=f"{key_prefix}_g_base"
             )
             m_base = None
             if show_margin:
                 m_base = c3.number_input(
                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key="sc_m_base"
+                    value=None, format="%.2f", key=f"{key_prefix}_m_base"
                 )
 
         # Bear Case
@@ -752,17 +827,17 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
             p_bear = c1.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_PROBA,
                 min_value=0.0, max_value=100.0, value=25.0, step=5.0,
-                key="sc_p_bear"
+                key=f"{key_prefix}_p_bear"
             ) / 100
             g_bear = c2.number_input(
                 ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key="sc_g_bear"
+                value=None, format="%.3f", key=f"{key_prefix}_g_bear"
             )
             m_bear = None
             if show_margin:
                 m_bear = c3.number_input(
                     ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key="sc_m_bear"
+                    value=None, format="%.2f", key=f"{key_prefix}_m_bear"
                 )
 
         # Validation des probabilités
@@ -800,7 +875,7 @@ def widget_scenarios(mode: ValuationMode) -> ScenarioParameters:
 # 8. WIDGET SOTP (Sum-of-the-Parts - Optionnel)
 # ==============================================================================
 
-def widget_sotp(params: DCFParameters) -> None:
+def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None:
     """
     Widget pour la configuration Sum-of-the-Parts.
 
@@ -811,16 +886,23 @@ def widget_sotp(params: DCFParameters) -> None:
     ----------
     params : DCFParameters
         Paramètres à modifier in-place avec la config SOTP.
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "sotp").
 
     Notes
     -----
     Ce widget modifie `params.sotp` directement (side-effect).
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "sotp"
+
     with st.expander(SOTPTexts.TITLE, expanded=False):
         params.sotp.enabled = st.toggle(
             SOTPTexts.SEC_SEGMENTS,
             value=params.sotp.enabled,
-            help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None
+            help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None,
+            key=f"{key_prefix}_enabled"
         )
 
         if not params.sotp.enabled:
@@ -850,7 +932,7 @@ def widget_sotp(params: DCFParameters) -> None:
             pd.DataFrame(current_data),
             num_rows="dynamic",
             width='stretch',
-            key="sotp_editor",
+            key=f"{key_prefix}_editor",
             column_config={
                 SOTPTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(
                     format="%.2f"
@@ -880,7 +962,8 @@ def widget_sotp(params: DCFParameters) -> None:
             max_value=50,
             value=int(params.sotp.conglomerate_discount * 100),
             step=5,
-            help=ExpertTerminalTexts.HELP_SOTP_DISCOUNT
+            help=ExpertTerminalTexts.HELP_SOTP_DISCOUNT,
+            key=f"{key_prefix}_discount"
         ) / 100.0
 
 
@@ -934,7 +1017,7 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
     return DCFParameters.from_legacy(merged)
 
 
-def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
+def widget_sbc_dilution(default_val: Optional[float] = None, key_prefix: Optional[str] = None) -> float:
     """
     Widget pour la saisie de la dilution annuelle (SBC).
 
@@ -942,12 +1025,18 @@ def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
     ----------
     default_val : float, optional
         Valeur par défaut (souvent issue du mode Auto).
+    key_prefix : str, optional
+        Préfixe pour les clés Streamlit (défaut: "sbc").
 
     Returns
     -------
     float
         Taux de dilution sélectionné.
     """
+    # Générer le préfixe de clé si non fourni
+    if key_prefix is None:
+        key_prefix = "sbc"
+
     st.markdown(f"**{ExpertTerminalTexts.LABEL_DILUTION_SBC}**")
 
     # Input numérique pour la précision
@@ -958,7 +1047,8 @@ def widget_sbc_dilution(default_val: Optional[float] = None) -> float:
         value=default_val if default_val is not None else 0.0,
         format="%.3f",
         step=0.005,
-        help=ExpertTerminalTexts.HELP_SBC_DILUTION
+        help=ExpertTerminalTexts.HELP_SBC_DILUTION,
+        key=f"{key_prefix}_dilution"
     )
 
     # Message pédagogique dynamique

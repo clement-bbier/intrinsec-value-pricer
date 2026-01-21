@@ -59,6 +59,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
     SHOW_MONTE_CARLO = False       # Pas adapté
     SHOW_SCENARIOS = True          # On peut tester différents g
     SHOW_PEER_TRIANGULATION = True
+    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
@@ -89,7 +90,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 ExpertTerminalTexts.INP_EPS_NORM,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_EPS_NORM
+                help=ExpertTerminalTexts.HELP_EPS_NORM,
+                key=f"{self.MODE.name}_eps_norm"
             )
 
         with col2:
@@ -99,7 +101,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 max_value=0.20,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_GROWTH_LT
+                help=ExpertTerminalTexts.HELP_GROWTH_LT,
+                key=f"{self.MODE.name}_growth_lt"
             )
 
         st.divider()
@@ -115,7 +118,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 max_value=0.20,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_YIELD_AAA
+                help=ExpertTerminalTexts.HELP_YIELD_AAA,
+                key=f"{self.MODE.name}_yield_aaa"
             )
 
         with col2:
@@ -125,7 +129,8 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 max_value=0.60,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_TAX
+                help=ExpertTerminalTexts.HELP_TAX,
+                key=f"{self.MODE.name}_tax_rate"
             )
 
         st.divider()
@@ -143,3 +148,42 @@ class GrahamValueTerminal(ExpertTerminalBase):
             "projection_years": 1,  # Formule statique
             "enable_monte_carlo": False,
         }
+
+    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
+        """
+        Extrait les données spécifiques au modèle Graham depuis st.session_state.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Préfixe de clé basé sur le mode (GRAHAM).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Données Graham : eps_norm, growth_lt, yield_aaa, tax_rate.
+        """
+        data = {}
+
+        # Clés spécifiques
+        eps_key = f"{key_prefix}_eps_norm"
+        if eps_key in st.session_state:
+            data["manual_fcf_base"] = st.session_state[eps_key]
+
+        growth_key = f"{key_prefix}_growth_lt"
+        if growth_key in st.session_state:
+            data["fcf_growth_rate"] = st.session_state[growth_key]
+
+        yield_key = f"{key_prefix}_yield_aaa"
+        if yield_key in st.session_state:
+            data["corporate_aaa_yield"] = st.session_state[yield_key]
+
+        tax_key = f"{key_prefix}_tax_rate"
+        if tax_key in st.session_state:
+            data["tax_rate"] = st.session_state[tax_key]
+
+        # Valeurs fixes pour Graham
+        data["projection_years"] = 1
+        data["enable_monte_carlo"] = False
+
+        return data

@@ -59,6 +59,7 @@ class RIMBankTerminal(ExpertTerminalBase):
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
     SHOW_PEER_TRIANGULATION = True
+    SHOW_SUBMIT_BUTTON = False
 
     BRIDGE_FORMULA = r"P = \dfrac{\text{Equity Value}}{\text{Actions}}"
 
@@ -94,7 +95,8 @@ class RIMBankTerminal(ExpertTerminalBase):
                 ExpertTerminalTexts.INP_BV_INITIAL,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_BV_INITIAL
+                help=ExpertTerminalTexts.HELP_BV_INITIAL,
+                key=f"{self.MODE.name}_bv_initial"
             )
 
         with col2:
@@ -102,7 +104,8 @@ class RIMBankTerminal(ExpertTerminalBase):
                 ExpertTerminalTexts.INP_NI_TTM,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_NI_TTM
+                help=ExpertTerminalTexts.HELP_NI_TTM,
+                key=f"{self.MODE.name}_ni_ttm"
             )
 
         st.divider()
@@ -112,21 +115,22 @@ class RIMBankTerminal(ExpertTerminalBase):
         col1, col2 = st.columns(2)
 
         with col1:
-            n_years = widget_projection_years(default=5, key="rim_years")
+            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
 
         with col2:
             g_ni = widget_growth_rate(
                 label="Croissance Net Income (g)",
                 min_val=0.0,
                 max_val=0.50,
-                key="rim_growth"
+                key_prefix=self.MODE.name
             )
 
         st.divider()
 
         # Valeur terminale RIM (facteur omega)
         tv_data = widget_terminal_value_rim(
-            r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
+            r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
+            key_prefix=self.MODE.name
         )
 
         return {
@@ -136,3 +140,43 @@ class RIMBankTerminal(ExpertTerminalBase):
             "fcf_growth_rate": g_ni,
             **tv_data,
         }
+
+    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
+        """
+        Extrait les données spécifiques au modèle RIM depuis st.session_state.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Préfixe de clé basé sur le mode (RIM).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Données RIM : bv_initial, ni_ttm, growth_rate, projection_years, omega.
+        """
+        data = {}
+
+        # Clés spécifiques
+        bv_key = f"{key_prefix}_bv_initial"
+        if bv_key in st.session_state:
+            data["manual_book_value"] = st.session_state[bv_key]
+
+        ni_key = f"{key_prefix}_ni_ttm"
+        if ni_key in st.session_state:
+            data["manual_fcf_base"] = st.session_state[ni_key]
+
+        omega_key = f"{key_prefix}_omega"
+        if omega_key in st.session_state:
+            data["exit_multiple_value"] = st.session_state[omega_key]
+
+        # Clés communes (growth, projection years)
+        growth_key = f"{key_prefix}_growth_rate"
+        if growth_key in st.session_state:
+            data["fcf_growth_rate"] = st.session_state[growth_key]
+
+        years_key = f"{key_prefix}_years"
+        if years_key in st.session_state:
+            data["projection_years"] = st.session_state[years_key]
+
+        return data
