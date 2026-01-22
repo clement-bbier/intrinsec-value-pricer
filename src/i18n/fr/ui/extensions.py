@@ -68,6 +68,12 @@ class SOTPResultTexts:
     METRIC_HOLDING_DISCOUNT = "Décote Holding"
     METRIC_NET_VALUE = "Valeur Nette SOTP"
 
+    LBL_SEGMENT_NAME = "Nom du Segment"
+    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
+    LBL_SEGMENT_REVENUE = "Chiffre d'Affaires"
+    LBL_SEGMENT_METHOD = "Méthode"
+    LBL_SEGMENT_CONTRIBUTION = "Contribution"
+
 
 class ScenarioTexts:
     """Textes pour l'affichage des scénarios déterministes."""

@@ -253,3 +253,11 @@ class ExpertTerminalTexts:
     INP_SBC_DILUTION = "Dilution Annuelle Attendue (SBC %)"
     HELP_SBC_DILUTION = "Taux d'émission d'actions nouvelles pour la rémunération (Stock-Based Compensation)."
     WARN_SBC_TECH = "Le SBC dilue votre part. Prévoyez 1-3% pour les entreprises Tech (ex: NVDA, PLTR)."
+
+    # AJOUTS POUR FORMULES LATEX CENTRALISÉES
+    FORMULA_BRIDGE = r"P = \frac{EV - \text{Dette} + \text{Cash} - \text{Minorities}}{\text{Actions}}"
+    FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times MRP"
+    FORMULA_CAPITAL_WACC = r"WACC = w_e [R_f + \beta(MRP)] + w_d [k_d(1-\tau)]"
+    
+    # AJOUTS POUR PEERS
+    PLACEHOLDER_PEERS = "ex: AAPL, MSFT, GOOG"
