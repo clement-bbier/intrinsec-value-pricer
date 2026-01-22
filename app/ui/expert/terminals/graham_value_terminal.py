@@ -135,10 +135,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
         st.divider()
 
-        st.caption(
-            "*Formule de Graham : approximation historique. "
-            "A utiliser comme screening, pas comme valorisation definitive.*"
-        )
+        st.caption(ExpertTerminalTexts.NOTE_GRAHAM)
 
         return {
             "manual_fcf_base": eps,

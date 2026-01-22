@@ -108,10 +108,7 @@ class DDMTerminal(ExpertTerminalBase):
                 key_prefix=self.MODE.name
             )
 
-        st.caption(
-            "*Rappel : g doit etre soutenable. "
-            "SGR = ROE × (1 - Payout) est une borne superieure.*"
-        )
+        st.caption(ExpertTerminalTexts.NOTE_DDM_SGR)
 
         st.divider()
 

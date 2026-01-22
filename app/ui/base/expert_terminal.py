@@ -465,7 +465,7 @@ class ExpertTerminalBase(ABC):
         key_prefix = self.MODE.name
 
         # 1. Projection years
-        projection_key = f"{key_prefix}_years" if hasattr(self, '_collected_data') and "projection_years" in self._collected_data else "projection_years"
+        projection_key = f"{key_prefix}_years"
         if projection_key in st.session_state:
             collected_data["projection_years"] = st.session_state[projection_key]
 
@@ -492,14 +492,14 @@ class ExpertTerminalBase(ABC):
 
         # 7. Peer Triangulation (si activée)
         if self.SHOW_PEER_TRIANGULATION:
-            collected_data.update(self._extract_peer_triangulation_data())
+            collected_data.update(self._extract_peer_triangulation_data(key_prefix))
 
         # 8. Scénarios (si activés)
         if self.SHOW_SCENARIOS:
             try:
                 self._scenarios = self._extract_scenarios_data(key_prefix)
             except Exception as e:
-                logger.warning(f"Erreur lors de l'extraction des scénarios: {e}")
+                logger.warning(f"Error during scenario extraction: {e}")
                 self._scenarios = None
 
         # 9. Données spécifiques au modèle (appel aux sous-classes)
@@ -568,18 +568,18 @@ class ExpertTerminalBase(ABC):
         data = {}
 
         # Méthode terminale
-        method_key = f"{key_prefix}_method" if f"{key_prefix}_method" in st.session_state else "terminal_method"
+        method_key = f"{key_prefix}_method"
         if method_key in st.session_state:
             terminal_method = st.session_state[method_key]
             data["terminal_method"] = terminal_method
 
             # Selon la méthode, extraire les paramètres appropriés
             if terminal_method == TerminalValueMethod.GORDON_GROWTH:
-                gn_key = f"{key_prefix}_gn" if f"{key_prefix}_gn" in st.session_state else "terminal_gn"
+                gn_key = f"{key_prefix}_gn"
                 if gn_key in st.session_state:
                     data["perpetual_growth_rate"] = st.session_state[gn_key]
             else:  # EXIT_MULTIPLE
-                mult_key = f"{key_prefix}_exit_mult" if f"{key_prefix}_exit_mult" in st.session_state else "terminal_exit_mult"
+                mult_key = f"{key_prefix}_exit_mult"
                 if mult_key in st.session_state:
                     data["exit_multiple_value"] = st.session_state[mult_key]
 
@@ -648,17 +648,17 @@ class ExpertTerminalBase(ABC):
 
         return data
 
-    def _extract_peer_triangulation_data(self) -> Dict[str, Any]:
+    def _extract_peer_triangulation_data(self, key_prefix: str) -> Dict[str, Any]:
         """Extrait les données de peer triangulation depuis st.session_state."""
         data = {}
 
         # Enable peer multiples
-        enable_key = "peer_enable" if "peer_enable" in st.session_state else "enable_peer_multiples"
-        if enable_key in st.session_state:
-            data["enable_peer_multiples"] = st.session_state[enable_key]
+        enable_key = f"{key_prefix}_peer_enable"
+        if enable_key in st.session_state and st.session_state[enable_key]:
+            data["enable_peer_multiples"] = True
 
         # Manual peers
-        input_key = "peer_input" if "peer_input" in st.session_state else "manual_peers"
+        input_key = f"{key_prefix}_input"
         if input_key in st.session_state and st.session_state[input_key]:
             raw_input = st.session_state[input_key]
             if raw_input.strip():
@@ -672,10 +672,73 @@ class ExpertTerminalBase(ABC):
         """Extrait les données de scénarios depuis st.session_state."""
         from src.models import ScenarioParameters, ScenarioVariant
 
-        # Cette méthode est complexe car elle nécessite de lire plusieurs scénarios
-        # Pour le moment, on retourne None (à implémenter si nécessaire)
-        # Les scénarios sont moins critiques pour le déclenchement centralisé
-        return None
+        # Vérifier si les scénarios sont activés
+        enable_key = f"{key_prefix}_scenario_enable"
+        if not (enable_key in st.session_state and st.session_state[enable_key]):
+            return ScenarioParameters(enabled=False)
+
+        # Extraire les probabilités
+        p_bull_key = f"{key_prefix}_p_bull"
+        p_base_key = f"{key_prefix}_p_base"
+        p_bear_key = f"{key_prefix}_p_bear"
+
+        if not all(k in st.session_state for k in [p_bull_key, p_base_key, p_bear_key]):
+            return ScenarioParameters(enabled=False)
+
+        p_bull = st.session_state[p_bull_key]
+        p_base = st.session_state[p_base_key]
+        p_bear = st.session_state[p_bear_key]
+
+        # Validation des probabilités
+        total_proba = round(p_bull + p_base + p_bear, 2)
+        if total_proba != 1.0:
+            return ScenarioParameters(enabled=False)
+
+        # Extraire les autres paramètres
+        g_bull_key = f"{key_prefix}_g_bull"
+        g_base_key = f"{key_prefix}_g_base"
+        g_bear_key = f"{key_prefix}_g_bear"
+
+        g_bull = st.session_state.get(g_bull_key)
+        g_base = st.session_state.get(g_base_key)
+        g_bear = st.session_state.get(g_bear_key)
+
+        # Marges pour FCFF_GROWTH
+        m_bull = m_base = m_bear = None
+        if self.MODE == ValuationMode.FCFF_GROWTH:
+            m_bull_key = f"{key_prefix}_m_bull"
+            m_base_key = f"{key_prefix}_m_base"
+            m_bear_key = f"{key_prefix}_m_bear"
+
+            m_bull = st.session_state.get(m_bull_key)
+            m_base = st.session_state.get(m_base_key)
+            m_bear = st.session_state.get(m_bear_key)
+
+        # Construction sécurisée
+        try:
+            return ScenarioParameters(
+                enabled=True,
+                bull=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BULL,
+                    growth_rate=g_bull,
+                    target_fcf_margin=m_bull,
+                    probability=p_bull
+                ),
+                base=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BASE,
+                    growth_rate=g_base,
+                    target_fcf_margin=m_base,
+                    probability=p_base
+                ),
+                bear=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BEAR,
+                    growth_rate=g_bear,
+                    target_fcf_margin=m_bear,
+                    probability=p_bear
+                ),
+            )
+        except Exception:
+            return ScenarioParameters(enabled=False)
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """

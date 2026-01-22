@@ -708,16 +708,19 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
     if key_prefix is None:
         key_prefix = "peer"
 
-    with st.expander(ExpertTerminalTexts.SEC_7_PEERS, expanded=False):
-        enable = st.checkbox(
-            "Activer la triangulation par multiples",
-            value=True,
-            help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION,
-            key=f"{key_prefix}_enable"
-        )
+    # Design plat harmonisé
+    st.divider()
+    st.markdown(f"### {ExpertTerminalTexts.SEC_7_PEERS}")
 
-        if not enable:
-            return {"enable_peer_multiples": False, "manual_peers": None}
+    enable = st.toggle(
+        ExpertTerminalTexts.LBL_PEER_ENABLE,
+        value=True,
+        help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION,
+        key=f"{key_prefix}_peer_enable"
+    )
+
+    if not enable:
+        return {"enable_peer_multiples": False, "manual_peers": None}
 
         raw_input = st.text_input(
             ExpertTerminalTexts.INP_MANUAL_PEERS,
@@ -765,110 +768,117 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     if key_prefix is None:
         key_prefix = "scenario"
 
-    with st.expander(ExpertTerminalTexts.SEC_8_SCENARIOS, expanded=False):
-        enabled = st.toggle(
-            ExpertTerminalTexts.INP_SCENARIO_ENABLE,
-            value=False,
-            help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE,
-            key=f"{key_prefix}_enable"
-        )
+    # Design plat harmonisé avec Monte Carlo
+    st.divider()
+    st.markdown(f"### {ExpertTerminalTexts.SEC_8_SCENARIOS}")
 
-        if not enabled:
+    enabled = st.toggle(
+        ExpertTerminalTexts.INP_SCENARIO_ENABLE,
+        value=False,
+        help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE,
+        key=f"{key_prefix}_scenario_enable"
+    )
+
+    if not enabled:
+        return ScenarioParameters(enabled=False)
+
+    st.caption(ExpertTerminalTexts.SCENARIO_HINT)
+
+    show_margin = mode == ValuationMode.FCFF_GROWTH
+
+    # Bull Case
+    with st.container(border=True):
+        st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BULL}**")
+        c1, c2, c3 = st.columns(3)
+        p_bull = c1.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_PROBA,
+            min_value=0.0, max_value=100.0, value=25.0, step=5.0,
+            key=f"{key_prefix}_p_bull"
+        ) / 100
+        g_bull = c2.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+            value=None, format="%.3f", key=f"{key_prefix}_g_bull"
+        )
+        m_bull = None
+        if show_margin:
+            m_bull = c3.number_input(
+                ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+                value=None, format="%.2f", key=f"{key_prefix}_m_bull"
+            )
+
+    # Base Case
+    with st.container(border=True):
+        st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BASE}**")
+        c1, c2, c3 = st.columns(3)
+        p_base = c1.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_PROBA,
+            min_value=0.0, max_value=100.0, value=50.0, step=5.0,
+            key=f"{key_prefix}_p_base"
+        ) / 100
+        g_base = c2.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+            value=None, format="%.3f", key=f"{key_prefix}_g_base"
+        )
+        m_base = None
+        if show_margin:
+            m_base = c3.number_input(
+                ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+                value=None, format="%.2f", key=f"{key_prefix}_m_base"
+            )
+
+    # Bear Case
+    with st.container(border=True):
+        st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BEAR}**")
+        c1, c2, c3 = st.columns(3)
+        p_bear = c1.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_PROBA,
+            min_value=0.0, max_value=100.0, value=25.0, step=5.0,
+            key=f"{key_prefix}_p_bear"
+        ) / 100
+        g_bear = c2.number_input(
+            ExpertTerminalTexts.INP_SCENARIO_GROWTH,
+            value=None, format="%.3f", key=f"{key_prefix}_g_bear"
+        )
+        m_bear = None
+        if show_margin:
+            m_bear = c3.number_input(
+                ExpertTerminalTexts.INP_SCENARIO_MARGIN,
+                value=None, format="%.2f", key=f"{key_prefix}_m_bear"
+            )
+
+        # Validation douce des probabilités
+        total_proba = round(p_bull + p_base + p_bear, 2)
+
+        if total_proba != 1.0:
+            st.error(ExpertTerminalTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int(total_proba*100)))
             return ScenarioParameters(enabled=False)
 
-        st.caption(ExpertTerminalTexts.SCENARIO_HINT)
-
-        show_margin = mode == ValuationMode.FCFF_GROWTH
-
-        # Bull Case
-        with st.container(border=True):
-            st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BULL}**")
-            c1, c2, c3 = st.columns(3)
-            p_bull = c1.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_PROBA,
-                min_value=0.0, max_value=100.0, value=25.0, step=5.0,
-                key=f"{key_prefix}_p_bull"
-            ) / 100
-            g_bull = c2.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key=f"{key_prefix}_g_bull"
+        # Construction sécurisée avec gestion d'erreur
+        try:
+            return ScenarioParameters(
+                enabled=True,
+                bull=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BULL,
+                    growth_rate=g_bull,
+                    target_fcf_margin=m_bull,
+                    probability=p_bull
+                ),
+                base=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BASE,
+                    growth_rate=g_base,
+                    target_fcf_margin=m_base,
+                    probability=p_base
+                ),
+                bear=ScenarioVariant(
+                    label=ExpertTerminalTexts.LBL_BEAR,
+                    growth_rate=g_bear,
+                    target_fcf_margin=m_bear,
+                    probability=p_bear
+                ),
             )
-            m_bull = None
-            if show_margin:
-                m_bull = c3.number_input(
-                    ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key=f"{key_prefix}_m_bull"
-                )
-
-        # Base Case
-        with st.container(border=True):
-            st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BASE}**")
-            c1, c2, c3 = st.columns(3)
-            p_base = c1.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_PROBA,
-                min_value=0.0, max_value=100.0, value=50.0, step=5.0,
-                key=f"{key_prefix}_p_base"
-            ) / 100
-            g_base = c2.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key=f"{key_prefix}_g_base"
-            )
-            m_base = None
-            if show_margin:
-                m_base = c3.number_input(
-                    ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key=f"{key_prefix}_m_base"
-                )
-
-        # Bear Case
-        with st.container(border=True):
-            st.markdown(f"**{ExpertTerminalTexts.LABEL_SCENARIO_BEAR}**")
-            c1, c2, c3 = st.columns(3)
-            p_bear = c1.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_PROBA,
-                min_value=0.0, max_value=100.0, value=25.0, step=5.0,
-                key=f"{key_prefix}_p_bear"
-            ) / 100
-            g_bear = c2.number_input(
-                ExpertTerminalTexts.INP_SCENARIO_GROWTH,
-                value=None, format="%.3f", key=f"{key_prefix}_g_bear"
-            )
-            m_bear = None
-            if show_margin:
-                m_bear = c3.number_input(
-                    ExpertTerminalTexts.INP_SCENARIO_MARGIN,
-                    value=None, format="%.2f", key=f"{key_prefix}_m_bear"
-                )
-
-        # Validation des probabilités
-        total_prob = p_bull + p_base + p_bear
-        if abs(total_prob - 1.0) > TechnicalDefaults.PROBABILITY_TOLERANCE:
-            st.warning(
-                f"Somme des probabilites = {total_prob:.0%}. "
-                "Doit etre egale a 100%."
-            )
-
-        return ScenarioParameters(
-            enabled=True,
-            bull=ScenarioVariant(
-                label="Bull",
-                growth_rate=g_bull,
-                target_fcf_margin=m_bull,
-                probability=p_bull
-            ),
-            base=ScenarioVariant(
-                label="Base",
-                growth_rate=g_base,
-                target_fcf_margin=m_base,
-                probability=p_base
-            ),
-            bear=ScenarioVariant(
-                label="Bear",
-                growth_rate=g_bear,
-                target_fcf_margin=m_bear,
-                probability=p_bear
-            ),
-        )
+        except Exception as e:
+            st.error(ExpertTerminalTexts.ERR_SCENARIO_INVALID)
+            return ScenarioParameters(enabled=False)
 
 
 # ==============================================================================
@@ -897,16 +907,19 @@ def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None
     if key_prefix is None:
         key_prefix = "sotp"
 
-    with st.expander(SOTPTexts.TITLE, expanded=False):
-        params.sotp.enabled = st.toggle(
-            SOTPTexts.SEC_SEGMENTS,
-            value=params.sotp.enabled,
-            help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None,
-            key=f"{key_prefix}_enabled"
-        )
+    # Design plat harmonisé
+    st.divider()
+    st.markdown(f"### {SOTPTexts.TITLE}")
 
-        if not params.sotp.enabled:
-            return
+    params.sotp.enabled = st.toggle(
+        SOTPTexts.SEC_SEGMENTS,
+        value=params.sotp.enabled,
+        help=SOTPTexts.HELP_SOTP if hasattr(SOTPTexts, 'HELP_SOTP') else None,
+        key=f"{key_prefix}_sotp_enabled"
+    )
+
+    if not params.sotp.enabled:
+        return
 
         # Données actuelles ou défaut
         current_data = [

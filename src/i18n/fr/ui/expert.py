@@ -208,6 +208,15 @@ class ExpertTerminalTexts:
     LABEL_SCENARIO_BEAR = "Pessimiste (Bear Case)"
     SCENARIO_HINT = "Definissez des variantes. Laissez vide pour utiliser la valeur de base."
 
+    # Labels courts pour les scénarios (utilisés dans les objets ScenarioVariant)
+    LBL_BULL = "Bull"
+    LBL_BASE = "Base"
+    LBL_BEAR = "Bear"
+
+    # Messages d'erreur pour les scénarios
+    ERR_SCENARIO_PROBA_SUM = "La somme des probabilités est de {sum}% (doit être 100%)."
+    ERR_SCENARIO_INVALID = "Certains paramètres de scénarios sont invalides."
+
     # ==========================================================================
     # TRIANGULATION
     # ==========================================================================
