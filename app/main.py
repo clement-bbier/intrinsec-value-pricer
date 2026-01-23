@@ -299,9 +299,9 @@ def _render_onboarding_guide() -> None:
     # 5. SYSTÈME DE DIAGNOSTIC (Footer)
     st.subheader(OnboardingTexts.DIAGNOSTIC_HEADER)
     d1, d2, d3 = st.columns(3)
-    d1.error(OnboardingTexts.DIAG_BLOQUANT)
-    d2.warning(OnboardingTexts.DIAG_WARN)
-    d3.info(OnboardingTexts.DIAG_INFO)
+    d1.error(OnboardingTexts.DIAGNOSTIC_BLOQUANT)
+    d2.warning(OnboardingTexts.DIAGNOSTIC_WARN)
+    d3.info(OnboardingTexts.DIAGNOSTIC_INFO)
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
     """

@@ -75,10 +75,9 @@ class OnboardingTexts:
 
     # Section : Diagnostics
     DIAGNOSTIC_HEADER = "**Système de Diagnostics**"
-    DIAG_BLOQUANT = "**Bloquant** : Erreur de donnée ou paramètre manquant."
-    DIAG_WARN = "**Avertissement** : Hypothèse divergente (ex: g > WACC)."
-    DIAG_INFO = "**Information** : Note ou recommandation."
-
+    DIAGNOSTIC_BLOQUANT = "**Bloquant** : Erreur de donnée ou paramètre manquant."
+    DIAGNOSTIC_WARN = "**Avertissement** : Hypothèse divergente (ex: g > WACC)."
+    DIAGNOSTIC_INFO = "**Information** : Note ou recommandation."
 
 class FeedbackMessages:
     """Messages systeme et alertes de validation."""
