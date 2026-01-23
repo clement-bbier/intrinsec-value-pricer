@@ -1,5 +1,5 @@
 """
-app/ui/base/expert_terminal.py
+app/ui/base/base_terminal.py
 
 CLASSE ABSTRAITE — Terminal Expert de Saisie
 
@@ -44,7 +44,7 @@ from src.models import (
     ScenarioParameters,
     TerminalValueMethod,
 )
-from src.i18n import ExpertTerminalTexts
+from src.i18n import SharedTexts
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class ExpertTerminalBase(ABC):
     SHOW_BRIDGE_SECTION: bool = True
     SHOW_MONTE_CARLO: bool = True
     SHOW_SCENARIOS: bool = True
-    SHOW_SOTP: bool = False
+    SHOW_SOTP: bool = True
     SHOW_PEER_TRIANGULATION: bool = True
     SHOW_SBC_SECTION: bool = True
     SHOW_SUBMIT_BUTTON: bool = False
@@ -201,14 +201,6 @@ class ExpertTerminalBase(ABC):
         if self.SHOW_BRIDGE_SECTION:
             bridge_data = self._render_equity_bridge()
             self._collected_data.update(bridge_data or {})
-
-        # ══════════════════════════════════════════════════════════════════
-        # SECTION 5.5 : SBC DILUTION (Stock-Based Compensation)
-        # Ajustement pour la dilution des actionnaires historiques
-        # ══════════════════════════════════════════════════════════════════
-        if self.SHOW_SBC_SECTION:
-            sbc_data = self._render_sbc_dilution()
-            self._collected_data.update(sbc_data or {})
 
         # ══════════════════════════════════════════════════════════════════
         # SECTION 6 : EXTENSIONS (Monte Carlo, Scénarios, SOTP)
@@ -350,7 +342,7 @@ class ExpertTerminalBase(ABC):
 
         st.divider()
 
-        button_label = ExpertTerminalTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
+        button_label = SharedTexts.BTN_VALUATE_STD.format(ticker=self.ticker)
 
         if st.button(button_label, type="primary", width='stretch'):
             logger.info(
@@ -719,19 +711,19 @@ class ExpertTerminalBase(ABC):
             return ScenarioParameters(
                 enabled=True,
                 bull=ScenarioVariant(
-                    label=ExpertTerminalTexts.LBL_BULL,
+                    label=SharedTexts.LBL_BULL,
                     growth_rate=g_bull,
                     target_fcf_margin=m_bull,
                     probability=p_bull
                 ),
                 base=ScenarioVariant(
-                    label=ExpertTerminalTexts.LBL_BASE,
+                    label=SharedTexts.LBL_BASE,
                     growth_rate=g_base,
                     target_fcf_margin=m_base,
                     probability=p_base
                 ),
                 bear=ScenarioVariant(
-                    label=ExpertTerminalTexts.LBL_BEAR,
+                    label=SharedTexts.LBL_BEAR,
                     growth_rate=g_bear,
                     target_fcf_margin=m_bear,
                     probability=p_bear

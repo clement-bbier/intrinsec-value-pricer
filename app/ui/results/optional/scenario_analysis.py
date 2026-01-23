@@ -30,7 +30,7 @@ pd.set_option('future.no_silent_downcasting', True)
 
 from src.models import ValuationResult
 from src.i18n import ScenarioTexts
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 from src.utilities.formatting import format_smart_number
 
 

@@ -12,7 +12,7 @@ import pandas as pd
 
 from src.models import ValuationResult
 from src.i18n import SOTPResultTexts as SOTPTexts
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 from src.utilities.formatting import format_smart_number
 
 

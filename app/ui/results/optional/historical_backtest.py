@@ -29,7 +29,7 @@ import pandas as pd
 from src.models import ValuationResult
 from src.config.constants import TechnicalDefaults
 from src.i18n import UIMessages
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 
 
 class HistoricalBacktestTab(ResultTabBase):

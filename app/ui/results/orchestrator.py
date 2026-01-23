@@ -23,7 +23,7 @@ from typing import List, Any, Optional, Dict
 import streamlit as st
 
 from src.models import ValuationResult
-from app.ui.base import ResultTabBase
+from .base_result import ResultTabBase
 from src.i18n import UIMessages
 
 # Import des onglets piliers (Core & Optionnels)

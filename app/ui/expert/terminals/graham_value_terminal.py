@@ -22,8 +22,8 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n import SharedTexts
+from ..base_terminal import ExpertTerminalBase
 
 
 class GrahamValueTerminal(ExpertTerminalBase):
@@ -80,17 +80,17 @@ class GrahamValueTerminal(ExpertTerminalBase):
             - tax_rate : Taux d'imposition
             - projection_years : 1 (formule statique)
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_GRAHAM_BASE}**")
+        st.markdown(f"**{SharedTexts.SEC_1_GRAHAM_BASE}**")
         st.latex(r"V = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
 
         col1, col2 = st.columns(2)
 
         with col1:
             eps = st.number_input(
-                ExpertTerminalTexts.INP_EPS_NORM,
+                SharedTexts.INP_EPS_NORM,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_EPS_NORM,
+                help=SharedTexts.HELP_EPS_NORM,
                 key=f"{self.MODE.name}_eps_norm"
             )
 
@@ -101,24 +101,24 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 max_value=0.20,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_GROWTH_LT,
+                help=SharedTexts.HELP_GROWTH_LT,
                 key=f"{self.MODE.name}_growth_lt"
             )
 
         st.divider()
 
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_GRAHAM}**")
+        st.markdown(f"**{SharedTexts.SEC_2_GRAHAM}**")
 
         col1, col2 = st.columns(2)
 
         with col1:
             yield_aaa = st.number_input(
-                ExpertTerminalTexts.INP_YIELD_AAA,
+                SharedTexts.INP_YIELD_AAA,
                 min_value=0.0,
                 max_value=0.20,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_YIELD_AAA,
+                help=SharedTexts.HELP_YIELD_AAA,
                 key=f"{self.MODE.name}_yield_aaa"
             )
 
@@ -129,13 +129,13 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 max_value=0.60,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_TAX,
+                help=SharedTexts.HELP_TAX,
                 key=f"{self.MODE.name}_tax_rate"
             )
 
         st.divider()
 
-        st.caption(ExpertTerminalTexts.NOTE_GRAHAM)
+        st.caption(SharedTexts.NOTE_GRAHAM)
 
         return {
             "manual_fcf_base": eps,

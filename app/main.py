@@ -56,7 +56,7 @@ from src.i18n import (
     OnboardingTexts,
     FeedbackMessages,
     LegalTexts,
-    ExpertTerminalTexts
+    SharedTexts
 )
 
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)

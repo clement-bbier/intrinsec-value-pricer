@@ -18,8 +18,8 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n import SharedTexts
+from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
@@ -84,7 +84,7 @@ class FCFETerminal(ExpertTerminalBase):
             - projection_years : Horizon
             - fcf_growth_rate : Croissance
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_FCFE_BASE}**")
+        st.markdown(f"**{SharedTexts.SEC_1_FCFE_BASE}**")
         st.latex(
             r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + "
             r"\frac{TV_n}{(1+k_e)^n}"
@@ -94,25 +94,25 @@ class FCFETerminal(ExpertTerminalBase):
 
         with col1:
             fcfe_base = st.number_input(
-                ExpertTerminalTexts.INP_FCFE_BASE,
+                SharedTexts.INP_FCFE_BASE,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_FCFE_BASE,
+                help=SharedTexts.HELP_FCFE_BASE,
                 key=f"{self.MODE.name}_fcf_base"
             )
 
         with col2:
             net_borrowing = st.number_input(
-                ExpertTerminalTexts.INP_NET_BORROWING,
+                SharedTexts.INP_NET_BORROWING,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_NET_BORROWING,
+                help=SharedTexts.HELP_NET_BORROWING,
                 key=f"{self.MODE.name}_net_borrowing"
             )
 
         st.divider()
 
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ}**")
+        st.markdown(f"**{SharedTexts.SEC_2_PROJ}**")
 
         col1, col2 = st.columns(2)
 
@@ -121,7 +121,7 @@ class FCFETerminal(ExpertTerminalBase):
 
         with col2:
             g_rate = widget_growth_rate(
-                label=ExpertTerminalTexts.INP_GROWTH_G,
+                label=SharedTexts.INP_GROWTH_G,
                 min_val=-0.50,
                 max_val=1.0,
                 key_prefix=self.MODE.name

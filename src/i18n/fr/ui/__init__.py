@@ -14,7 +14,7 @@ from src.i18n.fr.ui.common import (
 
 from src.i18n.fr.ui.sidebar import SidebarTexts
 
-from src.i18n.fr.ui.expert import ExpertTerminalTexts
+from src.i18n.fr.ui.expert import SharedTexts
 
 from src.i18n.fr.ui.results import (
     KPITexts,
@@ -37,7 +37,7 @@ __all__ = [
     "TooltipsTexts",
     "UIMessages",
     "SidebarTexts",
-    "ExpertTerminalTexts",
+    "SharedTexts",
     "KPITexts",
     "AuditTexts",
     "ChartTexts",

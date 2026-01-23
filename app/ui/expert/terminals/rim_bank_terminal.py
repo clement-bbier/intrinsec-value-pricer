@@ -18,8 +18,8 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n import SharedTexts
+from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
@@ -82,7 +82,7 @@ class RIMBankTerminal(ExpertTerminalBase):
             - fcf_growth_rate : Croissance NI
             - exit_multiple_value : Omega (persistance)
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_RIM_BASE}**")
+        st.markdown(f"**{SharedTexts.SEC_1_RIM_BASE}**")
         st.latex(
             r"P = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}"
             r"{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}"
@@ -92,25 +92,25 @@ class RIMBankTerminal(ExpertTerminalBase):
 
         with col1:
             bv = st.number_input(
-                ExpertTerminalTexts.INP_BV_INITIAL,
+                SharedTexts.INP_BV_INITIAL,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_BV_INITIAL,
+                help=SharedTexts.HELP_BV_INITIAL,
                 key=f"{self.MODE.name}_bv_initial"
             )
 
         with col2:
             ni = st.number_input(
-                ExpertTerminalTexts.INP_NI_TTM,
+                SharedTexts.INP_NI_TTM,
                 value=None,
                 format="%.0f",
-                help=ExpertTerminalTexts.HELP_NI_TTM,
+                help=SharedTexts.HELP_NI_TTM,
                 key=f"{self.MODE.name}_ni_ttm"
             )
 
         st.divider()
 
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_RIM}**")
+        st.markdown(f"**{SharedTexts.SEC_2_PROJ_RIM}**")
 
         col1, col2 = st.columns(2)
 

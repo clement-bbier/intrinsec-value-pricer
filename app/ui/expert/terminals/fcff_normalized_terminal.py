@@ -17,8 +17,8 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n import SharedTexts
+from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
@@ -69,22 +69,22 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
             - projection_years : Horizon
             - fcf_growth_rate : Croissance
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_FCF_NORM}**")
+        st.markdown(f"**{SharedTexts.SEC_1_FCF_NORM}**")
         st.latex(
             r"V_0 = \sum_{t=1}^{n} \frac{FCF_{norm}(1+g)^t}{(1+WACC)^t} + "
             r"\frac{TV_n}{(1+WACC)^n}"
         )
 
         fcf_base = st.number_input(
-            ExpertTerminalTexts.INP_FCF_SMOOTHED,
+            SharedTexts.INP_FCF_SMOOTHED,
             value=None,
             format="%.0f",
-            help=ExpertTerminalTexts.HELP_FCF_SMOOTHED,
+            help=SharedTexts.HELP_FCF_SMOOTHED,
             key=f"{self.MODE.name}_fcf_base"
         )
         st.divider()
 
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_FUND}**")
+        st.markdown(f"**{SharedTexts.SEC_2_PROJ_FUND}**")
 
         col1, col2 = st.columns(2)
 
@@ -93,7 +93,7 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
         with col2:
             g_rate = widget_growth_rate(
-                label=ExpertTerminalTexts.INP_GROWTH_G,
+                label=SharedTexts.INP_GROWTH_G,
                 min_val=-0.20,
                 max_val=0.30,
                 key_prefix=self.MODE.name

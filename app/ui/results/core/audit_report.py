@@ -11,7 +11,7 @@ import streamlit as st
 
 from src.models import ValuationResult, AuditReport, AuditStep, AuditSeverity
 from src.i18n import AuditTexts, UIMessages
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 
 
 class AuditReportTab(ResultTabBase):

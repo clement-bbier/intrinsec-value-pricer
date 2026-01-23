@@ -14,7 +14,7 @@ import streamlit as st
 
 from src.models import ValuationResult
 from src.i18n import KPITexts, UIMessages
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 from app.ui.results.components.step_renderer import render_calculation_step
 
 

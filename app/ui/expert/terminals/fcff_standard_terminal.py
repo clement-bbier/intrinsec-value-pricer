@@ -1,36 +1,22 @@
 """
 app/ui/expert_terminals/fcff_standard_terminal.py
 
-TERMINAL EXPERT — FCFF TWO-STAGE STANDARD
+TERMINAL EXPERT — FCFF TWO-STAGE STANDARD (NARRATIVE FLOW)
+==========================================================
+Ce module implémente l'interface de valorisation DCF Entité classique.
+Il suit une approche pédagogique permettant à l'analyste de construire
+sa propre thèse de flux de trésorerie étape par étape.
 
-Rôle : Valorisation d'entreprises matures avec FCF stable
-Pattern : Template Method (hérite de ExpertTerminalBase)
-Style : Numpy docstrings
-
-Terminal FCFF Standard
-Risques financiers : Calculs de valorisation, sensibilité aux inputs
-
-Dépendances critiques :
-- streamlit >= 1.28.0
-- core.models.ValuationMode.FCFF_STANDARD
-- app.ui.base.ExpertTerminalBase
-
-Cas d'usage : Entreprises matures avec FCF positif et stable
-Flux : Free Cash Flow to Firm (avant service de la dette)
-Actualisation : WACC (Weighted Average Cost of Capital)
-Niveau : Enterprise Value → Equity Value via Bridge
-
-Formule principale :
-    V0 = Σ(FCFt / (1+WACC)^t) + TVn / (1+WACC)^n
+Architecture : ST-3.1 (Fondamental - DCF)
+Flux : Free Cash Flow to Firm (FCFF)
 """
 
-from typing import Dict, Any
-
+from typing import Dict, Any, Optional
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n.fr.ui.expert import FCFFStandardTexts as Texts
+from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
@@ -39,84 +25,72 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class FCFFStandardTerminal(ExpertTerminalBase):
     """
-    Terminal pour la valorisation FCFF Two-Stage classique.
+    Terminal expert pour la valorisation par les flux de trésorerie à la firme.
 
-    Ce modèle est adapté aux entreprises matures générant des flux
-    de trésorerie positifs et stables. Il utilise le WACC comme
-    taux d'actualisation et requiert un equity bridge complet.
+    Ce terminal guide l'utilisateur à travers les étapes de projection
+    du modèle DCF avant d'intégrer les paramètres de risque et les
+    ajustements de structure hérités de la classe de base.
 
     Attributes
     ----------
     MODE : ValuationMode
-        FCFF_STANDARD
+        Identifiant unique du modèle (FCFF_STANDARD).
     DISPLAY_NAME : str
-        "DCF - Free Cash Flow to Firm"
+        Nom affiché dans l'en-tête du terminal (issu de i18n).
+    DESCRIPTION : str
+        Explication concise du modèle (issue de i18n).
     """
 
     MODE = ValuationMode.FCFF_STANDARD
-    DISPLAY_NAME = "DCF - Free Cash Flow to Firm"
-    DESCRIPTION = "DCF classique : flux operationnels actualises au WACC"
+    DISPLAY_NAME = Texts.TITLE
+    DESCRIPTION = Texts.DESCRIPTION
 
-    # Configuration des sections
+    # --- Configuration du Pipeline UI ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # Formules LaTeX
+    # --- Formules LaTeX narratives ---
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
-    BRIDGE_FORMULA = r"P = \dfrac{EV - Dette + Cash - Min - Pensions}{Actions}"
+    BRIDGE_FORMULA = Texts.FORMULA_BRIDGE
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Inputs spécifiques au modèle FCFF Standard.
+        Rendu séquentiel et vertical des entrées spécifiques au modèle FCFF.
 
-        Collecte :
-        - FCF de base (TTM ou manuel)
-        - Horizon de projection
-        - Taux de croissance Phase 1
+        Suit le flux narratif défini dans le référentiel i18n :
+        Étape 1 : Ancrage du flux (Normalisation du point de départ).
+        Étape 2 : Projection (Hypothèses de croissance explicite).
 
         Returns
         -------
         Dict[str, Any]
-            - manual_fcf_base : FCF de départ
-            - projection_years : Horizon explicite
-            - fcf_growth_rate : Croissance Phase 1
+            Dictionnaire des paramètres capturés pour le moteur de calcul.
         """
-        # Formule du modèle
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_FCF_STD}**")
-        st.latex(
-            r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + "
-            r"\frac{TV_n}{(1+WACC)^n}"
-        )
 
-        # FCF de base
+        # --- ÉTAPE 1 : ANCRAGE ---
+        st.markdown(Texts.STEP_1_TITLE)
+        st.info(Texts.STEP_1_DESC)
+
+        st.latex(Texts.STEP_1_FORMULA)
         fcf_base = st.number_input(
-            ExpertTerminalTexts.INP_FCF_TTM,
-            value=None,
-            format="%.0f",
-            help=ExpertTerminalTexts.HELP_FCF_TTM,
+            Texts.INP_BASE,
+            value=None, format="%.0f",
             key=f"{self.MODE.name}_fcf_base"
         )
         st.divider()
 
-        # Section croissance
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ}**")
+        # --- ÉTAPE 2 : PROJECTION ---
+        st.markdown(Texts.STEP_2_TITLE)
+        st.info(Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
-
         with col1:
             n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
-
         with col2:
-            g_rate = widget_growth_rate(
-                label=ExpertTerminalTexts.INP_GROWTH_G,
-                min_val=-0.50,
-                max_val=1.0,
-                key_prefix=self.MODE.name
-            )
-
+            g_rate = widget_growth_rate(label=Texts.INP_GROWTH_G, key_prefix=self.MODE.name)
         st.divider()
 
         return {
@@ -127,32 +101,23 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données spécifiques au modèle FCFF Standard depuis st.session_state.
+        Extrait les données du session_state selon le préfixe du terminal.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe de clé basé sur le mode (FCFF_STANDARD).
+            Préfixe de clé (généralement le nom du mode).
 
         Returns
         -------
         Dict[str, Any]
-            Données FCFF Standard : fcf_base, projection_years, growth_rate.
+            Données brutes extraites.
         """
         data = {}
 
-        # Clé FCF spécifique
-        fcf_key = f"{key_prefix}_fcf_base"
-        if fcf_key in st.session_state:
-            data["manual_fcf_base"] = st.session_state[fcf_key]
-
-        # Clés communes (growth, projection years)
-        growth_key = f"{key_prefix}_growth_rate"
-        if growth_key in st.session_state:
-            data["fcf_growth_rate"] = st.session_state[growth_key]
-
-        years_key = f"{key_prefix}_years"
-        if years_key in st.session_state:
-            data["projection_years"] = st.session_state[years_key]
+        # Extraction sécurisée des états Streamlit
+        data["manual_fcf_base"] = st.session_state.get(f"{key_prefix}_fcf_base")
+        data["fcf_growth_rate"] = st.session_state.get(f"{key_prefix}_growth_rate")
+        data["projection_years"] = st.session_state.get(f"{key_prefix}_years")
 
         return data

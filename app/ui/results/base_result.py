@@ -1,5 +1,5 @@
 """
-app/ui/base/result_tab.py
+app/ui/base/base_result.py
 CLASSE ABSTRAITE — Onglet de Résultats
 
 Pattern : Strategy (GoF)

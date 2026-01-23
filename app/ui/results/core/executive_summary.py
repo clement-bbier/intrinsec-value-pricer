@@ -29,7 +29,7 @@ import streamlit as st
 
 from src.models import ValuationResult
 from src.i18n import KPITexts
-from app.ui.base import ResultTabBase
+from app.ui.results.base_result import ResultTabBase
 
 
 class ExecutiveSummaryTab(ResultTabBase):

@@ -54,13 +54,13 @@ class TestI18nStructureContract:
         from src.i18n.fr import (
             CommonTexts,
             SidebarTexts,
-            ExpertTerminalTexts,
+            SharedTexts,
             KPITexts,
         )
         
         assert hasattr(CommonTexts, "APP_TITLE")
         assert hasattr(SidebarTexts, "TICKER_LABEL")
-        assert hasattr(ExpertTerminalTexts, "BTN_CALCULATE")
+        assert hasattr(SharedTexts, "BTN_CALCULATE")
         assert hasattr(KPITexts, "TAB_INPUTS")
     
     def test_fr_module_exports_backend_classes(self):

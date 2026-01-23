@@ -32,7 +32,7 @@ from src.models import (
     BusinessUnit,
     SOTPMethod,
 )
-from src.i18n import ExpertTerminalTexts, SOTPTexts
+from src.i18n import SharedTexts, SOTPTexts
 from src.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG
 from src.config.constants import UIWidgetDefaults, TechnicalDefaults
 
@@ -73,12 +73,12 @@ def widget_projection_years(
         key_prefix = "projection"
 
     return st.slider(
-        ExpertTerminalTexts.SLIDER_PROJ_YEARS,
+        SharedTexts.INP_PROJ_YEARS,
         min_value=min_years,
         max_value=max_years,
         value=default,
         key=f"{key_prefix}_years",
-        help=ExpertTerminalTexts.HELP_PROJ_YEARS
+        help=SharedTexts.HELP_PROJ_YEARS
     )
 
 
@@ -115,13 +115,13 @@ def widget_growth_rate(
         key_prefix = "growth"
 
     return st.number_input(
-        label or ExpertTerminalTexts.INP_GROWTH_G,
+        label or SharedTexts.INP_GROWTH_G,
         min_value=min_val,
         max_value=max_val,
         value=default,
         format="%.3f",
         key=f"{key_prefix}_growth_rate",
-        help=ExpertTerminalTexts.HELP_GROWTH_RATE
+        help=SharedTexts.HELP_GROWTH_RATE
     )
 
 
@@ -159,24 +159,24 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
     prefix = key_prefix or mode.name
 
     # 1. En-tête et Formule théorique
-    st.markdown(ExpertTerminalTexts.SEC_3_CAPITAL)
+    st.markdown(SharedTexts.SEC_3_CAPITAL)
     
     formula = (
-        ExpertTerminalTexts.FORMULA_CAPITAL_KE 
+        SharedTexts.FORMULA_CAPITAL_KE
         if mode.is_direct_equity 
-        else ExpertTerminalTexts.FORMULA_CAPITAL_WACC
+        else SharedTexts.FORMULA_CAPITAL_WACC
     )
     st.latex(formula)
 
     # 2. Saisie du prix (utile pour le calcul des poids E et D)
     manual_price = st.number_input(
-        label=ExpertTerminalTexts.INP_PRICE_WEIGHTS,
+        label=SharedTexts.INP_PRICE_WEIGHTS,
         min_value=0.0,
         max_value=100000.0,
         value=None,
         step=0.01,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_PRICE_WEIGHTS,
+        help=SharedTexts.HELP_PRICE_WEIGHTS,
         key=f"{prefix}_price"
     )
 
@@ -184,35 +184,35 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
     col_a, col_b = st.columns(2)
     
     rf = col_a.number_input(
-        label=ExpertTerminalTexts.INP_RF,
+        label=SharedTexts.INP_RF,
         min_value=0.0,
         max_value=0.20,
         value=None,
         step=0.001,
         format="%.3f",
-        help=ExpertTerminalTexts.HELP_RF,
+        help=SharedTexts.HELP_RF,
         key=f"{prefix}_rf"
     )
     
     beta = col_b.number_input(
-        label=ExpertTerminalTexts.INP_BETA,
+        label=SharedTexts.INP_BETA,
         min_value=0.0,
         max_value=5.0,
         value=None,
         step=0.01,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_BETA,
+        help=SharedTexts.HELP_BETA,
         key=f"{prefix}_beta"
     )
     
     mrp = col_a.number_input(
-        label=ExpertTerminalTexts.INP_MRP,
+        label=SharedTexts.INP_MRP,
         min_value=0.0,
         max_value=0.20,
         value=None,
         step=0.001,
         format="%.3f",
-        help=ExpertTerminalTexts.HELP_MRP,
+        help=SharedTexts.HELP_MRP,
         key=f"{prefix}_mrp"
     )
 
@@ -227,24 +227,24 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
     # 4. Paramètres spécifiques au WACC (Dette et Fiscalité)
     if not mode.is_direct_equity:
         kd = col_b.number_input(
-            label=ExpertTerminalTexts.INP_KD,
+            label=SharedTexts.INP_KD,
             min_value=0.0,
             max_value=0.20,
             value=None,
             step=0.001,
             format="%.3f",
-            help=ExpertTerminalTexts.HELP_KD,
+            help=SharedTexts.HELP_KD,
             key=f"{prefix}_kd"
         )
         
         tau = col_a.number_input(
-            label=ExpertTerminalTexts.INP_TAX,
+            label=SharedTexts.INP_TAX,
             min_value=0.0,
             max_value=0.60,
             value=None,
             step=0.01,
             format="%.2f",
-            help=ExpertTerminalTexts.HELP_TAX,
+            help=SharedTexts.HELP_TAX,
             key=f"{prefix}_tax"
         )
         
@@ -261,74 +261,70 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
 # 3. WIDGET VALEUR TERMINALE (Section 4)
 # ==============================================================================
 
-def widget_terminal_value_dcf(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
+@st.fragment
+def widget_terminal_value_dcf(key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
-    Widget pour la sélection de la méthode de valeur terminale (DCF).
+    Widget Étape 4 : Sélection et calibration de la Valeur Terminale (TV).
 
-    Propose deux méthodes :
-    - Gordon Growth Model (croissance perpétuelle)
-    - Exit Multiple (multiple de sortie EV/EBITDA ou P/E)
+    Affiche la formule LaTeX de manière centrale sous la description,
+    actualisée dynamiquement selon la méthode choisie.
 
     Parameters
     ----------
-    formula_latex : str
-        Formule LaTeX à afficher pour illustrer le concept.
     key_prefix : str, optional
-        Préfixe pour les clés Streamlit (défaut: "terminal").
+        Préfixe pour les clés st.session_state, par défaut "terminal".
 
     Returns
     -------
     Dict[str, Any]
-        - terminal_method : TerminalValueMethod choisi
-        - perpetual_growth_rate : Taux gn si Gordon
-        - exit_multiple_value : Multiple si Exit
+        Paramètres TV : méthode, taux de croissance ou multiple.
     """
-    # Générer le préfixe de clé si non fourni
-    if key_prefix is None:
-        key_prefix = "terminal"
+    prefix = key_prefix or "terminal"
 
-    st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
-    st.latex(formula_latex)
+    # 1. En-tête de section
+    st.markdown(SharedTexts.SEC_4_TERMINAL)
+    st.info(SharedTexts.SEC_4_DESC)
 
+    # 2. Choix de la méthode (Radio)
     method = st.radio(
-        ExpertTerminalTexts.RADIO_TV_METHOD,
+        SharedTexts.RADIO_TV_METHOD,
         options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
         format_func=lambda x: (
-            ExpertTerminalTexts.TV_GORDON
-            if x == TerminalValueMethod.GORDON_GROWTH
-            else ExpertTerminalTexts.TV_EXIT
+            SharedTexts.TV_GORDON if x == TerminalValueMethod.GORDON_GROWTH
+            else SharedTexts.TV_EXIT
         ),
         horizontal=True,
-        key=f"{key_prefix}_method"
+        key=f"{prefix}_method"
     )
 
-    col1, _ = st.columns(2)
+    # 3. Formule dynamique centrée
+    if method == TerminalValueMethod.GORDON_GROWTH:
+        st.latex(SharedTexts.FORMULA_TV_GORDON)
+    else:
+        st.latex(SharedTexts.FORMULA_TV_EXIT)
+
+    # 4. Saisie des données
+    col_inp, _ = st.columns(2)
 
     if method == TerminalValueMethod.GORDON_GROWTH:
-        gn = col1.number_input(
-            ExpertTerminalTexts.INP_PERP_G,
-            min_value=0.0,
-            max_value=0.05,
-            value=None,
-            format="%.3f",
-            help=ExpertTerminalTexts.HELP_PERP_G,
-            key=f"{key_prefix}_gn"
+        gn = col_inp.number_input(
+            SharedTexts.INP_PERP_G,
+            min_value=0.0, max_value=0.05,
+            value=None, format="%.3f",
+            help=SharedTexts.HELP_PERP_G,
+            key=f"{prefix}_gn"
         )
         st.divider()
-        logger.debug("Terminal value: Gordon Growth selected, gn=%s", gn)
         return {"terminal_method": method, "perpetual_growth_rate": gn}
     else:
-        exit_m = col1.number_input(
-            ExpertTerminalTexts.INP_EXIT_MULT,
-            min_value=0.0,
-            max_value=100.0,
-            value=None,
-            format="%.1f",
-            help=ExpertTerminalTexts.HELP_EXIT_MULT,
-            key=f"{key_prefix}_exit_mult"
+        exit_m = col_inp.number_input(
+            SharedTexts.INP_EXIT_MULT,
+            min_value=0.0, max_value=100.0,
+            value=None, format="%.1f",
+            help=SharedTexts.HELP_EXIT_MULT,
+            key=f"{prefix}_exit_mult"
         )
         st.divider()
-        logger.debug("Terminal value: Exit Multiple selected, mult=%s", exit_m)
         return {"terminal_method": method, "exit_multiple_value": exit_m}
 
 
@@ -356,22 +352,22 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = No
     if key_prefix is None:
         key_prefix = "terminal"
 
-    st.markdown(ExpertTerminalTexts.SEC_4_TERMINAL)
+    st.markdown(SharedTexts.SEC_4_TERMINAL)
     st.latex(formula_latex)
 
     col1, _ = st.columns(2)
     omega = col1.number_input(
-        ExpertTerminalTexts.INP_OMEGA,
+        SharedTexts.INP_OMEGA,
         min_value=0.0,
         max_value=1.0,
         value=None,
         format="%.2f",
-        help=ExpertTerminalTexts.HELP_OMEGA,
+        help=SharedTexts.HELP_OMEGA,
         key=f"{key_prefix}_omega"
     )
     logger.debug("RIM terminal value: omega=%s", omega)
-
     st.divider()
+
     return {
         "terminal_method": TerminalValueMethod.EXIT_MULTIPLE,
         "exit_multiple_value": omega
@@ -383,269 +379,149 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = No
 # ==============================================================================
 
 @st.fragment
-def render_equity_bridge_inputs(
-    key_prefix: str = "bridge",
-    show_header: bool = True,
-    is_direct_equity: bool = False
-) -> Dict[str, Any]:
-    """
-    Interface de saisie unifiée pour le passage EV vers Equity (ST-3.4).
-
-    Parameters
-    ----------
-    key_prefix : str
-        Clé unique pour le session_state.
-    show_header : bool
-        Afficher le header et la formule LaTeX.
-    is_direct_equity : bool
-        Si True, masque les dettes/cash (cas DDM, RIM, FCFE).
-
-    Returns
-    -------
-    Dict[str, Any]
-        Valeurs brutes collectées.
-    """
-    if show_header:
-        st.markdown(ExpertTerminalTexts.BRIDGE_TITLE)
-        st.caption(ExpertTerminalTexts.BRIDGE_SUBTITLE)
-        st.latex(ExpertTerminalTexts.FORMULA_BRIDGE)
-    
-    if is_direct_equity:
-        shares = st.number_input(
-            ExpertTerminalTexts.INP_SHARES,
-            value=None, format="%.0f", help=ExpertTerminalTexts.HELP_SHARES,
-            key=f"{key_prefix}_shares"
-        )
-        return {"manual_shares_outstanding": shares}
-    
-    with st.container(border=True):
-        st.markdown(ExpertTerminalTexts.BRIDGE_COMPONENTS)
-        col_debt, col_cash = st.columns(2)
-        
-        debt = col_debt.number_input(
-            ExpertTerminalTexts.INP_DEBT, value=None, format="%.0f",
-            help=ExpertTerminalTexts.HELP_DEBT, key=f"{key_prefix}_debt"
-        )
-        cash = col_cash.number_input(
-            ExpertTerminalTexts.INP_CASH, value=None, format="%.0f",
-            help=ExpertTerminalTexts.HELP_CASH, key=f"{key_prefix}_cash"
-        )
-        
-        st.divider()
-        st.markdown(ExpertTerminalTexts.BRIDGE_ADJUSTMENTS)
-        col_min, col_pen, col_shares = st.columns(3)
-        
-        minorities = col_min.number_input(
-            ExpertTerminalTexts.INP_MINORITIES, value=None, format="%.0f",
-            key=f"{key_prefix}_min"
-        )
-        pensions = col_pen.number_input(
-            ExpertTerminalTexts.INP_PENSIONS, value=None, format="%.0f",
-            key=f"{key_prefix}_pen"
-        )
-        shares = col_shares.number_input(
-            ExpertTerminalTexts.INP_SHARES, value=None, format="%.0f",
-            key=f"{key_prefix}_shares"
-        )
-    
-    return {
-        "manual_total_debt": debt,
-        "manual_cash": cash,
-        "manual_shares_outstanding": shares,
-        "manual_minority_interests": minorities,
-        "manual_pension_provisions": pensions,
-    }
-
-
 def widget_equity_bridge(
-    formula_latex: str,
+    formula_latex: str,  # Gardé pour ne pas décaler les arguments lors de l'appel
     mode: ValuationMode,
     key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget pour les ajustements de structure (Equity Bridge).
-
-    Convertit l'Enterprise Value en Equity Value :
-    Equity = EV - Dette + Cash - Minorities - Pensions
-
-    Pour les modèles Direct Equity, seul le nombre d'actions est demandé.
-
-    Parameters
-    ----------
-    formula_latex : str
-        Formule LaTeX illustrant le bridge.
-    mode : ValuationMode
-        Mode pour déterminer si Direct Equity.
-    key_prefix : str, optional
-        Préfixe pour les clés Streamlit (défaut: mode.value).
-
-    Returns
-    -------
-    Dict[str, Any]
-        Paramètres de bridge collectés (dette, cash, actions, etc.)
-
-    Notes
-    -----
-    Cette fonction délègue maintenant à render_equity_bridge_inputs()
-    pour un design unifié (ST-3.4).
+    Widget Étape 5 : Interface unifiée d'Equity Bridge et Dilution SBC.
+    Répare l'AttributeError en respectant l'ordre des arguments (formula, mode).
     """
-    # Générer le préfixe de clé si non fourni
-    if key_prefix is None:
-        key_prefix = f"bridge_{mode.value}"
-
-    st.markdown(ExpertTerminalTexts.SEC_5_BRIDGE)
-    st.latex(formula_latex)
-
+    prefix = key_prefix or f"bridge_{mode.value}"
     is_direct_equity = mode.is_direct_equity
 
-    # Délégation au widget mutualisé (ST-3.4)
-    result = render_equity_bridge_inputs(
-        key_prefix=key_prefix,
-        show_header=False,  # Header déjà affiché ci-dessus
-        is_direct_equity=is_direct_equity
+    # --- EN-TÊTE NARRATIF UNIQUE ---
+    st.markdown(SharedTexts.SEC_5_BRIDGE)
+    st.info(SharedTexts.SEC_5_DESC)
+    st.latex(SharedTexts.FORMULA_BRIDGE)
+
+    if is_direct_equity:
+        shares = st.number_input(
+            SharedTexts.INP_SHARES,
+            value=None, format="%.0f", help=SharedTexts.HELP_SHARES,
+            key=f"{prefix}_shares_direct"
+        )
+        return {"manual_shares_outstanding": shares}
+
+    # PARTIE 1 : Structure
+    st.markdown(SharedTexts.BRIDGE_COMPONENTS)
+    c_d, c_c = st.columns(2)
+    debt = c_d.number_input(SharedTexts.INP_DEBT, value=None, format="%.0f", key=f"{prefix}_debt")
+    cash = c_c.number_input(SharedTexts.INP_CASH, value=None, format="%.0f", key=f"{prefix}_cash")
+
+    # PARTIE 2 : Ajustements
+    st.markdown(SharedTexts.BRIDGE_ADJUSTMENTS)
+    c_m, c_p, c_s = st.columns(3)
+    minorities = c_m.number_input(SharedTexts.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_min")
+    pensions = c_p.number_input(SharedTexts.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_pen")
+    shares = c_s.number_input(SharedTexts.INP_SHARES, value=None, format="%.0f", key=f"{prefix}_shares")
+
+    # PARTIE 3 : Dilution (SBC)
+    st.markdown(SharedTexts.BRIDGE_DILUTION)
+    sbc_rate = st.number_input(
+        SharedTexts.INP_SBC_DILUTION, 0.0, 0.10, 0.0, 0.005, format="%.3f",
+        key=f"{prefix}_sbc_rate"
     )
-
     st.divider()
-    return result
 
+    return {
+        "manual_total_debt": debt, "manual_cash": cash,
+        "manual_shares_outstanding": shares, "manual_minority_interests": minorities,
+        "manual_pension_provisions": pensions, "stock_based_compensation_rate": sbc_rate
+    }
 
 # ==============================================================================
 # 5. WIDGET MONTE CARLO (Section 6 - Optionnel)
 # ==============================================================================
 
 def widget_monte_carlo(
-    mode: ValuationMode,
-    terminal_method: Optional[TerminalValueMethod] = None,
-    key_prefix: Optional[str] = None
+        mode: ValuationMode,
+        terminal_method: Optional[TerminalValueMethod] = None,
+        key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget pour la configuration Monte Carlo.
-
-    Permet de calibrer les volatilités des variables clés pour
-    générer une distribution de valeurs intrinsèques.
-
-    Parameters
-    ----------
-    mode : ValuationMode
-        Mode pour adapter les volatilités (RIM vs DCF).
-    terminal_method : TerminalValueMethod, optional
-        Méthode TV pour afficher la bonne volatilité terminale.
-    key_prefix : str, optional
-        Préfixe pour les clés Streamlit (défaut: "mc").
-
-    Returns
-    -------
-    Dict[str, Any]
-        Configuration Monte Carlo :
-        - enable_monte_carlo : bool
-        - num_simulations : int
-        - base_flow_volatility : float
-        - beta_volatility : float
-        - growth_volatility : float
-        - terminal_growth_volatility : float (si applicable)
+    Widget pour la configuration Monte Carlo (Flux Continu).
     """
-    # Générer le préfixe de clé si non fourni
     if key_prefix is None:
         key_prefix = "mc"
 
-    st.markdown(ExpertTerminalTexts.SEC_6_MC)
+    st.markdown(SharedTexts.SEC_6_MC)
 
     enable = st.toggle(
-        ExpertTerminalTexts.MC_CALIBRATION,
+        SharedTexts.MC_CALIBRATION,
         value=False,
-        help=ExpertTerminalTexts.HELP_MC_ENABLE,
+        help=SharedTexts.HELP_MC_ENABLE,
         key=f"{key_prefix}_enable"
     )
 
     if not enable:
         return {"enable_monte_carlo": False}
 
-    with st.container(border=True):
-        # 1. Nombre de simulations
-        col_iter, _ = st.columns([2, 2])
-        sims = col_iter.select_slider(
-            ExpertTerminalTexts.MC_ITERATIONS,
-            options=[SIMULATION_CONFIG.min_simulations,
-                    SIMULATION_CONFIG.default_simulations,
-                    10000,
-                    SIMULATION_CONFIG.max_simulations],
-            value=SIMULATION_CONFIG.default_simulations,
-            help=ExpertTerminalTexts.HELP_MC_SIMS,
-            key=f"{key_prefix}_sims"
+    # --- SUPPRESSION DU CONTENEUR POUR UN FLUX CONTINU ---
+
+    # 1. Nombre de simulations
+    sims = st.select_slider(
+        SharedTexts.MC_ITERATIONS,
+        options=[SIMULATION_CONFIG.min_simulations,
+                 SIMULATION_CONFIG.default_simulations,
+                 10000,
+                 SIMULATION_CONFIG.max_simulations],
+        value=SIMULATION_CONFIG.default_simulations,
+        help=SharedTexts.HELP_MC_SIMS,
+        key=f"{key_prefix}_sims"
+    )
+
+    # 2. Volatilités
+    st.caption(SharedTexts.MC_VOLATILITIES)
+    v_col1, v_col2 = st.columns(2)
+
+    v0 = v_col1.number_input(
+        SharedTexts.MC_VOL_BASE_FLOW,
+        min_value=0.0, max_value=0.50, value=0.05, format="%.3f",
+        help=SharedTexts.HELP_MC_VOL_FLOW,
+        key=f"{key_prefix}_vol_flow"
+    )
+
+    vb = v_col2.number_input(
+        SharedTexts.MC_VOL_BETA,
+        min_value=0.0, max_value=1.0, value=0.10, format="%.3f",
+        help=SharedTexts.HELP_MC_VOL_BETA,
+        key=f"{key_prefix}_vol_beta"
+    )
+
+    vg = v_col1.number_input(
+        SharedTexts.MC_VOL_G,
+        min_value=0.0, max_value=0.20, value=0.02, format="%.3f",
+        help=SharedTexts.HELP_MC_VOL_G,
+        key=f"{key_prefix}_vol_growth"
+    )
+
+    # 3. Volatilité terminale (contextuelle)
+    v_term = 0.0
+    if mode == ValuationMode.RIM:
+        v_term = v_col2.number_input(
+            SharedTexts.LBL_VOL_OMEGA,
+            min_value=0.0, max_value=0.20, value=0.05, format="%.3f",
+            help=SharedTexts.HELP_MC_VOL_OMEGA,
+            key=f"{key_prefix}_vol_omega"
         )
-        st.divider()
-
-        # 2. Volatilités
-        st.caption(ExpertTerminalTexts.MC_VOLATILITIES)
-        v_col1, v_col2 = st.columns(2)
-
-        # Volatilité flux de base (Y0)
-        v0 = v_col1.number_input(
-            ExpertTerminalTexts.MC_VOL_BASE_FLOW,
-            min_value=0.0,
-            max_value=0.50,
-            value=0.05,
-            format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_FLOW,
-            key=f"{key_prefix}_vol_flow"
+    elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
+        v_term = v_col2.number_input(
+            SharedTexts.LBL_VOL_GN,
+            min_value=0.0, max_value=0.05, value=0.01, format="%.3f",
+            help=SharedTexts.HELP_MC_VOL_GN,
+            key=f"{key_prefix}_vol_gn"
         )
 
-        # Volatilité Beta
-        vb = v_col2.number_input(
-            ExpertTerminalTexts.MC_VOL_BETA,
-            min_value=0.0,
-            max_value=1.0,
-            value=0.10,
-            format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_BETA,
-            key=f"{key_prefix}_vol_beta"
-        )
-
-        # Volatilité croissance
-        vg = v_col1.number_input(
-            ExpertTerminalTexts.MC_VOL_G,
-            min_value=0.0,
-            max_value=0.20,
-            value=0.02,
-            format="%.3f",
-            help=ExpertTerminalTexts.HELP_MC_VOL_G,
-            key=f"{key_prefix}_vol_growth"
-        )
-
-        # 3. Volatilité terminale (contextuelle)
-        v_term = 0.0
-        if mode == ValuationMode.RIM:
-            v_term = v_col2.number_input(
-                ExpertTerminalTexts.LBL_VOL_OMEGA,
-                min_value=0.0,
-                max_value=0.20,
-                value=0.05,
-                format="%.3f",
-                help=ExpertTerminalTexts.HELP_MC_VOL_OMEGA,
-                key=f"{key_prefix}_vol_omega"
-            )
-        elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
-            v_term = v_col2.number_input(
-                ExpertTerminalTexts.LBL_VOL_GN,
-                min_value=0.0,
-                max_value=0.05,
-                value=0.01,
-                format="%.3f",
-                help=ExpertTerminalTexts.HELP_MC_VOL_GN,
-                key=f"{key_prefix}_vol_gn"
-            )
-        else:
-            v_col2.empty()
-
-        return {
-            "enable_monte_carlo": True,
-            "num_simulations": sims,
-            "base_flow_volatility": v0,
-            "beta_volatility": vb,
-            "growth_volatility": vg,
-            "terminal_growth_volatility": v_term,
-        }
-
+    return {
+        "enable_monte_carlo": True,
+        "num_simulations": sims,
+        "base_flow_volatility": v0,
+        "beta_volatility": vb,
+        "growth_volatility": vg,
+        "terminal_growth_volatility": v_term,
+    }
 
 # ==============================================================================
 # 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)
@@ -664,12 +540,12 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
         key_prefix = "peer"
 
     st.divider()
-    st.markdown(f"### {ExpertTerminalTexts.SEC_7_PEERS}")
+    st.markdown(SharedTexts.SEC_7_PEERS)
 
     enable = st.toggle(
-        ExpertTerminalTexts.LBL_PEER_ENABLE,
-        value=True,
-        help=ExpertTerminalTexts.HELP_PEER_TRIANGULATION,
+        SharedTexts.LBL_PEER_ENABLE,
+        value=False,
+        help=SharedTexts.HELP_PEER_TRIANGULATION,
         key=f"{key_prefix}_peer_enable"
     )
 
@@ -677,9 +553,9 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
         return {"enable_peer_multiples": False, "manual_peers": None}
 
     raw_input = st.text_input(
-        ExpertTerminalTexts.INP_MANUAL_PEERS,
-        placeholder=ExpertTerminalTexts.PLACEHOLDER_PEERS,
-        help=ExpertTerminalTexts.HELP_MANUAL_PEERS,
+        SharedTexts.INP_MANUAL_PEERS,
+        placeholder=SharedTexts.PLACEHOLDER_PEERS,
+        help=SharedTexts.HELP_MANUAL_PEERS,
         key=f"{key_prefix}_input"
     )
 
@@ -687,7 +563,7 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
     if raw_input and raw_input.strip():
         peers_list = [t.strip().upper() for t in raw_input.split(",") if t.strip()]
         if peers_list:
-            st.caption(ExpertTerminalTexts.PEERS_SELECTED.format(peers=', '.join(peers_list)))
+            st.caption(SharedTexts.PEERS_SELECTED.format(peers=', '.join(peers_list)))
 
     return {
         "enable_peer_multiples": True,
@@ -701,60 +577,103 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
 
 def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
     """
-    Widget plat pour l'analyse multi-scénarios déterministes.
+    Widget pour l'analyse multi-scénarios déterministes (Flux Continu).
+
+    Affiche les variantes Bull/Base/Bear à la suite sans bordures pour
+    respecter l'homogénéité visuelle du terminal expert.
 
     Returns
     -------
     ScenarioParameters
-        Objet configuré avec Bull/Base/Bear ou désactivé.
+        Objet configuré avec Bull/Base/Base ou désactivé.
     """
     if key_prefix is None:
         key_prefix = "scenario"
 
-    st.divider()
-    st.markdown(f"### {ExpertTerminalTexts.SEC_8_SCENARIOS}")
+    st.markdown(SharedTexts.SEC_8_SCENARIOS)
 
+    # Désactivé par défaut comme demandé
     enabled = st.toggle(
-        ExpertTerminalTexts.INP_SCENARIO_ENABLE,
+        SharedTexts.INP_SCENARIO_ENABLE,
         value=False,
-        help=ExpertTerminalTexts.HELP_SCENARIO_ENABLE,
+        help=SharedTexts.HELP_SCENARIO_ENABLE,
         key=f"{key_prefix}_scenario_enable"
     )
 
     if not enabled:
         return ScenarioParameters(enabled=False)
 
-    st.caption(ExpertTerminalTexts.SCENARIO_HINT)
+    st.info(SharedTexts.SCENARIO_HINT)
     show_margin = mode == ValuationMode.FCFF_GROWTH
 
     def _render_variant(label: str, p_key: str, g_key: str, m_key: str, default_p: float):
-        with st.container(border=True):
-            st.markdown(f"**{label}**")
-            c1, c2, c3 = st.columns(3)
-            p = c1.number_input(ExpertTerminalTexts.INP_SCENARIO_PROBA, 0.0, 100.0, default_p, 5.0, key=p_key) / 100
-            g = c2.number_input(ExpertTerminalTexts.INP_SCENARIO_GROWTH, value=None, format="%.3f", key=g_key)
-            m = c3.number_input(ExpertTerminalTexts.INP_SCENARIO_MARGIN, None, format="%.2f", key=m_key) if show_margin else None
-            return p, g, m
+        # Suppression du st.container(border=True)
+        st.markdown(f"**{label}**")
+        c1, c2, c3 = st.columns(3)
 
-    p_bull, g_bull, m_bull = _render_variant(ExpertTerminalTexts.LABEL_SCENARIO_BULL, f"{key_prefix}_p_bull", f"{key_prefix}_g_bull", f"{key_prefix}_m_bull", 25.0)
-    p_base, g_base, m_base = _render_variant(ExpertTerminalTexts.LABEL_SCENARIO_BASE, f"{key_prefix}_p_base", f"{key_prefix}_g_base", f"{key_prefix}_m_base", 50.0)
-    p_bear, g_bear, m_bear = _render_variant(ExpertTerminalTexts.LABEL_SCENARIO_BEAR, f"{key_prefix}_p_bear", f"{key_prefix}_g_bear", f"{key_prefix}_m_bear", 25.0)
+        # Saisie des probabilités et hypothèses
+        p = c1.number_input(
+            SharedTexts.INP_SCENARIO_PROBA,
+            0.0, 100.0, default_p, 5.0,
+            key=p_key
+        ) / 100
 
-    # Validation robuste
+        g = c2.number_input(
+            SharedTexts.INP_SCENARIO_GROWTH,
+            value=None, format="%.3f",
+            key=g_key
+        )
+
+        # Marge conditionnelle pour le modèle Growth
+        m = None
+        if show_margin:
+            m = c3.number_input(
+                SharedTexts.INP_SCENARIO_MARGIN,
+                None, format="%.2f",
+                key=m_key
+            )
+
+        st.write("")  # Petit espacement vertical entre les variantes
+        return p, g, m
+
+    # Rendu des trois variantes à la suite
+    p_bull, g_bull, m_bull = _render_variant(
+        SharedTexts.LABEL_SCENARIO_BULL, f"{key_prefix}_p_bull",
+        f"{key_prefix}_g_bull", f"{key_prefix}_m_bull", 25.0
+    )
+    p_base, g_base, m_base = _render_variant(
+        SharedTexts.LABEL_SCENARIO_BASE, f"{key_prefix}_p_base",
+        f"{key_prefix}_g_base", f"{key_prefix}_m_base", 50.0
+    )
+    p_bear, g_bear, m_bear = _render_variant(
+        SharedTexts.LABEL_SCENARIO_BEAR, f"{key_prefix}_p_bear",
+        f"{key_prefix}_g_bear", f"{key_prefix}_m_bear", 25.0
+    )
+
+    # Validation de la somme des probabilités
     total_proba = round(p_bull + p_base + p_bear, 2)
     if total_proba != 1.0:
-        st.error(ExpertTerminalTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int(total_proba*100)))
+        st.error(SharedTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int(total_proba * 100)))
         return ScenarioParameters(enabled=False)
 
     try:
         return ScenarioParameters(
             enabled=True,
-            bull=ScenarioVariant(label=ExpertTerminalTexts.LBL_BULL, probability=p_bull, growth_rate=g_bull, target_fcf_margin=m_bull),
-            base=ScenarioVariant(label=ExpertTerminalTexts.LBL_BASE, probability=p_base, growth_rate=g_base, target_fcf_margin=m_base),
-            bear=ScenarioVariant(label=ExpertTerminalTexts.LBL_BEAR, probability=p_bear, growth_rate=g_bear, target_fcf_margin=m_bear),
+            bull=ScenarioVariant(
+                label=SharedTexts.LBL_BULL, probability=p_bull,
+                growth_rate=g_bull, target_fcf_margin=m_bull
+            ),
+            base=ScenarioVariant(
+                label=SharedTexts.LBL_BASE, probability=p_base,
+                growth_rate=g_base, target_fcf_margin=m_base
+            ),
+            bear=ScenarioVariant(
+                label=SharedTexts.LBL_BEAR, probability=p_bear,
+                growth_rate=g_bear, target_fcf_margin=m_bear
+            ),
         )
     except Exception:
-        st.error(ExpertTerminalTexts.ERR_SCENARIO_INVALID)
+        st.error(SharedTexts.ERR_SCENARIO_INVALID)
         return ScenarioParameters(enabled=False)
 
 # ==============================================================================
@@ -763,52 +682,76 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
 
 def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None:
     """
-    Widget plat pour la Sum-of-the-parts. Modifie l'objet params in-place.
+    Widget Étape 9 : Sum-of-the-parts (Flux Continu).
+    Modifie l'objet params in-place pour stocker les segments.
     """
-    if key_prefix is None:
-        key_prefix = "sotp"
+    prefix = key_prefix or "sotp"
 
-    st.divider()
-    st.markdown(f"### {SOTPTexts.TITLE}")
+    # 1. En-tête standardisé
+    st.markdown(SharedTexts.SEC_9_SOTP)
+    st.info(SharedTexts.SEC_9_DESC)
 
+    # 2. Activation (Décoché par défaut)
     enabled = st.toggle(
-        SOTPTexts.SEC_SEGMENTS,
+        SharedTexts.LBL_SOTP_ENABLE,
         value=params.sotp.enabled,
-        help=getattr(SOTPTexts, 'HELP_SOTP', None),
-        key=f"{key_prefix}_sotp_enabled"
+        help=SharedTexts.HELP_SOTP_ENABLE,
+        key=f"{prefix}_enabled"
     )
 
     params.sotp.enabled = enabled
     if not enabled:
         return
 
+    # 3. Édition des segments (Sans container)
+    st.markdown(SharedTexts.SEC_SOTP_SEGMENTS)
+
     current_data = [
         {
-            SOTPTexts.LBL_SEGMENT_NAME: bu.name,
-            SOTPTexts.LBL_SEGMENT_VALUE: bu.enterprise_value,
-            SOTPTexts.LBL_SEGMENT_METHOD: bu.method.value,
+            SharedTexts.LBL_SEGMENT_NAME: bu.name,
+            SharedTexts.LBL_SEGMENT_VALUE: bu.enterprise_value,
+            SharedTexts.LBL_SEGMENT_METHOD: bu.method.value,
         }
         for bu in params.sotp.segments
     ]
 
+    # Configuration du tableau dynamique
     edited_df = st.data_editor(
-        pd.DataFrame(current_data if current_data else [{SOTPTexts.LBL_SEGMENT_NAME: "Segment A", SOTPTexts.LBL_SEGMENT_VALUE: 0.0, SOTPTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value}]),
-        num_rows="dynamic", width='stretch', key=f"{key_prefix}_editor",
+        pd.DataFrame(current_data if current_data else [{
+            SharedTexts.LBL_SEGMENT_NAME: "Segment A",
+            SharedTexts.LBL_SEGMENT_VALUE: 0.0,
+            SharedTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value
+        }]),
+        num_rows="dynamic",
+        width='stretch',
+        key=f"{prefix}_editor",
         column_config={
-            SOTPTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(format="%.2f"),
-            SOTPTexts.LBL_SEGMENT_METHOD: st.column_config.SelectboxColumn(options=[m.value for m in SOTPMethod]),
+            SharedTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(format="%.2f"),
+            SharedTexts.LBL_SEGMENT_METHOD: st.column_config.SelectboxColumn(
+                options=[m.value for m in SOTPMethod]
+            ),
         }
     )
 
+    # Mise à jour de l'objet métier
     params.sotp.segments = [
-        BusinessUnit(name=row[SOTPTexts.LBL_SEGMENT_NAME], enterprise_value=row[SOTPTexts.LBL_SEGMENT_VALUE], method=SOTPMethod(row[SOTPTexts.LBL_SEGMENT_METHOD]))
-        for _, row in edited_df.iterrows() if row[SOTPTexts.LBL_SEGMENT_NAME]
+        BusinessUnit(
+            name=row[SharedTexts.LBL_SEGMENT_NAME],
+            enterprise_value=row[SharedTexts.LBL_SEGMENT_VALUE],
+            method=SOTPMethod(row[SharedTexts.LBL_SEGMENT_METHOD])
+        )
+        for _, row in edited_df.iterrows() if row[SharedTexts.LBL_SEGMENT_NAME]
     ]
 
-    st.markdown(SOTPTexts.SEC_ADJUSTMENTS)
+    # 4. Ajustements de holding
+    st.write("")
+    st.markdown(SharedTexts.SEC_SOTP_ADJUSTMENTS)
     params.sotp.conglomerate_discount = st.slider(
-        SOTPTexts.LBL_DISCOUNT, 0, 50, int(params.sotp.conglomerate_discount * 100), 5,
-        key=f"{key_prefix}_discount"
+        SharedTexts.LBL_DISCOUNT,
+        0, 50,
+        int(params.sotp.conglomerate_discount * 100),
+        5,
+        key=f"{prefix}_discount"
     ) / 100.0
 
 # ==============================================================================
@@ -881,21 +824,21 @@ def widget_sbc_dilution(default_val: Optional[float] = None, key_prefix: Optiona
     if key_prefix is None:
         key_prefix = "sbc"
 
-    st.markdown(f"**{ExpertTerminalTexts.LABEL_DILUTION_SBC}**")
+    st.markdown(f"**{SharedTexts.LABEL_DILUTION_SBC}**")
 
     # Input numérique pour la précision
     val = st.number_input(
-        ExpertTerminalTexts.INP_SBC_DILUTION,
+        SharedTexts.INP_SBC_DILUTION,
         min_value=0.0,
         max_value=0.10,
         value=default_val if default_val is not None else 0.0,
         format="%.3f",
         step=0.005,
-        help=ExpertTerminalTexts.HELP_SBC_DILUTION,
+        help=SharedTexts.HELP_SBC_DILUTION,
         key=f"{key_prefix}_dilution"
     )
 
     # Message pédagogique dynamique
-    st.info(ExpertTerminalTexts.WARN_SBC_TECH)
+    st.info(SharedTexts.WARN_SBC_TECH)
 
     return val

@@ -17,8 +17,8 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import ExpertTerminalTexts
-from app.ui.base import ExpertTerminalBase
+from src.i18n import SharedTexts
+from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import widget_projection_years
 
 
@@ -68,22 +68,22 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
             - target_fcf_margin : Marge FCF cible
             - projection_years : Horizon
         """
-        st.markdown(f"**{ExpertTerminalTexts.SEC_1_REV_BASE}**")
+        st.markdown(f"**{SharedTexts.SEC_1_REV_BASE}**")
         st.latex(
             r"V_0 = \sum_{t=1}^{n} \frac{Rev_0(1+g_{rev})^t \times Margin_t}"
             r"{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
         )
 
         rev_base = st.number_input(
-            ExpertTerminalTexts.INP_REV_TTM,
+            SharedTexts.INP_REV_TTM,
             value=None,
             format="%.0f",
-            help=ExpertTerminalTexts.HELP_REV_TTM,
+            help=SharedTexts.HELP_REV_TTM,
             key=f"{self.MODE.name}_rev_base"
         )
         st.divider()
 
-        st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_GROWTH}**")
+        st.markdown(f"**{SharedTexts.SEC_2_PROJ_GROWTH}**")
 
         col1, col2, col3 = st.columns(3)
 
@@ -92,23 +92,23 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
         with col2:
             g_rev = st.number_input(
-                ExpertTerminalTexts.INP_REV_GROWTH,
+                SharedTexts.INP_REV_GROWTH,
                 min_value=0.0,
                 max_value=1.0,
                 value=None,
                 format="%.3f",
-                help=ExpertTerminalTexts.HELP_REV_GROWTH,
+                help=SharedTexts.HELP_REV_GROWTH,
                 key=f"{self.MODE.name}_rev_growth"
             )
 
         with col3:
             m_target = st.number_input(
-                ExpertTerminalTexts.INP_MARGIN_TARGET,
+                SharedTexts.INP_MARGIN_TARGET,
                 min_value=0.0,
                 max_value=0.80,
                 value=None,
                 format="%.2f",
-                help=ExpertTerminalTexts.HELP_MARGIN_TARGET,
+                help=SharedTexts.HELP_MARGIN_TARGET,
                 key=f"{self.MODE.name}_margin_target"
             )
 
