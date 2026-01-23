@@ -271,7 +271,7 @@ def _register_all_strategies() -> None:
         strategy_cls=StandardFCFFStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_standard",
-        display_name="DCF - Free Cash Flow to Firm"
+        display_name="Approche Entité (FCFF Standard)"
     )
     
     StrategyRegistry.register(
@@ -279,7 +279,7 @@ def _register_all_strategies() -> None:
         strategy_cls=FundamentalFCFFStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_fundamental",
-        display_name="DCF - Normalized Free Cash Flow"
+        display_name="Approche Entité (FCFF Normalisé)"
     )
     
     StrategyRegistry.register(
@@ -287,7 +287,7 @@ def _register_all_strategies() -> None:
         strategy_cls=RevenueBasedStrategy,
         auditor_cls_name="DCFAuditor",
         ui_renderer_name="render_expert_fcff_growth",
-        display_name="DCF - Revenue-Driven Growth"
+        display_name="Approche Entité (Revenue-Driven)"
     )
     
     # Approche Actionnaire (Direct Equity - Ke Based)
@@ -296,7 +296,7 @@ def _register_all_strategies() -> None:
         strategy_cls=FCFEStrategy,
         auditor_cls_name="FCFEAuditor",
         ui_renderer_name="render_expert_fcfe",
-        display_name="DCF - Free Cash Flow to Equity"
+        display_name="Approche Actionnaire (FCFE)"
     )
     
     StrategyRegistry.register(
@@ -304,7 +304,7 @@ def _register_all_strategies() -> None:
         strategy_cls=DividendDiscountStrategy,
         auditor_cls_name="DDMAuditor",
         ui_renderer_name="render_expert_ddm",
-        display_name="Dividend Discount Model"
+        display_name="Approche Actionnaire (DDM)"
     )
     
     # Autres Modeles (RIM & Graham)
@@ -313,7 +313,7 @@ def _register_all_strategies() -> None:
         strategy_cls=RIMBankingStrategy,
         auditor_cls_name="RIMAuditor",
         ui_renderer_name="render_expert_rim",
-        display_name="Residual Income Model"
+        display_name="Revenu Résiduel (RIM)"
     )
     
     StrategyRegistry.register(
@@ -321,7 +321,7 @@ def _register_all_strategies() -> None:
         strategy_cls=GrahamNumberStrategy,
         auditor_cls_name="GrahamAuditor",
         ui_renderer_name="render_expert_graham",
-        display_name="Graham Intrinsic Value"
+        display_name="Valeur de Graham"
     )
     
     logger.info(f"[Registry] Strategies loaded | count={len(StrategyRegistry._strategies)}")

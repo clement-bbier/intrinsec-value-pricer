@@ -7,80 +7,95 @@ Textes communs et generiques de l'interface.
 class CommonTexts:
     """Textes transverses et metadonnees de base."""
     APP_TITLE = "Analyse de la valeur intrinsèque"
-    PROJECT_BADGE = "Projet Personnel Public"
-    AUTHOR_NAME = "Clement Barbier"
-    DEVELOPED_BY = "Developed by"
+    AUTHOR_NAME = "Clément Barbier"
+    DEVELOPED_BY = "Développé par"
     RUN_BUTTON = "Lancer le calcul"
     DEFAULT_TICKER = "AAPL"
 
 
 class OnboardingTexts:
-    """Contenu pedagogique de la page d'accueil."""
-    INTRO_INFO = "Estimez la valeur intrinseque d'une entreprise et comparez-la a son prix de marche."
-
-    TITLE_A = "A. Selection de la Methodologie"
-    DESC_A = (
-        "Chaque methodologie vise a modeliser la realite economique d'une entreprise a un instant donne, "
-        "conditionnellement a un ensemble d'hypotheses financieres."
+    """Contenu pédagogique de la page d'accueil."""
+    # Accroche
+    INTRO_INFO = "Plateforme d'analyse fondamentale automatisée pour l'estimation de la valeur intrinsèque."
+    COMPLIANCE_BODY = (
+        "Les valorisations produites par cette application sont des projections basées sur des modèles de flux actualisés et de profits résiduels."
+        "Elles constituent une d'analyse fondamentale et ne doivent pas être interprétées comme des recommandations d'investissement."
     )
 
-    MODEL_DCF_TITLE = "**Modeles DCF (Approche Entite)**"
+    # Section : Méthodes de Valorisation
+    TITLE_METHODS = "Méthode de valorisation"
+    DESC_METHODS = (
+        "Modélisation à partir de 4 approches :"
+    )
+    MODEL_DCF_TITLE = "**Approche Entité (DCF)**"
     MODEL_DCF_DESC = (
-        "FCFF (Firm) : Standard Damodaran actualisant les flux avant service de la dette via le WACC."
+        "Valorisation de l'actif économique total. Flux opérationnels actualisés au coût moyen du capital."
     )
-
-    MODEL_EQUITY_TITLE = "**Modeles Direct Equity (Approche Actionnaire)**"
+    MODEL_EQUITY_TITLE = "**Approche Actionnaire (FCFE/DDM)**"
     MODEL_EQUITY_DESC = (
-        "FCFE (Equity) : Actualise le flux residuel apres service de la dette au cout des fonds propres (Ke)."
+        "Estimation directe des fonds propres. Actualise les flux résiduels ou dividendes au coût des fonds propres."
     )
-
-    MODEL_RIM_TITLE = "**Residual Income (RIM)**"
+    MODEL_RIM_TITLE = "**Revenu Résiduel (RIM)**"
     MODEL_RIM_DESC = (
-        "Standard academique (Penman/Ohlson) pour les Banques et Assurances dont la valeur repose sur l'actif net."
+        "Standard pour les Banques et Assurances. Valorise l'actif net augmenté des profits excédant le coût du capital."
     )
-
-    MODEL_GRAHAM_TITLE = "**Modele de Graham**"
+    MODEL_GRAHAM_TITLE = "**Valeur Intrinsèque de Graham**"
     MODEL_GRAHAM_DESC = (
-        "Estimation Value (1974 Revised) liant la capacite beneficiaire actuelle aux conditions de credit AAA."
+        "Approche reliant la puissance bénéficiaire aux taux obligataires pour une marge de sécurité réelle."
     )
 
-    TITLE_B = "B. Pilotage & Gestion du Risque"
-    PILOTAGE_TITLE = "**Pilotage des Donnees (Auto vs Expert)**"
-    PILOTAGE_DESC = "Le mode Auto extrait les donnees de Yahoo Finance. Le mode Expert offre une autonomie totale."
-    MC_TITLE = "**Analyse de Risque Hybride**"
-    MC_DESC = "Combinez l'analyse Probabiliste (Monte Carlo) et l'analyse Deterministe (Bull/Base/Bear)."
+    # Section : Intelligence de Données (Processus)
+    TITLE_PROCESS = "Flux de données selon le mode (Standard / Approfondi)"
+    STRATEGY_ACQUISITION_TITLE = "**Paramétrage Automatique (Standard)**"
+    STRATEGY_ACQUISITION_DESC = (
+        "Extraction des données pour les chaînes de calculs à partir de Yahoo Finance "
+        "(possibilité d'utiliser d'autres providers en modifiant le code)."
+    )
+    STRATEGY_MANUAL_TITLE = "**Paramétrage Manuel (Approfondi)**"
+    STRATEGY_MANUAL_DESC = (
+        "Possibilité de surcharger les données d'entrées avec ses propres hypothèses "
+        "pour simuler des scénarios spécifiques à partir des chaînes de calcul."
+    )
+    STRATEGY_FALLBACK_TITLE = "**Continuité (Fallback)**"
+    STRATEGY_FALLBACK_DESC = (
+        "En cas de donnée manquante, l'application utilise des algorithmes de secours "
+        "(moyennes sectorielles, valeurs par défaut, ...) pour garantir la production d'une valeur."
+    )
 
-    TITLE_C = "C. Gouvernance & Transparence"
-    AUDIT_TITLE = "**Audit Reliability Score**"
-    AUDIT_DESC = "Indicateur mesurant la coherence des inputs."
-    TRACE_TITLE = "**Valuation Traceability**"
-    TRACE_DESC = "Chaque etape est detaillee dans l'onglet Calcul."
+    # Section : Résultats
+    TITLE_RESULTS = "Architecture des Résultats"
+    DESC_RESULTS = "Résultats segmentée en 5 piliers différents :"
+    TAB_1_TITLE = "**1. Configuration**"
+    TAB_1_DESC = "Audit des hypothèses sources et récapitulatif des données utilisées."
+    TAB_2_TITLE = "**2. Trace Mathématique**"
+    TAB_2_DESC = "Détail intégral de chaque étape de calculs intermédiaires."
+    TAB_3_TITLE = "**3. Rapport d'Audit**"
+    TAB_3_DESC = "Score de fiabilité et détection des anomalies de modélisation."
+    TAB_4_TITLE = "**4. Analyse de Marché (mode Approfondi)**"
+    TAB_4_DESC = "Triangulation par multiples sectoriels et comparaison directe par pairs."
+    TAB_5_TITLE = "**5. Ingénierie du Risque (mode Approfondi)**"
+    TAB_5_DESC = "Simulations de Monte Carlo et stress-tests pour quantifier l'incertitude."
 
-    DIAGNOSTIC_HEADER = "Systeme de Diagnostic :"
-    DIAG_BLOQUANT = "**Bloquant** : Erreur de donnee ou parametre manquant."
-    DIAG_WARN = "**Avertissement** : Hypothese divergente (ex: g > WACC)."
+    # Section : Diagnostics
+    DIAGNOSTIC_HEADER = "**Système de Diagnostics**"
+    DIAG_BLOQUANT = "**Bloquant** : Erreur de donnée ou paramètre manquant."
+    DIAG_WARN = "**Avertissement** : Hypothèse divergente (ex: g > WACC)."
     DIAG_INFO = "**Information** : Note ou recommandation."
 
 
 class FeedbackMessages:
     """Messages systeme et alertes de validation."""
-    TICKER_REQUIRED_SIDEBAR = "Veuillez saisir un ticker dans la barre laterale."
+    TICKER_REQUIRED_SIDEBAR = "Veuillez saisir un ticker dans la barre latérale."
     TICKER_INVALID = "Veuillez saisir un ticker valide."
 
 
 class LegalTexts:
     """Textes juridiques, avertissements et notes de conformite."""
     COMPLIANCE_TITLE = "Note de conformité"
-    COMPLIANCE_BODY = (
-        "Les valorisations produites par cette application sont des projections basées sur des modèles de flux actualisés et de profits résiduels." 
-        "Elles constituent un cadre d'analyse fondamentale et ne doivent pas être interprétées comme des recommandations d'investissement."
-    )
-
 
 class TooltipsTexts:
     """Infobulles et aides contextuelles pour le mode Expert."""
     pass
-
 
 class UIMessages:
     """Messages d'information et d'erreur de l'interface utilisateur."""

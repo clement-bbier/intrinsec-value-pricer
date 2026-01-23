@@ -54,7 +54,9 @@ from src.i18n import (
     CommonTexts,
     SidebarTexts,
     OnboardingTexts,
-    FeedbackMessages
+    FeedbackMessages,
+    LegalTexts,
+    ExpertTerminalTexts
 )
 
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)
@@ -148,8 +150,6 @@ def _setup_page() -> None:
         layout="wide",
     )
     inject_institutional_design()
-    render_terminal_header()
-
 
 # ==============================================================================
 # SIDEBAR — INPUTS UTILISATEUR
@@ -227,72 +227,81 @@ def _render_sidebar_footer() -> None:
 
 def _render_onboarding_guide() -> None:
     """
-    Guide d'onboarding — Restitution intégrale pilotée par OnboardingTexts.
+    Guide d'onboarding — Design institutionnel homogène.
+    Utilise des conteneurs avec bordures pour toutes les sections clés.
     """
-    # --- Introduction ---
-    st.info(OnboardingTexts.INTRO_INFO)
+    # 1. HEADER & ACCROCHE (Hero Section)
+    st.header(CommonTexts.APP_TITLE)
+    st.markdown(OnboardingTexts.INTRO_INFO)
+    st.caption(OnboardingTexts.COMPLIANCE_BODY)
     st.divider()
 
-    # --- SECTION A : MÉTHODOLOGIES ---
-    st.subheader(OnboardingTexts.TITLE_A)
-    st.markdown(OnboardingTexts.DESC_A)
-
-    # Grille de 4 colonnes pour les modèles financiers
-    m1, m2, m3, m4 = st.columns(4)
-
-    with m1:
-        st.markdown(OnboardingTexts.MODEL_DCF_TITLE)
-        st.latex(r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}")
-        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_DCF_DESC}</small>", unsafe_allow_html=True)
-
-    with m2:
-        st.markdown(OnboardingTexts.MODEL_EQUITY_TITLE)
-        st.latex(r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}")
-        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_EQUITY_DESC}</small>", unsafe_allow_html=True)
-
-    with m3:
-        st.markdown(OnboardingTexts.MODEL_RIM_TITLE)
-        st.latex(r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}")
-        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_RIM_DESC}</small>", unsafe_allow_html=True)
-
-    with m4:
-        st.markdown(OnboardingTexts.MODEL_GRAHAM_TITLE)
-        st.latex(r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
-        st.markdown(f"<small style='color: #64748b;'>{OnboardingTexts.MODEL_GRAHAM_DESC}</small>", unsafe_allow_html=True)
-
+    # 2. MÉTHODES DE VALORISATION (Homogénéisé avec bordures)
+    st.subheader(OnboardingTexts.TITLE_METHODS)
+    st.markdown(OnboardingTexts.DESC_METHODS)
+    m_cols = st.columns(4)
+    methods = [
+        (OnboardingTexts.MODEL_DCF_TITLE, r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+Wacc)^t} + \frac{TV_n}{(1+Wacc)^n}",
+         OnboardingTexts.MODEL_DCF_DESC),
+        (OnboardingTexts.MODEL_EQUITY_TITLE, r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}",
+         OnboardingTexts.MODEL_EQUITY_DESC),
+        (OnboardingTexts.MODEL_RIM_TITLE, r"V_0 = BV_0 + \sum \frac{NI_t - (k_e \cdot BV_{t-1})}{(1+k_e)^t}",
+         OnboardingTexts.MODEL_RIM_DESC),
+        (OnboardingTexts.MODEL_GRAHAM_TITLE, r"V_0 = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}",
+         OnboardingTexts.MODEL_GRAHAM_DESC)
+    ]
+    for col, (title, latex, desc) in zip(m_cols, methods):
+        with col:
+            with st.container(border=True):
+                st.markdown(title)
+                st.latex(latex)
+                st.markdown(f"<div style='min-height: 100px;'><small style='color: #64748b;'>{desc}</small></div>",
+                            unsafe_allow_html=True)
     st.divider()
 
-    # --- SECTION B : RISQUE & PILOTAGE ---
-    st.subheader(OnboardingTexts.TITLE_B)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(OnboardingTexts.PILOTAGE_TITLE)
-        st.caption(OnboardingTexts.PILOTAGE_DESC)
-    with c2:
-        st.markdown(OnboardingTexts.MC_TITLE)
-        st.caption(OnboardingTexts.MC_DESC)
-
+    # 3. FLUX DE DONNÉES PAR MODE D'ANALYSE
+    st.subheader(OnboardingTexts.TITLE_PROCESS)
+    p_cols = st.columns(3)
+    processes = [
+        (OnboardingTexts.STRATEGY_ACQUISITION_TITLE, OnboardingTexts.STRATEGY_ACQUISITION_DESC),
+        (OnboardingTexts.STRATEGY_MANUAL_TITLE, OnboardingTexts.STRATEGY_MANUAL_DESC),
+        (OnboardingTexts.STRATEGY_FALLBACK_TITLE, OnboardingTexts.STRATEGY_FALLBACK_DESC)
+    ]
+    for col, (title, desc) in zip(p_cols, processes):
+        with col:
+            with st.container(border=True):
+                st.markdown(title)
+                st.markdown(
+                    f"<div style='min-height: 110px;'><small style='color: #64748b;'>{desc}</small></div>",
+                    unsafe_allow_html=True)
     st.divider()
 
-    # --- SECTION C : GOUVERNANCE ---
-    st.subheader(OnboardingTexts.TITLE_C)
-    g1, g2 = st.columns([2, 3])
-    with g1:
-        st.markdown(OnboardingTexts.AUDIT_TITLE)
-        st.caption(OnboardingTexts.AUDIT_DESC)
-    with g2:
-        st.markdown(OnboardingTexts.TRACE_TITLE)
-        st.caption(OnboardingTexts.TRACE_DESC)
-
+    # 4. ARCHITECTURE DES RÉSULTATS (Les 5 Piliers)
+    st.subheader(OnboardingTexts.TITLE_RESULTS)
+    st.markdown(OnboardingTexts.DESC_RESULTS)
+    r_cols = st.columns(5)
+    results_pillars = [
+        (OnboardingTexts.TAB_1_TITLE, OnboardingTexts.TAB_1_DESC),
+        (OnboardingTexts.TAB_2_TITLE, OnboardingTexts.TAB_2_DESC),
+        (OnboardingTexts.TAB_3_TITLE, OnboardingTexts.TAB_3_DESC),
+        (OnboardingTexts.TAB_4_TITLE, OnboardingTexts.TAB_4_DESC),
+        (OnboardingTexts.TAB_5_TITLE, OnboardingTexts.TAB_5_DESC)
+    ]
+    for col, (title, desc) in zip(r_cols, results_pillars):
+        with col:
+            with st.container(border=True):
+                st.markdown(title)
+                st.markdown(
+                    f"<div style='min-height: 110px;'><small style='color: #64748b;'>{desc}</small></div>",
+                    unsafe_allow_html=True)
     st.divider()
 
-    # --- FOOTER : DIAGNOSTIC ---
-    st.markdown(f"**{OnboardingTexts.DIAGNOSTIC_HEADER}**")
+    # 5. SYSTÈME DE DIAGNOSTIC (Footer)
+    st.subheader(OnboardingTexts.DIAGNOSTIC_HEADER)
     d1, d2, d3 = st.columns(3)
     d1.error(OnboardingTexts.DIAG_BLOQUANT)
     d2.warning(OnboardingTexts.DIAG_WARN)
     d3.info(OnboardingTexts.DIAG_INFO)
-
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
     """
