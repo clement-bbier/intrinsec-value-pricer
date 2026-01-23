@@ -48,7 +48,7 @@ class DDMTerminal(ExpertTerminalBase):
     """
 
     MODE = ValuationMode.DDM
-    DISPLAY_NAME = "Dividend Discount Model"
+    DISPLAY_NAME = "DDM - Dividend Discount Model"
     DESCRIPTION = "Valorisation par les dividendes futurs actualises au Ke"
 
     # DDM = Direct Equity

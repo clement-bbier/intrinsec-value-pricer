@@ -49,7 +49,7 @@ class RIMBankTerminal(ExpertTerminalBase):
     """
 
     MODE = ValuationMode.RIM
-    DISPLAY_NAME = "Residual Income Model"
+    DISPLAY_NAME = "RIM - Residual Income Model"
     DESCRIPTION = "BV + profits anormaux. Adapte aux institutions financieres"
 
     # RIM = Direct Equity

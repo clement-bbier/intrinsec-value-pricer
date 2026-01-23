@@ -46,20 +46,17 @@ class OnboardingTexts:
 
     # Section : Intelligence de Données (Processus)
     TITLE_PROCESS = "Flux de données selon le mode (Standard / Approfondi)"
-    STRATEGY_ACQUISITION_TITLE = "**Paramétrage Automatique (Standard)**"
+    STRATEGY_ACQUISITION_TITLE = "**Extraction Automatique (Standard)**"
     STRATEGY_ACQUISITION_DESC = (
-        "Extraction des données pour les chaînes de calculs à partir de Yahoo Finance "
-        "(possibilité d'utiliser d'autres providers en modifiant le code)."
+        "Extraction automatisée des fondamentaux et indicateurs macro via Yahoo Finance. Le Design Pattern Strategy permet d'interchanger les fournisseurs de données via le code."
     )
     STRATEGY_MANUAL_TITLE = "**Paramétrage Manuel (Approfondi)**"
     STRATEGY_MANUAL_DESC = (
-        "Possibilité de surcharger les données d'entrées avec ses propres hypothèses "
-        "pour simuler des scénarios spécifiques à partir des chaînes de calcul."
+        "Surcharge totale des hypothèses financières pour modéliser vos propres convictions. Permet de simuler des scénarios spécifiques en modifiant les variables d'entrées."
     )
     STRATEGY_FALLBACK_TITLE = "**Continuité (Fallback)**"
     STRATEGY_FALLBACK_DESC = (
-        "En cas de donnée manquante, l'application utilise des algorithmes de secours "
-        "(moyennes sectorielles, valeurs par défaut, ...) pour garantir la production d'une valeur."
+        "Recours aux moyennes sectorielles et valeurs par défaut en cas de données manquantes. Garantit la continuité du calcul et la production d'une valeur intrinsèque."
     )
 
     # Section : Résultats

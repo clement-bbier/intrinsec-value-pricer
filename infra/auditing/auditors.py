@@ -167,44 +167,111 @@ class DCFAuditor(BaseAuditor):
         score, checks = self._audit_data_confidence(result)
         ebit = f.ebit_ttm or 0.0
         lev = f.total_debt / ebit if ebit > 0 else 0.0
+
         score -= self.add_audit_step(
-            key="AUDIT_DATA_LEVERAGE", value=round(lev, 2), threshold="< 4.0x",
-            severity=AuditSeverity.WARNING, condition=(lev < 4.0), penalty=self.PENALTY_MEDIUM
+            key="AUDIT_DATA_LEVERAGE",
+            value=round(lev, 2),
+            threshold="< 4.0x",
+            severity=AuditSeverity.WARNING,
+            condition=(lev < 4.0),
+            penalty=self.PENALTY_MEDIUM
         )
-        pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=max(0.0, score), check_count=checks + 1)
+        pillars[AuditPillar.DATA_CONFIDENCE] = AuditPillarScore(
+            pillar=AuditPillar.DATA_CONFIDENCE,
+            score=max(0.0, score),
+            check_count=checks + 1
+        )
 
         # 2. ASSUMPTION RISK
         score = 100.0 - self._audit_macro_invariants(p)
         ratio = abs(f.capex / (f.depreciation_and_amortization or 1.0)) if f.capex else 0.0
+
         score -= self.add_audit_step(
-            key="AUDIT_MODEL_REINVEST", value=round(ratio, 2), threshold="> 0.8",
-            severity=AuditSeverity.WARNING, condition=(ratio >= 0.8), penalty=self.PENALTY_MEDIUM
+            key="AUDIT_MODEL_REINVEST",
+            value=round(ratio, 2),
+            threshold="> 0.8",
+            severity=AuditSeverity.WARNING,
+            condition=(ratio >= 0.8),
+            penalty=self.PENALTY_MEDIUM
         )
+
         g_val = p.growth.fcf_growth_rate or 0.0
         score -= self.add_audit_step(
-            key="AUDIT_MODEL_GLIM", value=f"{g_val:.2%}", threshold="< 20%",
-            severity=AuditSeverity.WARNING, condition=(g_val <= TechnicalDefaults.GROWTH_AUDIT_THRESHOLD), penalty=self.PENALTY_HIGH
+            key="AUDIT_MODEL_GLIM",
+            value=f"{g_val:.2%}",
+            threshold="< 20%",
+            severity=AuditSeverity.WARNING,
+            condition=(g_val <= TechnicalDefaults.GROWTH_AUDIT_THRESHOLD),
+            penalty=self.PENALTY_HIGH
         )
-        pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(pillar=AuditPillar.ASSUMPTION_RISK, score=max(0.0, score), check_count=4)
+        pillars[AuditPillar.ASSUMPTION_RISK] = AuditPillarScore(
+            pillar=AuditPillar.ASSUMPTION_RISK,
+            score=max(0.0, score),
+            check_count=checks + 2
+        )
 
-        # 3. MODEL RISK
+        # 3. MODEL RISK (Correction de la détection du taux)
+        # --------------------------------------------------------------------------
         score = 100.0
+
+        # FIX : On cherche 'wacc', sinon 'cost_of_equity' (le nom réel dans vos modèles)
+        has_wacc = hasattr(result, 'wacc') and result.wacc is not None
+
+        # Utilisation sécurisée de getattr pour éviter les crashs futurs
+        discount_rate = result.wacc if has_wacc else getattr(result, 'cost_of_equity', 0.10)
+
+        rate_key = "AUDIT_MODEL_WACC" if has_wacc else "AUDIT_MODEL_KE"
+        rate_threshold = 0.06 if has_wacc else 0.05
+        threshold_str = "> 6%" if has_wacc else "> 5%"
+
         score -= self.add_audit_step(
-            key="AUDIT_MODEL_WACC", value=f"{result.wacc:.2%}", threshold="> 6%",
-            severity=AuditSeverity.WARNING, condition=(result.wacc >= 0.06), penalty=self.PENALTY_MEDIUM
+            key=rate_key,
+            value=f"{discount_rate:.2%}",
+            threshold=threshold_str,
+            severity=AuditSeverity.WARNING,
+            condition=(discount_rate >= rate_threshold),
+            penalty=self.PENALTY_MEDIUM
         )
-        tv_w = (result.discounted_terminal_value / result.enterprise_value) if result.enterprise_value > 0 else 0.0
+
+        # Correction TV Concentration : Utilisation de getattr pour Equity Value si EV absente
+        tv_denominator = getattr(result, 'enterprise_value', getattr(result, 'equity_value', 1.0))
+        tv_val = result.discounted_terminal_value or 0.0
+        tv_w = (tv_val / tv_denominator) if tv_denominator > 0 else 0.0
+
         score -= self.add_audit_step(
-            key="AUDIT_MODEL_TVC", value=f"{tv_w:.2%}", threshold="< 90%",
-            severity=AuditSeverity.WARNING, condition=(tv_w <= 0.90), penalty=self.PENALTY_HIGH
+            key="AUDIT_MODEL_TVC",
+            value=f"{tv_w:.2%}",
+            threshold="< 90%",
+            severity=AuditSeverity.WARNING,
+            condition=(tv_w <= 0.90),
+            penalty=self.PENALTY_HIGH
         )
+
         gn = p.growth.perpetual_growth_rate or 0.0
+        g_vs_r_key = "AUDIT_MODEL_G_WACC" if has_wacc else "AUDIT_MODEL_G_KE"
+        g_vs_r_threshold_label = f"WACC:{discount_rate:.2%}" if has_wacc else f"Ke:{discount_rate:.2%}"
+
         score -= self.add_audit_step(
-            key="AUDIT_MODEL_G_WACC", value=f"g:{gn:.2%}", threshold=f"WACC:{result.wacc:.2%}",
-            severity=AuditSeverity.CRITICAL, condition=(gn < result.wacc), penalty=100.0
+            key=g_vs_r_key,
+            value=f"g:{gn:.2%}",
+            threshold=g_vs_r_threshold_label,
+            severity=AuditSeverity.CRITICAL,
+            condition=(gn < discount_rate),
+            penalty=100.0
         )
-        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(pillar=AuditPillar.MODEL_RISK, score=max(0.0, score), check_count=3)
-        pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(pillar=AuditPillar.METHOD_FIT, score=100.0, check_count=1)
+
+        pillars[AuditPillar.MODEL_RISK] = AuditPillarScore(
+            pillar=AuditPillar.MODEL_RISK,
+            score=max(0.0, score),
+            check_count=3
+        )
+
+        # 4. METHOD FIT
+        pillars[AuditPillar.METHOD_FIT] = AuditPillarScore(
+            pillar=AuditPillar.METHOD_FIT,
+            score=100.0,
+            check_count=1
+        )
 
         return pillars
 

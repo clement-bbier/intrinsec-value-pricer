@@ -1,147 +1,158 @@
 """
 app/ui/results/orchestrator.py
 
-ORCHESTRATEUR — GESTION CENTRALISÉE DES ONGLETS DE RÉSULTATS
+ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS (V14.1)
 
-Orchestrateur de résultats
-Rôle : Coordination et rendu des onglets de résultats post-calcul
-Pattern : Mediator (GoF) + Factory Method + Session State Cache
+Rôle : Coordination et rendu des onglets thématiques post-calcul.
+Ordre de préséance :
+    1. Configuration (Inputs/Hypothèses)
+    2. Trace Mathématique (Glass Box / Preuve de calcul)
+    3. Rapport d'Audit (Audit & Fiabilité)
+    4. Analyse de Marché (Relative / Triangulation)
+    5. Ingénierie du Risque (Monte Carlo / Scénarios / Backtest)
+
+Standard de documentation : NumPy style.
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import List, Any, Optional, Dict
 
 import streamlit as st
 
 from src.models import ValuationResult
-# Import PitchbookData supprimé car lié à l'export PDF
 from app.ui.base import ResultTabBase
 from src.i18n import UIMessages
 
-# Import des onglets core
-from app.ui.results.core.executive_summary import ExecutiveSummaryTab
+# Import des onglets piliers (Core & Optionnels)
 from app.ui.results.core.inputs_summary import InputsSummaryTab
 from app.ui.results.core.calculation_proof import CalculationProofTab
 from app.ui.results.core.audit_report import AuditReportTab
-
-# Import des onglets optionnels
 from app.ui.results.optional.peer_multiples import PeerMultiplesTab
-from app.ui.results.optional.sotp_breakdown import SOTPBreakdownTab
-from app.ui.results.optional.scenario_analysis import ScenarioAnalysisTab
-from app.ui.results.optional.historical_backtest import HistoricalBacktestTab
 from app.ui.results.optional.monte_carlo_distribution import MonteCarloDistributionTab
 
+logger = logging.getLogger(__name__)
 
 # ============================================================================
-# CONSTANTES DE SESSION (ST-3.4)
+# CONSTANTES DE CACHE & SESSION (ST-3.4)
 # ============================================================================
 
 SESSION_KEY_RESULT_HASH = "result_cache_hash"
 SESSION_KEY_MC_DATA = "cached_monte_carlo_data"
 SESSION_KEY_ACTIVE_TAB = "active_result_tab"
-SESSION_KEY_RENDER_CONTEXT = "render_context_cache"
 
 
 def _compute_result_hash(result: ValuationResult) -> str:
-    """Calcule un hash unique pour détecter si le résultat a changé."""
+    """
+    Calcule un hash unique pour détecter un changement de contexte de calcul.
+
+    Parameters
+    ----------
+    result : ValuationResult
+        L'objet de résultat de valorisation à hasher.
+
+    Returns
+    -------
+    str
+        Hash MD5 tronqué à 16 caractères.
+    """
     key_components = (
         result.ticker,
         result.intrinsic_value_per_share,
-        result.market_price,
-        result.mode.value if result.mode else "UNKNOWN_MODE",
+        result.mode.value if result.mode else "N/A",
         len(result.simulation_results) if result.simulation_results else 0,
     )
-    hash_input = str(key_components).encode('utf-8')
-    return hashlib.md5(hash_input).hexdigest()[:16]
+    return hashlib.md5(str(key_components).encode('utf-8')).hexdigest()[:16]
 
 
-def _init_session_cache() -> None:
-    """Initialise les clés de cache de session si absentes."""
-    if SESSION_KEY_RESULT_HASH not in st.session_state:
-        st.session_state[SESSION_KEY_RESULT_HASH] = None
-    if SESSION_KEY_MC_DATA not in st.session_state:
-        st.session_state[SESSION_KEY_MC_DATA] = None
-    if SESSION_KEY_ACTIVE_TAB not in st.session_state:
-        st.session_state[SESSION_KEY_ACTIVE_TAB] = 0
-    if SESSION_KEY_RENDER_CONTEXT not in st.session_state:
-        st.session_state[SESSION_KEY_RENDER_CONTEXT] = {}
+def _handle_cache_invalidation(result: ValuationResult) -> bool:
+    """
+    Gère l'invalidation du cache de session si les données sources changent.
 
+    Parameters
+    ----------
+    result : ValuationResult
+        Le nouveau résultat de valorisation.
 
-def _should_invalidate_cache(result: ValuationResult) -> bool:
-    """Détermine si le cache doit être invalidé."""
+    Returns
+    -------
+    bool
+        True si le cache a été invalidé, False sinon.
+    """
     current_hash = _compute_result_hash(result)
-    cached_hash = st.session_state.get(SESSION_KEY_RESULT_HASH)
-
-    if cached_hash != current_hash:
+    if st.session_state.get(SESSION_KEY_RESULT_HASH) != current_hash:
         st.session_state[SESSION_KEY_RESULT_HASH] = current_hash
         st.session_state[SESSION_KEY_MC_DATA] = None
-        st.session_state[SESSION_KEY_RENDER_CONTEXT] = {}
         return True
     return False
 
 
-def cache_monte_carlo_data(result: ValuationResult) -> None:
-    """Met en cache les données Monte Carlo pour éviter les recalculs."""
-    if result.simulation_results and not st.session_state.get(SESSION_KEY_MC_DATA):
-        import numpy as np
-        values = result.simulation_results
-        st.session_state[SESSION_KEY_MC_DATA] = {
-            "count": len(values),
-            "mean": float(np.mean(values)),
-            "median": float(np.median(values)),
-            "std": float(np.std(values)),
-            "p10": float(np.percentile(values, 10)),
-            "p25": float(np.percentile(values, 25)),
-            "p75": float(np.percentile(values, 75)),
-            "p90": float(np.percentile(values, 90)),
-        }
-
-
-def get_cached_mc_stats() -> Optional[Dict[str, float]]:
-    """Récupère les statistiques MC depuis le cache."""
-    return st.session_state.get(SESSION_KEY_MC_DATA)
-
+# ============================================================================
+# CLASSE ORCHESTRATEUR
+# ============================================================================
 
 class ResultTabOrchestrator:
-    """Orchestrateur centralisé des onglets de résultats sans export PDF."""
+    """
+    Médiateur central pour le rendu des onglets de résultats financiers.
 
-    _ALL_TABS: List[type] = [
-        ExecutiveSummaryTab,
-        InputsSummaryTab,
-        CalculationProofTab,
-        AuditReportTab,
-        PeerMultiplesTab,
-        SOTPBreakdownTab,
-        ScenarioAnalysisTab,
-        HistoricalBacktestTab,
-        MonteCarloDistributionTab,
+    Cette classe coordonne l'affichage dynamique des onglets en fonction de
+    la visibilité des résultats (ex: masquer Monte Carlo si désactivé)
+    et gère la mise en cache des statistiques lourdes.
+
+    Attributes
+    ----------
+    _THEMATIC_TABS : List[type]
+        Liste ordonnée des classes d'onglets (source de vérité pour l'UI).
+    """
+
+    # DT-022 : Ordre thématique demandé (Configuration -> Trace -> Audit)
+    _THEMATIC_TABS: List[type] = [
+        InputsSummaryTab,           # Position 1 : Configuration
+        CalculationProofTab,        # Position 2 : Trace Mathématique
+        AuditReportTab,             # Position 3 : Rapport d'Audit
+        PeerMultiplesTab,           # Position 4 : Analyse de Marché
+        MonteCarloDistributionTab,  # Position 5 : Ingénierie du Risque
     ]
 
     def __init__(self):
-        self._tabs: List[ResultTabBase] = [TabClass() for TabClass in self._ALL_TABS]
+        """Initialise les instances d'onglets thématiques."""
+        self._tabs: List[ResultTabBase] = [TabClass() for TabClass in self._THEMATIC_TABS]
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche les onglets avec gestion optimisée du cache."""
-        _init_session_cache()
-        _should_invalidate_cache(result)
+        """
+        Coordonne le rendu des onglets Streamlit.
 
-        if result.simulation_results:
-            cache_monte_carlo_data(result)
+        Gère l'invalidation du cache, le calcul des statistiques de simulation
+        et le rendu séquentiel des onglets visibles.
 
-        cached_mc = get_cached_mc_stats()
+        Parameters
+        ----------
+        result : ValuationResult
+            Le résultat complet de la valorisation.
+        **kwargs : Any
+            Arguments additionnels passés aux fonctions de rendu des onglets.
+        """
+        # 1. Gestion de l'état et du cache
+        _handle_cache_invalidation(result)
+        self._cache_technical_data(result)
+
+        # Injection des statistiques MC dans le contexte de rendu si existantes
+        cached_mc = st.session_state.get(SESSION_KEY_MC_DATA)
         if cached_mc:
             kwargs["cached_mc_stats"] = cached_mc
 
+        # 2. Filtrage des onglets selon la pertinence du résultat
         visible_tabs = [tab for tab in self._tabs if tab.is_visible(result)]
-
         if not visible_tabs:
             st.warning(UIMessages.NO_TABS_TO_DISPLAY)
             return
 
+        # Tri selon la propriété ORDER interne des classes (sécurité additionnelle)
         visible_tabs.sort(key=lambda t: t.ORDER)
 
+        # 3. Rendu de l'interface Streamlit (Tabs natifs)
         tab_labels = [tab.get_display_label() for tab in visible_tabs]
         st_tabs = st.tabs(tab_labels)
 
@@ -150,12 +161,34 @@ class ResultTabOrchestrator:
                 try:
                     tab_instance.render(result, **kwargs)
                 except Exception as e:
-                    st.error(f"Erreur dans l'onglet {tab_instance.LABEL}: {str(e)}")
+                    logger.error("Error rendering tab %s: %s", tab_instance.LABEL, str(e))
+                    st.error(f"Affichage momentanément indisponible : {tab_instance.LABEL}")
 
-    def get_visible_count(self, result: ValuationResult) -> int:
-        return sum(1 for tab in self._tabs if tab.is_visible(result))
+    def _cache_technical_data(self, result: ValuationResult) -> None:
+        """
+        Met en cache les indicateurs statistiques de la simulation Monte Carlo.
+
+        Évite de recalculer les percentiles (p10, p90, etc.) sur de gros volumes
+        de données à chaque changement d'onglet utilisateur.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            Le résultat contenant potentiellement des listes de simulation.
+        """
+        if result.simulation_results and not st.session_state.get(SESSION_KEY_MC_DATA):
+            import numpy as np
+            v = np.array([res for res in result.simulation_results if res is not None])
+            if len(v) > 0:
+                st.session_state[SESSION_KEY_MC_DATA] = {
+                    "median": float(np.median(v)),
+                    "p10": float(np.percentile(v, 10)),
+                    "p90": float(np.percentile(v, 90)),
+                    "std": float(np.std(v)),
+                    "count": len(v)
+                }
 
     def clear_cache(self) -> None:
+        """Réinitialise manuellement les données de cache de session."""
         st.session_state[SESSION_KEY_RESULT_HASH] = None
         st.session_state[SESSION_KEY_MC_DATA] = None
-        st.session_state[SESSION_KEY_RENDER_CONTEXT] = {}
