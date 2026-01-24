@@ -1,14 +1,13 @@
 """
 app/ui/expert_terminals/fcff_standard_terminal.py
 
-TERMINAL EXPERT — FCFF TWO-STAGE STANDARD (NARRATIVE FLOW)
+TERMINAL EXPERT — FCFF TWO-STAGE STANDARD (FLUX CONTINU)
 ==========================================================
-Ce module implémente l'interface de valorisation DCF Entité classique.
-Il suit une approche pédagogique permettant à l'analyste de construire
-sa propre thèse de flux de trésorerie étape par étape.
+Implémentation de l'interface DCF Entité (FCFF).
+Ce terminal constitue les étapes 1 et 2 du "Logical Path" analytique.
 
 Architecture : ST-3.1 (Fondamental - DCF)
-Flux : Free Cash Flow to Firm (FCFF)
+Style : Numpy docstrings
 """
 
 from typing import Dict, Any, Optional
@@ -27,70 +26,58 @@ class FCFFStandardTerminal(ExpertTerminalBase):
     """
     Terminal expert pour la valorisation par les flux de trésorerie à la firme.
 
-    Ce terminal guide l'utilisateur à travers les étapes de projection
-    du modèle DCF avant d'intégrer les paramètres de risque et les
-    ajustements de structure hérités de la classe de base.
-
-    Attributes
-    ----------
-    MODE : ValuationMode
-        Identifiant unique du modèle (FCFF_STANDARD).
-    DISPLAY_NAME : str
-        Nom affiché dans l'en-tête du terminal (issu de i18n).
-    DESCRIPTION : str
-        Explication concise du modèle (issue de i18n).
+    Ce module guide l'analyste dans la définition de son ancrage (Y0)
+    et de sa trajectoire de croissance avant de passer aux étapes de
+    risque et de structure gérées par la classe de base.
     """
 
     MODE = ValuationMode.FCFF_STANDARD
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI ---
+    # --- Configuration du Pipeline UI (9 Étapes) ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = False
+    SHOW_SOTP = True  # Activé : devient l'Étape 9 du tunnel expert
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
     # --- Formules LaTeX narratives ---
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
-    BRIDGE_FORMULA = Texts.FORMULA_BRIDGE
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu séquentiel et vertical des entrées spécifiques au modèle FCFF.
-
-        Suit le flux narratif défini dans le référentiel i18n :
-        Étape 1 : Ancrage du flux (Normalisation du point de départ).
-        Étape 2 : Projection (Hypothèses de croissance explicite).
+        Rendu des entrées opérationnelles (Étapes 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Dictionnaire des paramètres capturés pour le moteur de calcul.
+            Paramètres capturés : manual_fcf_base, projection_years, fcf_growth_rate.
         """
+        prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : ANCRAGE ---
-        st.markdown(Texts.STEP_1_TITLE)
-        st.info(Texts.STEP_1_DESC)
+        # --- ÉTAPE 1 : ANCRAGE DU FLUX ---
+        self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
         fcf_base = st.number_input(
             Texts.INP_BASE,
-            value=None, format="%.0f",
-            key=f"{self.MODE.name}_fcf_base"
+            value=None,
+            format="%.0f",
+            help=Texts.HELP_BASE,
+            key=f"{prefix}_fcf_base"
         )
         st.divider()
 
-        # --- ÉTAPE 2 : PROJECTION ---
-        st.markdown(Texts.STEP_2_TITLE)
-        st.info(Texts.STEP_2_DESC)
+        # --- ÉTAPE 2 : PROJECTION DE LA CROISSANCE ---
+        self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
+            n_years = widget_projection_years(default=5, key_prefix=prefix)
         with col2:
-            g_rate = widget_growth_rate(label=Texts.INP_GROWTH_G, key_prefix=self.MODE.name)
+            g_rate = widget_growth_rate(label=Texts.INP_GROWTH_G, key_prefix=prefix)
+
         st.divider()
 
         return {
@@ -101,23 +88,20 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données du session_state selon le préfixe du terminal.
+        Extrait les données spécifiques au FCFF depuis le session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe de clé (généralement le nom du mode).
+            Préfixe basé sur le ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données brutes extraites.
+            Données opérationnelles pour build_request.
         """
-        data = {}
-
-        # Extraction sécurisée des états Streamlit
-        data["manual_fcf_base"] = st.session_state.get(f"{key_prefix}_fcf_base")
-        data["fcf_growth_rate"] = st.session_state.get(f"{key_prefix}_growth_rate")
-        data["projection_years"] = st.session_state.get(f"{key_prefix}_years")
-
-        return data
+        return {
+            "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "projection_years": st.session_state.get(f"{key_prefix}_years")
+        }

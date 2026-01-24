@@ -8,13 +8,18 @@ Structure :
 2. Classes Narratives : Spécificités par modèle (Ancrage et Projections).
 """
 
+
 class SharedTexts:
     """
-    SOCLE COMMUN - Contient tous les labels universels réutilisés par les widgets.
+    SOCLE COMMUN - Centralise l'intégralité des labels, messages et formules
+    utilisés par les terminaux experts et les widgets de saisie.
     """
+
     # ==========================================================================
-    # SECTIONS TRANSVERSES (Réalignement des index 3 à 8)
+    # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
+    # Titres de sections et descriptions pédagogiques
+
     SEC_3_CAPITAL = "#### Étape 3 : Profil de Risque (Actualisation)"
     SEC_3_DESC = "Détermination du taux requis pour rémunérer le risque opérationnel et financier (WACC ou Ke)."
 
@@ -24,7 +29,7 @@ class SharedTexts:
     SEC_5_BRIDGE = "#### Étape 5 : Ajustements de Structure (Equity Bridge)"
     SEC_5_DESC = "Passage de la valeur de l'actif économique (EV) à la valeur revenant aux actionnaires (Equity)."
 
-    # Correction de l'index : Monte Carlo devient l'Étape 6 pour correspondre aux widgets
+    # Extensions optionnelles (Index 6 à 9)
     SEC_6_MC = "#### Option : Simulation Probabiliste (Incertitude)"
     SEC_6_DESC_MC = "Analyse de sensibilité par simulation de Monte Carlo pour quantifier la dispersion de la valeur."
 
@@ -38,9 +43,8 @@ class SharedTexts:
     SEC_9_DESC = "Décomposition de la valeur d'entreprise par segments métier ou actifs distincts."
 
     # ==========================================================================
-    # ÉTAPE 5 : STRUCTURE DE L'EQUITY BRIDGE (Organisation en 3 parties)
+    # 2. MODULE : ÉTAPE 5 - EQUITY BRIDGE
     # ==========================================================================
-
     BRIDGE_TITLE = "#### Équity Bridge"
     BRIDGE_SUBTITLE = "Réconciliation de la Valeur d'Entreprise vers la Valeur par Action"
 
@@ -55,11 +59,11 @@ class SharedTexts:
     INP_PENSIONS = "Provisions Pensions"
 
     # ==========================================================================
-    # ÉTAPE 6 : MONTE CARLO
+    # 3. MODULE : ÉTAPE 6 - MONTE CARLO
     # ==========================================================================
-    MC_VOLATILITIES = "**Calibration des volatilités (écarts-types)**"
     MC_CALIBRATION = "Activer Monte Carlo"
     MC_ITERATIONS = "Nombre d'itérations"
+    MC_VOLATILITIES = "**Calibration des volatilités (écarts-types)**"
 
     MC_VOL_BASE_FLOW = "Vol. Flux de Base (Y0)"
     MC_VOL_BETA = "Vol. du Bêta"
@@ -67,14 +71,8 @@ class SharedTexts:
     LBL_VOL_OMEGA = "Vol. de ω (Persistance)"
     LBL_VOL_GN = "Vol. de gn (Perp.)"
 
-    HELP_MC_VOL_FLOW = "Incertitude sur le flux de trésorerie de l'année 0."
-    HELP_MC_VOL_BETA = "Dispersion possible du coefficient de risque (Bêta)."
-    HELP_MC_VOL_G = "Variabilité de la croissance sur la phase explicite."
-    HELP_MC_VOL_OMEGA = "Incertitude sur la persistance des profits (modèle RIM)."
-    HELP_MC_VOL_GN = "Incertitude sur le taux de croissance à l'infini."
-
     # ==========================================================================
-    # ÉTAPE 8 : SCÉNARIOS
+    # 4. MODULE : ÉTAPE 8 - SCÉNARIOS (Bull/Base/Bear)
     # ==========================================================================
     INP_SCENARIO_ENABLE = "Activer l'analyse de scénarios"
     INP_SCENARIO_PROBA = "Probabilité (%)"
@@ -84,6 +82,7 @@ class SharedTexts:
     LABEL_SCENARIO_BULL = "Optimiste (Bull Case)"
     LABEL_SCENARIO_BASE = "Référence (Base Case)"
     LABEL_SCENARIO_BEAR = "Pessimiste (Bear Case)"
+
     LBL_BULL = "Bull"
     LBL_BASE = "Base"
     LBL_BEAR = "Bear"
@@ -93,7 +92,21 @@ class SharedTexts:
     ERR_SCENARIO_INVALID = "Certains paramètres de scénarios sont invalides."
 
     # ==========================================================================
-    # LABELS INPUTS UNIVERSELS & SLIDERS
+    # 5. MODULE : ÉTAPE 9 - SOTP (Sum-of-the-Parts)
+    # ==========================================================================
+    LBL_SOTP_ENABLE = "Activer l'analyse SOTP"
+    HELP_SOTP_ENABLE = "Permet de diviser la valeur totale entre différentes Business Units."
+
+    SEC_SOTP_SEGMENTS = "**Répartition par segments**"
+    SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding**"
+
+    LBL_SEGMENT_NAME = "Nom du Segment"
+    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
+    LBL_SEGMENT_METHOD = "Méthode de Valo."
+    LBL_DISCOUNT = "Décote de conglomérat (%)"
+
+    # ==========================================================================
+    # 6. LABELS D'INPUTS UNIVERSELS (Paramètres financiers)
     # ==========================================================================
     INP_PROJ_YEARS = "Années de projection"
     SLIDER_PROJ_YEARS = "Horizon de projection (t années)"
@@ -110,7 +123,7 @@ class SharedTexts:
     INP_OMEGA = "Facteur de persistance (ω)"
 
     # ==========================================================================
-    # TOOLTIPS & HELP TEXTS
+    # 7. TOOLTIPS & TEXTES D'AIDE (Help Texts)
     # ==========================================================================
     HELP_PROJ_YEARS = "Horizon explicite de projection avant le calcul de la valeur terminale."
     HELP_GROWTH_RATE = "Taux de croissance annuel moyen des flux. Vide = estimation automatique."
@@ -126,56 +139,61 @@ class SharedTexts:
     HELP_OMEGA = "Facteur de persistance : 0 = retour immédiat à la moyenne, 1 = persistance infinie."
     HELP_MC_ENABLE = "Lance une simulation stochastique pour évaluer l'incertitude du prix."
     HELP_MC_SIMS = "Nombre de tirages. 5000 est un bon compromis précision/vitesse."
-    HELP_SCENARIO_ENABLE = "Permet de tester des hypothèses de croissance et de marge différentes."
+    HELP_SCENARIO_ENABLE = "Permet de tester des hypothèses de croissance et de marge différente."
     HELP_PEER_TRIANGULATION = "Compare la valeur intrinsèque aux multiples de trading des concurrents."
     HELP_SHARES = "Nombre total d'actions diluées en circulation."
     HELP_DEBT = "Dette financière brute totale."
     HELP_CASH = "Cash, équivalents et placements financiers."
 
-    # Récupération des labels existants pour le tableau
-    LBL_SEGMENT_NAME = "Nom du Segment"
-    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
-    LBL_SEGMENT_METHOD = "Méthode de Valo."
-    LBL_DISCOUNT = "Décote de conglomérat (%)"
-    LBL_SOTP_ENABLE = "Activer l'analyse SOTP"
-    HELP_SOTP_ENABLE = "Permet de diviser la valeur totale entre différentes Business Units."
-    SEC_SOTP_SEGMENTS = "**Répartition par segments**"
-    SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding**"
+    # Tooltips Monte Carlo (Incertitudes)
+    HELP_MC_VOL_FLOW = "Incertitude sur le flux de trésorerie de l'année 0."
+    HELP_MC_VOL_BETA = "Dispersion possible du coefficient de risque (Bêta)."
+    HELP_MC_VOL_G = "Variabilité de la croissance sur la phase explicite."
+    HELP_MC_VOL_OMEGA = "Incertitude sur la persistance des profits (modèle RIM)."
+    HELP_MC_VOL_GN = "Incertitude sur le taux de croissance à l'infini."
+
     # ==========================================================================
-    # UI ELEMENTS & FACTORY
+    # 8. ÉLÉMENTS D'UI & NAVIGATION (Factory, Boutons, Méthodes)
     # ==========================================================================
+    # Catégories de modèles
     CATEGORY_DEFENSIVE = "Défensif"
     CATEGORY_RELATIVE_SECTORIAL = "Relatif / Sectoriel"
     CATEGORY_FUNDAMENTAL_DCF = "Fondamental (DCF)"
     CATEGORY_OTHER = "Autre"
 
+    # Peer Triangulation
     LBL_PEER_ENABLE = "Activer la triangulation"
     INP_MANUAL_PEERS = "Tickers des concurrents"
     PLACEHOLDER_PEERS = "ex: AAPL, MSFT, GOOG"
     HELP_MANUAL_PEERS = "Séparez les tickers par des virgules."
     PEERS_SELECTED = "*Concurrents sélectionnés : {peers}*"
 
+    # Terminal Value Methods
     RADIO_TV_METHOD = "Modèle de sortie (TV)"
     TV_GORDON = "Croissance Perpétuelle (Gordon)"
     TV_EXIT = "Multiple de Sortie / P/E"
 
+    # SBC & Dilution
     LABEL_DILUTION_SBC = "Dilution / SBC"
     INP_SBC_DILUTION = "Taux de dilution annuel attendu"
     WARN_SBC_TECH = "Le SBC impacte la valeur par action. Prévoyez 1-3% pour les entreprises technologiques."
 
+    # Boutons
     BTN_CALCULATE = "Lancer la Valorisation"
 
     # ==========================================================================
-    # FORMULES (LATEX)
+    # 9. FORMULES FINANCIÈRES (LaTeX)
     # ==========================================================================
+    # Bridge
     FORMULA_BRIDGE = r"P = \frac{EV - \text{Dette} + \text{Cash} - \text{Minorités}}{\text{Actions}}"
+
+    # Capital
     FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times MRP"
     FORMULA_CAPITAL_WACC = r"WACC = w_e [R_f + \beta(MRP)] + w_d [k_d(1-\tau)]"
 
-    # Formules dynamiques pour l'Étape 4
+    # Valeur Terminale (Dynamique Étape 4)
     FORMULA_TV_GORDON = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
     FORMULA_TV_EXIT = r"TV_n = FCF_{n+1} \times Multiple_{exit}"
-
 
 # ==============================================================================
 # CLASSES NARRATIVES SPÉCIFIQUES (Héritage de SharedTexts)

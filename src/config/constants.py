@@ -363,6 +363,8 @@ class TechnicalDefaults:
     DEFAULT_AAA_YIELD: float = 0.044  # 4.4% yield AAA par défaut
     MAX_DILUTION_CLAMPING: float = 0.10  # Plafond de 10% par an pour l'estimation auto
 
+    DEFAULT_VOLATILITY = 0.05
+
 
 # ==============================================================================
 # 12. CONFIGURATION DE RAPPORT
