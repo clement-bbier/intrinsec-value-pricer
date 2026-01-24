@@ -351,12 +351,12 @@ def widget_monte_carlo(mode: ValuationMode, terminal_method: Optional[TerminalVa
     """Widget Monte Carlo sans valeurs par défaut (Tout à vide)."""
     prefix = key_prefix or "mc"
     st.markdown(SharedTexts.SEC_6_MC)
+    st.info(SharedTexts.SEC_6_DESC_MC)
 
     enable = st.toggle(SharedTexts.MC_CALIBRATION, False, key=f"{prefix}_enable")
     if not enable: return {"enable_monte_carlo": False}
 
     sims = st.select_slider(SharedTexts.MC_ITERATIONS, options=[1000, 5000, 10000, 20000], value=5000, key=f"{prefix}_sims")
-    st.divider()
     st.caption(SharedTexts.MC_VOLATILITIES)
     v_col1, v_col2 = st.columns(2)
 
@@ -391,6 +391,7 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
         key_prefix = "peer"
 
     st.markdown(SharedTexts.SEC_7_PEERS)
+    st.info(SharedTexts.SEC_7_DESC_PEERS)
 
     enable = st.toggle(
         SharedTexts.LBL_PEER_ENABLE,
@@ -429,6 +430,7 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     """Analyse multi-scénarios. Correction Pydantic (Keyword Args)."""
     prefix = key_prefix or "scenario"
     st.markdown(SharedTexts.SEC_8_SCENARIOS)
+    st.info(SharedTexts.SEC_8_DESC_SCENARIOS)
 
     enabled = st.toggle(SharedTexts.INP_SCENARIO_ENABLE, False, key=f"{prefix}_enable")
     if not enabled:
@@ -475,6 +477,7 @@ def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None
     prefix = key_prefix or "sotp"
 
     st.markdown(SharedTexts.SEC_9_SOTP)
+    st.info(SharedTexts.SEC_9_DESC)
 
     enabled = st.toggle(
         SharedTexts.LBL_SOTP_ENABLE,
