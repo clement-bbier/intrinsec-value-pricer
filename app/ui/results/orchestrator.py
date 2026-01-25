@@ -1,17 +1,21 @@
 """
 app/ui/results/orchestrator.py
 
-ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS (V14.1)
-
+ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS (V15.0)
+==========================================================
 Rôle : Coordination et rendu des onglets thématiques post-calcul.
-Ordre de préséance :
+Garantit l'ordre institutionnel et la pertinence contextuelle (Smart Filtering).
+
+Architecture des 5 Piliers :
+    0. Synthèse (Executive Summary)
     1. Configuration (Inputs/Hypothèses)
     2. Trace Mathématique (Glass Box / Preuve de calcul)
     3. Rapport d'Audit (Audit & Fiabilité)
-    4. Analyse de Marché (Relative / Triangulation)
-    5. Ingénierie du Risque (Monte Carlo / Scénarios / Backtest)
+    4. Ingénierie du Risque (Quant : Monte Carlo / Scénarios / Backtest)
+    5. Analyse de Marché (Relatif : Triangulation / SOTP)
 
-Standard de documentation : NumPy style.
+Pattern : Strategy & Mediator
+Style : Numpy docstrings
 """
 
 from __future__ import annotations
@@ -22,16 +26,22 @@ from typing import List, Any, Optional, Dict
 
 import streamlit as st
 
-from src.models import ValuationResult
+from src.models import ValuationResult, ValuationMode
 from .base_result import ResultTabBase
-from src.i18n import UIMessages
+from src.i18n import UIMessages, PillarLabels
 
-# Import des onglets piliers (Core & Optionnels)
+# --- IMPORT DES PILIERS CORE ---
+from app.ui.results.core.executive_summary import ExecutiveSummaryTab
 from app.ui.results.core.inputs_summary import InputsSummaryTab
 from app.ui.results.core.calculation_proof import CalculationProofTab
 from app.ui.results.core.audit_report import AuditReportTab
-from app.ui.results.optional.peer_multiples import PeerMultiplesTab
+
+# --- IMPORT DES PILIERS OPTIONNELS ---
 from app.ui.results.optional.monte_carlo_distribution import MonteCarloDistributionTab
+from app.ui.results.optional.scenario_analysis import ScenarioAnalysisTab
+from app.ui.results.optional.historical_backtest import HistoricalBacktestTab
+from app.ui.results.optional.peer_multiples import PeerMultiplesTab
+from app.ui.results.optional.sotp_breakdown import SOTPBreakdownTab
 
 logger = logging.getLogger(__name__)
 
@@ -41,23 +51,10 @@ logger = logging.getLogger(__name__)
 
 SESSION_KEY_RESULT_HASH = "result_cache_hash"
 SESSION_KEY_MC_DATA = "cached_monte_carlo_data"
-SESSION_KEY_ACTIVE_TAB = "active_result_tab"
 
 
 def _compute_result_hash(result: ValuationResult) -> str:
-    """
-    Calcule un hash unique pour détecter un changement de contexte de calcul.
-
-    Parameters
-    ----------
-    result : ValuationResult
-        L'objet de résultat de valorisation à hasher.
-
-    Returns
-    -------
-    str
-        Hash MD5 tronqué à 16 caractères.
-    """
+    """Calcule un hash unique pour détecter un changement de contexte de calcul."""
     key_components = (
         result.ticker,
         result.intrinsic_value_per_share,
@@ -68,19 +65,7 @@ def _compute_result_hash(result: ValuationResult) -> str:
 
 
 def _handle_cache_invalidation(result: ValuationResult) -> bool:
-    """
-    Gère l'invalidation du cache de session si les données sources changent.
-
-    Parameters
-    ----------
-    result : ValuationResult
-        Le nouveau résultat de valorisation.
-
-    Returns
-    -------
-    bool
-        True si le cache a été invalidé, False sinon.
-    """
+    """Gère l'invalidation du cache de session si les données sources changent."""
     current_hash = _compute_result_hash(result)
     if st.session_state.get(SESSION_KEY_RESULT_HASH) != current_hash:
         st.session_state[SESSION_KEY_RESULT_HASH] = current_hash
@@ -95,25 +80,26 @@ def _handle_cache_invalidation(result: ValuationResult) -> bool:
 
 class ResultTabOrchestrator:
     """
-    Médiateur central pour le rendu des onglets de résultats financiers.
+    Médiateur central pour le rendu des onglets de résultats financiers (ST-5.2).
 
-    Cette classe coordonne l'affichage dynamique des onglets en fonction de
-    la visibilité des résultats (ex: masquer Monte Carlo si désactivé)
-    et gère la mise en cache des statistiques lourdes.
-
-    Attributes
-    ----------
-    _THEMATIC_TABS : List[type]
-        Liste ordonnée des classes d'onglets (source de vérité pour l'UI).
+    Cette classe applique le 'Smart Filtering' pour masquer les analyses
+    non pertinentes (ex: Multiples pour Graham) et respecte la hiérarchie
+    des 5 piliers de recherche.
     """
 
-    # DT-022 : Ordre thématique demandé (Configuration -> Trace -> Audit)
+    # Séquençage strict des 5 piliers institutionnels
     _THEMATIC_TABS: List[type] = [
+        ExecutiveSummaryTab,        # Position 0 : Synthèse Décisionnelle
         InputsSummaryTab,           # Position 1 : Configuration
         CalculationProofTab,        # Position 2 : Trace Mathématique
         AuditReportTab,             # Position 3 : Rapport d'Audit
-        PeerMultiplesTab,           # Position 4 : Analyse de Marché
-        MonteCarloDistributionTab,  # Position 5 : Ingénierie du Risque
+        # --- Pilier 4 : Ingénierie du Risque ---
+        MonteCarloDistributionTab,
+        ScenarioAnalysisTab,
+        HistoricalBacktestTab,
+        # --- Pilier 5 : Analyse de Marché ---
+        PeerMultiplesTab,
+        SOTPBreakdownTab
     ]
 
     def __init__(self):
@@ -122,62 +108,75 @@ class ResultTabOrchestrator:
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """
-        Coordonne le rendu des onglets Streamlit.
-
-        Gère l'invalidation du cache, le calcul des statistiques de simulation
-        et le rendu séquentiel des onglets visibles.
+        Coordonne le rendu des onglets Streamlit (Logical Path).
 
         Parameters
         ----------
         result : ValuationResult
-            Le résultat complet de la valorisation.
+            Le résultat complet de la valorisation issue du moteur.
         **kwargs : Any
-            Arguments additionnels passés aux fonctions de rendu des onglets.
+            Arguments additionnels passés aux fonctions de rendu.
         """
-        # 1. Gestion de l'état et du cache
+        # 1. Gestion de l'état et du cache (ST-3.4)
         _handle_cache_invalidation(result)
         self._cache_technical_data(result)
 
-        # Injection des statistiques MC dans le contexte de rendu si existantes
         cached_mc = st.session_state.get(SESSION_KEY_MC_DATA)
         if cached_mc:
             kwargs["cached_mc_stats"] = cached_mc
 
-        # 2. Filtrage des onglets selon la pertinence du résultat
-        visible_tabs = [tab for tab in self._tabs if tab.is_visible(result)]
+        # 2. Smart Filtering & Visibilité contextuelle (Tâche 1.2.2)
+        visible_tabs = self._filter_relevant_tabs(result)
+
         if not visible_tabs:
             st.warning(UIMessages.NO_TABS_TO_DISPLAY)
             return
 
-        # Tri selon la propriété ORDER interne des classes (sécurité additionnelle)
+        # Tri final par propriété ORDER (Double sécurité)
         visible_tabs.sort(key=lambda t: t.ORDER)
 
-        # 3. Rendu de l'interface Streamlit (Tabs natifs)
+        # 3. Rendu de l'interface par onglets natifs
         tab_labels = [tab.get_display_label() for tab in visible_tabs]
         st_tabs = st.tabs(tab_labels)
 
         for st_tab, tab_instance in zip(st_tabs, visible_tabs):
             with st_tab:
                 try:
+                    # Chaque onglet reçoit le résultat et le contexte (kwargs)
                     tab_instance.render(result, **kwargs)
                 except Exception as e:
                     logger.error("Error rendering tab %s: %s", tab_instance.LABEL, str(e))
                     st.error(f"Affichage momentanément indisponible : {tab_instance.LABEL}")
 
+    def _filter_relevant_tabs(self, result: ValuationResult) -> List[ResultTabBase]:
+        """
+        Applique les règles métier de filtrage des onglets (ST-5.1).
+
+        Règles :
+        - Un onglet doit avoir des données (is_visible).
+        - Les multiples sont masqués pour le modèle Graham (Tâche 1.2.2).
+        """
+        filtered = []
+        is_graham = (result.mode == ValuationMode.GRAHAM)
+
+        for tab in self._tabs:
+            # 1. Vérification de la présence de données
+            if not tab.is_visible(result):
+                continue
+
+            # 2. Arbitrage spécifique Graham / Multiples
+            if is_graham and isinstance(tab, PeerMultiplesTab):
+                continue
+
+            filtered.append(tab)
+
+        return filtered
+
     def _cache_technical_data(self, result: ValuationResult) -> None:
-        """
-        Met en cache les indicateurs statistiques de la simulation Monte Carlo.
-
-        Évite de recalculer les percentiles (p10, p90, etc.) sur de gros volumes
-        de données à chaque changement d'onglet utilisateur.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            Le résultat contenant potentiellement des listes de simulation.
-        """
+        """Met en cache les indicateurs statistiques de la simulation Monte Carlo."""
         if result.simulation_results and not st.session_state.get(SESSION_KEY_MC_DATA):
             import numpy as np
+            # Nettoyage des None éventuels pour le calcul statistique
             v = np.array([res for res in result.simulation_results if res is not None])
             if len(v) > 0:
                 st.session_state[SESSION_KEY_MC_DATA] = {
