@@ -1,299 +1,229 @@
 """
 core/i18n/fr/ui/results.py
-Textes des onglets de resultats.
+
+RÉFÉRENTIEL DES TEXTES DE RENDU — VERSION INSTITUTIONNELLE EXHAUSTIVE (V20)
+==========================================================================
+Ce module centralise l'intégralité des labels, tooltips, formules et messages
+utilisés pour l'affichage des résultats de valorisation.
+
+Pattern : Centralized Repository
+Style : Numpy docstrings
 """
 
+class PillarLabels:
+    """Labels officiels des 5 piliers de recherche."""
+    PILLAR_1_CONF = "1. CONFIGURATION"
+    PILLAR_2_TRACE = "2. TRACE MATHÉMATIQUE"
+    PILLAR_3_AUDIT = "3. RAPPORT D'AUDIT"
+    PILLAR_4_RISK = "4. INGÉNIERIE DU RISQUE"
+    PILLAR_5_MARKET = "5. ANALYSE DE MARCHÉ"
+    PILLAR_0_SUMMARY = "SYNTHÈSE DÉCISIONNELLE"
 
 class KPITexts:
-    """Labels et titres pour l'affichage des resultats (Glass Box)."""
-    
-    # Onglets
-    TAB_INPUTS = "Donnees d'Entree"
+    """Labels et titres pour l'affichage des résultats (Glass Box)."""
+
+    # --- Navigation & Onglets ---
+    TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de Calcul"
-    TAB_AUDIT = "Audit de Fiabilite"
+    TAB_AUDIT = "Audit de Fiabilité"
     TAB_MC = "Analyse de Risque (MC)"
-    TAB_SCENARIOS = "Analyse de Scenarios"
+    TAB_SCENARIOS = "Analyse de Scénarios"
 
-    # Titres de sections (Inputs)
-    SECTION_INPUTS_HEADER = "#### Recapitulatif des Donnees Utilisees"
-    SECTION_INPUTS_CAPTION = "Ce tableau liste l'ensemble des inputs injectes dans le moteur de calcul."
+    # --- Synthèse Décisionnelle (Pillier 0) ---
+    EXEC_TITLE = "DOSSIER DE VALORISATION : {name} ({ticker})"
+    EXEC_CONFIDENCE = "Indice de Confiance"
+    LABEL_PRICE = "Cours de Marché"
+    LABEL_IV = "Valeur Intrinsèque"
+    LABEL_MOS = "Marge de Sécurité (MoS)"
+    LABEL_EXPECTED_VALUE = "Valeur Pondérée (Espérée)"
+    LABEL_SIMULATIONS = "Simulations"
+    LABEL_SCENARIO_RANGE = "Fourchette Bear - Bull"
+    FOOTBALL_FIELD_TITLE = "Synthèse de Triangulation (Football Field)"
+    RELATIVE_VAL_DESC = "Positionnement du modèle intrinsèque face aux multiples du secteur."
+    LABEL_MULTIPLES_UNAVAILABLE = "Cohorte de comparables insuffisante pour triangulation."
+
+    # --- PILLIER 1 : CONFIGURATION (Hypothèses) ---
+    SECTION_INPUTS_HEADER = "#### RÉCAPITULATIF DES DONNÉES UTILISÉES"
+    SECTION_INPUTS_CAPTION = "Listing intégral des inputs injectés dans le moteur de calcul."
+
     SEC_A_IDENTITY = "A. Identification de l'Entreprise"
-    SEC_B_FINANCIALS = "B. Donnees Financieres (Source: Yahoo Finance)"
-    SEC_C_MODEL = "C. Parametres du Modele de Valorisation"
-    SEC_D_MC = "D. Configuration Monte Carlo"
-    SEC_E_RELATIVE = "E. Valorisation Relative (Multiples de Marche)"
-
-    # Labels Identification
     LABEL_TICKER = "Ticker"
     LABEL_NAME = "Nom"
     LABEL_SECTOR = "Secteur"
-    LABEL_COUNTRY = "Pays"
+    LABEL_COUNTRY = "Siège Social"
     LABEL_INDUSTRY = "Industrie"
     LABEL_CURRENCY = "Devise"
-    LABEL_BETA = "Beta"
-    LABEL_SHARES = "Actions en circulation"
+    LABEL_SHARES = "Actions Diluées"
 
-    # Labels Financiers
-    SUB_MARKET = "Marche & Capitalisation"
-    LABEL_PRICE = "Cours Actuel"
-    LABEL_MCAP = "Capitalisation Boursiere"
-    LABEL_BVPS = "Book Value / Action"
-
+    SEC_B_FINANCIALS = "B. Données Financières (Source: Yahoo Finance)"
+    SUB_MARKET = "Marché & Capitalisation"
+    LABEL_MCAP = "Market Cap"
+    LABEL_BVPS = "Valeur Comptable / Action"
     SUB_CAPITAL = "Structure du Capital"
     LABEL_DEBT = "Dette Totale"
-    LABEL_CASH = "Tresorerie"
+    LABEL_CASH = "Trésorerie"
     LABEL_NET_DEBT = "Dette Nette"
-    LABEL_INTEREST = "Charges d'Interets"
-    LABEL_MINORITIES = "Interets Minoritaires"
+    LABEL_INTEREST = "Charges d'Intérêts"
+    LABEL_MINORITIES = "Intérêts Minoritaires"
     LABEL_PENSIONS = "Provisions Pensions"
-
-    SUB_PERF = "Performance Operationnelle (TTM)"
+    LABEL_NET_BORROWING = "Variation Dette Nette"
+    SUB_PERF = "Performance Opérationnelle (TTM)"
     LABEL_REV = "Chiffre d'Affaires"
     LABEL_EBIT = "EBIT"
-    LABEL_NI = "Resultat Net"
+    LABEL_NI = "Résultat Net"
     LABEL_EPS = "BPA (EPS)"
-
-    SUB_CASH = "Flux de Tresorerie"
-    LABEL_FCF_LAST = "FCF (Dernier)"
+    SUB_CASH = "Flux de Trésorerie"
+    LABEL_FCF_LAST = "Flux de Trésorerie (FCF)"
     LABEL_CAPEX = "CapEx"
     LABEL_DA = "D&A"
 
-    # Parametres Modele
+    SEC_C_MODEL = "C. Paramètres du Modèle de Valorisation"
     SUB_RATES = "Taux et Primes de Risque"
     LABEL_RF = "Taux Sans Risque (Rf)"
+    LABEL_BETA = "Coefficient Bêta (β)"
     LABEL_MRP = "Prime de Risque (MRP)"
-    LABEL_KD = "Cout de la Dette (Kd)"
+    LABEL_KD = "Coût de la Dette (Kd)"
     LABEL_TAX = "Taux d'Imposition"
-
     SUB_GROWTH = "Croissance et Horizon"
-    LABEL_G = "Taux de Croissance (g)"
-    LABEL_GN = "Croissance Perpetuelle (gn)"
-    LABEL_HORIZON = "Horizon de Projection"
-    UNIT_YEARS = "ans"
-
-    SUB_CALCULATED = "Metriques Calculees"
-    LABEL_WACC = "WACC"
-    LABEL_KE = "Cout des Fonds Propres (Ke)"
-    LABEL_METHOD = "Methode de Valorisation"
-
+    LABEL_G = "Croissance Phase 1"
+    LABEL_GN = "Croissance Perpétuelle (gn)"
+    LABEL_HORIZON = "Horizon Explicite"
+    LABEL_AAA_YIELD = "Rendement AAA (Graham)"
+    LABEL_OMEGA = "Persistance ω (RIM)"
+    SUB_CALCULATED = "Métriques de Référence"
+    LABEL_WACC = "WACC (Coût du Capital)"
+    LABEL_KE = "Ke (Coût Fonds Propres)"
+    LABEL_METHOD = "Modèle Utilisé"
     SUB_TV = "Valeur Terminale"
-    LABEL_TV_METHOD = "Methode TV"
+    LABEL_TV_METHOD = "Méthode de Sortie"
     LABEL_EXIT_M = "Multiple de Sortie"
+    LABEL_SBC_RATE = "Dilution Annuelle SBC"
 
-    # Preuve de Calcul
-    STEP_LABEL = r"Etape {index}"
-    FORMULA_THEORY = "Formule Theorique"
-    FORMULA_DATA_SOURCE = "*Donnee source*"
-    APP_NUMERIC = "Application Numerique"
-    VALUE_UNIT = r"Valeur ({unit})"
-    STEP_VALIDATED = "**Validee**"
-    NOTE_ANALYSIS = "Note d'analyse"
-
-    # Resume Executif
-    EXEC_TITLE = "Dossier de Valorisation : {name} ({ticker})"
-    EXEC_CONFIDENCE = "Indice de Confiance"
-    LABEL_IV = "Valeur Intrinseque"
-    LABEL_SIMULATIONS = "Simulations"
-
-    # Triangulation
-    FOOTBALL_FIELD_TITLE = "Synthese de Triangulation (Football Field)"
-    RELATIVE_VAL_DESC = "Comparaison de la valeur intrinseque face aux multiples medians du secteur."
-    LABEL_MULTIPLES_UNAVAILABLE = "Multiples de marche indisponibles (Cohorte insuffisante)"
-
-    # Scenarios
-    LABEL_EXPECTED_VALUE = "Valeur Esperee (Ponderee)"
-    LABEL_SCENARIO_RANGE = "Fourchette de Valeur (Bear - Bull)"
-
-    # Glass Box Substitutions (utilisees par les strategies)
-    SUB_FCF_BASE = r"FCF_0 = {val:,.2f} ({src})"
-    SUB_FCF_NORM = r"FCF_norm = {val:,.2f} ({src})"
-    SUB_REV_BASE = r"Rev_0 = {val:,.0f}"
-    SUB_MARGIN_CONV = r"{curr:.2%} -> {target:.2%} (sur {years} ans)"
-    SUB_EPS_GRAHAM = r"EPS = {val:.2f} ({src})"
-    SUB_GRAHAM_MULT = r"8.5 + 2 x {g:.2f}"
-    SUB_BV_BASE = r"BV_0 = {val:,.2f} ({src})"
-    SUB_SUM_RI = r"Sum PV(RI) = {val:,.2f}"
-    SUB_RIM_TV = r"{sub_tv} x {factor:.4f}"
-    SUB_RIM_FINAL = r"{bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
-    SUB_P50_VAL = r"P50 = {val:,.2f} {curr}"
-    SUB_FCFE_CALC = r"FCFE = FCFF - Int(1-t) + DDette = {val:,.2f}"
-    SUB_FCFE_WALK = r"FCFE = NI ({ni:,.0f}) + Adj ({adj:,.0f}) + NetBorrowing ({nb:,.0f}) = {total:,.2f}"
-    SUB_DDM_BASE = r"D_0 = {val:,.2f} / action"
-    SUB_KE_LABEL = r"Cost of Equity (Ke) = {val:.2%}"
-    SUB_EQUITY_NPV = r"Equity Value = NPV(Equity Flows) = {val:,.2f}"
-    SUB_PAYOUT = r"Payout Ratio = Div_TTM ({div:,.2f}) / EPS_TTM ({eps:,.2f}) = {total:.1%}"
-    SUB_TV_PE = r"TV_n = NI_n ({ni:,.0f}) x P/E Target ({pe:.1f}x) = {total:,.2f}"
-    SUB_HAMADA = "Bêta ajusté : {beta:.2f} (Structure cible détectée)"
-
-    # Monte Carlo
-    LABEL_CORRELATION_BG = "Correlation (Beta, g)"
+    SEC_D_MC = "D. Configuration Monte Carlo"
+    LABEL_CORRELATION_BG = "Corrélation (Bêta, g)"
     LABEL_HORIZON_SUB = "Horizon : {years} ans"
-    LABEL_FOOTBALL_FIELD_IV = "Modele Intrinseque"
+
+    SEC_E_RELATIVE = "E. Valorisation Relative (Secteur)"
+    LABEL_FOOTBALL_FIELD_IV = "Modèle Intrinsèque"
     LABEL_FOOTBALL_FIELD_PE = "Multiple P/E"
     LABEL_FOOTBALL_FIELD_EBITDA = "Multiple EV/EBITDA"
     LABEL_FOOTBALL_FIELD_REV = "Multiple EV/Revenue"
-    LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marche"
+    LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marché"
 
-    MC_CONFIG_SUB = r"Sims : {sims} | Beta: N({beta:.2f}, {sig_b:.1%}) | g: N({g:.1%}, {sig_g:.1%}) | Y0 Vol: {sig_y0:.1%} | rho: {rho:.2f}"
-    MC_FILTER_SUB = r"{valid} valides / {total} iterations"
-    MC_SENS_SUB = r"P50(rho=0) = {p50_n:,.2f} vs Base = {p50_b:,.2f}"
+    # --- PILLIER 2 : TRACE MATHÉMATIQUE (Glass Box) ---
+    STEP_LABEL = r"Étape {index}"
+    FORMULA_THEORY = "Formule Théorique"
+    FORMULA_DATA_SOURCE = "*Donnée Source Directe*"
+    APP_NUMERIC = "Application Numérique"
+    VALUE_UNIT = r"Valeur ({unit})"
+    STEP_VALIDATED = "**Vérifié**"
+    NOTE_ANALYSIS = "Note d'Analyse"
 
-    # Scenarios Labels
-    LBL_SCENARIO_NAME = "Scenario"
-    LBL_SCENARIO_PROBA = "Probabilite"
-    LBL_SCENARIO_G = "Croissance (g)"
-    LBL_SCENARIO_MARGIN = "Marge FCF"
-    LBL_SCENARIO_VAL = "Valeur par Action"
-    SUB_SCENARIO_WEIGHTS = "Ponderation des scenarios selon leur probabilite"
+    # --- Substitutions Glass Box (Strategies) ---
+    SUB_FCF_BASE = r"FCF_0 = {val:,.2f} ({src})"
+    SUB_FCF_NORM = r"FCF_norm = {val:,.2f} ({src})"
+    SUB_REV_BASE = r"Rev_0 = {val:,.0f}"
+    SUB_MARGIN_CONV = r"Marge : {curr:.2%} -> {target:.2%} ({years} ans)"
+    SUB_EPS_GRAHAM = r"EPS = {val:.2f} ({src})"
+    SUB_GRAHAM_MULT = r"Facteur : 8.5 + 2 x {g:.2f}"
+    SUB_BV_BASE = r"BV_0 = {val:,.2f} ({src})"
+    SUB_SUM_RI = r"Cumul PV(RI) = {val:,.2f}"
+    SUB_RIM_TV = r"Sortie : {sub_tv} x {factor:.4f}"
+    SUB_RIM_FINAL = r"P = {bv:,.2f} + {ri:,.2f} + {tv:,.2f}"
+    SUB_P50_VAL = r"P50 = {val:,.2f} {curr}"
+    SUB_FCFE_CALC = r"FCFE = FCFF - Int(1-t) + ΔDette = {val:,.2f}"
+    SUB_FCFE_WALK = r"FCFE Walk : NI({ni:,.0f}) + Adj({adj:,.0f}) + ΔDebt({nb:,.0f}) = {total:,.2f}"
+    SUB_DDM_BASE = r"D_0 = {val:,.2f} / action"
+    SUB_KE_LABEL = r"k_e = {rf:.2%} + {beta:.2f}({mrp:.2%}) = {val:.2%}"
+    SUB_EQUITY_NPV = r"Equity NPV = {val:,.2f}"
+    SUB_PAYOUT = r"Payout = Div({div:,.2f}) / EPS({eps:,.2f}) = {total:.1%}"
+    SUB_TV_PE = r"TV_n = NI_n({ni:,.0f}) x P/E({pe:.1f}x) = {total:,.2f}"
+    SUB_HAMADA = "Bêta réendetté (Hamada) selon structure cible."
+    SUB_SBC_DILUTION = r"Actions_{{t}} = Actions_{{0}} \times (1 + {rate:.1%})^{years}"
 
-    # Labels additionnels
-    LABEL_NET_BORROWING = "Variation Dette Nette"
-    LABEL_FCFE_TTM = "FCFE (Dernier)"
-    LABEL_DIVIDEND_D0 = "Dividende $D_0$"
-    LABEL_PAYOUT_RATIO = "Ratio de Distribution"
-    LABEL_PE_RATIO = "Multiple P/E (Cours / Benefice)"
-    LABEL_EV_EBITDA = "Multiple EV/EBITDA"
-    LABEL_EV_REVENUE = "Multiple EV/Revenue"
-
-
-class PDFTexts:
-    """Textes pour la génération du Pitchbook PDF."""
-
-    # Titres des pages
-    PAGE_EXECUTIVE_SUMMARY = "RAPPORT DE VALORISATION"
-    PAGE_CALCULATION_PROOF = "PREUVE DE CALCUL"
-    PAGE_RISK_ANALYSIS = "ANALYSE DE RISQUE"
-
-    # Sections Executive Summary
-    SECTION_VALORISATION = "VALORISATION"
-    SECTION_AUDIT_SCORE = "SCORE D'AUDIT"
-    SECTION_KEY_ASSUMPTIONS = "HYPOTHÈSES CLÉS"
-
-    # Labels KPIs
-    LABEL_INTRINSIC_VALUE = "Valeur Intrinsèque"
-    LABEL_MARKET_PRICE = "Prix de Marché"
-    LABEL_UPSIDE = "Potentiel"
-    LABEL_RECOMMENDATION = "Recommandation"
-
-    # Labels métriques clés
-    LABEL_WACC = "WACC (Coût du Capital)"
-    LABEL_COST_OF_EQUITY = "Coût des Fonds Propres (Ke)"
-    LABEL_PERPETUAL_GROWTH = "Croissance Perpétuelle (gn)"
-    LABEL_ENTERPRISE_VALUE = "Valeur d'Entreprise"
-    LABEL_TERMINAL_VALUE = "Valeur Terminale"
-
-    # Sections Calculation Proof
-    SECTION_DCF_COMPONENTS = "DÉCOMPOSITION DE LA VALEUR"
-    SECTION_PARAMETERS = "PARAMÈTRES D'ENTRÉE"
-    SECTION_GLASS_BOX = "TRAÇABILITÉ GLASS BOX"
-
-    # Labels DCF Components
-    LABEL_PV_EXPLICIT_FLOWS = "Valeur Actualisée des Flux Explicites"
-    LABEL_TERMINAL_VALUE_PV = "Valeur Terminale (Actualisée)"
-    LABEL_ENTERPRISE_VALUE_CALC = "Valeur d'Entreprise"
-    LABEL_EQUITY_VALUE_CALC = "Valeur des Capitaux Propres"
-
-    # Labels paramètres
-    LABEL_RISK_FREE_RATE = "Taux sans Risque (Rf)"
-    LABEL_MARKET_RISK_PREMIUM = "Prime de Risque Marché (MRP)"
-    LABEL_BETA = "Bêta (β)"
-    LABEL_COST_OF_DEBT = "Coût de la Dette (Kd)"
-    LABEL_TAX_RATE = "Taux d'Imposition (T)"
-    LABEL_GROWTH_RATE = "Taux de Croissance (g)"
-
-    # Sections Risk Analysis
-    SECTION_MONTE_CARLO = "DISTRIBUTION MONTE CARLO"
-    SECTION_SCENARIOS = "ANALYSE DE SCÉNARIOS"
-    SECTION_SENSITIVITY = "MATRICE DE SENSIBILITÉ"
-    SECTION_RISK_FACTORS = "FACTEURS DE RISQUE IDENTIFIÉS"
-
-    # Labels Monte Carlo
-    LABEL_SIMULATIONS_COUNT = "Nombre de Simulations"
-    LABEL_MEAN = "Moyenne"
-    LABEL_MEDIAN = "Médiane (P50)"
-    LABEL_STANDARD_DEVIATION = "Écart-Type"
-    LABEL_PERCENTILE_5 = "Percentile 5 (P5)"
-    LABEL_PERCENTILE_10 = "Percentile 10 (P10)"
-    LABEL_PERCENTILE_25 = "Percentile 25 (P25)"
-    LABEL_PERCENTILE_75 = "Percentile 75 (P75)"
-    LABEL_PERCENTILE_90 = "Percentile 90 (P90)"
-    LABEL_PERCENTILE_95 = "Percentile 95 (P95)"
-    LABEL_MINIMUM = "Minimum"
-    LABEL_MAXIMUM = "Maximum"
-    LABEL_SKEWNESS = "Asymétrie"
-    LABEL_KURTOSIS = "Kurtosis"
-
-    # Labels scénarios
-    LABEL_SCENARIO_BASE = "Scénario Central (Base)"
-    LABEL_SCENARIO_BULL = "Scénario Optimiste (Bull)"
-    LABEL_SCENARIO_BEAR = "Scénario Pessimiste (Bear)"
-
-    # Pieds de page
-    FOOTER_VALUATION_MODE = "Mode: {mode}"
-    FOOTER_DATA_SOURCE = "Données certifiées Yahoo Finance"
-    FOOTER_ANALYSIS_TYPE = "Analyse de sensibilité {cost_type}/Croissance"
-    FOOTER_GENERATED_BY = "Intrinsic Value Pricer | {date} | Version {version}"
-
+    # --- Tooltips Techniques ---
+    HELP_IV = "Valeur intrinsèque : prix théorique après actualisation des flux futurs."
+    HELP_MOS = "Marge de sécurité : écart entre la valeur intrinsèque et le prix actuel."
+    HELP_KE = "Coût de l'Equity : rendement minimal exigé par les actionnaires (CAPM)."
+    HELP_WACC = "Coût moyen pondéré du capital (Dette + Equity)."
+    HELP_VAR = "Value-at-Risk : perte maximale possible dans 95% des scénarios simulés."
+    HELP_OMEGA = "Coefficient de persistance des profits anormaux (0 = érosion immédiate)."
 
 class AuditTexts:
-    """Textes lies au rapport d'audit et a la simulation Monte Carlo."""
-    
-    NO_REPORT = "Aucun rapport d'audit genere pour cette simulation."
-    GLOBAL_SCORE = "Score d'Audit Global : {score:.1f} / 100"
-    RATING_SCORE = "Rating Score"
-    COVERAGE = "Couverture"
-    CHECK_TABLE = "Table de Verification des Invariants"
-
-    # Headers Table
-    H_INDICATOR = "INDICATEUR"
-    H_RULE = "REGLE NORMATIVE"
-    H_EVIDENCE = "PREUVE NUMERIQUE"
+    """Textes Pillar 3 — Audit & Fiabilité."""
+    NO_REPORT = "Audit indisponible pour ce modèle."
+    GLOBAL_SCORE = "Indice de Confiance Global : {score:.1f}%"
+    RATING_SCORE = "Notation Qualité"
+    COVERAGE = "Couverture des Invariants"
+    CHECK_TABLE = "Vérification des Règles Normatives"
+    H_INDICATOR = "MÉTRIQUE"
+    H_RULE = "RÈGLE"
+    H_EVIDENCE = "PREUVE"
     H_VERDICT = "VERDICT"
-
-    # Verdicts
-    STATUS_ALERT = "Alerte"
+    STATUS_ALERT = "Anomalie"
     STATUS_OK = "Conforme"
-    AUDIT_NOTES_EXPANDER = "Consulter les notes d'audit detaillees"
+    AUDIT_NOTES_EXPANDER = "Détail de l'audit technique"
+    LBL_SOTP_REVENUE_CHECK = "Cohérence Revenus SOTP"
+    LBL_SOTP_DISCOUNT_CHECK = "Prudence Décote Holding"
 
+class QuantTexts:
+    """Textes Pillar 4 — Ingénierie du Risque."""
     # Monte Carlo
-    MC_FAILED = "La simulation n'a pas pu converger (Parametres instables)."
-    MC_TITLE = "#### Analyse de Conviction Probabiliste"
-    MC_DOWNSIDE = "Downside Risk (IV < Prix)"
-    MC_MEDIAN = "Mediane (P50)"
-    MC_TAIL_RISK = "Risque de Queue (P10)"
-    MC_AUDIT_STOCH = "Audit des Etapes Stochastiques"
-    MC_NO_DATA = "Donnees non disponibles."
+    MC_TITLE = "#### SIMULATION MONTE CARLO"
+    MC_FAILED = "Convergence impossible : volatilités trop élevées."
+    MC_DOWNSIDE = "Risque de Survalorisation"
+    MC_MEDIAN = "Valeur Centrale (P50)"
+    MC_VAR = "Value-at-Risk (95%)"
+    MC_TAIL_RISK = "Risque de Queue (P5)"
+    MC_AUDIT_STOCH = "Audit des Paramètres Stochastiques"
+    MC_CONFIG_SUB = r"Sims : {sims} | β Vol: {sig_b:.1%} | g Vol: {sig_g:.1%} | ρ: {rho:.2f}"
+    MC_FILTER_SUB = r"{valid} valides / {total} itérations"
+
+    # Scénarios
+    SCENARIO_TITLE = "#### ANALYSE DES SCÉNARIOS STRATÉGIQUES"
+    METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
+    METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
+    COL_SCENARIO = "SCÉNARIO"
+    COL_PROBABILITY = "PROBABILITÉ"
+    COL_GROWTH = "CROISSANCE"
+    COL_MARGIN_FCF = "MARGE"
+    COL_VALUE_PER_SHARE = "VALEUR"
+    COL_UPSIDE = "UPSIDE"
+
+    # Backtest
+    BACKTEST_TITLE = "#### PERFORMANCE HISTORIQUE DU MODÈLE"
+    LABEL_HIT_RATE = "Taux de Succès (Hit Rate)"
+    LABEL_MAE = "Erreur Moyenne (MAE)"
+
+class MarketTexts:
+    """Textes Pillar 5 — Analyse de Marché."""
+    # Valorisation Relative
+    MARKET_TITLE = "#### VALORISATION RELATIVE SECTORIELLE"
+    COL_PEER = "COMPARABLE"
+    COL_MULTIPLE = "MULTIPLE"
+    COL_IMPLIED_VALUE = "VALEUR IMPLICITE"
 
     # SOTP
-    LBL_SOTP_REVENUE_CHECK = "Reconciliation Revenus Groupe"
-    LBL_SOTP_DISCOUNT_CHECK = "Prudence Decote SOTP"
-
+    TITLE_SEGMENTATION = "#### DÉCOMPOSITION SOTP"
+    CAPTION_SEGMENTATION = "Répartition de la valeur d'entreprise par segments opérationnels."
+    COL_SEGMENT = "UNITÉ COMMERCIALE"
+    COL_VALUE = "VALEUR"
+    COL_CONTRIBUTION = "CONTRIBUTION (%)"
+    METRIC_GROSS_VALUE = "Valeur Brute (Somme)"
+    METRIC_HOLDING_DISCOUNT = "Décote de Holding"
+    METRIC_NET_VALUE = "Valeur Nette"
 
 class ChartTexts:
-    """Libelles et textes pour les graphiques."""
-    
-    # Graphique de Prix
-    PRICE_HISTORY_TITLE = "Historique de marche : {ticker}"
-    PRICE_UNAVAILABLE = "Historique de prix indisponible pour {ticker}."
-    PRICE_AXIS_Y = "Prix"
+    """Libellés pour graphiques Plotly/Altair."""
+    PRICE_HISTORY_TITLE = "Historique : {ticker}"
+    SIM_AXIS_X = "Valeur par Action ({currency})"
+    SIM_AXIS_Y = "Densité de Probabilité"
+    SENS_TITLE = "Sensibilité WACC / Croissance"
+    CORREL_CAPTION = "Matrice de Corrélation des Inputs"
 
-    # Monte Carlo
-    SIM_UNAVAILABLE = "Pas de donnees de simulation disponibles."
-    SIM_AXIS_X = "Valeur Intrinseque ({currency})"
-    SIM_AXIS_Y = "Frequence"
-    SIM_SUMMARY_TITLE = "**Synthese de la distribution ({count} scenarios) :**"
-    SIM_SUMMARY_P50 = "Valeur centrale (P50)"
-    SIM_SUMMARY_PRICE = "Prix de marche"
-    SIM_SUMMARY_CI = "Intervalle de confiance (P10-P90)"
-    SIM_SUMMARY_PROB = "({prob}%)"
-
-    # Sensibilite
-    SENS_TITLE = "Sensibilite (WACC / Croissance)"
-    SENS_UNAVAILABLE = "Matrice impossible (WACC trop proche de g)."
-    SENS_AXIS_X = "Croissance (g)"
-    SENS_AXIS_Y = "WACC / Ke"
-
-    # Correlation
-    CORREL_CAPTION = "Matrice de Correlation des Inputs (Stochastique)"
-
-
+class PDFTexts:
+    """Pitchbook PDF."""
+    PAGE_EXECUTIVE_SUMMARY = "RESEARCH REPORT - INTRINSIC VALUE"
+    SECTION_VALORISATION = "SYNTHÈSE DE VALORISATION"
+    LABEL_RECOMMENDATION = "AVIS ANALYSTE"
+    FOOTER_GENERATED_BY = "Intrinsic Value Pricer | {date} | v{version}"

@@ -33,6 +33,7 @@ from src.i18n.fr import (
     SOTPResultTexts,
     BacktestTexts,
     ScenarioTexts,
+    PillarLabels,
     # Backend
     WorkflowTexts,
     DiagnosticTexts,
@@ -65,6 +66,7 @@ __all__ = [
     "SOTPResultTexts",
     "BacktestTexts",
     "ScenarioTexts",
+    "PillarLabels",
     # Backend
     "WorkflowTexts",
     "DiagnosticTexts",

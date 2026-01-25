@@ -1,5 +1,5 @@
 """
-core/i18n/fr/ui/
+src/i18n/fr/ui/
 Textes visibles dans l'interface utilisateur (francais).
 """
 
@@ -20,6 +20,7 @@ from src.i18n.fr.ui.results import (
     KPITexts,
     AuditTexts,
     ChartTexts,
+    PillarLabels
 )
 
 from src.i18n.fr.ui.extensions import (
@@ -31,6 +32,7 @@ from src.i18n.fr.ui.extensions import (
 
 __all__ = [
     "CommonTexts",
+    "PillarLabels",
     "OnboardingTexts",
     "FeedbackMessages",
     "LegalTexts",
