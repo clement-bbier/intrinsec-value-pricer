@@ -298,17 +298,30 @@ class ExpertTerminalBase(ABC):
         return data
 
     def _extract_monte_carlo_data(self, key_prefix: str) -> Dict[str, Any]:
-        """Extrait la config MC avec volatilité terminale contextuelle."""
-        data = {}
-        if st.session_state.get("mc_enable"):
-            data["enable_monte_carlo"] = True
-            data["num_simulations"] = st.session_state.get("mc_sims")
-            data["base_flow_volatility"] = st.session_state.get("mc_vol_flow")
-            data["beta_volatility"] = st.session_state.get("mc_vol_beta")
-            data["growth_volatility"] = st.session_state.get("mc_vol_growth")
-            # Vol terminale : omega pour RIM, gn sinon
-            field = "mc_vol_omega" if self.MODE == ValuationMode.RIM else "mc_vol_gn"
-            data["terminal_growth_volatility"] = st.session_state.get(field)
+        """
+        Extrait la config MC de manière dynamique pour correspondre au widget.
+        """
+        p = "mc" # Préfixe constant défini dans shared_widgets.py
+        if not st.session_state.get(f"{p}_enable"):
+            return {"enable_monte_carlo": False}
+
+        # 1. Bases universelles
+        data = {
+            "enable_monte_carlo": True,
+            "num_simulations": st.session_state.get(f"{p}_sims", 5000),
+            "base_flow_volatility": st.session_state.get(f"{p}_vol_flow"),
+            "beta_volatility": st.session_state.get(f"{p}_vol_beta"),
+            "growth_volatility": st.session_state.get(f"{p}_vol_growth")
+        }
+
+        # 2. Extraction dynamique des clés spécifiques (RIM, Graham)
+        custom_vols = self.get_custom_monte_carlo_vols()
+        if custom_vols:
+            for tech_key in custom_vols.keys():
+                val = st.session_state.get(f"{p}_{tech_key}")
+                if val is not None:
+                    data[tech_key] = val
+
         return data
 
     def _extract_peer_triangulation_data(self, key_prefix: str) -> Dict[str, Any]:

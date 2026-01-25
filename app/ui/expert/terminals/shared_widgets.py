@@ -305,7 +305,7 @@ def widget_equity_bridge(
     # --- EN-TÊTE NARRATIF UNIQUE ---
     st.markdown(SharedTexts.SEC_5_BRIDGE)
     st.info(SharedTexts.SEC_5_DESC)
-    st.latex(SharedTexts.FORMULA_BRIDGE)
+    st.latex(formula_latex)
 
     if is_direct_equity:
         shares = st.number_input(
@@ -456,7 +456,6 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     if not enabled:
         return ScenarioParameters(enabled=False)
 
-    st.info(SharedTexts.SCENARIO_HINT)
     show_margin = (mode == ValuationMode.FCFF_GROWTH)
 
     def _render_variant(label: str, case_id: str, default_p: float):
