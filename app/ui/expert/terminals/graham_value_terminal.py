@@ -1,186 +1,135 @@
 """
 app/ui/expert_terminals/graham_value_terminal.py
 
-Terminal Expert — Graham Intrinsic Value (1974 Revised Formula)
+TERMINAL EXPERT — GRAHAM INTRINSIC VALUE (QUANT REVISED)
+========================================================
+Formule de screening défensive (Revised 1974) enrichie par
+une approche stochastique (Monte Carlo sur EPS).
 
-Cas d'usage : Screening value investing, quick valuation.
-Formule : V = EPS × (8.5 + 2g) × 4.4 / Y
-
-Origine : Benjamin Graham, "The Intelligent Investor" (formule révisée 1974)
-
-Notes :
-- 8.5 = P/E d'une entreprise sans croissance
-- 2g = ajustement pour croissance (g en %)
-- 4.4 = rendement AAA historique (1962)
-- Y = rendement AAA actuel
-
+Architecture : ST-4.1 (Screening & Probabiliste)
 Style : Numpy docstrings
 """
 
-from typing import Dict, Any
-
+from typing import Dict, Any, Optional
 import streamlit as st
 
 from src.models import ValuationMode
-from src.i18n import SharedTexts
+from src.i18n.fr.ui.expert import GrahamTexts as Texts
 from ..base_terminal import ExpertTerminalBase
 
 
 class GrahamValueTerminal(ExpertTerminalBase):
     """
-    Terminal pour la formule de Graham (1974).
+    Terminal expert pour la formule de Graham.
 
-    Formule simplifiée pour une estimation rapide de la valeur
-    intrinsèque basée sur l'EPS et la croissance attendue.
-
-    Notes
-    -----
-    Cette formule est un outil de screening, pas une valorisation
-    complète. Elle ne prend pas en compte la structure du capital,
-    la qualité des actifs, ou les risques spécifiques.
-
-    Attributes
-    ----------
-    MODE : ValuationMode
-        GRAHAM
-    DISPLAY_NAME : str
-        "Graham Intrinsic Value"
+    Bien que le modèle original soit déterministe, ce terminal permet
+    une analyse de sensibilité via Monte Carlo sur les bénéfices (EPS)
+    et les scénarios de croissance.
     """
 
     MODE = ValuationMode.GRAHAM
-    DISPLAY_NAME = "Graham Intrinsic Value"
-    DESCRIPTION = "Formule de screening value investing (Benjamin Graham 1974)"
+    DISPLAY_NAME = Texts.TITLE
+    DESCRIPTION = Texts.DESCRIPTION
 
-    # Graham est un modèle simplifié, moins de sections
+    # --- Configuration du Pipeline UI (Adaptation Statique) ---
     SHOW_DISCOUNT_SECTION = False  # Pas de WACC/Ke explicite
-    SHOW_TERMINAL_SECTION = False  # Pas de TV
+    SHOW_TERMINAL_SECTION = False  # Pas de TV Gordon/Multiples
     SHOW_BRIDGE_SECTION = False    # Valorise directement l'action
-    SHOW_SBC_SECTION = False       # Statique, pas de flux explicite
-    SHOW_MONTE_CARLO = False       # Pas adapté
-    SHOW_SCENARIOS = True          # On peut tester différents g
+
+    SHOW_MONTE_CARLO = True        # Activé pour simuler l'EPS
+    SHOW_SCENARIOS = True
+    SHOW_SOTP = False              # Non applicable à Graham
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Inputs spécifiques à la formule de Graham.
-
-        Collecte :
-        - EPS normalisé
-        - Taux de croissance long terme (g)
-        - Rendement AAA actuel (Y)
-        - Taux d'imposition (optionnel)
+        Rendu des entrées spécifiques au modèle Graham (Étapes 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            - manual_fcf_base : EPS (utilisé comme proxy)
-            - fcf_growth_rate : Croissance g
-            - corporate_aaa_yield : Rendement Y
-            - tax_rate : Taux d'imposition
-            - projection_years : 1 (formule statique)
+            Paramètres : manual_fcf_base (EPS), fcf_growth_rate (g),
+            corporate_aaa_yield (Y), tax_rate (tau).
         """
-        st.markdown(f"**{SharedTexts.SEC_1_GRAHAM_BASE}**")
-        st.latex(r"V = EPS \times (8.5 + 2g) \times \frac{4.4}{Y}")
+        prefix = self.MODE.name
+
+        # --- ÉTAPE 1 : BÉNÉFICES & CROISSANCE ---
+        self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
+        st.latex(Texts.STEP_1_FORMULA)
 
         col1, col2 = st.columns(2)
-
         with col1:
             eps = st.number_input(
-                SharedTexts.INP_EPS_NORM,
+                Texts.INP_EPS_NORM,
                 value=None,
                 format="%.2f",
-                help=SharedTexts.HELP_EPS_NORM,
-                key=f"{self.MODE.name}_eps_norm"
+                help=Texts.HELP_EPS_NORM,
+                key=f"{prefix}_eps_norm"
             )
 
         with col2:
             g_lt = st.number_input(
-                "Croissance long terme g (%)",
-                min_value=0.0,
-                max_value=0.20,
+                Texts.INP_GROWTH_G,
                 value=None,
                 format="%.3f",
-                help=SharedTexts.HELP_GROWTH_LT,
-                key=f"{self.MODE.name}_growth_lt"
+                help=Texts.HELP_GROWTH_LT,
+                key=f"{prefix}_growth_lt"
             )
 
         st.divider()
 
-        st.markdown(f"**{SharedTexts.SEC_2_GRAHAM}**")
+        # --- ÉTAPE 2 : CONDITIONS DE MARCHÉ ---
+        self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
-
         with col1:
             yield_aaa = st.number_input(
-                SharedTexts.INP_YIELD_AAA,
-                min_value=0.0,
-                max_value=0.20,
+                Texts.INP_YIELD_AAA,
                 value=None,
                 format="%.3f",
-                help=SharedTexts.HELP_YIELD_AAA,
-                key=f"{self.MODE.name}_yield_aaa"
+                help=Texts.HELP_YIELD_AAA,
+                key=f"{prefix}_yield_aaa"
             )
 
         with col2:
             tau = st.number_input(
-                "Taux d'imposition effectif",
-                min_value=0.0,
-                max_value=0.60,
+                Texts.INP_TAX,
                 value=None,
                 format="%.2f",
-                help=SharedTexts.HELP_TAX,
-                key=f"{self.MODE.name}_tax_rate"
+                help=Texts.HELP_TAX,
+                key=f"{prefix}_tax_rate"
             )
 
+        st.caption(Texts.NOTE_GRAHAM)
         st.divider()
-
-        st.caption(SharedTexts.NOTE_GRAHAM)
 
         return {
             "manual_fcf_base": eps,
             "fcf_growth_rate": g_lt,
             "corporate_aaa_yield": yield_aaa,
             "tax_rate": tau,
-            "projection_years": 1,  # Formule statique
-            "enable_monte_carlo": False,
+            "projection_years": 1
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données spécifiques au modèle Graham depuis st.session_state.
+        Extrait les données Graham depuis le session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe de clé basé sur le mode (GRAHAM).
+            Préfixe basé sur le ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données Graham : eps_norm, growth_lt, yield_aaa, tax_rate.
+            Données opérationnelles pour build_request.
         """
-        data = {}
-
-        # Clés spécifiques
-        eps_key = f"{key_prefix}_eps_norm"
-        if eps_key in st.session_state:
-            data["manual_fcf_base"] = st.session_state[eps_key]
-
-        growth_key = f"{key_prefix}_growth_lt"
-        if growth_key in st.session_state:
-            data["fcf_growth_rate"] = st.session_state[growth_key]
-
-        yield_key = f"{key_prefix}_yield_aaa"
-        if yield_key in st.session_state:
-            data["corporate_aaa_yield"] = st.session_state[yield_key]
-
-        tax_key = f"{key_prefix}_tax_rate"
-        if tax_key in st.session_state:
-            data["tax_rate"] = st.session_state[tax_key]
-
-        # Valeurs fixes pour Graham
-        data["projection_years"] = 1
-        data["enable_monte_carlo"] = False
-
-        return data
+        return {
+            "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_lt"),
+            "corporate_aaa_yield": st.session_state.get(f"{key_prefix}_yield_aaa"),
+            "tax_rate": st.session_state.get(f"{key_prefix}_tax_rate"),
+            "projection_years": 1
+        }

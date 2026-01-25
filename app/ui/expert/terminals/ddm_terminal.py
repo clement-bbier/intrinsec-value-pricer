@@ -1,23 +1,20 @@
 """
 app/ui/expert_terminals/ddm_terminal.py
 
-Terminal Expert — Dividend Discount Model (DDM)
+TERMINAL EXPERT — DIVIDEND DISCOUNT MODEL (DDM)
+==============================================
+Interface de valorisation par l'actualisation des dividendes futurs.
+Ce terminal implémente les étapes 1 et 2 pour les entreprises matures.
 
-Cas d'usage : Entreprises matures avec politique de dividende stable.
-Flux : Dividendes par action
-Actualisation : Ke (Cost of Equity)
-
-Avantage : Simple et direct pour les entreprises distribuant des dividendes.
-Limitation : Inutilisable si pas de dividendes ou politique erratique.
-
+Architecture : ST-3.2 (Direct Equity)
 Style : Numpy docstrings
 """
 
-from typing import Dict, Any
-
+from typing import Dict, Any, Optional
 import streamlit as st
 
 from src.models import ValuationMode
+from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.i18n import SharedTexts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
@@ -28,87 +25,67 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class DDMTerminal(ExpertTerminalBase):
     """
-    Terminal pour le Dividend Discount Model.
+    Terminal expert pour le modèle d'actualisation des dividendes.
 
-    Le DDM valorise l'action comme la somme actualisée des dividendes
-    futurs. Recommandé pour les utilities, REITs, et entreprises matures
-    avec un payout ratio stable.
-
-    Notes
-    -----
-    Attention au "dividend trap" : un dividende élevé non soutenable
-    peut surévaluer l'action. Vérifier le payout ratio (< 100%).
-
-    Attributes
-    ----------
-    MODE : ValuationMode
-        DDM
-    DISPLAY_NAME : str
-        "Dividend Discount Model"
+    Le DDM valorise l'action comme la valeur présente des flux de dividendes
+    attendus, actualisés au coût des fonds propres (Ke).
     """
 
     MODE = ValuationMode.DDM
-    DISPLAY_NAME = "DDM - Dividend Discount Model"
-    DESCRIPTION = "Valorisation par les dividendes futurs actualises au Ke"
+    DISPLAY_NAME = Texts.TITLE
+    DESCRIPTION = Texts.DESCRIPTION
 
-    # DDM = Direct Equity
-    SHOW_BRIDGE_SECTION = True  # Simplifié (juste actions)
-
+    # --- Configuration du Pipeline UI ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
+    SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
+    # --- Formules LaTeX narratives ---
+    # Note : Le bridge utilisera SharedTexts.FORMULA_BRIDGE_SIMPLE car is_direct_equity est True.
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
-    BRIDGE_FORMULA = r"P = \frac{\text{Equity Value}}{\text{Actions}}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Inputs spécifiques au DDM.
-
-        Collecte :
-        - Dividende par action de base (D0)
-        - Horizon et croissance des dividendes
+        Rendu des entrées spécifiques au modèle DDM (Étapes 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            - manual_dividend_base : Dividende D0
-            - projection_years : Horizon
-            - fcf_growth_rate : Croissance dividendes
+            Paramètres : manual_dividend_base, projection_years, fcf_growth_rate.
         """
-        st.markdown(f"**{SharedTexts.SEC_1_DDM_BASE}**")
-        st.latex(
-            r"P = \sum_{t=1}^{n} \frac{D_0(1+g)^t}{(1+k_e)^t} + "
-            r"\frac{TV_n}{(1+k_e)^n}"
-        )
+        prefix = self.MODE.name
+
+        # --- ÉTAPE 1 : FLUX DE DIVIDENDES ---
+        self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
+
+        st.latex(Texts.STEP_1_FORMULA)
 
         d0_base = st.number_input(
-            SharedTexts.INP_DIVIDEND_BASE,
+            Texts.INP_BASE,
             value=None,
             format="%.2f",
-            help=SharedTexts.HELP_DIVIDEND_BASE,
-            key=f"{self.MODE.name}_dividend_base"
+            help=Texts.HELP_DIVIDEND_BASE,
+            key=f"{prefix}_dividend_base"
         )
 
         st.divider()
 
-        st.markdown(f"**{SharedTexts.SEC_2_PROJ}**")
+        # --- ÉTAPE 2 : DYNAMIQUE DES DIVIDENDES ---
+        self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
-
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
-
+            n_years = widget_projection_years(default=5, key_prefix=prefix)
         with col2:
             g_rate = widget_growth_rate(
-                label="Croissance dividendes (g)",
-                min_val=0.0,
-                max_val=0.20,
-                key_prefix=self.MODE.name
+                label=SharedTexts.INP_GROWTH_G,
+                key_prefix=prefix
             )
 
-        st.caption(SharedTexts.NOTE_DDM_SGR)
+        if Texts.NOTE_DDM_SGR:
+            st.caption(Texts.NOTE_DDM_SGR)
 
         st.divider()
 
@@ -120,32 +97,20 @@ class DDMTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données spécifiques au modèle DDM depuis st.session_state.
+        Extrait les données DDM depuis le session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe de clé basé sur le mode (DDM).
+            Préfixe basé sur le ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données DDM : dividend_base, projection_years, growth_rate.
+            Données opérationnelles pour build_request.
         """
-        data = {}
-
-        # Clé dividende spécifique
-        dividend_key = f"{key_prefix}_dividend_base"
-        if dividend_key in st.session_state:
-            data["manual_dividend_base"] = st.session_state[dividend_key]
-
-        # Clés communes (growth, projection years)
-        growth_key = f"{key_prefix}_growth_rate"
-        if growth_key in st.session_state:
-            data["fcf_growth_rate"] = st.session_state[growth_key]
-
-        years_key = f"{key_prefix}_years"
-        if years_key in st.session_state:
-            data["projection_years"] = st.session_state[years_key]
-
-        return data
+        return {
+            "manual_dividend_base": st.session_state.get(f"{key_prefix}_dividend_base"),
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "projection_years": st.session_state.get(f"{key_prefix}_years")
+        }

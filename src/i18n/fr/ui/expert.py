@@ -1,11 +1,15 @@
 """
 core/i18n/fr/ui/expert.py
 
-Architecture Modulaire des Textes pour Terminaux Experts.
-==========================================================
+Architecture Modulaire des Textes pour Terminaux Experts (V18 - Nuances Méthodologiques).
+==============================================================================
 Structure :
 1. SharedTexts : Socle commun (Labels WACC, Bridge, Monte Carlo, etc.)
 2. Classes Narratives : Spécificités par modèle (Ancrage et Projections).
+
+Règles de maintenance :
+- Ne jamais supprimer de lignes existantes.
+- Les titres (TITLE) doivent correspondre exactement aux labels de la sidebar.
 """
 
 
@@ -19,7 +23,6 @@ class SharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
-
     SEC_3_CAPITAL = "#### Étape 3 : Profil de Risque (Actualisation)"
     SEC_3_DESC = "Détermination du taux requis pour rémunérer le risque opérationnel et financier (WACC ou Ke)."
 
@@ -63,8 +66,7 @@ class SharedTexts:
     # ==========================================================================
     MC_CALIBRATION = "Activer Monte Carlo"
     MC_ITERATIONS = "Nombre d'itérations"
-    MC_VOLATILITIES = "**Calibration des volatilités (écarts-types)**"
-
+    MC_VOL_INCERTITUDE = "**Calibration des incertitudes (écarts-types)**"
     MC_VOL_BASE_FLOW = "Vol. Flux de Base (Y0)"
     MC_VOL_BETA = "Vol. du Bêta"
     MC_VOL_G = "Vol. du taux g"
@@ -96,13 +98,14 @@ class SharedTexts:
     # ==========================================================================
     LBL_SOTP_ENABLE = "Activer l'analyse SOTP"
     HELP_SOTP_ENABLE = "Permet de diviser la valeur totale entre différentes Business Units."
+    WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la uniquement pour decomposer la valeur calculée."
 
     SEC_SOTP_SEGMENTS = "**Répartition par segments**"
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding**"
 
     LBL_SEGMENT_NAME = "Nom du Segment"
     LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
-    LBL_SEGMENT_METHOD = "Méthode de Valo."
+    LBL_SEGMENT_METHOD = "Méthode de Valorisation"
     LBL_DISCOUNT = "Décote de conglomérat (%)"
 
     # ==========================================================================
@@ -180,12 +183,14 @@ class SharedTexts:
 
     # Boutons
     BTN_CALCULATE = "Lancer la Valorisation"
+    BTN_VALUATE_STD = "Lancer la Valorisation ({ticker})"
 
     # ==========================================================================
     # 9. FORMULES FINANCIÈRES (LaTeX)
     # ==========================================================================
     # Bridge
     FORMULA_BRIDGE = r"P = \frac{EV - \text{Dette} + \text{Cash} - \text{Minorités}}{\text{Actions}}"
+    FORMULA_BRIDGE_SIMPLE = r"P = \frac{\text{Valeur Actionnaire}}{\text{Actions}}"
 
     # Capital
     FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times MRP"
@@ -200,7 +205,7 @@ class SharedTexts:
 # ==============================================================================
 
 class FCFFStandardTexts(SharedTexts):
-    TITLE = "Terminal Expert : FCFF Standard)"
+    TITLE = "Approche Entité (FCFF Standard)"
     DESCRIPTION = "Modèle DCF classique : flux opérationnels actualisés au coût moyen du capital (WACC)."
     STEP_1_TITLE = "#### Étape 1 : Flux d'Ancrage ($FCFF_0$)"
     STEP_1_DESC = "Définition du Free Cash Flow to Firm de référence (TTM) pour initier les projections."
@@ -208,10 +213,11 @@ class FCFFStandardTexts(SharedTexts):
     STEP_2_TITLE = "#### Étape 2 : Projection de la Croissance"
     STEP_2_DESC = "Hypothèses de croissance des flux durant la phase explicite de projection."
     INP_BASE = "Flux de trésorerie disponible (TTM)"
-    HELP_BASE = "Dernier flux généré par l'exploitation. Vide = calcul automatique."
+    HELP_BASE = "Dernier flux de trésorerie disponible généré par l'exploitation (Y0) servant d'ancrage."
+    HELP_GROWTH = "Taux d'expansion annuel moyen des flux de trésorerie sur l'horizon explicite."
 
 class FCFFNormalizedTexts(SharedTexts):
-    TITLE = "Terminal Expert : FCFF Normalisé"
+    TITLE = "Approche Entité (FCFF Normalisé)"
     DESCRIPTION = "DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme."
     STEP_1_TITLE = "#### Étape 1 : Flux Normatif ($FCF_{norm}$)"
     STEP_1_DESC = "Estimation d'un flux de croisière lissé sur 3 à 5 ans pour stabiliser la base."
@@ -219,10 +225,11 @@ class FCFFNormalizedTexts(SharedTexts):
     STEP_2_TITLE = "#### Étape 2 : Dynamique de Croissance"
     STEP_2_DESC = "Projection de la croissance moyenne attendue sur le cycle à venir."
     INP_BASE = "Flux normalisé de cycle"
-    HELP_BASE = "Moyenne des flux sur le cycle économique actuel. Vide = Auto."
+    HELP_BASE = "Flux moyen lissé sur le cycle économique complet (3-5 ans) pour neutraliser la cyclicité."
+    HELP_GROWTH = "Taux de croissance de croisière projeté pour le flux normalisé de cycle."
 
 class FCFFGrowthTexts(SharedTexts):
-    TITLE = "Terminal Expert : Revenue-Driven"
+    TITLE = "Approche Entité (Revenue-Driven)"
     DESCRIPTION = "Projection pilotée par le CA avec convergence progressive vers une marge cible."
     STEP_1_TITLE = "#### Étape 1 : Assiette de Revenus ($Rev_0$)"
     STEP_1_DESC = "Ancrage sur le Chiffre d'Affaires actuel pour modéliser l'expansion du business."
@@ -232,21 +239,30 @@ class FCFFGrowthTexts(SharedTexts):
     INP_BASE = "Chiffre d'Affaires (TTM)"
     INP_REV_GROWTH = "Croissance annuelle des revenus (g)"
     INP_MARGIN_TARGET = "Marge FCF cible (%)"
+    HELP_REV_TTM = "Chiffre d'affaires consolidé des 12 derniers mois."
+    HELP_REV_GROWTH = "Taux d'expansion annuel projeté pour le Chiffre d'Affaires (Top-line)."
+    HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée en fin de période de convergence."
 
 class RIMTexts(SharedTexts):
-    TITLE = "Terminal Expert : RIM"
+    TITLE = "Revenu Résiduel (RIM)"
     DESCRIPTION = "Valorisation par la Valeur Comptable brute et les profits anormaux."
     STEP_1_TITLE = "#### Étape 1 : Ancrage Bilan ($BV_0$)"
     STEP_1_DESC = "Saisie de la Valeur Comptable initiale (Equity) servant de socle au modèle."
-    STEP_1_FORMULA = r"P = BV_0 + \sum \frac{NI_t - (k_e \cdot BV_{t-1})}{(1+k_e)^t}"
+    STEP_1_FORMULA = r"P = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \cdot BV_{t-1})}{(1+k_e)^t} + TV_{RI}"
     STEP_2_TITLE = "#### Étape 2 : Profits Résiduels & Persistance"
     STEP_2_DESC = "Estimation des résultats nets futurs et de leur facteur de persistance (ω)."
     INP_BASE = "Valeur comptable initiale (Book Value)"
     INP_NI = "Résultat Net normatif (Net Income)"
-    INP_OMEGA = "Facteur de persistance (ω)"
+    INP_NI_TTM = "Net Income (TTM)"
+    INP_BV_INITIAL = "Book Value (BV_0)"
+    HELP_NI_TTM = "Bénéfice net consolidé servant à déterminer le profit résiduel de départ."
+    HELP_BV_INITIAL = "Capitaux propres comptables (Equity) constituant le socle de la valeur d'ancrage."
+    HELP_GROWTH = "Croissance projetée des profits anormaux avant application du facteur de persistance ω."
+    SEC_1_RIM_BASE = "#### 1. Ancrage Comptable"
+    SEC_2_PROJ_RIM = "#### 2. Projection du RI"
 
 class GrahamTexts(SharedTexts):
-    TITLE = "Terminal Expert : Valeur de Graham"
+    TITLE = "Valeur de Graham"
     DESCRIPTION = "Formule défensive liant BPA, croissance et rendement obligataire AAA."
     STEP_1_TITLE = "#### Étape 1 : Bénéfices & Croissance ($EPS$)"
     STEP_1_DESC = "Ancrage sur le bénéfice par action normalisé pour un screening prudent."
@@ -255,20 +271,33 @@ class GrahamTexts(SharedTexts):
     STEP_2_DESC = "Ajustement par rapport au rendement actuel des obligations de haute qualité."
     INP_BASE = "Bénéfice par action (EPS) normalisé"
     INP_YIELD = "Rendement actuel Obligations AAA (Y)"
+    INP_EPS_NORM = "EPS Normalisé (TTM)"
+    INP_YIELD_AAA = "Yield Corporate AAA"
+    HELP_EPS_NORM = "Bénéfice Par Action ajusté des éléments exceptionnels et lissé."
+    HELP_GROWTH_LT = "Croissance LT (7-10 ans) pondérée pour le calcul du multiple Graham."
+    HELP_YIELD_AAA = "Taux de rendement actuel des obligations corporate de haute qualité."
+    SEC_1_GRAHAM_BASE = "#### 1. Paramètres de Screening"
+    SEC_2_GRAHAM = "#### 2. Conditions Monétaires"
+    NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au multiple d'une entreprise sans croissance."
 
 class FCFETexts(SharedTexts):
-    TITLE = "Terminal Expert : FCFE"
+    TITLE = "Approche Actionnaire (FCFE)"
     DESCRIPTION = "Valorisation directe des capitaux propres par les flux résiduels après dette."
     STEP_1_TITLE = "#### Étape 1 : Flux Actionnaire ($FCFE_0$)"
     STEP_1_DESC = "Reconstruction du flux résiduel après investissements et variations d'endettement."
-    STEP_1_FORMULA = r"P = \sum \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}"
+    STEP_1_FORMULA = r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}"
     STEP_2_TITLE = "#### Étape 2 : Projection des Flux de Distribution"
     STEP_2_DESC = "Capacité réelle de distribution aux actionnaires sur la phase explicite."
     INP_BASE = "Flux FCFE de référence"
     INP_NET_BORROWING = "Variation nette de l'endettement (Δ Dette)"
+    HELP_FCFE_BASE = "Flux résiduel revenant aux actionnaires après service de la dette (intérêts et capital)."
+    HELP_NET_BORROWING = "Estimation des nouveaux emprunts nets des remboursements sur la période."
+    HELP_GROWTH = "Taux de croissance annuel projeté de la capacité de distribution (FCFE)."
+    SEC_1_FCFE_BASE = "#### 1. Ancrage Actionnaire"
+    SEC_2_PROJ = "#### 2. Horizon de Projection"
 
 class DDMTexts(SharedTexts):
-    TITLE = "Terminal Expert : DDM"
+    TITLE = "Approche Actionnaire (DDM)"
     DESCRIPTION = "Valeur actuelle des dividendes futurs actualisés au coût des fonds propres."
     STEP_1_TITLE = "#### Étape 1 : Dividende de Départ ($D_0$)"
     STEP_1_DESC = "Saisie du dividende annuel de référence pour la projection de croissance."
@@ -276,3 +305,8 @@ class DDMTexts(SharedTexts):
     STEP_2_TITLE = "#### Étape 2 : Dynamique des Dividendes"
     STEP_2_DESC = "Hypothèses de croissance du coupon sur l'horizon de projection."
     INP_BASE = "Dernier dividende annuel ($D_0$)"
+    INP_DIVIDEND_BASE = "Dividende par action ($D_0$)"
+    HELP_DIVIDEND_BASE = "Somme des dividendes ordinaires versés (TTM) servant de base à la projection."
+    HELP_GROWTH = "Taux de croissance annuel attendu pour le versement du coupon par action."
+    NOTE_DDM_SGR = "Le modèle suppose que le dividende croît à un taux constant g à perpétuité."
+    SEC_1_DDM_BASE = "#### 1. Flux de Dividendes"

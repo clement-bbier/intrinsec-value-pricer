@@ -25,7 +25,7 @@ from src.models import (
     ValuationRequest,
     ScenarioParameters,
     TerminalValueMethod,
-    DCFParameters
+    DCFParameters, SOTPParameters
 )
 from src.i18n import SharedTexts
 
@@ -93,9 +93,7 @@ class ExpertTerminalBase(ABC):
 
         # 5. EQUITY BRIDGE (inc. SBC)
         if self.SHOW_BRIDGE_SECTION:
-            from app.ui.expert.terminals.shared_widgets import widget_equity_bridge
-            # Widget unifié : Titre, Formule et SBC intégrés
-            self._collected_data.update(widget_equity_bridge(self.BRIDGE_FORMULA, self.MODE) or {})
+            self._collected_data.update(self._render_equity_bridge() or {})
 
         # 6 à 9. EXTENSIONS OPTIONNELLES
         self._render_optional_features()
@@ -119,6 +117,24 @@ class ExpertTerminalBase(ABC):
         if self.DESCRIPTION:
             st.caption(self.DESCRIPTION)
         st.divider()
+
+    def _render_equity_bridge(self) -> Dict[str, Any]:
+        """
+        Section 5 : Ajustements de structure (Equity Bridge).
+        Adapte la formule LaTeX et la complexité selon le type de modèle.
+        """
+        from app.ui.expert.terminals.shared_widgets import widget_equity_bridge
+
+        # LOGIQUE DE PERTINENCE :
+        # Si Direct Equity (DDM, RIM, FCFE), on affiche une formule simplifiée
+        if self.MODE.is_direct_equity:
+            # Formule pour les modèles valorisant directement les capitaux propres
+            formula = SharedTexts.FORMULA_BRIDGE_SIMPLE
+        else:
+            # Formule complète EV -> Equity (FCFF)
+            formula = self.BRIDGE_FORMULA
+
+        return widget_equity_bridge(formula, self.MODE)
 
     def _render_optional_features(self) -> None:
         """Coordination des analyses complémentaires (Étapes 6 à 9)."""
@@ -149,13 +165,44 @@ class ExpertTerminalBase(ABC):
         # 9. SOTP (Segmentation Finale)
         if self.SHOW_SOTP:
             from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
-            # Utilisation d'un buffer pour persister les saisies SOTP
             temp_params = build_dcf_parameters(self._collected_data)
-            widget_sotp(temp_params)
+            widget_sotp(temp_params, is_conglomerate=False)
             self._collected_data["sotp"] = temp_params.sotp
 
     def get_custom_monte_carlo_vols(self) -> Optional[Dict[str, str]]:
-        """Hook pour les volatilités spécifiques au modèle (ex: ω pour RIM)."""
+        """
+        Dynamise les entrées de Monte Carlo selon la méthodologie choisie (ST-4.2).
+
+        Cette méthode implémente la logique expert : adapter les paramètres de
+        dispersion aux variables critiques de chaque modèle (g, ω, ou EPS).
+
+        Returns
+        -------
+        Optional[Dict[str, str]]
+            Dictionnaire de correspondance {clé_technique: label_i18n}.
+        """
+        # 1. Modèles de flux (FCFF/FCFE/DDM) : Focus sur la croissance g
+        if self.MODE in [
+            ValuationMode.FCFF_STANDARD,
+            ValuationMode.FCFF_NORMALIZED,
+            ValuationMode.FCFF_GROWTH,
+            ValuationMode.FCFE,
+            ValuationMode.DDM
+        ]:
+            return {"growth_volatility": SharedTexts.MC_VOL_G}
+
+        # 2. Modèle RIM : Focus sur la persistance des profits résiduels omega
+        if self.MODE == ValuationMode.RIM:
+            return {"terminal_growth_volatility": SharedTexts.LBL_VOL_OMEGA}
+
+        # 3. Modèle Graham : Focus sur le bénéfice par action (EPS) et la croissance LT
+        if self.MODE == ValuationMode.GRAHAM:
+            # On utilise base_flow_volatility pour l'incertitude sur l'EPS
+            return {
+                "base_flow_volatility": SharedTexts.MC_VOL_BASE_FLOW,
+                "growth_volatility": SharedTexts.MC_VOL_G
+            }
+
         return None
 
     def _render_submit(self) -> Optional[ValuationRequest]:
@@ -172,13 +219,15 @@ class ExpertTerminalBase(ABC):
     # ══════════════════════════════════════════════════════════════════════════
 
     def build_request(self) -> Optional[ValuationRequest]:
-        """Construit la ValuationRequest en lisant le session_state."""
+        """
+        Construit la ValuationRequest finale.
+        """
         from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
 
         key_prefix = self.MODE.name
         collected_data = {"projection_years": st.session_state.get(f"{key_prefix}_years", 5)}
 
-        # Extraction par blocs
+        # Extraction par blocs universels
         collected_data.update(self._extract_discount_data(key_prefix))
         if self.SHOW_TERMINAL_SECTION:
             collected_data.update(self._extract_terminal_data(key_prefix))
@@ -189,24 +238,34 @@ class ExpertTerminalBase(ABC):
         if self.SHOW_PEER_TRIANGULATION:
             collected_data.update(self._extract_peer_triangulation_data(key_prefix))
 
-        # Données spécifiques au modèle
+        # Données spécifiques (Ancrage & Croissance harmonisés)
         collected_data.update(self._extract_model_inputs_data(key_prefix))
 
+        # Construction de l'objet métier
         params = build_dcf_parameters(collected_data)
 
+        # Scénarios et SOTP (Vérification de pertinence)
         if self.SHOW_SCENARIOS:
             params.scenarios = self._extract_scenarios_data(key_prefix)
 
-        if self.SHOW_SOTP and "sotp" in self._collected_data:
-            params.sotp = self._collected_data["sotp"]
+        if self.SHOW_SOTP:
+            # Extraction sécurisée via le buffer instance
+            params.sotp = self._extract_sotp_data()
 
         return ValuationRequest(
-            ticker=self.ticker, mode=self.MODE,
+            ticker=self.ticker,
+            mode=self.MODE,
             projection_years=collected_data.get("projection_years", 5),
             input_source=InputSource.MANUAL,
             manual_params=params,
             options=self._build_options(),
         )
+
+    def _extract_sotp_data(self) -> Optional[SOTPParameters]:
+        """
+        Récupère les segments SOTP stockés lors du rendu de l'Étape 9.
+        """
+        return self._collected_data.get("sotp")
 
     # ══════════════════════════════════════════════════════════════════════════
     # MÉTHODES D'EXTRACTION PRIVÉES (Mapping technique)

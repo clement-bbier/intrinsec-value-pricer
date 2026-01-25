@@ -346,29 +346,49 @@ def widget_equity_bridge(
 # 5. WIDGET MONTE CARLO (Section 6 - Optionnel)
 # ==============================================================================
 
-def widget_monte_carlo(mode: ValuationMode, terminal_method: Optional[TerminalValueMethod] = None,
-                      custom_vols: Optional[Dict[str, str]] = None, key_prefix: Optional[str] = None) -> Dict[str, Any]:
-    """Widget Monte Carlo sans valeurs par défaut (Tout à vide)."""
+def widget_monte_carlo(
+    mode: ValuationMode,
+    terminal_method: Optional[TerminalValueMethod] = None,
+    custom_vols: Optional[Dict[str, str]] = None,
+    key_prefix: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Widget Monte Carlo intelligent (ST-4.2).
+    Adapte les champs de volatilité selon la pertinence du modèle.
+    """
     prefix = key_prefix or "mc"
     st.markdown(SharedTexts.SEC_6_MC)
     st.info(SharedTexts.SEC_6_DESC_MC)
 
     enable = st.toggle(SharedTexts.MC_CALIBRATION, False, key=f"{prefix}_enable")
-    if not enable: return {"enable_monte_carlo": False}
+    if not enable:
+        return {"enable_monte_carlo": False}
 
-    sims = st.select_slider(SharedTexts.MC_ITERATIONS, options=[1000, 5000, 10000, 20000], value=5000, key=f"{prefix}_sims")
-    st.caption(SharedTexts.MC_VOLATILITIES)
+    sims = st.select_slider(
+        SharedTexts.MC_ITERATIONS,
+        options=[1000, 5000, 10000, 20000],
+        value=5000,
+        key=f"{prefix}_sims"
+    )
+    st.caption(SharedTexts.MC_VOL_INCERTITUDE) # Label i18n
     v_col1, v_col2 = st.columns(2)
 
-    # Utilisation de value=None partout pour un terminal "propre"
-    v0 = v_col1.number_input(SharedTexts.MC_VOL_BASE_FLOW, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_vol_flow")
-    vb = v_col2.number_input(SharedTexts.MC_VOL_BETA, 0.0, 1.0, value=None, format="%.3f", key=f"{prefix}_vol_beta")
+    # 1. Volatilité de l'ancrage (Y0)
+    label_base = custom_vols.get("base_flow_volatility", SharedTexts.MC_VOL_BASE_FLOW) if custom_vols else SharedTexts.MC_VOL_BASE_FLOW
+    v0 = v_col1.number_input(label_base, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_vol_flow")
+
+    # 2. Volatilité du Bêta : MASQUÉE pour Graham car non pertinent
+    vb = None
+    if mode != ValuationMode.GRAHAM:
+        vb = v_col2.number_input(SharedTexts.MC_VOL_BETA, 0.0, 1.0, value=None, format="%.3f", key=f"{prefix}_vol_beta")
 
     res = {"enable_monte_carlo": True, "num_simulations": sims, "base_flow_volatility": v0, "beta_volatility": vb}
 
+    # 3. Volatilités spécifiques (g, omega, etc.)
     if custom_vols:
         for tech_key, label in custom_vols.items():
-            res[tech_key] = v_col1.number_input(label, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_{tech_key}")
+            if tech_key != "base_flow_volatility":
+                res[tech_key] = v_col1.number_input(label, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_{tech_key}")
     else:
         res["growth_volatility"] = v_col1.number_input(SharedTexts.MC_VOL_G, 0.0, 0.2, value=None, format="%.3f", key=f"{prefix}_vol_growth")
 
@@ -467,26 +487,64 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
 # 8. WIDGET SOTP (Sum-of-the-Parts - Optionnel)
 # ==============================================================================
 
-def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None:
-    """Segmentation SOTP. Fix FutureWarnings et Pydantic."""
+def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix: Optional[str] = None) -> None:
+    """
+    Widget Etape 9 : Segmentation SOTP avec arbitrage de pertinence (ST-4.2).
+
+    Cette fonction permet de diviser la valeur totale entre différentes Business Units.
+    Elle inclut un test de pertinence pour limiter l'usage du SOTP aux structures
+    diversifiees ou aux besoins de decomposition specifiques.
+
+    Parameters
+    ----------
+    params : DCFParameters
+        Objet de parametres a peupler pour le moteur de calcul.
+    is_conglomerate : bool, optional
+        Indique si l'entreprise est identifiee comme un conglomerat (defaut: False).
+    key_prefix : str, optional
+        Prefixe pour garantir l'unicite des cles dans le session_state.
+    """
     prefix = key_prefix or "sotp"
+
+    # --- EN-TETE ET DESCRIPTION ---
     st.markdown(SharedTexts.SEC_9_SOTP)
     st.info(SharedTexts.SEC_9_DESC)
 
-    enabled = st.toggle(SharedTexts.LBL_SOTP_ENABLE, params.sotp.enabled, key=f"{prefix}_enable")
-    params.sotp.enabled = enabled
-    if not enabled: return
+    # --- ARBITRAGE DE PERTINENCE ---
+    # Si l'entreprise n'est pas un conglomerat, on affiche un avertissement preventif
+    if not is_conglomerate:
+        st.warning(SharedTexts.WARN_SOTP_RELEVANCE)
 
-    # 1. Initialisation avec typage explicite float64 pour éviter le warning
+    # --- ACTIVATION DU MODULE ---
+    enabled = st.toggle(
+        SharedTexts.LBL_SOTP_ENABLE,
+        value=params.sotp.enabled,
+        key=f"{prefix}_enable",
+        help=SharedTexts.HELP_SOTP_ENABLE
+    )
+    params.sotp.enabled = enabled
+
+    if not enabled:
+        return
+
+    # --- CONFIGURATION DU TABLEAU DE SEGMENTS ---
+    # Initialisation avec typage float64 pour prevenir les FutureWarnings de pandas
     df_init = pd.DataFrame([{
         SharedTexts.LBL_SEGMENT_NAME: "Segment A",
         SharedTexts.LBL_SEGMENT_VALUE: 0.0,
         SharedTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value
     }]).astype({SharedTexts.LBL_SEGMENT_VALUE: 'float64'})
 
-    edited_df = st.data_editor(df_init, num_rows="dynamic", width='stretch', key=f"{prefix}_editor")
+    # Editeur de donnees dynamique (Pitchbook style)
+    edited_df = st.data_editor(
+        df_init,
+        num_rows="dynamic",
+        width='stretch',
+        key=f"{prefix}_editor"
+    )
 
-    # 2. Correction Pydantic : arguments NOMMÉS
+    # --- EXTRACTION ET VALIDATION PYDANTIC ---
+    # Utilisation d'arguments nommes pour la compatibilite BusinessUnit
     params.sotp.segments = [
         BusinessUnit(
             name=row[SharedTexts.LBL_SEGMENT_NAME],
@@ -496,10 +554,20 @@ def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None
         for _, row in edited_df.iterrows() if row[SharedTexts.LBL_SEGMENT_NAME]
     ]
 
+    # --- AJUSTEMENTS DE HOLDING ---
     st.markdown(SharedTexts.SEC_SOTP_ADJUSTMENTS)
-    params.sotp.conglomerate_discount = st.slider(SharedTexts.LBL_DISCOUNT, 0, 50,
-                                                  int(params.sotp.conglomerate_discount * 100), 5,
-                                                  key=f"{prefix}_discount") / 100.0
+
+    # Calcul de la valeur initiale en pourcentage pour le slider
+    current_discount = int(params.sotp.conglomerate_discount * 100)
+
+    params.sotp.conglomerate_discount = st.slider(
+        SharedTexts.LBL_DISCOUNT,
+        min_value=0,
+        max_value=50,
+        value=current_discount,
+        step=5,
+        key=f"{prefix}_discount"
+    ) / 100.0
 
 # ==============================================================================
 # 9. CONSTRUCTEUR DE PARAMÈTRES

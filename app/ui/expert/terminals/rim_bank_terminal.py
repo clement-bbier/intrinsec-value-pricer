@@ -1,23 +1,20 @@
 """
 app/ui/expert_terminals/rim_bank_terminal.py
 
-Terminal Expert — Residual Income Model (RIM)
+TERMINAL EXPERT — RESIDUAL INCOME MODEL (RIM)
+==============================================
+Interface dédiée à la valorisation des institutions financières et banques.
+Le modèle repose sur la valeur comptable (Book Value) et la persistance des RI.
 
-Cas d'usage : Valorisation des institutions financières (banques, assurances).
-Approche : BV + Σ(Residual Income) où RI = NI - (Ke × BV)
-Actualisation : Ke (Cost of Equity)
-
-Avantage : Mieux adapté aux business où le capital est un input (banques).
-Concept : L'entreprise vaut sa book value + la valeur créée au-delà du Ke.
-
+Architecture : ST-3.2 (Direct Equity)
 Style : Numpy docstrings
 """
 
-from typing import Dict, Any
-
+from typing import Dict, Any, Optional
 import streamlit as st
 
 from src.models import ValuationMode
+from src.i18n.fr.ui.expert import RIMTexts as Texts
 from src.i18n import SharedTexts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
@@ -29,154 +26,108 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class RIMBankTerminal(ExpertTerminalBase):
     """
-    Terminal pour le Residual Income Model.
+    Terminal expert pour le Residual Income Model.
 
-    Le RIM décompose la valeur en : Book Value + Valeur des profits
-    anormaux. Un "residual income" positif signifie que l'entreprise
-    génère un ROE supérieur à son coût du capital.
-
-    Notes
-    -----
-    Particulièrement adapté aux banques où l'EV/Equity bridge
-    n'a pas de sens (pas de dette "classique").
-
-    Attributes
-    ----------
-    MODE : ValuationMode
-        RIM
-    DISPLAY_NAME : str
-        "Residual Income Model"
+    Ce modèle valorise l'entreprise par sa valeur comptable actuelle augmentée
+    de la valeur présente des profits anormaux (Residual Income) futurs.
     """
 
     MODE = ValuationMode.RIM
-    DISPLAY_NAME = "RIM - Residual Income Model"
-    DESCRIPTION = "BV + profits anormaux. Adapte aux institutions financieres"
+    DISPLAY_NAME = Texts.TITLE
+    DESCRIPTION = Texts.DESCRIPTION
 
-    # RIM = Direct Equity
-    SHOW_BRIDGE_SECTION = True  # Simplifié
-    SHOW_TERMINAL_SECTION = False  # Géré spécifiquement via omega
-
+    # --- Configuration du Pipeline UI ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
+    SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    BRIDGE_FORMULA = r"P = \dfrac{\text{Equity Value}}{\text{Actions}}"
+    # Le RIM intègre sa propre logique de sortie dans l'étape 2 (Hook opérationnel)
+    SHOW_TERMINAL_SECTION = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Inputs spécifiques au RIM.
-
-        Collecte :
-        - Book Value initiale (BV0)
-        - Net Income TTM
-        - Horizon et croissance des profits
-        - Facteur de persistance (omega)
+        Rendu des entrées spécifiques au RIM (Étapes 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            - manual_book_value : BV0
-            - manual_fcf_base : NI (utilisé comme proxy)
-            - projection_years : Horizon
-            - fcf_growth_rate : Croissance NI
-            - exit_multiple_value : Omega (persistance)
+            Paramètres : manual_book_value, manual_fcf_base (NI),
+            projection_years, fcf_growth_rate, exit_multiple_value (omega).
         """
-        st.markdown(f"**{SharedTexts.SEC_1_RIM_BASE}**")
-        st.latex(
-            r"P = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}"
-            r"{(1+k_e)^t} + \frac{TV_{RI}}{(1+k_e)^n}"
-        )
+        prefix = self.MODE.name
+
+        # --- ÉTAPE 1 : ANCRAGE BILANCIEL ---
+        self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
+
+        st.latex(Texts.STEP_1_FORMULA)
 
         col1, col2 = st.columns(2)
-
         with col1:
-            bv = st.number_input(
-                SharedTexts.INP_BV_INITIAL,
+            bv_initial = st.number_input(
+                Texts.INP_BV_INITIAL,
                 value=None,
                 format="%.0f",
-                help=SharedTexts.HELP_BV_INITIAL,
-                key=f"{self.MODE.name}_bv_initial"
+                help=Texts.HELP_BV_INITIAL,
+                key=f"{prefix}_bv_initial"
             )
 
         with col2:
-            ni = st.number_input(
-                SharedTexts.INP_NI_TTM,
+            ni_base = st.number_input(
+                Texts.INP_NI_TTM,
                 value=None,
                 format="%.0f",
-                help=SharedTexts.HELP_NI_TTM,
-                key=f"{self.MODE.name}_ni_ttm"
+                help=Texts.HELP_NI_TTM,
+                key=f"{prefix}_ni_ttm"
             )
 
         st.divider()
 
-        st.markdown(f"**{SharedTexts.SEC_2_PROJ_RIM}**")
+        # --- ÉTAPE 2 : PROFITS RÉSIDUELS & PERSISTANCE ---
+        self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
-
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=self.MODE.name)
-
+            n_years = widget_projection_years(default=5, key_prefix=prefix)
         with col2:
-            g_ni = widget_growth_rate(
-                label="Croissance Net Income (g)",
-                min_val=0.0,
-                max_val=0.50,
-                key_prefix=self.MODE.name
-            )
+            g_rate = widget_growth_rate(label=SharedTexts.INP_GROWTH_G, key_prefix=prefix)
 
-        st.divider()
-
-        # Valeur terminale RIM (facteur omega)
+        # Insertion du widget de sortie spécifique (ω) directement dans le flux narratif
+        st.write("")
         tv_data = widget_terminal_value_rim(
-            r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
-            key_prefix=self.MODE.name
+            formula_latex=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
+            key_prefix=prefix
         )
+
+        st.divider()
 
         return {
-            "manual_book_value": bv,
-            "manual_fcf_base": ni,
+            "manual_book_value": bv_initial,
+            "manual_fcf_base": ni_base,
             "projection_years": n_years,
-            "fcf_growth_rate": g_ni,
-            **tv_data,
+            "fcf_growth_rate": g_rate,
+            **tv_data,  # Contient exit_multiple_value (omega)
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données spécifiques au modèle RIM depuis st.session_state.
+        Extrait les données RIM depuis le session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe de clé basé sur le mode (RIM).
+            Préfixe basé sur le ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données RIM : bv_initial, ni_ttm, growth_rate, projection_years, omega.
+            Données opérationnelles pour build_request.
         """
-        data = {}
-
-        # Clés spécifiques
-        bv_key = f"{key_prefix}_bv_initial"
-        if bv_key in st.session_state:
-            data["manual_book_value"] = st.session_state[bv_key]
-
-        ni_key = f"{key_prefix}_ni_ttm"
-        if ni_key in st.session_state:
-            data["manual_fcf_base"] = st.session_state[ni_key]
-
-        omega_key = f"{key_prefix}_omega"
-        if omega_key in st.session_state:
-            data["exit_multiple_value"] = st.session_state[omega_key]
-
-        # Clés communes (growth, projection years)
-        growth_key = f"{key_prefix}_growth_rate"
-        if growth_key in st.session_state:
-            data["fcf_growth_rate"] = st.session_state[growth_key]
-
-        years_key = f"{key_prefix}_years"
-        if years_key in st.session_state:
-            data["projection_years"] = st.session_state[years_key]
-
-        return data
+        return {
+            "manual_book_value": st.session_state.get(f"{key_prefix}_bv_initial"),
+            "manual_fcf_base": st.session_state.get(f"{key_prefix}_ni_ttm"),
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "projection_years": st.session_state.get(f"{key_prefix}_years"),
+            "exit_multiple_value": st.session_state.get(f"{key_prefix}_omega")
+        }
