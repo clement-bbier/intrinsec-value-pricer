@@ -285,3 +285,25 @@ class ExpertTerminalBase(ABC):
     @abstractmethod
     def render_model_inputs(self) -> Dict[str, Any]: pass
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]: return {}
+
+    def _extract_terminal_data(self, key_prefix: str) -> Dict[str, Any]:
+        """
+        Extrait les paramètres de la Valeur Terminale (Gordon ou Multiples).
+
+        Récupère dynamiquement le taux de croissance perpétuelle (gn) ou
+        le multiple de sortie selon le choix de l'utilisateur.
+        """
+        data = {}
+        method_key = f"{key_prefix}_method"
+
+        if method_key in st.session_state:
+            method = st.session_state[method_key]
+            data["terminal_method"] = method
+
+            # Extraction conditionnelle selon la méthode de sortie
+            if method == TerminalValueMethod.GORDON_GROWTH:
+                data["perpetual_growth_rate"] = st.session_state.get(f"{key_prefix}_gn")
+            else:
+                data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
+
+        return data

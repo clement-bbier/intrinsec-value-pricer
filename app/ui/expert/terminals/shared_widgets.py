@@ -427,7 +427,7 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
 # ==============================================================================
 
 def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
-    """Analyse multi-scénarios. Correction Pydantic (Keyword Args)."""
+    """Analyse multi-scénarios déterministes."""
     prefix = key_prefix or "scenario"
     st.markdown(SharedTexts.SEC_8_SCENARIOS)
     st.info(SharedTexts.SEC_8_DESC_SCENARIOS)
@@ -436,14 +436,13 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     if not enabled:
         return ScenarioParameters(enabled=False)
 
+    st.info(SharedTexts.SCENARIO_HINT)
     show_margin = (mode == ValuationMode.FCFF_GROWTH)
 
     def _render_variant(label: str, case_id: str, default_p: float):
         st.markdown(f"**{label}**")
         c1, c2, c3 = st.columns(3)
-        # Probabilité reste avec défaut pour aider l'utilisateur à équilibrer à 100%
         p = c1.number_input(SharedTexts.INP_SCENARIO_PROBA, 0.0, 100.0, default_p, 5.0, key=f"{prefix}_p_{case_id}") / 100
-        # Valeurs mises à None (vide) pour laisser l'expert décider
         g = c2.number_input(SharedTexts.INP_SCENARIO_GROWTH, value=None, format="%.3f", key=f"{prefix}_g_{case_id}")
         m = c3.number_input(SharedTexts.INP_SCENARIO_MARGIN, value=None, format="%.2f", key=f"{prefix}_m_{case_id}") if show_margin else None
         return p, g, m
@@ -456,7 +455,7 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
         st.error(SharedTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int((p_bull+p_base+p_bear)*100)))
         return ScenarioParameters(enabled=False)
 
-    # CORRECTION : Utilisation de noms de paramètres explicites pour Pydantic
+    # CORRECTION : Utilisation impérative de Keyword Arguments pour Pydantic
     return ScenarioParameters(
         enabled=True,
         bull=ScenarioVariant(label=SharedTexts.LBL_BULL, probability=p_bull, growth_rate=g_bull, target_fcf_margin=m_bull),
@@ -469,51 +468,25 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
 # ==============================================================================
 
 def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None:
-    """
-    Widget Étape 9 : Segmentation de la valeur par Business Units.
-
-    Modifie l'objet DCFParameters in-place pour assurer la persistance.
-    """
+    """Segmentation SOTP. Fix FutureWarnings et Pydantic."""
     prefix = key_prefix or "sotp"
-
     st.markdown(SharedTexts.SEC_9_SOTP)
     st.info(SharedTexts.SEC_9_DESC)
 
-    enabled = st.toggle(
-        SharedTexts.LBL_SOTP_ENABLE,
-        value=params.sotp.enabled,
-        key=f"{prefix}_enable"
-    )
-
+    enabled = st.toggle(SharedTexts.LBL_SOTP_ENABLE, params.sotp.enabled, key=f"{prefix}_enable")
     params.sotp.enabled = enabled
-    if not enabled:
-        return
+    if not enabled: return
 
-    # Édition des segments
-    st.markdown(SharedTexts.SEC_SOTP_SEGMENTS)
+    # 1. Initialisation avec typage explicite float64 pour éviter le warning
+    df_init = pd.DataFrame([{
+        SharedTexts.LBL_SEGMENT_NAME: "Segment A",
+        SharedTexts.LBL_SEGMENT_VALUE: 0.0,
+        SharedTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value
+    }]).astype({SharedTexts.LBL_SEGMENT_VALUE: 'float64'})
 
-    current_data = [
-        {
-            SharedTexts.LBL_SEGMENT_NAME: bu.name,
-            SharedTexts.LBL_SEGMENT_VALUE: bu.enterprise_value,
-            SharedTexts.LBL_SEGMENT_METHOD: bu.method.value,
-        }
-        for bu in params.sotp.segments
-    ]
+    edited_df = st.data_editor(df_init, num_rows="dynamic", width='stretch', key=f"{prefix}_editor")
 
-    edited_df = st.data_editor(
-        pd.DataFrame(current_data if current_data else [{
-            SharedTexts.LBL_SEGMENT_NAME: "Segment A",
-            SharedTexts.LBL_SEGMENT_VALUE: 0.0,
-            SharedTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value
-        }]),
-        num_rows="dynamic", width='stretch', key=f"{prefix}_editor",
-        column_config={
-            SharedTexts.LBL_SEGMENT_VALUE: st.column_config.NumberColumn(format="%.2f"),
-            SharedTexts.LBL_SEGMENT_METHOD: st.column_config.SelectboxColumn(options=[m.value for m in SOTPMethod]),
-        }
-    )
-
+    # 2. Correction Pydantic : arguments NOMMÉS
     params.sotp.segments = [
         BusinessUnit(
             name=row[SharedTexts.LBL_SEGMENT_NAME],
@@ -523,35 +496,25 @@ def widget_sotp(params: DCFParameters, key_prefix: Optional[str] = None) -> None
         for _, row in edited_df.iterrows() if row[SharedTexts.LBL_SEGMENT_NAME]
     ]
 
-    # Ajustements Holding
-    st.write("")
     st.markdown(SharedTexts.SEC_SOTP_ADJUSTMENTS)
-    params.sotp.conglomerate_discount = st.slider(
-        SharedTexts.LBL_DISCOUNT, 0, 50,
-        int(params.sotp.conglomerate_discount * 100), 5,
-        key=f"{prefix}_discount"
-    ) / 100.0
+    params.sotp.conglomerate_discount = st.slider(SharedTexts.LBL_DISCOUNT, 0, 50,
+                                                  int(params.sotp.conglomerate_discount * 100), 5,
+                                                  key=f"{prefix}_discount") / 100.0
 
 # ==============================================================================
 # 9. CONSTRUCTEUR DE PARAMÈTRES
 # ==============================================================================
 
 def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
-    """
-    Assemble les données UI en un objet métier DCFParameters.
-    """
-    # Source de vérité pour les valeurs par défaut
+    """Constructeur final avec constantes validées."""
     defaults = {
         "projection_years": VALUATION_CONFIG.default_projection_years,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,
         "enable_monte_carlo": False,
         "num_simulations": SIMULATION_CONFIG.default_simulations,
-        "base_flow_volatility": TechnicalDefaults.DEFAULT_VOLATILITY,
+        "base_flow_volatility": UIWidgetDefaults.DEFAULT_BASE_FLOW_VOLATILITY,
         "beta_volatility": SIMULATION_CONFIG.default_volatility_beta,
         "growth_volatility": SIMULATION_CONFIG.default_volatility_growth,
     }
-
-    # Fusion propre : les entrées utilisateur écrasent les défauts
     merged = {**defaults, **{k: v for k, v in collected_data.items() if v is not None}}
-
     return DCFParameters.from_legacy(merged)

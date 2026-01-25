@@ -37,7 +37,7 @@ class SharedTexts:
     SEC_7_DESC_PEERS = "Vérification de la cohérence du modèle intrinsèque via les multiples boursiers du secteur."
 
     SEC_8_SCENARIOS = "#### Option : Analyse de Scénarios (Convictions)"
-    SEC_8_DESC_SCENARIOS = "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de votre thèse."
+    SEC_8_DESC_SCENARIOS = "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
 
     SEC_9_SOTP = "#### Option : Somme des Parties (Segmentation SOTP)"
     SEC_9_DESC = "Décomposition de la valeur d'entreprise par segments métier ou actifs distincts."
@@ -200,7 +200,7 @@ class SharedTexts:
 # ==============================================================================
 
 class FCFFStandardTexts(SharedTexts):
-    TITLE = "Terminal Expert : DCF Entité (FCFF)"
+    TITLE = "Terminal Expert : FCFF Standard)"
     DESCRIPTION = "Modèle DCF classique : flux opérationnels actualisés au coût moyen du capital (WACC)."
     STEP_1_TITLE = "#### Étape 1 : Flux d'Ancrage ($FCFF_0$)"
     STEP_1_DESC = "Définition du Free Cash Flow to Firm de référence (TTM) pour initier les projections."
@@ -222,7 +222,7 @@ class FCFFNormalizedTexts(SharedTexts):
     HELP_BASE = "Moyenne des flux sur le cycle économique actuel. Vide = Auto."
 
 class FCFFGrowthTexts(SharedTexts):
-    TITLE = "Terminal Expert : Revenue-Driven Growth"
+    TITLE = "Terminal Expert : Revenue-Driven"
     DESCRIPTION = "Projection pilotée par le CA avec convergence progressive vers une marge cible."
     STEP_1_TITLE = "#### Étape 1 : Assiette de Revenus ($Rev_0$)"
     STEP_1_DESC = "Ancrage sur le Chiffre d'Affaires actuel pour modéliser l'expansion du business."
@@ -234,7 +234,7 @@ class FCFFGrowthTexts(SharedTexts):
     INP_MARGIN_TARGET = "Marge FCF cible (%)"
 
 class RIMTexts(SharedTexts):
-    TITLE = "Terminal Expert : Revenu Résiduel (RIM)"
+    TITLE = "Terminal Expert : RIM"
     DESCRIPTION = "Valorisation par la Valeur Comptable brute et les profits anormaux."
     STEP_1_TITLE = "#### Étape 1 : Ancrage Bilan ($BV_0$)"
     STEP_1_DESC = "Saisie de la Valeur Comptable initiale (Equity) servant de socle au modèle."
@@ -257,7 +257,7 @@ class GrahamTexts(SharedTexts):
     INP_YIELD = "Rendement actuel Obligations AAA (Y)"
 
 class FCFETexts(SharedTexts):
-    TITLE = "Terminal Expert : Flux Actionnaire (FCFE)"
+    TITLE = "Terminal Expert : FCFE"
     DESCRIPTION = "Valorisation directe des capitaux propres par les flux résiduels après dette."
     STEP_1_TITLE = "#### Étape 1 : Flux Actionnaire ($FCFE_0$)"
     STEP_1_DESC = "Reconstruction du flux résiduel après investissements et variations d'endettement."
@@ -268,7 +268,7 @@ class FCFETexts(SharedTexts):
     INP_NET_BORROWING = "Variation nette de l'endettement (Δ Dette)"
 
 class DDMTexts(SharedTexts):
-    TITLE = "Terminal Expert : Modèle de Dividendes (DDM)"
+    TITLE = "Terminal Expert : DDM"
     DESCRIPTION = "Valeur actuelle des dividendes futurs actualisés au coût des fonds propres."
     STEP_1_TITLE = "#### Étape 1 : Dividende de Départ ($D_0$)"
     STEP_1_DESC = "Saisie du dividende annuel de référence pour la projection de croissance."
