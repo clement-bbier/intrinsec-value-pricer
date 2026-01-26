@@ -9,6 +9,7 @@ Invariants du Modèle : Multiplicateur de croissance plafonné avec rendement AA
 from __future__ import annotations
 
 import logging
+from typing import Tuple, Dict, Optional
 
 from src.exceptions import CalculationError
 from src.models import CompanyFinancials, DCFParameters, GrahamValuationResult
@@ -29,8 +30,10 @@ logger = logging.getLogger(__name__)
 
 class GrahamNumberStrategy(ValuationStrategy):
     """
-    Estimation 'Value' (Graham 1974 Revised).
-    Formule : IV = (EPS × (8.5 + 2g) × 4.4) / Y
+    Estimation 'Value' basée sur la formule révisée de Benjamin Graham (1974).
+
+    Formule théorique :
+    $$IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}$$
     """
 
     academic_reference = "Benjamin Graham (1974)"
@@ -41,64 +44,68 @@ class GrahamNumberStrategy(ValuationStrategy):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> GrahamValuationResult:
-        """Exécute la stratégie via les segments Rates et Growth."""
+        """
+        Exécute la séquence de valorisation Graham.
 
+        Parameters
+        ----------
+        financials : CompanyFinancials
+            Données financières de l'entreprise (EPS, prix, etc.).
+        params : DCFParameters
+            Paramètres de croissance et taux (g, rendement AAA).
+
+        Returns
+        -------
+        GrahamValuationResult
+            Résultat complet incluant la trace Glass Box pour l'audit.
+        """
         r = params.rates
         g = params.growth
 
-        # =====================================================================
-        # 1. ANCRAGE CAPACITÉ BÉNÉFICIAIRE
-        # =====================================================================
+        # 1. Sélection de la base de profitabilité (EPS)
         eps, source_eps = self._select_eps(financials, params)
 
-        # CORRECTION i18n : Utilisation de SUB_EPS_GRAHAM
         self.add_step(
             step_key="GRAHAM_EPS_BASE",
             label=RegistryTexts.GRAHAM_EPS_L,
             theoretical_formula=StrategyFormulas.EPS_BASE,
             result=eps,
             numerical_substitution=KPITexts.SUB_EPS_GRAHAM.format(val=eps, src=source_eps),
-            interpretation=StrategyInterpretations.GRAHAM_EPS
+            interpretation=StrategyInterpretations.GRAHAM_EPS,
+            source=source_eps
         )
 
-        # =====================================================================
-        # 2. MULTIPLICATEUR DE CROISSANCE (Via segment growth)
-        # =====================================================================
+        # 2. Calcul du multiplicateur de croissance
         growth_rate = g.fcf_growth_rate or 0.0
         growth_multiplier = self._compute_growth_multiplier(growth_rate)
-        g_display = growth_rate * 100.0
 
-        # CORRECTION i18n : Utilisation de SUB_GRAHAM_MULT
         self.add_step(
             step_key="GRAHAM_MULTIPLIER",
             label=RegistryTexts.GRAHAM_MULT_L,
             theoretical_formula=StrategyFormulas.GRAHAM_MULTIPLIER,
             result=growth_multiplier,
-            numerical_substitution=KPITexts.SUB_GRAHAM_MULT.format(g=g_display),
-            interpretation=StrategyInterpretations.GRAHAM_MULT
+            numerical_substitution=KPITexts.SUB_GRAHAM_MULT.format(g=growth_rate * 100.0),
+            interpretation=StrategyInterpretations.GRAHAM_MULT,
+            source=StrategySources.ANALYST_OVERRIDE
         )
 
-        # =====================================================================
-        # 3. VALEUR INTRINSÈQUE FINALE (Via segment rates)
-        # =====================================================================
+        # 3. Calcul de la valeur intrinsèque finale (ajustée AAA)
         aaa_yield = r.corporate_aaa_yield or 0.044
         self._validate_aaa_yield(aaa_yield)
 
         intrinsic_value = self._compute_intrinsic_value(eps, growth_multiplier, aaa_yield)
-        y_display = aaa_yield * 100.0
 
         self.add_step(
             step_key="GRAHAM_FINAL",
             label=RegistryTexts.GRAHAM_IV_L,
             theoretical_formula=StrategyFormulas.GRAHAM_VALUE,
             result=intrinsic_value,
-            numerical_substitution=f"({eps:.2f} × {growth_multiplier:.2f} × 4.4) / {y_display:.2f}",
-            interpretation=StrategyInterpretations.GRAHAM_IV
+            numerical_substitution=f"({eps:.2f} \times {growth_multiplier:.2f} \times 4.4) / {aaa_yield * 100.0:.2f}",
+            interpretation=StrategyInterpretations.GRAHAM_IV,
+            source=StrategySources.MACRO_MATRIX.format(ticker="AAA Corporate Yield")
         )
 
-        # =====================================================================
-        # 4. MÉTRIQUES D'AUDIT
-        # =====================================================================
+        # 4. Génération du résultat et Audit
         audit_metrics = self._compute_graham_audit_metrics(financials, eps)
 
         result = GrahamValuationResult(
@@ -120,8 +127,9 @@ class GrahamNumberStrategy(ValuationStrategy):
         self.verify_output_contract(result)
         return result
 
-    def _select_eps(self, financials: CompanyFinancials, params: DCFParameters) -> tuple[float, str]:
-        """Souveraineté via segment growth."""
+    @staticmethod
+    def _select_eps(financials: CompanyFinancials, params: DCFParameters) -> Tuple[float, str]:
+        """Sélectionne l'EPS de référence selon la hiérarchie de souveraineté."""
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
@@ -130,21 +138,33 @@ class GrahamNumberStrategy(ValuationStrategy):
 
         if financials.net_income_ttm and financials.shares_outstanding > 0:
             eps_calc = financials.net_income_ttm / financials.shares_outstanding
-            if eps_calc > 0: return eps_calc, StrategySources.CALCULATED_NI
+            if eps_calc > 0:
+                return eps_calc, StrategySources.CALCULATED_NI
 
         raise CalculationError(CalculationErrors.MISSING_EPS_GRAHAM)
 
-    def _compute_growth_multiplier(self, growth_rate: float) -> float:
+    @staticmethod
+    def _compute_growth_multiplier(growth_rate: float) -> float:
+        """Calcule le multiplicateur M = 8.5 + 2g."""
         return 8.5 + 2.0 * (growth_rate * 100.0)
 
-    def _validate_aaa_yield(self, aaa_yield: float) -> None:
+    @staticmethod
+    def _validate_aaa_yield(aaa_yield: float) -> None:
+        """Valide que le rendement AAA est strictement positif."""
         if aaa_yield is None or aaa_yield <= 0:
             raise CalculationError(CalculationErrors.INVALID_AAA)
 
-    def _compute_intrinsic_value(self, eps: float, multiplier: float, aaa_yield: float) -> float:
+    @staticmethod
+    def _compute_intrinsic_value(eps: float, multiplier: float, aaa_yield: float) -> float:
+        """Applique la formule finale de Graham."""
         return (eps * multiplier * 4.4) / (aaa_yield * 100.0)
 
-    def _compute_graham_audit_metrics(self, financials: CompanyFinancials, eps: float) -> dict:
+    @staticmethod
+    def _compute_graham_audit_metrics(financials: CompanyFinancials, eps: float) -> Dict[str, Optional[float]]:
+        """Calcule les ratios d'audit pour le score de fiabilité."""
         pe = financials.current_price / eps if eps > 0 else None
-        payout = financials.dividends_total_calculated / financials.net_income_ttm if financials.net_income_ttm and financials.net_income_ttm > 0 else None
+        payout = None
+        if financials.net_income_ttm and financials.net_income_ttm > 0:
+            payout = financials.dividends_total_calculated / financials.net_income_ttm
+
         return {"pe": pe, "payout": payout}

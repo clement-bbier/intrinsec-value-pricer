@@ -64,29 +64,40 @@ class OnboardingTexts:
     MODEL_GRAHAM_DESC = "Approche sécuritaire reliant la capacité bénéficiaire normalisée aux taux obligataires sans risque."
 
     # Section : Intelligence de Données
-    TITLE_PROCESS = "Protocoles d'Acquisition"
+    TITLE_PROCESS = "Acquisition des données"
     STRATEGY_ACQUISITION_TITLE = "Extraction Automatisée"
     STRATEGY_ACQUISITION_DESC = "Récupération des états financiers et données macro via fournisseurs de données institutionnels."
 
     STRATEGY_MANUAL_TITLE = "Mode Ingénierie (Manual Override)"
     STRATEGY_MANUAL_DESC = "Permet l'ajustement granulaire des hypothèses de croissance, de marge et de structure du capital."
 
-    STRATEGY_FALLBACK_TITLE = "Cohérence Sectorielle"
-    STRATEGY_FALLBACK_DESC = "Application de proxys sectoriels en cas de données historiques incomplètes ou aberrantes."
+    STRATEGY_FALLBACK_TITLE = "Données de Substitution"
+    STRATEGY_FALLBACK_DESC = "Recours aux benchmarks sectoriels par défaut en cas de données historiques incomplètes ou aberrantes. (Fallback)"
 
     # Section : Architecture des 5 Piliers
-    TITLE_RESULTS = "Piliers d'Analyse"
-    DESC_RESULTS = "Le rapport est structuré selon les standards de la recherche 'Equity' :"
-    TAB_1_TITLE = "1. Configuration"
-    TAB_1_DESC = "Audit des inputs et récapitulatif des variables macro-économiques."
-    TAB_2_TITLE = "2. Trace Mathématique"
-    TAB_2_DESC = "Transparence totale (Glass Box) sur les étapes de calcul et les formules LaTeX."
-    TAB_3_TITLE = "3. Audit de Fiabilité"
-    TAB_3_DESC = "Vérification de la cohérence interne du modèle et détection d'anomalies."
-    TAB_4_TITLE = "4. Analyse de Marché"
-    TAB_4_DESC = "Triangulation par multiples boursiers (Peer Group Analysis)."
-    TAB_5_TITLE = "5. Ingénierie du Risque"
-    TAB_5_DESC = "Analyse de sensibilité, simulations de Monte Carlo et VaR de valorisation."
+    TITLE_RESULTS = "Organisation des Résultats"
+    DESC_RESULTS = "Les résultats sont segmentés par domaines d'analyse financière :"
+    # Pilier 1 - Configuration
+    TAB_1_TITLE = "Configuration & Macro"
+    TAB_1_DESC = "Audit des variables d'entrée et synchronisation du contexte macroéconomique."
+    # Pilier 2 - Glass Box
+    TAB_2_TITLE = "Logique de Calcul"
+    TAB_2_DESC = "Décomposition des étapes mathématiques et affichage des formules LaTeX."
+    # Pilier 3 - Audit
+    TAB_3_TITLE = "Audit des Données & Cohérence"
+    TAB_3_DESC = "Évaluation de la fiabilité du modèle et détection d'anomalies financières."
+    # Pilier 4 - Marché
+    TAB_4_TITLE = "Valorisation Relative"
+    TAB_4_DESC = "Analyse comparative par multiples boursiers des sociétés comparables."
+    # Pilier 5 - Risque (Version enrichie)
+    TAB_5_TITLE = "Incertitudes & Risques"
+    TAB_5_DESC = "Simulations de Monte Carlo, analyse de la dispersion de valeur et tests de sensibilité."
+
+    # Section : Diagnostics
+    DIAGNOSTIC_HEADER = "SYSTÈME DE DIAGNOSTIC"
+    DIAGNOSTIC_BLOQUANT = "ERREUR : Données financières incomplètes ou incohérentes."
+    DIAGNOSTIC_WARN = "AVERTISSEMENT : Hypothèses en dehors des normes historiques."
+    DIAGNOSTIC_INFO = "INFORMATION : Moteurs de calcul opérationnels."
 
 
 class FeedbackMessages:
@@ -114,6 +125,7 @@ class TooltipsTexts:
 
 class UIMessages:
     """Messages d'information et d'erreur de l'interface utilisateur."""
+    TECHNICAL_DETAILS = "Détails techniques"
     NO_VALID_PERIOD_DATA = "Historique financier insuffisant pour établir une tendance robuste."
     CHART_UNAVAILABLE = "Données insuffisantes pour la génération graphique."
     NO_CALCULATION_STEPS = "Trace mathématique indisponible pour ce moteur de calcul."

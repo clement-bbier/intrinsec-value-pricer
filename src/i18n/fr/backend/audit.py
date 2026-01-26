@@ -16,6 +16,7 @@ class AuditMessages:
     """Verdicts et diagnostics generes par l'auditeur institutionnel."""
     
     # Base Auditor (Data & Macro)
+    SBC_DILUTION_MISSING = "Cohérence Sectorielle : Dilution SBC manquante ou négligeable pour le secteur {sector}."
     BETA_MISSING = "Beta manquant."
     BETA_ATYPICAL = "Beta atypique ({beta:.2f})"
     SOLVENCY_FRAGILE = "Solvabilite fragile (ICR: {icr:.2f} < 1.5)"

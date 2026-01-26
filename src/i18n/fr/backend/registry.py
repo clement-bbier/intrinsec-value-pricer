@@ -8,6 +8,13 @@ class RegistryTexts:
     """Labels et descriptions pedagogiques du registre Glass Box."""
 
     # DCF (Approche Entite - FCFF)
+    FCFF_STANDARD_L = "DCF Standard (FCFF)"
+    FCFF_GROWTH_L = "DCF Growth (Revenue-Driven)"
+    FCFF_NORM_L = "DCF Fondamental (Normalisé)"
+    FCFE_L = "DCF Equity (FCFE)"
+    DDM_L = "Modèle Gordon-Shapiro (DDM)"
+
+    SBC_LABEL = "Ajustement Dilution (SBC)"
     DCF_FCF_BASE_L = "Ancrage du Flux d'Exploitation (FCF0)"
     DCF_FCF_BASE_D = "Flux de tresorerie disponible pour l'entreprise avant service de la dette."
 
@@ -132,3 +139,17 @@ class RegistryTexts:
     AUDIT_PB_D = "Analyse si la valeur boursiere est trop deconnectee de la valeur comptable."
     AUDIT_UNK_L = "Test de Fiabilite Specifique"
     AUDIT_UNK_D = "Diagnostic technique non reference dans le catalogue standard."
+
+    # AJOUTS POUR HARMONISATION
+    HAMADA_L = "Ajustement du Bêta (Hamada)"
+    HAMADA_D = "Réendettement du bêta selon la structure cible de l'entreprise."
+
+    SBC_L = "Ajustement Dilution SBC"
+    SBC_D = "Impact de la rémunération en actions sur la valeur par action future."
+
+    EQUITY_DIRECT_D = "Valeur directe des fonds propres issue de l'actualisation."
+
+    PE_LABEL = "Multiples P/E"
+    EBITDA_LABEL = "Multiples EV/EBITDA"
+    TRIANG_LABEL = "Synthèse Triangulée"
+    PEERS_HYP_LABEL = "Panel de Comparables"

@@ -6,6 +6,9 @@ Sources et interpretations des strategies de calcul.
 
 class StrategySources:
     """Descriptions des sources de donnees utilisees dans les calculs."""
+    CALCULATED = "Moteur de calcul interne (Standard Institutionnel)"
+    EV_CALC = "Actualisation des flux de trésorerie (NPV) et de la Valeur Terminale"
+    WACC_CALC = "Capital Asset Pricing Model (CAPM) & Structure du Capital"
     WACC_TARGET = "Structure Cible"
     WACC_MARKET = "Structure de Marche"
     WACC_FALLBACK = "Structure de Secours (100% Equity)"
@@ -105,11 +108,18 @@ class StrategyFormulas:
     GRAHAM_MULTIPLIER = r"M = 8.5 + 2g"
     GRAHAM_VALUE = r"IV = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}"
 
+    AUDIT_BORROWING = r"\frac{\text{Net Borrowing}}{\text{NI}} < 0.5"
+    AUDIT_SGR = r"g \leq ROE \times (1 - \text{Payout})"
+    NA = r"\text{N/A}"
+    SBC_DILUTION = r"IV_{adj} = IV \times (1 - \text{SBC Rate})^t"
+
 
 class StrategyInterpretations:
     """Notes pedagogiques dynamiques generees par les strategies (Glass Box)."""
     
     # DCF & Abstract
+    EV_CONTEXT = "Représente la valeur intrinsèque de l'outil de production."
+    WACC_CONTEXT = "Coût moyen pondéré des sources de financement."
     WACC = "Taux d'actualisation cible (WACC) de {wacc:.2%}, base sur la structure de capital actuelle."
     PROJ = "Projection sur {years} ans a un taux de croissance annuel moyen de {g:.2%}"
     TV = "Estimation de la valeur de l'entreprise au-dela de la periode explicite."
@@ -157,3 +167,5 @@ class StrategyInterpretations:
     RELATIVE_EBITDA = r"Valeur basee sur le multiple EV/EBITDA median ({val:.1f}x)."
     TRIANGULATION_SUB = "Moyenne de {count} signaux valides"
     TRIANGULATION_FINAL = "Valeur hybride obtenue par la moyenne des methodes relatives."
+
+    SBC_DILUTION_INTERP = "La dilution annuelle (SBC) réduit la part des actionnaires existants de {pct} sur l'horizon de projection."

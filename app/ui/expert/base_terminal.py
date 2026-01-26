@@ -210,7 +210,7 @@ class ExpertTerminalBase(ABC):
         if not self.SHOW_SUBMIT_BUTTON:
             return None
         st.divider()
-        if st.button(SharedTexts.BTN_VALUATE_STD.format(ticker=self.ticker), type="primary", use_container_width=True):
+        if st.button(SharedTexts.BTN_VALUATE_STD.format(ticker=self.ticker), type="primary", width="stretch"):
             return self.build_request()
         return None
 

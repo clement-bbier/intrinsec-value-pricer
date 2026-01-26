@@ -14,8 +14,7 @@ from typing import List, Optional
 from src.exceptions import CalculationError
 from src.models import (
     CalculationStep, CompanyFinancials, DCFParameters,
-    TraceHypothesis, ValuationResult, DCFValuationResult,
-    RIMValuationResult, GrahamValuationResult, MultiplesValuationResult
+    TraceHypothesis, ValuationResult
 )
 # Import depuis core.i18n
 from src.i18n import CalculationErrors
@@ -40,43 +39,51 @@ class ValuationStrategy(ABC):
         """
         pass
 
-    def add_step(self, step_key: str, result: float, numerical_substitution: str,
-                 label: str = "", theoretical_formula: str = "", interpretation: str = "",
-                 hypotheses: Optional[List[TraceHypothesis]] = None) -> None:
+    def add_step(
+            self,
+            step_key: str,
+            result: float,
+            numerical_substitution: str,
+            label: str = "",
+            theoretical_formula: str = "",
+            interpretation: str = "",
+            source: str = "",
+            hypotheses: Optional[List[TraceHypothesis]] = None
+    ) -> None:
         """
-        Ajoute une étape de calcul à la trace Glass Box pour l'auditabilité complète.
+        Enregistre une étape de calcul dans la trace Glass Box pour l'auditabilité.
 
-        Cette méthode permet aux stratégies de valorisation d'enregistrer chaque étape
-        intermédiaire de leur calcul, assurant une transparence totale du processus.
+        Cette méthode permet aux stratégies de capturer les étapes intermédiaires,
+        assurant une transparence totale pour le rapport d'audit final.
 
         Parameters
         ----------
         step_key : str
-            Clé unique identifiant l'étape (doit être cohérente avec le registre Glass Box).
+            Identifiant unique de l'étape (lié au registre Glass Box).
         result : float
-            Résultat numérique de l'étape de calcul.
+            Résultat numérique brut du calcul.
         numerical_substitution : str
-            Substitution numérique détaillée montrant les vraies valeurs utilisées
-            dans le calcul (formatées avec format_smart_number pour les montants).
+            Détail du calcul avec les valeurs réelles injectées (ex: "100 * 1.05").
         label : str, optional
-            Libellé d'affichage de l'étape (par défaut step_key).
+            Libellé d'affichage. Si vide, `step_key` est utilisé par défaut.
         theoretical_formula : str, optional
-            Formule LaTeX théorique (provenant de StrategyFormulas).
+            Expression LaTeX de la formule (StrategyFormulas).
         interpretation : str, optional
-            Interprétation pédagogique de l'étape (provenant de StrategyInterpretations).
-        hypotheses : Optional[List[TraceHypothesis]], optional
-            Hypothèses associées à l'étape pour l'audit institutionnel.
+            Note pédagogique expliquant la logique (StrategyInterpretations).
+        source : str, optional
+            Origine de la donnée ou de la méthode (StrategySources).
+        hypotheses : List[TraceHypothesis], optional
+            Liste des hypothèses critiques associées à cette étape.
 
         Notes
         -----
-        Cette méthode ne fait rien si glass_box_enabled est False.
-        Les étapes sont automatiquement numérotées séquentiellement.
-        Utiliser exclusivement pour les étapes spécifiques à la stratégie (pas les calculs DCF standard).
+        - Ne s'exécute que si `self.glass_box_enabled` est True.
+        - L'identifiant séquentiel `step_id` est auto-généré.
         """
         if not self.glass_box_enabled:
             return
 
-        self.calculation_trace.append(CalculationStep(
+        step = CalculationStep(
             step_id=len(self.calculation_trace) + 1,
             step_key=step_key,
             label=label or step_key,
@@ -84,39 +91,58 @@ class ValuationStrategy(ABC):
             hypotheses=hypotheses or [],
             numerical_substitution=numerical_substitution,
             result=result,
-            interpretation=interpretation
-        ))
+            interpretation=interpretation,
+            source=source
+        )
 
-    def generate_audit_report(self, result: ValuationResult) -> None:
-        """Génère le rapport d'audit pour le résultat de valorisation."""
+        self.calculation_trace.append(step)
+
+    @staticmethod
+    def generate_audit_report(result: ValuationResult) -> None:
+        """
+        Génère le rapport d'audit institutionnel pour un résultat de valorisation.
+
+        Cette méthode identifie l'auditeur approprié en fonction du mode de
+        valorisation et délègue le calcul du score de fiabilité à l'AuditEngine.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            L'objet résultat à auditer (DCF, RIM, Graham, Multiples).
+
+        Notes
+        -----
+        Si la requête originale est absente du résultat, une requête de
+        secours (fallback) est générée pour permettre l'exécution de l'audit.
+        Les imports sont effectués localement pour éviter les dépendances circulaires.
+        """
         from infra.auditing.audit_engine import AuditEngine, AuditorFactory
+        from src.models import (
+            ValuationRequest, InputSource, ValuationMode,
+            DCFValuationResult, RIMValuationResult,
+            GrahamValuationResult, MultiplesValuationResult
+        )
 
         if result.request is None:
-            # Créer une requête minimale si elle n'existe pas
-            from src.models import ValuationRequest, InputSource, ValuationMode
-
-            # Déterminer le mode basé sur le type de résultat
+            # Détermination dynamique du mode de valorisation pour la requête de secours
             if isinstance(result, DCFValuationResult):
-                mode = ValuationMode.FCFF_STANDARD  # Mode par défaut pour DCF
+                mode = ValuationMode.FCFF_STANDARD
             elif isinstance(result, RIMValuationResult):
                 mode = ValuationMode.RIM
             elif isinstance(result, GrahamValuationResult):
                 mode = ValuationMode.GRAHAM
-            elif hasattr(result, 'multiples_data'):  # MultiplesValuationResult
-                mode = ValuationMode.FCFF_STANDARD  # Utiliser DCFAuditor par défaut pour l'instant
             else:
-                mode = ValuationMode.FCFF_STANDARD  # Fallback
+                mode = ValuationMode.FCFF_STANDARD  # Fallback par défaut
 
             result.request = ValuationRequest(
                 ticker=result.financials.ticker,
                 projection_years=result.params.growth.projection_years,
                 mode=mode,
                 input_source=InputSource.AUTO,
-                manual_params=None,
                 options={}
             )
 
-        # Utiliser l'auditeur approprié basé sur le type de résultat
+        # Sélection de l'auditeur spécialisé selon le type de résultat
         if isinstance(result, MultiplesValuationResult):
             from infra.auditing.auditors import MultiplesAuditor
             auditor = MultiplesAuditor()

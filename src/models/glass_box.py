@@ -136,13 +136,14 @@ class CalculationStep(BaseModel):
     step_key: str = ""
     label: str = ""
     theoretical_formula: str = ""
-    actual_calculation: str = ""  # ST-2.1: Nouvelle substitution numérique explicite
-    variables_map: Dict[str, VariableInfo] = Field(default_factory=dict)  # ST-2.1: Provenance des variables
+    actual_calculation: str = ""
+    variables_map: Dict[str, VariableInfo] = Field(default_factory=dict)
     hypotheses: List[TraceHypothesis] = Field(default_factory=list)
-    numerical_substitution: str = ""  # Legacy, utiliser actual_calculation
+    numerical_substitution: str = ""
     result: float = ModelDefaults.DEFAULT_RESULT_VALUE
     unit: str = ""
     interpretation: str = ""
+    source: str = ""
 
     def get_variable(self, symbol: str) -> Optional[VariableInfo]:
         """Récupère les informations d'une variable par son symbole.

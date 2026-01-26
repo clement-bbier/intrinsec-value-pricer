@@ -1,7 +1,6 @@
 """
 app/ui/results/components/step_renderer.py
 RENDU DES ÉTAPES DE CALCUL (Glass Box) — Standard Institutionnel.
-Architecture : Composants UI Atomiques / SOLID
 """
 
 from __future__ import annotations
@@ -10,36 +9,62 @@ from typing import Dict
 import streamlit as st
 
 from src.models import CalculationStep, VariableInfo, VariableSource
-from src.i18n import KPITexts, CommonTexts
+from src.i18n import KPITexts, CommonTexts, AuditTexts
 from src.utilities.formatting import format_smart_number
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 
 # ============================================================================
-# CONSTANTES DE COULEURS (PROVENANCE INSTITUTIONNELLE)
+# CONFIGURATION DES THÈMES DE COULEURS (PROVENANCE INSTITUTIONNELLE)
 # ============================================================================
 
-SOURCE_THEMES: Dict[VariableSource, str] = {
-    VariableSource.YAHOO_FINANCE: "green",
-    VariableSource.MACRO_PROVIDER: "blue",
-    VariableSource.CALCULATED: "gray",
-    VariableSource.MANUAL_OVERRIDE: "orange",
-    VariableSource.DEFAULT: "gray",
+# Mapping des couleurs hexadécimales pour les badges HTML
+SOURCE_COLORS: Dict[VariableSource, str] = {
+    VariableSource.YAHOO_FINANCE: "#10b981",  # Vert (Audité)
+    VariableSource.MACRO_PROVIDER: "#3b82f6", # Bleu (Macro)
+    VariableSource.CALCULATED: "#64748b",     # Gris (Déterminé)
+    VariableSource.MANUAL_OVERRIDE: "#f59e0b",# Orange (Ajusté)
+    VariableSource.DEFAULT: "#64748b",
 }
 
+def _render_status_badge(label: str, source: VariableSource) -> str:
+    """Génère le composant HTML pour un badge de statut professionnel."""
+    color = SOURCE_COLORS.get(source, "#64748b")
+    return f"""
+    <div style='text-align: right;'>
+        <span style='
+            background-color: {color}20; 
+            color: {color}; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-size: 0.75rem; 
+            font-weight: 700; 
+            border: 1px solid {color}40;
+            letter-spacing: 0.5px;
+        '>
+            {label.upper()}
+        </span>
+    </div>
+    """
+
 def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
-    """Affiche le référentiel des variables utilisées dans l'équation."""
+    """Affiche le référentiel des variables avec couleurs institutionnelles."""
     if not variables_map:
         return
 
-    # Utilisation d'un petit tableau pour la clarté institutionnelle
     for symbol, var in variables_map.items():
-        theme = SOURCE_THEMES.get(var.source, "gray")
+        color_hex = SOURCE_COLORS.get(var.source, "#64748b")
 
-        # Ligne de variable : Symbole | Valeur | Source
         col_sym, col_val, col_src = st.columns([1, 2, 3])
-        col_sym.markdown(f":{theme}[**{symbol}**]")
+        col_sym.markdown(f"<b style='color:{color_hex}'>{symbol}</b>", unsafe_allow_html=True)
         col_val.markdown(f"`{var.formatted_value}`")
-        col_src.caption(f"Source : {var.source.value.upper()}")
+
+        # Source stylisée avec le label i18n
+        col_src.markdown(
+            f"<span style='color:{color_hex}; font-size:0.8rem; font-weight:600;'>"
+            f"{CommonTexts.DATA_ORIGIN_LABEL} : {var.source.value.upper()}"
+            f"</span>",
+            unsafe_allow_html=True
+        )
 
         if var.is_overridden and var.original_value is not None:
             st.caption(f"└ {CommonTexts.AUTO_VALUE_IGNORED} : {var.original_value:,.4f}")
@@ -47,64 +72,62 @@ def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
 
 @st.fragment
 def render_calculation_step(index: int, step: CalculationStep) -> None:
-    """
-    Rendu d'une étape de calcul Glass Box.
-    Structure : Container > Columns > Divider > Expander
-    """
-    # 1. Préparation des métadonnées Registry
+    """Rendu d'une étape de calcul Glass Box avec badges stylisés."""
+
+    # 1. Extraction des métadonnées centralisées (Label et Formule)
     meta = get_step_metadata(step.step_key)
     label = meta.get("label", step.label) or CommonTexts.STEP_GENERIC_LABEL
     formula = meta.get("formula", step.theoretical_formula)
 
-    # 2. Détermination du statut institutionnel
+    # 2. Logique de détermination du statut et de la couleur
     if step.has_overrides():
         status_label = CommonTexts.STATUS_ADJUSTED
-        status_color = SOURCE_THEMES[VariableSource.MANUAL_OVERRIDE]
+        status_src = VariableSource.MANUAL_OVERRIDE
     elif any(v.source == VariableSource.YAHOO_FINANCE for v in step.variables_map.values()):
         status_label = CommonTexts.STATUS_AUDITED
-        status_color = SOURCE_THEMES[VariableSource.YAHOO_FINANCE]
+        status_src = VariableSource.YAHOO_FINANCE
     else:
         status_label = CommonTexts.STATUS_CALCULATED
-        status_color = SOURCE_THEMES[VariableSource.CALCULATED]
+        status_src = VariableSource.CALCULATED
 
-    # 3. Rendu Visuel
+    # 3. Rendu du Container principal
     with st.container(border=True):
-        # En-tête : Index. LABEL | STATUT
-        h_left, h_right = st.columns([4, 1])
+        # Header : Index | LABEL | BADGE
+        h_left, h_right = st.columns([4, 1.5])
         h_left.markdown(f"**{KPITexts.STEP_LABEL.format(index=index)} : {label.upper()}**")
-        h_right.markdown(f"<div style='text-align:right;'><small>:{status_color}[{status_label}]</small></div>", unsafe_allow_html=True)
+        # Correction du bug d'affichage : Utilisation du badge HTML
+        h_right.markdown(_render_status_badge(status_label, status_src), unsafe_allow_html=True)
 
         st.divider()
 
-        # Corps de la Trace Mathématique
+        # Corps Mathématique : Théorie | Substitution | Résultat
         c_theory, c_subst, c_result = st.columns([3, 4, 2])
 
         with c_theory:
             st.caption(KPITexts.FORMULA_THEORY)
             if formula and formula != "N/A":
-                # Rendu LaTeX centré
                 st.latex(formula)
+            else:
+                st.markdown(f"*{AuditTexts.DEFAULT_FORMULA}*")
 
         with c_subst:
             st.caption(KPITexts.APP_NUMERIC)
+            # Priorité au calcul réel effectué si disponible
             display_val = step.actual_calculation or step.numerical_substitution
             if display_val:
                 st.code(display_val, language="text", wrap_lines=True)
 
         with c_result:
-            # Gestion de l'unité dynamique via i18n V21
             unit_label = KPITexts.VALUE_UNIT.format(unit=step.unit or "")
             st.caption(unit_label)
-
             if step.result is not None:
-                # Utilisation du formatage intelligent centralisé
                 formatted_res = format_smart_number(step.result, decimals=2)
                 st.subheader(formatted_res)
 
-        # 4. Footer : Glass Box Details (Variables & Interpretation)
+        # 4. Footer : Transparence des données (Source & Commentaire)
         if step.variables_map or step.interpretation:
             st.divider()
-            # On n'ouvre l'expander par défaut que si c'est une étape ajustée (Audit)
+            # Expand par défaut si l'étape a été modifiée par l'analyste
             is_expanded = step.has_overrides()
 
             with st.expander(CommonTexts.DATA_ORIGIN_LABEL, expanded=is_expanded):
@@ -114,4 +137,5 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
                 if step.interpretation:
                     if step.variables_map: st.divider()
                     st.caption(CommonTexts.INTERPRETATION_LABEL)
+                    # Utilisation du composant Info sans icône pour un style épuré
                     st.info(step.interpretation, icon=None)

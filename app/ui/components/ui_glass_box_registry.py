@@ -90,7 +90,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "label": RegistryTexts.DCF_BRIDGE_L,
         "formula": StrategyFormulas.FCFE_EQUITY_VALUE,
         "unit": "currency",
-        "description": "Valeur directe des fonds propres issue de l'actualisation."
+        "description": RegistryTexts.EQUITY_DIRECT_D
     },
     "VALUE_PER_SHARE": {
         "label": RegistryTexts.DCF_IV_L,
@@ -179,22 +179,38 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     # ==========================================================================
     "AUDIT_FCFE_BORROWING": {
         "label": RegistryTexts.FCFE_DEBT_ADJ_L,
-        "formula": r"Net Borrowing / NI < 0.5",
+        "formula": StrategyFormulas.AUDIT_BORROWING,
         "unit": "ratio",
         "description": RegistryTexts.FCFE_DEBT_ADJ_D
     },
     "AUDIT_MODEL_SGR": {
         "label": RegistryTexts.DDM_GROWTH_L,
-        "formula": r"g \leq ROE \times (1 - Payout)",
+        "formula": StrategyFormulas.AUDIT_SGR,
         "unit": "bool",
         "description": RegistryTexts.DDM_GROWTH_D
     },
     "AUDIT_UNKNOWN": {
-        "label": "Étape spécifique",
-        "formula": r"\text{N/A}",
+        "label": RegistryTexts.AUDIT_UNK_L,
+        "formula": StrategyFormulas.NA,
         "unit": "",
-        "description": "Calcul technique détaillé."
+        "description": RegistryTexts.AUDIT_UNK_D
     },
+
+    # ==========================================================================
+    # 4. AJUSTEMENTS TECHNIQUES & PONTS
+    # ==========================================================================
+    "BETA_HAMADA_ADJUSTMENT": {
+        "label": RegistryTexts.HAMADA_L,
+        "formula": StrategyFormulas.HAMADA,
+        "unit": "ratio",
+        "description": RegistryTexts.HAMADA_D
+    },
+    "SBC_DILUTION_ADJUSTMENT": {
+        "label": RegistryTexts.SBC_L,
+        "formula": StrategyFormulas.SBC_DILUTION,
+        "unit": "currency",
+        "description": RegistryTexts.SBC_D
+    }
 }
 
 def get_step_metadata(key: str) -> Dict[str, Any]:

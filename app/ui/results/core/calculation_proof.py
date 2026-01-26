@@ -23,7 +23,7 @@ class CalculationProofTab(ResultTabBase):
 
     # Utilisation des constantes i18n pour éviter tout hardcoding
     TAB_ID = "calculation_proof"
-    LABEL = PillarLabels.PILLAR_2_TRACE
+    LABEL = KPITexts.TAB_CALC
     ORDER = 2
     IS_CORE = True
 

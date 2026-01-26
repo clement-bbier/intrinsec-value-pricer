@@ -26,7 +26,8 @@ from src.i18n.fr.ui import (
     SOTPResultTexts,
     BacktestTexts,
     ScenarioTexts,
-    PillarLabels
+    PillarLabels,
+    DDMTexts
 )
 
 # Backend
@@ -65,6 +66,7 @@ __all__ = [
     "PillarLabels",
     "QuantTexts",
     "MarketTexts",
+    "DDMTexts",
     # Backend
     "WorkflowTexts",
     "DiagnosticTexts",

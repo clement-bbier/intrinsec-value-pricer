@@ -7,8 +7,8 @@ Pattern : Single Responsibility (SOLID)
 Style : Numpy docstrings
 
 Conventions de nommage :
-    - widget_*  : Widgets interactifs (retournent des données utilisateur)
-    - build_*   : Constructeurs (transforment les données en objets métier)
+    - widget_* : Widgets interactifs (retournent des données utilisateur)
+    - build_* : Constructeurs (transforment les données en objets métier)
     - display_* : Affichage pur (ne retournent rien, side-effects only)
 
 Note : Les widgets reproduisent fidèlement les fonctionnalités du legacy
@@ -32,9 +32,9 @@ from src.models import (
     BusinessUnit,
     SOTPMethod,
 )
-from src.i18n import SharedTexts, SOTPTexts
+from src.i18n import SharedTexts
 from src.config.settings import SIMULATION_CONFIG, VALUATION_CONFIG
-from src.config.constants import UIWidgetDefaults, TechnicalDefaults
+from src.config.constants import UIWidgetDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -347,52 +347,102 @@ def widget_equity_bridge(
 # ==============================================================================
 
 def widget_monte_carlo(
-    mode: ValuationMode,
-    terminal_method: Optional[TerminalValueMethod] = None,
-    custom_vols: Optional[Dict[str, str]] = None,
-    key_prefix: Optional[str] = None
+        mode: ValuationMode,
+        terminal_method: Optional[TerminalValueMethod] = None,
+        custom_vols: Optional[Dict[str, str]] = None,
+        key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget Monte Carlo intelligent (ST-4.2).
-    Adapte les champs de volatilité selon la pertinence du modèle.
+    Widget de calibration stochastique (Monte Carlo).
+    Standardisation i18n et orchestration dynamique des colonnes.
     """
     prefix = key_prefix or "mc"
+
+    # 1. En-tête de section (i18n)
     st.markdown(SharedTexts.SEC_6_MC)
     st.info(SharedTexts.SEC_6_DESC_MC)
 
-    enable = st.toggle(SharedTexts.MC_CALIBRATION, False, key=f"{prefix}_enable")
+    # 2. Toggle d'activation
+    enable = st.toggle(SharedTexts.MC_CALIBRATION, value=False, key=f"{prefix}_enable")
+
     if not enable:
         return {"enable_monte_carlo": False}
 
+    # 3. Profondeur de simulation (Slider)
     sims = st.select_slider(
         SharedTexts.MC_ITERATIONS,
         options=[1000, 5000, 10000, 20000],
         value=5000,
         key=f"{prefix}_sims"
     )
-    st.caption(SharedTexts.MC_VOL_INCERTITUDE) # Label i18n
+
+    st.caption(SharedTexts.MC_VOL_INCERTITUDE)
+
+    # 4. Grille de saisie (Distribution en 2 colonnes)
     v_col1, v_col2 = st.columns(2)
 
-    # 1. Volatilité de l'ancrage (Y0)
-    label_base = custom_vols.get("base_flow_volatility", SharedTexts.MC_VOL_BASE_FLOW) if custom_vols else SharedTexts.MC_VOL_BASE_FLOW
-    v0 = v_col1.number_input(label_base, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_vol_flow")
+    # --- COLONNE 1 : VOLATILITÉS DE BASE ---
+    # Détermination du label i18n pour le flux d'ancrage (FCF, Dividende, etc.)
+    label_base = (custom_vols or {}).get("base_flow_volatility", SharedTexts.MC_VOL_BASE_FLOW)
 
-    # 2. Volatilité du Bêta : MASQUÉE pour Graham car non pertinent
-    vb = None
+    v_base = v_col1.number_input(
+        label_base,
+        min_value=0.0, max_value=0.5,
+        value=None, format="%.3f",
+        key=f"{prefix}_v_base"
+    )
+
+    # --- COLONNE 2 : RISQUES SPÉCIFIQUES ---
+    # Bêta (Masqué si Graham car non utilisé par le modèle)
+    v_beta = None
     if mode != ValuationMode.GRAHAM:
-        vb = v_col2.number_input(SharedTexts.MC_VOL_BETA, 0.0, 1.0, value=None, format="%.3f", key=f"{prefix}_vol_beta")
+        v_beta = v_col2.number_input(
+            SharedTexts.MC_VOL_BETA,
+            min_value=0.0, max_value=1.0,
+            value=None, format="%.3f",
+            key=f"{prefix}_v_beta"
+        )
 
-    res = {"enable_monte_carlo": True, "num_simulations": sims, "base_flow_volatility": v0, "beta_volatility": vb}
+    # Exit Multiple (Uniquement si la méthode de sortie est le multiple)
+    v_exit_m = None
+    if terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
+        v_exit_m = v_col2.number_input(
+            SharedTexts.INP_EXIT_MULT,  # Réutilisation du label i18n Exit Multiple
+            min_value=0.0, max_value=0.4,
+            value=None, format="%.3f",
+            key=f"{prefix}_v_exit_m"
+        )
 
-    # 3. Volatilités spécifiques (g, omega, etc.)
+    # 5. Préparation du dictionnaire de sortie
+    config = {
+        "enable_monte_carlo": True,
+        "num_simulations": sims,
+        "base_flow_volatility": v_base,
+        "beta_volatility": v_beta,
+        "exit_multiple_volatility": v_exit_m
+    }
+
+    # 6. Injection des variables de croissance (g, omega...)
     if custom_vols:
-        for tech_key, label in custom_vols.items():
+        for tech_key, i18n_label in custom_vols.items():
+            # On évite de redemander la base_flow_volatility déjà traitée
             if tech_key != "base_flow_volatility":
-                res[tech_key] = v_col1.number_input(label, 0.0, 0.5, value=None, format="%.3f", key=f"{prefix}_{tech_key}")
+                config[tech_key] = v_col1.number_input(
+                    i18n_label,
+                    min_value=0.0, max_value=0.5,
+                    value=None, format="%.3f",
+                    key=f"{prefix}_{tech_key}"
+                )
     else:
-        res["growth_volatility"] = v_col1.number_input(SharedTexts.MC_VOL_G, 0.0, 0.2, value=None, format="%.3f", key=f"{prefix}_vol_growth")
+        # Fallback DCF standard : Volatilité de la croissance (gn)
+        config["growth_volatility"] = v_col1.number_input(
+            SharedTexts.MC_VOL_G,
+            min_value=0.0, max_value=0.2,
+            value=None, format="%.3f",
+            key=f"{prefix}_v_growth"
+        )
 
-    return res
+    return config
 
 # ==============================================================================
 # 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)

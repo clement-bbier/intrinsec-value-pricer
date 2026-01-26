@@ -1,102 +1,120 @@
 """
 tests/unit/test_streamlit_adapters.py
-
-Tests corrigés pour app/adapters/streamlit_adapters.py.
-Cible les méthodes réelles de la classe StreamlitProgressHandler.
+Suite de tests pour les adaptateurs UI (Streamlit).
+Couverture cible : 100%
 """
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-
 from app.adapters.streamlit_adapters import (
     StreamlitProgressHandler,
     StreamlitResultRenderer
 )
 from src.models import ValuationResult
-from src.interfaces import IUIProgressHandler
 
+# Cible de patch pour Streamlit
+ST_PATCH = 'app.adapters.streamlit_adapters.st'
 
 class TestStreamlitProgressHandler:
-    """Tests du StreamlitProgressHandler (Logiciel UI)."""
+    """Tests pour le gestionnaire de progression (st.status)."""
 
-    def setup_method(self):
-        """Initialise le handler pour chaque test."""
-        self.handler = StreamlitProgressHandler()
+    @patch(ST_PATCH)
+    def test_progress_lifecycle_nominal(self, mock_st):
+        """Vérifie le cycle complet : Start -> Update -> Complete."""
+        mock_container = MagicMock()
+        mock_st.status.return_value = mock_container
 
-    @patch('app.adapters.streamlit_adapters.st')
-    def test_progress_lifecycle(self, mock_st):
-        """Test le cycle de vie complet avec les méthodes réelles."""
-        mock_status = MagicMock()
-        mock_st.status.return_value = mock_status
+        handler = StreamlitProgressHandler()
+        handler.start_status("Initialisation")
+        handler.update_status("Calcul en cours...")
+        handler.complete_status("Succès", state="complete")
 
-        # Utilisation des vraies méthodes du code source :
-        # start_status, update_status, complete_status
+        # Vérifications
+        mock_st.status.assert_called_once_with("Initialisation", expanded=True)
+        mock_container.write.assert_called_with("Calcul en cours...")
+        mock_container.update.assert_called_with(
+            label="Succès", state="complete", expanded=False
+        )
 
-        # 1. Start
-        self.handler.start_status("Test")
+    @patch(ST_PATCH)
+    def test_progress_error_branch(self, mock_st):
+        """Vérifie le passage en mode erreur du statut."""
+        mock_container = MagicMock()
+        mock_st.status.return_value = mock_container
 
-        mock_st.status.assert_called_with("Test", expanded=True)
+        handler = StreamlitProgressHandler()
+        handler.start_status("Run")
+        handler.error_status("Crash")
 
-        # 2. Update
-        self.handler.update_status("Step 1")
+        mock_container.update.assert_called_with(
+            label="Crash", state="error", expanded=True
+        )
 
-        mock_status.write.assert_called_with("Step 1")
+    @patch(ST_PATCH)
+    def test_context_manager_exception(self, mock_st):
+        """Vérifie que le __exit__ capture les erreurs et met à jour le statut."""
+        mock_container = MagicMock()
+        mock_st.status.return_value = mock_container
 
-        # 3. Complete
-        self.handler.complete_status("Done")
+        handler = StreamlitProgressHandler()
 
-        mock_status.update.assert_called_with(label="Done", state="complete", expanded=False)
+        # On simule un crash à l'intérieur du bloc 'with'
+        with pytest.raises(RuntimeError):
+            with handler.start_status("Test Context"):
+                raise RuntimeError("Boom")
 
-    def test_interface_compliance(self):
-        """Vérifie que le handler implémente l'interface requise."""
-        assert isinstance(self.handler, IUIProgressHandler)
-        # On vérifie dynamiquement les méthodes présentes
-        methods = [m for m in dir(self.handler) if not m.startswith('_') and callable(getattr(self.handler, m))]
-        assert len(methods) >= 3  # Start, Update, Complete
+        # Vérifie que le mode erreur a été déclenché automatiquement
+        mock_container.update.assert_called()
+        args, kwargs = mock_container.update.call_args
+        assert kwargs['state'] == "error"
 
 
 class TestStreamlitResultRenderer:
-    """Tests du rendu des résultats via Orchestrator."""
+    """Tests pour le moteur de rendu des résultats."""
 
-    def setup_method(self):
-        self.renderer = StreamlitResultRenderer()
-
-    @patch('app.adapters.streamlit_adapters.st')
-    # Correction du chemin de patch pour l'import dans la méthode render
+    @patch(ST_PATCH)
     @patch('app.ui.results.orchestrator.ResultTabOrchestrator')
-    def test_render_success_path(self, mock_orchestrator_cls, mock_st):
-        """Test le rendu nominal des résultats."""
+    def test_render_results_delegation(self, mock_orch_cls, mock_st):
+        """Vérifie la délégation à l'orchestrateur (Lazy Loading)."""
+        renderer = StreamlitResultRenderer()
         mock_result = Mock(spec=ValuationResult)
-        mock_orch_instance = mock_orchestrator_cls.return_value
 
-        self.renderer.render_results(mock_result)
+        renderer.render_results(mock_result)
 
-        # Vérifie que l'orchestrateur est instancié et appelé
-        mock_orchestrator_cls.assert_called_once()
-        mock_orch_instance.render.assert_called_once_with(mock_result)
+        mock_orch_cls.assert_called_once()
+        mock_orch_cls.return_value.render.assert_called_once_with(mock_result)
 
-    @patch('app.adapters.streamlit_adapters.st')
-    @patch('app.ui.results.orchestrator.ResultTabOrchestrator')
-    def test_render_error_handling(self, mock_orchestrator_cls, mock_st):
-        """Vérifie que les erreurs de rendu sont capturées et affichées dans l'UI."""
-        mock_result = Mock(spec=ValuationResult)
-        mock_orch_instance = mock_orchestrator_cls.return_value
-        mock_orch_instance.render.side_effect = Exception("Crash UI")
+    @patch(ST_PATCH)
+    def test_display_error_with_details(self, mock_st):
+        """Vérifie l'affichage d'erreur avec l'expander technique."""
+        renderer = StreamlitResultRenderer()
 
-        # Actuellement, l'exception est propagée (comportement à améliorer)
-        with pytest.raises(Exception, match="Crash UI"):
-            self.renderer.render_results(mock_result)
+        # Mock de l'expander pour tester le bloc 'with'
+        mock_expander = MagicMock()
+        mock_st.expander.return_value.__enter__.return_value = mock_expander
 
+        renderer.display_error("Message", details="Stacktrace")
 
-class TestAdapterErrorResilience:
-    """Tests de robustesse globale."""
+        mock_st.error.assert_called_with("Message")
+        mock_st.expander.assert_called_once()
+        mock_st.code.assert_called_with("Stacktrace", language="text")
 
-    @patch('app.adapters.streamlit_adapters.st')
-    def test_handler_resilience_to_st_crash(self, mock_st):
-        """Teste le comportement actuel : le handler propage les erreurs Streamlit."""
-        mock_st.status.side_effect = RuntimeError("ST Offline")
-        handler = StreamlitProgressHandler()
+    @patch(ST_PATCH)
+    def test_display_error_no_details(self, mock_st):
+        """Vérifie que l'expander n'est pas créé si details est None."""
+        renderer = StreamlitResultRenderer()
+        renderer.display_error("Message simple", details=None)
 
-        # Actuellement, le handler propage l'exception (comportement à améliorer)
-        with pytest.raises(RuntimeError, match="ST Offline"):
-            handler.start_status("Test")
+        mock_st.error.assert_called_with("Message simple")
+        mock_st.expander.assert_not_called()
+
+    @patch.object(StreamlitResultRenderer, 'render_results')
+    def test_deprecated_aliases_coverage(self, mock_render):
+        """Couverture des méthodes dépréciées pour assurer le 100%."""
+        renderer = StreamlitResultRenderer()
+        mock_res = Mock()
+
+        renderer.render_executive_summary(mock_res)
+        renderer.display_valuation_details(mock_res, provider=None)
+
+        assert mock_render.call_count == 2

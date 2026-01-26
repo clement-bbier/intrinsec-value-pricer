@@ -8,22 +8,22 @@ Fusion de la version exhaustive V20 et des ancres techniques de l'UI.
 
 class PillarLabels:
     """Labels officiels des 5 piliers de recherche."""
-    PILLAR_1_CONF = "1. CONFIGURATION"
-    PILLAR_2_TRACE = "2. TRACE MATHÉMATIQUE"
-    PILLAR_3_AUDIT = "3. RAPPORT D'AUDIT"
-    PILLAR_4_RISK = "4. INGÉNIERIE DU RISQUE"
-    PILLAR_5_MARKET = "5. ANALYSE DE MARCHÉ"
-    PILLAR_0_SUMMARY = "SYNTHÈSE DÉCISIONNELLE"
+    PILLAR_1_CONF = "1. Configuration"
+    PILLAR_2_TRACE = "2. Trace mathématique"
+    PILLAR_3_AUDIT = "3. Rapport d'audit"
+    PILLAR_4_RISK = "4. Ingénierie du risque"
+    PILLAR_5_MARKET = "5. Analyse de marché & SOTP"  # Fusion effectuée
+    PILLAR_0_SUMMARY = "Synthèse décisionnelle"
 
 class KPITexts:
     """Labels et titres pour l'affichage des résultats (Glass Box)."""
 
     # --- Navigation & Onglets ---
-    VALUE_LABEL = None
+    SUB_DILUTION = "{iv:.2f} / (1 + {rate:.2%})^{t}"
     TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de Calcul"
     TAB_AUDIT = "Audit de Fiabilité"
-    TAB_MC = "Analyse de Risque (MC)"
+    TAB_MC = "Analyse de Risque"
     TAB_SCENARIOS = "Analyse de Scénarios"
 
     # --- NOUVEAU : Synchronisation KPI Cards (Technique) ---
@@ -50,7 +50,7 @@ class KPITexts:
     LABEL_MULTIPLES_UNAVAILABLE = "Cohorte de comparables insuffisante pour triangulation."
 
     # --- PILLIER 1 : CONFIGURATION (Hypothèses) ---
-    SECTION_INPUTS_HEADER = "#### RÉCAPITULATIF DES DONNÉES UTILISÉES"
+    SECTION_INPUTS_HEADER = "Récapitulatif des données utilisées"
     SECTION_INPUTS_CAPTION = "Listing intégral des inputs injectés dans le moteur de calcul."
 
     SEC_A_IDENTITY = "A. Identification de l'Entreprise"
@@ -156,27 +156,44 @@ class KPITexts:
     HELP_VAR = "Value-at-Risk : perte maximale possible dans 95% des scénarios simulés."
     HELP_OMEGA = "Coefficient de persistance des profits anormaux (0 = érosion immédiate)."
 
+    SUB_CAPM_MATH = "{rf:.4f} + {beta:.2f} \times {mrp:.4f}"
+    SUB_RIM_TV_MATH = "({ri:,.2f} \times {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"
+
+    SUB_PE_MULT = "({ni} × {mult:.1f}) / {shares}"
+    SUB_EBITDA_MULT = "({ebitda} × {mult:.1f}) / {shares}"
+
+    SUB_REV_BASE = "Revenu TTM : {val:,.0f}"
+    SUB_FCF_NORM = "FCF Normalisé ({src}) : {val:,.0f}"
+    SUB_FCFE_WALK = "NI ({ni:,.0f}) + Adj ({adj:,.0f}) + Net Debt ({nb:,.0f}) = {total:,.0f}"
+    SUB_DDM_BASE = "{d0:,.2f} \times {shares:,.0f} = {total:,.0f}"
+
 class AuditTexts:
     """Textes Pillar 3 — Audit & Fiabilité."""
     NO_REPORT = "Audit indisponible pour ce modèle."
     GLOBAL_SCORE = "Indice de Confiance Global : {score:.1f}%"
     RATING_SCORE = "Notation Qualité"
     COVERAGE = "Couverture des Invariants"
-    CHECK_TABLE = "Vérification des Règles Normatives"
     H_INDICATOR = "MÉTRIQUE"
     H_RULE = "RÈGLE"
     H_EVIDENCE = "PREUVE"
     H_VERDICT = "VERDICT"
-    STATUS_ALERT = "Anomalie"
-    STATUS_OK = "Conforme"
     AUDIT_NOTES_EXPANDER = "Détail de l'audit technique"
     LBL_SOTP_REVENUE_CHECK = "Cohérence Revenus SOTP"
     LBL_SOTP_DISCOUNT_CHECK = "Prudence Décote Holding"
+    INTERNAL_CALC = "Calcul Interne"
+    DEFAULT_FORMULA = r"N/A"
+    COLOR_SUCCESS = ":green"
+    COLOR_WARNING = ":orange"
+    COLOR_CRITICAL = ":red"
+    STATUS_ALERT = "Anomalie"
+    STATUS_OK = "Conforme"
+    CHECK_TABLE = "Vérification des règles normatives"
 
 class QuantTexts:
     """Textes Pillar 4 — Ingénierie du Risque."""
+    MC_SENS_SUB = "P50 Neutre (rho=0) : {p50_n:,.2f} | P50 de Base (rho=-0.3) : {p50_b:,.2f}"
     BACKTEST_INTERPRETATION = "Un faible gap indique une forte corrélation historique entre les fondamentaux et le prix."
-    MC_TITLE = "#### SIMULATION MONTE CARLO"
+    MC_TITLE = "Simulation de Monte Carlo"
     MC_FAILED = "Convergence impossible : volatilités trop élevées."
     MC_DOWNSIDE = "Risque de Survalorisation"
     MC_MEDIAN = "Valeur Centrale (P50)"
@@ -186,7 +203,7 @@ class QuantTexts:
     MC_CONFIG_SUB = r"Sims : {sims} | β Vol: {sig_b:.1%} | g Vol: {sig_g:.1%} | ρ: {rho:.2f}"
     MC_FILTER_SUB = r"{valid} valides / {total} itérations"
 
-    SCENARIO_TITLE = "#### ANALYSE DES SCÉNARIOS STRATÉGIQUES"
+    SCENARIO_TITLE = "Analyse des scénarios"
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
     COL_SCENARIO = "SCÉNARIO"
@@ -196,18 +213,18 @@ class QuantTexts:
     COL_VALUE_PER_SHARE = "VALEUR"
     COL_UPSIDE = "UPSIDE"
 
-    BACKTEST_TITLE = "#### PERFORMANCE HISTORIQUE DU MODÈLE"
+    BACKTEST_TITLE = "Performance historique du modèle"
     LABEL_HIT_RATE = "Taux de Succès (Hit Rate)"
     LABEL_MAE = "Erreur Moyenne (MAE)"
 
 class MarketTexts:
     """Textes Pillar 5 — Analyse de Marché."""
-    MARKET_TITLE = "#### VALORISATION RELATIVE SECTORIELLE"
+    MARKET_TITLE = "Valorisation Relative Sectorielle"
     COL_PEER = "COMPARABLE"
     COL_MULTIPLE = "MULTIPLE"
     COL_IMPLIED_VALUE = "VALEUR IMPLICITE"
 
-    TITLE_SEGMENTATION = "#### DÉCOMPOSITION SOTP"
+    TITLE_SEGMENTATION = "Décomposition SOTP"
     CAPTION_SEGMENTATION = "Répartition de la valeur d'entreprise par segments opérationnels."
     COL_SEGMENT = "UNITÉ COMMERCIALE"
     COL_VALUE = "VALEUR"
@@ -223,10 +240,3 @@ class ChartTexts:
     SIM_AXIS_Y = "Densité de Probabilité"
     SENS_TITLE = "Sensibilité WACC / Croissance"
     CORREL_CAPTION = "Matrice de Corrélation des Inputs"
-
-class PDFTexts:
-    """Pitchbook PDF."""
-    PAGE_EXECUTIVE_SUMMARY = "RESEARCH REPORT - INTRINSIC VALUE"
-    SECTION_VALORISATION = "SYNTHÈSE DE VALORISATION"
-    LABEL_RECOMMENDATION = "AVIS ANALYSTE"
-    FOOTER_GENERATED_BY = "Intrinsic Value Pricer | {date} | v{version}"

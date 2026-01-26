@@ -1,28 +1,11 @@
-"""
-app/ui/
-Interface Utilisateur Restructurée
+"""app/ui/__init__.py"""
+# On pointe vers le module expert (qui contient la factory)
+from .expert.factory import create_expert_terminal
 
-Architecture claire et maintenable :
-
-├── base/                    # Classes abstraites (ABC)
-├── expert_terminals/        # 1 fichier par terminal expert
-└── result_tabs/             # Onglets de résultats organisés
-    ├── core/                # Toujours visibles
-    ├── optional/            # Conditionnels selon config
-    └── components/          # Widgets réutilisables
-
-Patterns :
-- Template Method : Squelette commun pour les terminaux
-- Strategy : Onglets interchangeables
-- Factory : Création dynamique selon le mode
-"""
-
-# Exports principaux
-from app.ui.expert.factory import create_expert_terminal, ExpertTerminalFactory
-from app.ui.results import ResultTabOrchestrator
+# On pointe vers les résultats
+from .results.orchestrator import ResultTabOrchestrator
 
 __all__ = [
     "create_expert_terminal",
-    "ExpertTerminalFactory",
-    "ResultTabOrchestrator",
+    "ResultTabOrchestrator"
 ]

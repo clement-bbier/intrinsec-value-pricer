@@ -8,22 +8,27 @@ Invariants du Modèle : Reconstruction rigoureuse du flux actionnaire (Clean Wal
 
 from __future__ import annotations
 import logging
+from typing import Tuple
 
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, DCFParameters, EquityDCFValuationResult, ValuationMode
+from src.models import (
+    CompanyFinancials, DCFParameters, EquityDCFValuationResult,
+    ValuationMode
+)
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector
 from src.computation.financial_math import calculate_fcfe_reconstruction
 
-# Import depuis core.i18n
+# Import centralisé i18n
 from src.i18n import (
     RegistryTexts,
     StrategyInterpretations,
     StrategyFormulas,
     CalculationErrors,
     StrategySources,
-    KPITexts
+    KPITexts,
+    DiagnosticTexts
 )
 
 logger = logging.getLogger(__name__)
@@ -32,23 +37,33 @@ logger = logging.getLogger(__name__)
 class FCFEStrategy(ValuationStrategy):
     """
     Stratégie FCFE (Direct Equity).
-    Calcule la valeur intrinsèque via la reconstruction rigoureuse des flux actionnaires.
+
+    Calcule la valeur intrinsèque via la reconstruction rigoureuse des flux actionnaires
+    en tenant compte du coût des fonds propres (Ke) et de l'endettement net.
     """
 
     academic_reference = "Damodaran"
     economic_domain = "Equity Valuation / Leveraged Firms"
 
-    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> EquityDCFValuationResult:
-        """Exécute la valorisation FCFE via le Pipeline Unifié."""
-        # =====================================================================
+    def execute(
+        self,
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> EquityDCFValuationResult:
+        """
+        Exécute la valorisation FCFE via le Pipeline Unifié avec validation de type.
+        """
         # 1. RECONSTRUCTION DU FLUX ACTIONNAIRE (CLEAN WALK)
-        # =====================================================================
-        # On extrait les composants pour la trace Glass Box
         ni, adj, nb, fcfe_base, source = self._resolve_fcfe_components(financials, params)
 
-        # Sécurité financière : FCFE négatif en mode Auto uniquement
+        # Sécurité financière : FCFE négatif en mode Auto bloqué (ST-1.4)
         if params.growth.manual_fcf_base is None and fcfe_base <= 0:
-            raise CalculationError(CalculationErrors.NEGATIVE_FLUX_AUTO.format(model="DCF Equity", val=fcfe_base))
+            raise CalculationError(
+                CalculationErrors.NEGATIVE_FLUX_AUTO.format(
+                    model=RegistryTexts.FCFE_L,
+                    val=fcfe_base
+                )
+            )
 
         self.add_step(
             step_key="FCFE_BASE_SELECTION",
@@ -58,13 +73,11 @@ class FCFEStrategy(ValuationStrategy):
             numerical_substitution=KPITexts.SUB_FCFE_WALK.format(
                 ni=ni, adj=adj, nb=nb, total=fcfe_base
             ),
-            interpretation=StrategyInterpretations.FCFE_LOGIC
+            interpretation=StrategyInterpretations.FCFE_LOGIC,
+            source=source  # Injection de la source pour la Glass Box
         )
 
-        # =====================================================================
         # 2. CONFIGURATION DU PIPELINE (MODE DIRECT EQUITY)
-        # =====================================================================
-        # Le mode FCFE_TWO_STAGE garantit l'usage du Ke et l'absence d'Equity Bridge
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
             mode=ValuationMode.FCFE,
@@ -72,22 +85,35 @@ class FCFEStrategy(ValuationStrategy):
         )
 
         # Exécution (Le pipeline gère l'actualisation par le Ke)
-        result = pipeline.run(
+        raw_result = pipeline.run(
             base_value=fcfe_base,
             financials=financials,
             params=params
         )
 
-        # =====================================================================
-        # 3. FINALISATION
-        # =====================================================================
+        # --- RÉSOLUTION DE L'ERREUR DE TYPAGE (DOWNCASTING) ---
+        if not isinstance(raw_result, EquityDCFValuationResult):
+            raise CalculationError(
+                DiagnosticTexts.MODEL_LOGIC_MSG.format(
+                    model=RegistryTexts.FCFE_L,
+                    issue=type(raw_result).__name__
+                )
+            )
+
+        result: EquityDCFValuationResult = raw_result
+
+        # 3. FINALISATION ET AUDIT
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
 
         return result
 
-    def _resolve_fcfe_components(self, financials: CompanyFinancials, params: DCFParameters) -> tuple:
+    @staticmethod
+    def _resolve_fcfe_components(
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> Tuple[float, float, float, float, str]:
         """
         Résout les composants du FCFE pour assurer une reconstruction propre.
         Retourne : (Net Income, Adjustments, Net Borrowing, Total FCFE, Source)
@@ -96,21 +122,14 @@ class FCFEStrategy(ValuationStrategy):
 
         # Cas A : Surcharge Expert Directe
         if g.manual_fcf_base is not None:
-            # En mode manuel, on considère que l'expert a déjà fait ses calculs
-            return (0, 0, 0, g.manual_fcf_base, StrategySources.MANUAL_OVERRIDE)
+            return 0.0, 0.0, 0.0, g.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
-        # Cas B : Reconstruction (Mode Auto ou Expert Partiel)
-        # 1. Résultat Net (Net Income)
+        # Cas B : Reconstruction
         ni = financials.net_income_ttm or 0.0
-
-        # 2. Net Borrowing (Dette émise - Dette remboursée)
         nb = g.manual_net_borrowing if g.manual_net_borrowing is not None else (financials.net_borrowing_ttm or 0.0)
 
-        # 3. Ajustements (Amortissements - CapEx - ΔBFR)
-        # Note : En mode Auto, on peut déduire les ajustements si FCF est fourni
+        # Ajustements (Amortissements - CapEx - ΔBFR) déduits du FCF reporté
         if financials.fcf_last is not None:
-            # On "nettoie" le FCF reporté pour isoler les ajustements hors endettement
-            # FCF (Operating - Capex) est déjà Net Income + Adjustments
             adj = financials.fcf_last - ni
         else:
             adj = 0.0

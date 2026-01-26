@@ -218,38 +218,34 @@ class ValuationResult(BaseModel, ABC):
 
 
 class DCFValuationResult(ValuationResult):
-    """Résultat DCF (Free Cash Flow to Firm).
+    """Résultat DCF (Free Cash Flow to Firm) enrichi.
 
-    Résultat d'une valorisation DCF basée sur les flux de trésorerie
-    disponibles pour les investisseurs (FCFF).
-
-    Attributes
-    ----------
-    wacc : float
-        Weighted Average Cost of Capital utilisé.
-    projected_fcfs : List[float]
-        Liste des FCFF projetés pour chaque année.
-    enterprise_value : float
-        Valeur d'entreprise calculée.
-    equity_value : float
-        Valeur des fonds propres.
-    discounted_terminal_value : float, optional
-        Valeur terminale actualisée.
+    Stocke l'intégralité des variables de calcul et des métriques
+    observées pour l'audit institutionnel.
     """
+    # --- Variables de Taux ---
     wacc: float
+    cost_of_equity: float
+    cost_of_debt_after_tax: float
+
+    # --- Flux et Valeurs ---
     projected_fcfs: List[float]
+    discount_factors: List[float]
+    sum_discounted_fcf: float
+    terminal_value: float
+    discounted_terminal_value: Optional[float] = None
     enterprise_value: float
     equity_value: float
-    discounted_terminal_value: Optional[float] = None
+
+    # --- Métriques d'Audit (Observées) ---
+    icr_observed: Optional[float] = None
+    capex_to_da_ratio: Optional[float] = None
+    terminal_value_weight: Optional[float] = None
+    payout_ratio_observed: Optional[float] = None
+    leverage_observed: Optional[float] = None
 
     def build_output_contract(self) -> ValuationOutputContract:
-        """Construit le contrat de sortie pour un résultat DCF.
-
-        Returns
-        -------
-        ValuationOutputContract
-            Contrat spécifiant les éléments disponibles.
-        """
+        """Construit le contrat de sortie pour un résultat DCF."""
         return ValuationOutputContract(
             has_params=True,
             has_projection=len(self.projected_fcfs) > 0,
@@ -260,32 +256,34 @@ class DCFValuationResult(ValuationResult):
 
 
 class RIMValuationResult(ValuationResult):
-    """Résultat Residual Income Model.
+    """Résultat Residual Income Model (RIM) enrichi.
 
-    Résultat d'une valorisation par le modèle du revenu résiduel,
-    basé sur les flux de trésorerie disponibles pour les actionnaires (FCFE).
-
-    Attributes
-    ----------
-    cost_of_equity : float
-        Coût des fonds propres utilisé.
-    total_equity_value : float
-        Valeur totale des fonds propres.
-    projected_residual_incomes : List[float]
-        Liste des revenus résiduels projetés.
+    Stocke les vecteurs de profits résiduels et les métriques
+    de rentabilité sectorielle pour les banques.
     """
+    # --- Variables de Taux et Valeurs ---
     cost_of_equity: float
+    current_book_value: float
     total_equity_value: float
+
+    # --- Vecteurs de Projection ---
     projected_residual_incomes: List[float]
+    projected_book_values: List[float]
+    discount_factors: List[float]
+
+    # --- Composantes de Valeur ---
+    sum_discounted_ri: float
+    terminal_value_ri: float
+    discounted_terminal_value: float
+
+    # --- Métriques d'Audit (Banques) ---
+    roe_observed: Optional[float] = None
+    payout_ratio_observed: Optional[float] = None
+    spread_roe_ke: Optional[float] = None
+    pb_ratio_observed: Optional[float] = None
 
     def build_output_contract(self) -> ValuationOutputContract:
-        """Construit le contrat de sortie pour un résultat RIM.
-
-        Returns
-        -------
-        ValuationOutputContract
-            Contrat spécifiant les éléments disponibles.
-        """
+        """Construit le contrat de sortie pour un résultat RIM."""
         return ValuationOutputContract(
             has_params=True,
             has_projection=len(self.projected_residual_incomes) > 0,
@@ -296,29 +294,15 @@ class RIMValuationResult(ValuationResult):
 
 
 class GrahamValuationResult(ValuationResult):
-    """Résultat Graham Number.
-
-    Résultat d'une valorisation selon la formule de Benjamin Graham,
-    basée sur les fondamentaux EPS et croissance.
-
-    Attributes
-    ----------
-    eps_used : float
-        Bénéfice par action utilisé dans le calcul.
-    growth_rate_used : float
-        Taux de croissance utilisé dans le calcul.
-    """
+    """Résultat Graham enrichi."""
     eps_used: float
     growth_rate_used: float
+    aaa_yield_used: float
+    graham_multiplier: float
+    pe_observed: Optional[float] = None
+    payout_ratio_observed: Optional[float] = None
 
     def build_output_contract(self) -> ValuationOutputContract:
-        """Construit le contrat de sortie pour un résultat Graham.
-
-        Returns
-        -------
-        ValuationOutputContract
-            Contrat spécifiant les éléments disponibles.
-        """
         return ValuationOutputContract(
             has_params=True,
             has_projection=False,
@@ -326,7 +310,6 @@ class GrahamValuationResult(ValuationResult):
             has_intrinsic_value=True,
             has_audit=self.audit_report is not None
         )
-
 
 class EquityDCFValuationResult(ValuationResult):
     """Résultat FCFE / Dividend Discount Model.

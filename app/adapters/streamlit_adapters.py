@@ -2,142 +2,102 @@
 app/adapters/streamlit_adapters.py
 
 ADAPTATEURS STREAMLIT — COUCHE D'ADAPTATION UI
-
-Rôle : Implémentation des interfaces core avec Streamlit
+==============================================
+Rôle : Implémentation des interfaces core (IResultRenderer, IUIProgressHandler)
 Pattern : Adapter (GoF)
-Style : Numpy docstrings
-
-Migration vers ResultTabOrchestrator
-Risques financiers : Coordination d'affichage UI, pas de calculs
-
-Dépendances critiques :
-- streamlit >= 1.28.0
-- core.interfaces.IUIProgressHandler
-- core.interfaces.IResultRenderer
-- app.ui.results.orchestrator.ResultTabOrchestrator
-
-Responsabilités :
-- StreamlitProgressHandler : Gestion de la progression (st.status)
-- StreamlitResultRenderer : Rendu des résultats via orchestrateur
-
-Migration ST-2.2 :
-- Ancien : Délégation directe vers ui_kpis.py
-- Nouveau : Orchestration centralisée des onglets ResultTabBase
+Migration : DT-016 (Séparation Calcul / Rendu)
 """
 
+from __future__ import annotations
 from typing import Any, Optional
 
 import streamlit as st
 
 from src.interfaces import IUIProgressHandler, IResultRenderer
-import app.ui.components.ui_kpis as ui_kpis
+from src.i18n import UIMessages, WorkflowTexts
+from src.models import ValuationResult
 
+# On évite l'import global de l'orchestrateur pour prévenir les imports circulaires
+# car l'orchestrateur charge tout l'arbre de l'UI.
 
 class StreamlitProgressHandler(IUIProgressHandler):
     """
-    Adaptateur Streamlit pour la gestion de progression.
+    Adaptateur pour la gestion de progression via st.status.
 
-    Encapsule le composant st.status de Streamlit pour implémenter
-    l'interface IUIProgressHandler. Fournit un feedback visuel
-    pendant les opérations longues.
-
-    Attributes
-    ----------
-    _status : Optional[st.status]
-        Instance Streamlit du status en cours, None si inactif.
-
-    Examples
-    --------
-    >>> handler = StreamlitProgressHandler()
-    >>> with handler.start_status("Calcul en cours..."):
-    ...     handler.update_status("Étape 1/3")
-    ...     # ... calculs ...
-    ...     handler.complete_status("Terminé")
+    Encapsule les composants de feedback visuel de Streamlit pour
+    isoler la logique métier des APIs de l'interface.
     """
-    
+
     def __init__(self):
-        self._status = None
-    
-    def start_status(self, label: str) -> "StreamlitProgressHandler":
-        self._status = st.status(label, expanded=True)
+        self._status_container: Optional[Any] = None
+
+    def start_status(self, label: str) -> StreamlitProgressHandler:
+        """Initialise le composant de statut Streamlit."""
+        self._status_container = st.status(label, expanded=True)
         return self
-    
+
     def update_status(self, message: str) -> None:
-        if self._status:
-            self._status.write(message)
-    
+        """Ajoute une ligne d'information dans le statut en cours."""
+        if self._status_container:
+            self._status_container.write(message)
+
     def complete_status(self, label: str, state: str = "complete") -> None:
-        if self._status:
-            self._status.update(label=label, state=state, expanded=False)
-    
+        """Finalise le composant de statut (fermeture automatique)."""
+        if self._status_container:
+            self._status_container.update(label=label, state=state, expanded=False)
+
     def error_status(self, label: str) -> None:
-        if self._status:
-            self._status.update(label=label, state="error", expanded=True)
-    
-    def __enter__(self) -> "StreamlitProgressHandler":
+        """Bascule le composant de statut en mode erreur."""
+        if self._status_container:
+            self._status_container.update(label=label, state="error", expanded=True)
+
+    def __enter__(self) -> StreamlitProgressHandler:
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Gestion automatique de la fermeture du statut en cas d'exception."""
+        if exc_type and self._status_container:
+            self.error_status(WorkflowTexts.STATUS_INTERRUPTED)
 
 
 class StreamlitResultRenderer(IResultRenderer):
     """
-    Adaptateur Streamlit pour le rendu des résultats de valorisation.
+    Adaptateur pour le rendu des résultats de valorisation.
 
-    Implémente IResultRenderer en utilisant l'architecture ResultTabOrchestrator
-    pour une gestion centralisée et modulaire des onglets de résultats.
-
-    Migration ST-2.2 :
-    - Ancien : Délégation directe vers ui_kpis.display_valuation_details()
-    - Nouveau : Orchestration centralisée avec ResultTabOrchestrator
-
-    Notes
-    -----
-    L'orchestrateur gère automatiquement :
-    - Filtrage des onglets visibles selon les données
-    - Tri par ordre de priorité
-    - Gestion d'erreurs par onglet
-    - Layout avec st.tabs()
+    Délègue la complexité de l'affichage à l'Orchestrateur d'onglets.
+    Respecte l'interface IResultRenderer (DT-016).
     """
-    
-    def render_executive_summary(self, result: Any) -> None:
-        """Utilise la nouvelle architecture ResultTabOrchestrator ( Phase 2)."""
+
+    def render_results(self, result: ValuationResult, provider: Any = None) -> None:
+        """
+        Point d'entrée principal du rendu (Standard ST-2.2).
+
+        Parameters
+        ----------
+        result : ValuationResult
+            L'objet de résultat riche issu du moteur.
+        provider : Any, optional
+            Le fournisseur de données utilisé (pour métadonnées additionnelles).
+        """
+        # Import tardif (Lazy Loading) pour casser les dépendances circulaires
         from app.ui.results.orchestrator import ResultTabOrchestrator
+
         orchestrator = ResultTabOrchestrator()
         orchestrator.render(result)
 
-    def render_results(self, result: Any, provider: Any = None) -> None:
-        """
-        Affiche les résultats de valorisation complets.
-
-        Méthode principale de rendu utilisant l'architecture ResultTabOrchestrator
-        pour une gestion centralisée et modulaire des onglets de résultats.
-
-        Args
-        ----
-        result : ValuationResult
-            Résultat complet de la valorisation à afficher.
-        provider : DataProviderProtocol, optional
-            Fournisseur de données (non utilisé dans l'implémentation actuelle).
-
-        Notes
-        -----
-        Remplace l'ancienne méthode display_valuation_details (ST 1.2 Naming Blueprint).
-        """
-        self.render_executive_summary(result)
-
-    def display_valuation_details(self, result: Any, provider: Any) -> None:
-        """
-        Alias déprécié pour render_results.
-
-        .. deprecated::
-            Utilisez :meth:`render_results` à la place.
-        """
-        self.render_results(result, provider)
-    
     def display_error(self, message: str, details: Optional[str] = None) -> None:
+        """Affiche une notification d'erreur formatée avec i18n."""
         st.error(message)
         if details:
-            with st.expander("Détails techniques"):
+            with st.expander(UIMessages.TECHNICAL_DETAILS):
                 st.code(details, language="text")
+
+    # --- MÉTHODES DE COMPATIBILITÉ (DEPRECATED) ---
+
+    def render_executive_summary(self, result: Any) -> None:
+        """Alias pour render_results (Phase 2 compliance)."""
+        self.render_results(result)
+
+    def display_valuation_details(self, result: Any, provider: Any) -> None:
+        """Ancien nom de méthode ST-1.2, maintenu pour compatibilité tests."""
+        self.render_results(result, provider)

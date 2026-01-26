@@ -1,25 +1,21 @@
 """
 app/workflow.py
-
 ORCHESTRATEUR LOGIQUE (DT-016 Resolution)
+=========================================
 Rôle : Pilotage du cycle de vie de l'analyse, orchestration multi-temporelle et scénarios.
 Architecture : Smart Merge segmenté, Isolation Point-in-Time et Validation Historique.
-
-DT-016 Resolution :
-- L'affichage UI est délégué à IResultRenderer (injection de dépendances)
-- Compatibilité ascendante maintenue via run_workflow_and_display()
 """
 
 from __future__ import annotations
-
 import logging
 import traceback
 from datetime import datetime, date
 from typing import Any, List, Optional, Tuple
 
 import streamlit as st
+import numpy as np
 
-# Import de l'interface (DT-016)
+# Import de l'interface et i18n
 from src.interfaces import IResultRenderer, NullResultRenderer
 from src.i18n import WorkflowTexts, DiagnosticTexts
 from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
@@ -42,7 +38,6 @@ from infra.macro.yahoo_macro_provider import YahooMacroProvider
 
 logger = logging.getLogger(__name__)
 
-
 # ==============================================================================
 # 1. POINT D'ENTRÉE PRINCIPAL
 # ==============================================================================
@@ -52,39 +47,24 @@ def run_workflow(
     renderer: Optional[IResultRenderer] = None
 ) -> Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]:
     """
-    Exécute le workflow de valorisation et retourne le résultat.
-    
-    DT-016 Resolution : Séparation calcul/affichage.
-    
-    Parameters
-    ----------
-    request : ValuationRequest
-        La requête de valorisation.
-    renderer : IResultRenderer, optional
-        Le renderer pour l'affichage. Si None, NullResultRenderer est utilisé.
-    
-    Returns
-    -------
-    Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]
-        Le résultat de valorisation et le provider de données.
+    Exécute le workflow complet de valorisation.
+    DT-016 Resolution : Séparation calcul/affichage via injection de renderer.
     """
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
-    
-    # Utilisation du NullResultRenderer si aucun renderer n'est fourni
     _renderer = renderer or NullResultRenderer()
 
     try:
         # --- ÉTAPE 1 : ACQUISITION & INFRASTRUCTURE ---
         status.write(WorkflowTexts.STATUS_DATA_ACQUISITION)
-        provider = _create_data_provider()
+        provider = YahooFinanceProvider(YahooMacroProvider())
 
-        # Acquisition profonde (Deep Fetch) pour supporter le backtesting potentiel
+        # Deep Fetch pour supporter l'analyse et le backtesting
         financials, auto_params = provider.get_company_financials_and_parameters(
             request.ticker,
             request.projection_years
         )
 
-        # Triangulation sectorielle (Multiples de marché)
+        # Triangulation sectorielle
         status.write(WorkflowTexts.STATUS_PEER_DISCOVERY)
         multiples_data = provider.get_peer_multiples(
             ticker=request.ticker,
@@ -101,7 +81,7 @@ def run_workflow(
         if final_params.monte_carlo.enable_monte_carlo:
             status.write(WorkflowTexts.STATUS_MC_RUN)
 
-        # Exécution du moteur principal (IV + Triangulation + Audit)
+        # Exécution du moteur (IV + Triangulation + Audit)
         result = run_valuation(request, financials, final_params)
 
         # --- ÉTAPE 4 : ANALYSE DE SCÉNARIOS DÉTERMINISTES ---
@@ -111,72 +91,54 @@ def run_workflow(
                 request, financials, final_params, result
             )
 
-        # --- ÉTAPE 5 : VALIDATION HISTORIQUE (BACKTESTING - ) ---
+        # --- ÉTAPE 5 : VALIDATION HISTORIQUE (BACKTESTING RÉEL) ---
         if request.options.get("enable_backtest", False):
             status.write(WorkflowTexts.STATUS_BACKTEST_RUN)
 
-            # Injection du rapport de backtesting dans le résultat final
+            # Orchestration du backtest sur les données brutes
             result.backtest_report = _orchestrate_backtesting(
                 request=request,
-                raw_data=provider.last_raw_data,  # Accès aux données brutes non filtrées
+                raw_data=provider.last_raw_data,
                 params=final_params,
-                price_history=provider.fetch_price_history(request.ticker),
+                price_history=provider.get_price_history(request.ticker),
                 provider=provider
             )
             status.write(WorkflowTexts.STATUS_BACKTEST_COMPLETE)
 
         # --- ÉTAPE 6 : FINALISATION ---
         status.update(label=WorkflowTexts.STATUS_COMPLETE, state="complete", expanded=False)
-        
-        # Log Monte Carlo si activé (ST-4.2)
-        if result.simulation_results and len(result.simulation_results) > 0:
-            import numpy as np
-            values = result.simulation_results
-            QuantLogger.log_monte_carlo(
-                ticker=request.ticker,
-                simulations=len(values),
-                valid_ratio=len(values) / final_params.monte_carlo.num_simulations,
-                p50=float(np.median(values)),
-                p10=float(np.percentile(values, 10)),
-                p90=float(np.percentile(values, 90))
-            )
-        
+
+        # Log Monte Carlo (ST-4.2)
+        if result.simulation_results:
+            _log_monte_carlo_performance(request.ticker, result, final_params)
+
         return result, provider
 
     except ValuationException as e:
         status.update(label=WorkflowTexts.STATUS_INTERRUPTED, state="error", expanded=True)
         _display_diagnostic_message(e.diagnostic)
-        st.session_state.active_request = None
         return None, None
 
     except Exception as e:
         status.update(label=WorkflowTexts.STATUS_CRITICAL_ERROR, state="error", expanded=True)
-        logger.error("Critical workflow error: %s", str(e), exc_info=True)
+        logger.error(f"Critical workflow error: {str(e)}", exc_info=True)
         _display_diagnostic_message(_create_crash_diagnostic(e))
         return None, None
 
 
 def run_workflow_and_display(request: ValuationRequest) -> None:
-    """
-    Facade de compatibilité : Exécute le workflow ET affiche les résultats.
-    
-    DEPRECATION NOTICE :
-    - Cette fonction maintient la compatibilité ascendante
-    - Pour les nouveaux usages, préférer run_workflow() + injection de renderer
-    """
-    # Import tardif pour éviter les imports circulaires
+    """Facade de compatibilité Streamlit pour le workflow."""
     from app.adapters import StreamlitResultRenderer
-    
+
     renderer = StreamlitResultRenderer()
     result, provider = run_workflow(request, renderer)
-    
-    # Affichage des résultats via le renderer injecté (ST 1.2 - render_results)
+
     if result is not None and provider is not None:
         renderer.render_results(result, provider)
 
 
 # ==============================================================================
-# 2. LOGIQUE DU BACKTESTING
+# 2. LOGIQUE DU BACKTESTING (ISOLATION TEMPORELLE)
 # ==============================================================================
 
 def _orchestrate_backtesting(
@@ -186,53 +148,43 @@ def _orchestrate_backtesting(
     price_history: Any,
     provider: YahooFinanceProvider
 ) -> BacktestResult:
-    """
-    Exécute N simulations sur les années fiscales passées avec isolation temporelle.
-    """
+    """Simule la valorisation sur les trois dernières années avec isolation Point-in-Time."""
     points: List[HistoricalPoint] = []
-
-    # On cible les 3 dernières années fiscales closes
     current_year = datetime.now().year
     years_to_test = [current_year - 1, current_year - 2, current_year - 3]
 
-    for target_year in years_to_test:
+    for yr in years_to_test:
         try:
-            # 1. Isolation Point-in-Time (On fige les données au passé)
-            frozen_raw = BacktestEngine.freeze_data_at_fiscal_year(raw_data, target_year)
-            if not frozen_raw:
-                continue
+            # 1. Congélation des données à l'année N
+            frozen_raw = BacktestEngine.freeze_data_at_fiscal_year(raw_data, yr)
+            if not frozen_raw: continue
 
-            # 2. Re-mapping vers le modèle financier de l'époque
+            # 2. Mapping financier rétrograde
             hist_financials = provider.map_raw_to_financials(frozen_raw)
 
-            # 3. Calcul de l'IV historique (Désactivation MC pour la performance)
+            # 3. Calcul IV (MC désactivé pour performance backtest)
             v_params = params.model_copy(deep=True)
             v_params.monte_carlo.enable_monte_carlo = False
-
             hist_res = run_valuation(request, hist_financials, v_params)
 
-            # 4. Confrontation à la vérité terrain (Prix réel fin d'année)
-            market_price = BacktestEngine.get_historical_price_at(price_history, target_year)
+            # 4. Récupération du prix de clôture réel
+            market_price = BacktestEngine.get_historical_price_at(price_history, yr)
 
             if market_price > 0:
-                error_pct = (hist_res.intrinsic_value_per_share / market_price) - 1.0
                 points.append(HistoricalPoint(
-                    valuation_date=date(target_year, 12, 31),
+                    valuation_date=date(yr, 12, 31),
                     intrinsic_value=hist_res.intrinsic_value_per_share,
                     market_price=market_price,
-                    error_pct=error_pct,
+                    error_pct=(hist_res.intrinsic_value_per_share / market_price) - 1.0,
                     was_undervalued=(hist_res.intrinsic_value_per_share > market_price)
                 ))
         except Exception as e:
-            logger.warning("Backtest failed for year %s: %s", target_year, str(e))
+            logger.warning(f"Backtest failed for year {yr}: {str(e)}")
             continue
 
-    if not points:
-        return BacktestResult()
+    if not points: return BacktestResult()
 
-    # Calcul des métriques de fiabilité du modèle (Hedge Fund Grade)
     mae = sum(abs(p.error_pct) for p in points) / len(points)
-
     return BacktestResult(
         points=points,
         mean_absolute_error=mae,
@@ -241,7 +193,7 @@ def _orchestrate_backtesting(
 
 
 # ==============================================================================
-# 3. LOGIQUE DES SCÉNARIOS (OPTIMISÉE)
+# 3. ANALYSE DE SCÉNARIOS
 # ==============================================================================
 
 def compute_scenario_impact(
@@ -250,53 +202,24 @@ def compute_scenario_impact(
     params: DCFParameters,
     base_result: ValuationResult
 ) -> ScenarioSynthesis:
-    """
-    Calcule l'impact des scénarios Bull/Base/Bear sur la valorisation.
-
-    Exécute les variantes stratégiques en optimisant les calculs :
-    - Réutilisation du résultat de base si les paramètres sont identiques
-    - Désactivation des modules lourds (Monte Carlo, Multiples) pour les variantes
-
-    Args
-    ----
-    request : ValuationRequest
-        Requête de valorisation originale.
-    financials : CompanyFinancials
-        Données financières de l'entreprise.
-    params : DCFParameters
-        Paramètres de référence (Base Case).
-    base_result : ValuationResult
-        Résultat du cas de base déjà calculé.
-
-    Returns
-    -------
-    ScenarioSynthesis
-        Synthèse des trois scénarios avec valeur espérée pondérée.
-
-    Financial Impact
-    ----------------
-    Les scénarios guident les décisions d'investissement en montrant
-    la sensibilité de la valorisation aux hypothèses clés.
-    """
+    """Calcule l'impact Bull/Base/Bear avec optimisation des ressources."""
     sc = params.scenarios
     results = []
     variants = [(sc.bull, "Bull"), (sc.base, "Base"), (sc.bear, "Bear")]
 
     for variant, label in variants:
-        # Optimisation : Réutilisation directe du résultat de référence si inchangé
+        # Optimisation : réutilisation si Base est inchangé
         if label == "Base" and variant.growth_rate is None and variant.target_fcf_margin is None:
-            val, g_used, m_used = base_result.intrinsic_value_per_share, params.growth.fcf_growth_rate, params.growth.target_fcf_margin
+            val = base_result.intrinsic_value_per_share
+            g_used, m_used = params.growth.fcf_growth_rate, params.growth.target_fcf_margin
         else:
             v_params = params.model_copy(deep=True)
             if variant.growth_rate is not None: v_params.growth.fcf_growth_rate = variant.growth_rate
             if variant.target_fcf_margin is not None: v_params.growth.target_fcf_margin = variant.target_fcf_margin
 
-            # Désactivation des modules lourds pour les variantes
+            # Allègement du moteur pour les variantes
             v_params.monte_carlo.enable_monte_carlo = False
-            v_request = request.model_copy(deep=True)
-            v_request.options["multiples_data"] = None
-
-            v_res = run_valuation(v_request, financials, v_params)
+            v_res = run_valuation(request, financials, v_params)
             val, g_used, m_used = v_res.intrinsic_value_per_share, v_params.growth.fcf_growth_rate, v_params.growth.target_fcf_margin
 
         results.append(ScenarioResult(
@@ -305,75 +228,59 @@ def compute_scenario_impact(
         ))
 
     expected_val = sum(r.intrinsic_value * r.probability for r in results)
-    ivs = [r.intrinsic_value for r in results]
-
     return ScenarioSynthesis(
         variants=results, expected_value=expected_val,
-        max_upside=max(ivs), max_downside=min(ivs)
+        max_upside=max(r.intrinsic_value for r in results),
+        max_downside=min(r.intrinsic_value for r in results)
     )
 
 
 # ==============================================================================
-# 4. HELPERS DE FUSION & DIAGNOSTIC
+# 4. HELPERS ET DIAGNOSTICS
 # ==============================================================================
 
-def _create_data_provider() -> YahooFinanceProvider:
-    return YahooFinanceProvider(YahooMacroProvider())
-
-
 def map_request_to_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """
-    Fusionne les paramètres automatiques avec les surcharges manuelles.
-
-    Args
-    ----
-    request : ValuationRequest
-        Requête contenant les surcharges manuelles optionnelles.
-    auto_params : DCFParameters
-        Paramètres calculés automatiquement depuis les données.
-
-    Returns
-    -------
-    DCFParameters
-        Paramètres fusionnés (Smart Merge).
-
-    Financial Impact
-    ----------------
-    Cette fonction détermine les hypothèses finales de valorisation.
-    Une erreur de fusion peut conduire à utiliser des taux incorrects.
-    """
+    """Fusionne les données automatiques avec les surcharges manuelles (Expert)."""
     if request.input_source == InputSource.MANUAL:
         final_params = auto_params.model_copy(deep=True)
+        # Surcharges taux et croissance
+        for section in ['rates', 'growth']:
+            manual_data = getattr(request.manual_params, section).model_dump(exclude_unset=True)
+            for k, v in manual_data.items():
+                if v is not None: setattr(getattr(final_params, section), k, v)
 
-        # Surcharges explicites et typées (Standard SOLID)
-        expert_rates = request.manual_params.rates.model_dump(exclude_unset=True)
-        expert_growth = request.manual_params.growth.model_dump(exclude_unset=True)
-
-        for k, v in expert_rates.items():
-            if v is not None: setattr(final_params.rates, k, v)
-        for k, v in expert_growth.items():
-            if v is not None: setattr(final_params.growth, k, v)
-
-        # Segments directs
+        # Injection des configurations avancées
         final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
         final_params.scenarios = request.manual_params.scenarios.model_copy()
         final_params.sotp = request.manual_params.sotp.model_copy()
         return final_params
 
+    # Mode Standard : MC piloté par les options de requête
     auto_params.monte_carlo.enable_monte_carlo = request.options.get("enable_mc", False)
     auto_params.monte_carlo.num_simulations = request.options.get("mc_sims", 5000)
-    auto_params.scenarios.enabled = False
     return auto_params
 
 
-def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
-    level_map = {SeverityLevel.CRITICAL: st.error, SeverityLevel.ERROR: st.error, SeverityLevel.WARNING: st.warning}
-    prefix_map = {SeverityLevel.CRITICAL: WorkflowTexts.PREFIX_CRITICAL, SeverityLevel.WARNING: WorkflowTexts.PREFIX_WARNING}
+def _log_monte_carlo_performance(ticker: str, result: ValuationResult, params: DCFParameters) -> None:
+    """Enregistre les métriques stochastiques dans les logs quantitatifs."""
+    vals = result.simulation_results
+    QuantLogger.log_monte_carlo(
+        ticker=ticker,
+        simulations=len(vals),
+        valid_ratio=len(vals) / params.monte_carlo.num_simulations,
+        p50=float(np.median(vals)),
+        p10=float(np.percentile(vals, 10)),
+        p90=float(np.percentile(vals, 90))
+    )
 
-    level_map.get(diag.severity, st.info)(f"{prefix_map.get(diag.severity, WorkflowTexts.PREFIX_INFO)} {diag.message}")
-    with st.expander(WorkflowTexts.DIAG_EXPANDER_TITLE, expanded=True):
-        st.markdown(f"**{WorkflowTexts.DIAG_ACTION_LABEL}** {diag.remediation_hint}")
-        if diag.technical_detail: st.code(diag.technical_detail, language="text")
+
+def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
+    """Affiche une alerte UI stylisée pour les erreurs métier."""
+    level_fn = st.error if diag.severity in [SeverityLevel.CRITICAL, SeverityLevel.ERROR] else st.warning
+    level_fn(f"**{diag.code}** : {diag.message}")
+    with st.expander(WorkflowTexts.DIAG_EXPANDER_TITLE):
+        st.markdown(f"**Action :** {diag.remediation_hint}")
+        if diag.technical_detail: st.code(diag.technical_detail)
 
 
 def _create_crash_diagnostic(error: Exception) -> DiagnosticEvent:

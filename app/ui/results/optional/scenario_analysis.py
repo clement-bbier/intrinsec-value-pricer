@@ -1,29 +1,30 @@
 """
 app/ui/results/optional/scenario_analysis.py
-Pillier 4 — Ingénierie du Risque : Analyse de Scénarios Déterministes.
+PILLIER 4 — SOUS-COMPOSANT : ANALYSE DE SCÉNARIOS DÉTERMINISTES
+==============================================================
 Rôle : Comparaison Bull/Base/Bear et calcul de l'espérance mathématique.
+Architecture : Composant injectable Grade-A.
 """
 
 from typing import Any
 import streamlit as st
 import pandas as pd
-import numpy as np
 
 from src.models import ValuationResult
-from src.i18n import QuantTexts, KPITexts, CommonTexts
+from src.i18n import QuantTexts, KPITexts
 from src.utilities.formatting import format_smart_number
 from app.ui.results.base_result import ResultTabBase
 from app.ui.components.ui_kpis import atom_kpi_metric
 
 class ScenarioAnalysisTab(ResultTabBase):
     """
-    Onglet d'analyse de scénarios.
-    Affiche la triangulation entre les différentes visions stratégiques.
+    Composant de rendu pour l'analyse multi-scénarios.
+    Intégré verticalement dans l'onglet RiskEngineering.
     """
 
     TAB_ID = "scenario_analysis"
-    LABEL = KPITexts.TAB_SCENARIOS # Label i18n: "Analyse de Scénarios"
-    ORDER = 6
+    LABEL = KPITexts.TAB_SCENARIOS
+    ORDER = 4 # Aligné sur le Pilier 4
     IS_CORE = False
 
     def is_visible(self, result: ValuationResult) -> bool:
@@ -34,14 +35,15 @@ class ScenarioAnalysisTab(ResultTabBase):
         )
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Rendu de la synthèse des scénarios pondérés."""
+        """Rendu de la synthèse des scénarios avec triangulation visuelle."""
         synthesis = result.scenario_synthesis
         currency = result.financials.currency
         market_price = result.market_price
 
-        # --- HEADER SECTION ---
-        st.markdown(f"**{QuantTexts.SCENARIO_TITLE}**")
+        # --- EN-TÊTE DE SECTION (Standardisé ####) ---
+        st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
+        st.write("")
 
         # --- 1. TABLEAU COMPARATIF (DETAILED VIEW) ---
         with st.container(border=True):
@@ -61,7 +63,7 @@ class ScenarioAnalysisTab(ResultTabBase):
 
             df = pd.DataFrame(data)
 
-            # Configuration des colonnes (Style Bloomberg / Reuters)
+            # Configuration des colonnes (Standard Institutionnel)
             column_config = {
                 QuantTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
                 QuantTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.2f%%"),
@@ -72,11 +74,17 @@ class ScenarioAnalysisTab(ResultTabBase):
                     format="%.1%+",
                     min_value=-1.0,
                     max_value=1.0,
-                    color="blue"
+                    color="blue" # Couleur neutre institutionnelle
                 )
             }
 
-            st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
+            st.dataframe(
+                df,
+                hide_index=True,
+                width="stretch",
+                column_config=column_config,
+                use_container_width=True
+            )
 
         # --- 2. SYNTHÈSE PONDÉRÉE (EXPECTED VALUE HUB) ---
         expected_val = synthesis.expected_value
@@ -94,6 +102,7 @@ class ScenarioAnalysisTab(ResultTabBase):
 
                 with col_upside:
                     weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
+                    # Utilisation des deltas i18n
                     atom_kpi_metric(
                         label=QuantTexts.METRIC_WEIGHTED_UPSIDE,
                         value=f"{weighted_upside:+.1%}",
