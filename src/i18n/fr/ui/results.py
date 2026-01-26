@@ -1,13 +1,9 @@
 """
-core/i18n/fr/ui/results.py
+src/i18n/fr/ui/results.py
 
-RÉFÉRENTIEL DES TEXTES DE RENDU — VERSION INSTITUTIONNELLE EXHAUSTIVE (V20)
+RÉFÉRENTIEL DES TEXTES DE RENDU — VERSION INSTITUTIONNELLE FUSIONNÉE (V21)
 ==========================================================================
-Ce module centralise l'intégralité des labels, tooltips, formules et messages
-utilisés pour l'affichage des résultats de valorisation.
-
-Pattern : Centralized Repository
-Style : Numpy docstrings
+Fusion de la version exhaustive V20 et des ancres techniques de l'UI.
 """
 
 class PillarLabels:
@@ -23,11 +19,22 @@ class KPITexts:
     """Labels et titres pour l'affichage des résultats (Glass Box)."""
 
     # --- Navigation & Onglets ---
+    VALUE_LABEL = None
     TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de Calcul"
     TAB_AUDIT = "Audit de Fiabilité"
     TAB_MC = "Analyse de Risque (MC)"
     TAB_SCENARIOS = "Analyse de Scénarios"
+
+    # --- NOUVEAU : Synchronisation KPI Cards (Technique) ---
+    WACC_LABEL = "WACC (Coût du Capital)"
+    KE_LABEL = "Ke (Coût Fonds Propres)"
+    GROWTH_G_LABEL = "Croissance Perpétuelle (gn)"
+    SBC_ADJUSTMENT_LABEL = "Ajustement Dilution SBC"
+    MARGIN_SAFETY_LABEL = "Marge de Sécurité (MoS)"
+    MARKET_CAP_LABEL = "Market Cap"
+    EQUITY_VALUE_LABEL = "Valeur des Fonds Propres (Equity)"
+    INTRINSIC_PRICE_LABEL = "Prix Intrinsèque Estimé"
 
     # --- Synthèse Décisionnelle (Pillier 0) ---
     EXEC_TITLE = "DOSSIER DE VALORISATION : {name} ({ticker})"
@@ -168,7 +175,7 @@ class AuditTexts:
 
 class QuantTexts:
     """Textes Pillar 4 — Ingénierie du Risque."""
-    # Monte Carlo
+    BACKTEST_INTERPRETATION = "Un faible gap indique une forte corrélation historique entre les fondamentaux et le prix."
     MC_TITLE = "#### SIMULATION MONTE CARLO"
     MC_FAILED = "Convergence impossible : volatilités trop élevées."
     MC_DOWNSIDE = "Risque de Survalorisation"
@@ -179,7 +186,6 @@ class QuantTexts:
     MC_CONFIG_SUB = r"Sims : {sims} | β Vol: {sig_b:.1%} | g Vol: {sig_g:.1%} | ρ: {rho:.2f}"
     MC_FILTER_SUB = r"{valid} valides / {total} itérations"
 
-    # Scénarios
     SCENARIO_TITLE = "#### ANALYSE DES SCÉNARIOS STRATÉGIQUES"
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
@@ -190,20 +196,17 @@ class QuantTexts:
     COL_VALUE_PER_SHARE = "VALEUR"
     COL_UPSIDE = "UPSIDE"
 
-    # Backtest
     BACKTEST_TITLE = "#### PERFORMANCE HISTORIQUE DU MODÈLE"
     LABEL_HIT_RATE = "Taux de Succès (Hit Rate)"
     LABEL_MAE = "Erreur Moyenne (MAE)"
 
 class MarketTexts:
     """Textes Pillar 5 — Analyse de Marché."""
-    # Valorisation Relative
     MARKET_TITLE = "#### VALORISATION RELATIVE SECTORIELLE"
     COL_PEER = "COMPARABLE"
     COL_MULTIPLE = "MULTIPLE"
     COL_IMPLIED_VALUE = "VALEUR IMPLICITE"
 
-    # SOTP
     TITLE_SEGMENTATION = "#### DÉCOMPOSITION SOTP"
     CAPTION_SEGMENTATION = "Répartition de la valeur d'entreprise par segments opérationnels."
     COL_SEGMENT = "UNITÉ COMMERCIALE"

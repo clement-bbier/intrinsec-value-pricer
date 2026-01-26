@@ -1,117 +1,120 @@
 """
-app/ui/result_tabs/optional/monte_carlo_distribution.py
-Onglet — Distribution Monte Carlo
-
-Visible uniquement si une simulation Monte Carlo a été exécutée.
+app/ui/results/optional/monte_carlo_distribution.py
+Pillier 4 — Ingénierie du Risque : Distribution Monte Carlo.
+Rôle : Visualisation de la dispersion stochastique et des métriques de VaR.
 """
 
-from typing import Any
-
+from typing import Any, Dict
 import streamlit as st
-import numpy as np
 
 from src.models import ValuationResult
-from src.i18n import UIMessages
-from app.ui.results.base_result import ResultTabBase
+from src.i18n import QuantTexts, KPITexts, CommonTexts
 from src.utilities.formatting import format_smart_number
-
+from app.ui.results.base_result import ResultTabBase
+from app.ui.components.ui_charts import display_simulation_chart
 
 class MonteCarloDistributionTab(ResultTabBase):
-    """Onglet des résultats Monte Carlo."""
-    
+    """
+    Pillier 4 : Analyse de Risque Probabiliste.
+    Consomme les statistiques pré-calculées par l'orchestrateur.
+    """
+
     TAB_ID = "monte_carlo"
-    LABEL = "Monte Carlo"
-    ICON = ""
+    LABEL = KPITexts.TAB_MC
     ORDER = 8
     IS_CORE = False
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
-        """Visible si Monte Carlo exécuté."""
-        return (
-            result.simulation_results is not None
-            and len(result.simulation_results) > 0
-        )
-    
+        """Visible uniquement si des résultats de simulation sont présents."""
+        return bool(result.simulation_results and len(result.simulation_results) > 0)
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche la distribution Monte Carlo."""
-        simulations = result.simulation_results or []
+        """Rendu de l'analyse de distribution et du Hub de Risque."""
+
+        # 1. Récupération des statistiques injectées par l'orchestrateur (Performance)
+        stats = kwargs.get("mc_stats")
         currency = result.financials.currency
 
-        st.markdown("**SIMULATION MONTE CARLO**")
-        st.caption(f"{len(simulations):,} simulations exécutées")
-        
-        # Calculer les statistiques de base
-        sim_array = np.array(simulations)
-        mean_value = float(np.mean(sim_array))
-        median_value = float(np.median(sim_array))
-        std_value = float(np.std(sim_array))
-        cv = std_value / mean_value if mean_value != 0 else 0
+        st.markdown(f"**{QuantTexts.MC_TITLE}**")
 
-        # Statistiques de distribution
+        # Sous-titre technique : Configuration de la simulation
+        config_sub = QuantTexts.MC_CONFIG_SUB.format(
+            sims=len(result.simulation_results),
+            sig_b=result.params.monte_carlo.sigma_beta,
+            sig_g=result.params.monte_carlo.sigma_growth,
+            rho=result.params.monte_carlo.rho
+        )
+        st.caption(config_sub)
+        st.write("")
+
+        # 2. HUB DE RISQUE (Statistiques de Dispersion)
+        if stats:
+            with st.container(border=True):
+                c1, c2, c3, c4 = st.columns(4)
+
+                # Médiane (P50) - Point d'ancrage central
+                c1.metric(
+                    label=QuantTexts.MC_MEDIAN,
+                    value=format_smart_number(stats["median"], currency=currency)
+                )
+
+                # Value-at-Risk (VaR 95%) - Risque de queue
+                c2.metric(
+                    label=QuantTexts.MC_VAR,
+                    value=format_smart_number(stats["var_95"], currency=currency),
+                    help=KPITexts.HELP_VAR
+                )
+
+                # Écart-type - Volatilité de la valorisation
+                c3.metric(
+                    label="VOLATILITÉ (σ)",
+                    value=format_smart_number(stats["std"], currency=currency)
+                )
+
+                # Coefficient de Variation (Risque relatif)
+                cv = stats["std"] / stats["median"] if stats["median"] != 0 else 0
+                c4.metric(
+                    label="COEF. VARIATION",
+                    value=f"{cv:.1%}"
+                )
+
+        # 3. VISUALISATION GRAPHIQUE (Organisme ui_charts)
+        # Intègre automatiquement la ligne du prix de marché et les quantiles
+        st.write("")
+        display_simulation_chart(
+            simulation_results=result.simulation_results,
+            market_price=result.market_price,
+            currency=currency
+        )
+
+        # 4. ANALYSE DE PROBABILITÉ (OPPORTUNITÉ VS RISQUE)
+        st.write("")
         with st.container(border=True):
-            st.markdown("**Statistiques de Distribution**")
+            st.markdown(f"**{QuantTexts.MC_DOWNSIDE.upper()}**")
 
-            col1, col2, col3, col4 = st.columns(4)
+            # Calculs rapides sur le vecteur de simulation
+            sim_array = [v for v in result.simulation_results if v is not None]
+            prob_above = sum(1 for v in sim_array if v > result.market_price) / len(sim_array)
 
-            col1.metric("Moyenne", format_smart_number(mean_value, currency))
-            col2.metric("Médiane", format_smart_number(median_value, currency))
-            col3.metric("Écart-type", format_smart_number(std_value, currency))
-            col4.metric("Coef. Variation", f"{cv:.1%}")
+            p_col1, p_col2 = st.columns(2)
 
-        # Utiliser les quantiles existants ou les calculer
-        quantiles = result.quantiles or {}
-        p5 = quantiles.get('P5', float(np.percentile(sim_array, 5)))
-        p50 = quantiles.get('P50', median_value)
-        p95 = quantiles.get('P95', float(np.percentile(sim_array, 95)))
-
-        # Intervalles de confiance
-        with st.container(border=True):
-            st.markdown("**Intervalles de Confiance**")
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric("P5 (Bear)", format_smart_number(p5, currency))
-            col2.metric("P50 (Base)", format_smart_number(p50, currency))
-            col3.metric("P95 (Bull)", format_smart_number(p95, currency))
-
-        # Analyse de probabilité
-        current_price = result.financials.current_price
-        prob_above_current = np.mean(sim_array > current_price)
-        upside_threshold = current_price * 1.20
-        prob_upside_20pct = np.mean(sim_array > upside_threshold)
-
-        with st.container(border=True):
-            st.markdown("**Analyse de Probabilité**")
-
-            col1, col2 = st.columns(2)
-            col1.metric(
-                "P(Valeur > Prix actuel)",
-                f"{prob_above_current:.1%}"
-            )
-            col2.metric(
-                "P(Upside > 20%)",
-                f"{prob_upside_20pct:.1%}"
+            # Probabilité de gain (Valeur > Prix)
+            p_col1.metric(
+                label="Probabilité d'Undervaluation",
+                value=f"{prob_above:.1%}",
+                delta="Opportunité" if prob_above > 0.5 else "Risque",
+                delta_color="normal" if prob_above > 0.5 else "inverse"
             )
 
-        # Histogramme simple
-        try:
-            import altair as alt
-            import pandas as pd
+            # Intervalle de Confiance 80% (P10 - P90)
+            if stats:
+                range_str = f"{format_smart_number(stats['p10'])} — {format_smart_number(stats['p90'])}"
+                p_col2.metric(
+                    label=QuantTexts.MC_FILTER_SUB.format(valid=len(sim_array), total=len(sim_array)),
+                    value=range_str,
+                    help="Fourchette de probabilité à 80% (P10 à P90)."
+                )
 
-            df = pd.DataFrame({'value': simulations})
-
-            chart = alt.Chart(df).mark_bar().encode(
-                x=alt.X('value:Q', bin=alt.Bin(maxbins=50), title=f'Valeur par Action ({currency})'),
-                y=alt.Y('count()', title='Fréquence'),
-            ).properties(
-                title="Distribution des Valeurs Intrinsèques",
-                height=300
-            )
-
-            st.altair_chart(chart, width='stretch')
-
-        except ImportError:
-            st.info(UIMessages.CHART_UNAVAILABLE)
-    
     def get_display_label(self) -> str:
+        """Retourne le label i18n pour l'orchestrateur."""
         return self.LABEL

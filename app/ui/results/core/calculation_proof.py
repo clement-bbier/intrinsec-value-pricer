@@ -1,48 +1,60 @@
 """
-app/ui/result_tabs/core/calculation_proof.py
-Onglet — Preuve de Calcul (Glass Box)
+app/ui/results/core/calculation_proof.py
+Onglet — Preuve de Calcul (Glass Box) — Grade Institutionnel.
 
-Affiche chaque étape du calcul avec :
-- Formule théorique (LaTeX)
-- Application numérique
-- Résultat intermédiaire
+Rôle : Orchestrer le rendu séquentiel des étapes de calcul financier.
 """
 
 from typing import Any
-
 import streamlit as st
 
 from src.models import ValuationResult
-from src.i18n import KPITexts, UIMessages
+from src.i18n import KPITexts, UIMessages, PillarLabels
+from src.config.constants import UIConstants  # Centralisation des seuils/logique
 from app.ui.results.base_result import ResultTabBase
 from app.ui.results.components.step_renderer import render_calculation_step
 
 
 class CalculationProofTab(ResultTabBase):
-    """Onglet de preuve de calcul Glass Box."""
-    
+    """
+    Onglet de preuve de calcul Glass Box.
+    Respecte la séparation entre le rendu et la logique de filtrage.
+    """
+
+    # Utilisation des constantes i18n pour éviter tout hardcoding
     TAB_ID = "calculation_proof"
-    LABEL = "Preuve de Calcul"
-    ICON = ""
+    LABEL = PillarLabels.PILLAR_2_TRACE
     ORDER = 2
     IS_CORE = True
-    
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche les étapes de calcul."""
-        
-        # Séparer les étapes core des étapes Monte Carlo
-        core_steps = [s for s in result.calculation_trace if not s.step_key.startswith("MC_")]
-        
+        """
+        Affiche la séquence de calcul de manière ordonnée.
+        """
+
+        # 1. Filtrage des étapes (Logique métier UI)
+        # On exclut les étapes techniques (MC, SOTP, etc.) définies dans les constantes
+        core_steps = [
+            step for step in result.calculation_trace
+            if not any(prefix in step.step_key for prefix in UIConstants.EXCLUDED_STEP_PREFIXES)
+        ]
+
+        # 2. Gestion de l'état vide
         if not core_steps:
             st.info(UIMessages.NO_CALCULATION_STEPS)
             return
-        
-        st.markdown(f"**{KPITexts.TAB_CALC}**")
-        st.caption(
-            "Chaque étape montre la formule théorique et son application numérique. "
-            "Cette transparence permet de vérifier et comprendre le résultat."
-        )
-        
-        # Rendre chaque étape
+
+        # 3. En-tête de l'onglet (Zéro hardcoding)
+        st.markdown(f"### {KPITexts.TAB_CALC}")
+
+        # Le texte explicatif provient désormais du registre i18n (KPITexts.SECTION_INPUTS_CAPTION ou similaire)
+        st.caption(KPITexts.SECTION_INPUTS_CAPTION)
+        st.divider()
+
+        # 4. Rendu itératif via le composant atomique stabilisé
+        # Chaque étape est rendue avec son propre container et rendu LaTeX
         for idx, step in enumerate(core_steps, start=1):
             render_calculation_step(idx, step)
+
+            # Espacement institutionnel entre les blocs de calcul
+            st.write("")

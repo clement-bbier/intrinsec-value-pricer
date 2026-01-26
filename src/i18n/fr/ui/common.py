@@ -1,111 +1,128 @@
 """
 core/i18n/fr/ui/common.py
-Textes communs et generiques de l'interface.
+Textes transverses et métadonnées de base du système.
+Note : Version Institutionnelle - Zéro émoji - Terminologie Finance de Marché.
 """
 
-
 class CommonTexts:
-    """Textes transverses et metadonnees de base."""
-    APP_TITLE = "Analyse de la valeur intrinsèque"
+    """Référentiel des textes génériques et statuts institutionnels."""
+
+    # --- Métadonnées Application ---
+    APP_TITLE = "Terminal de Valorisation Intrinsèque"
+    APP_SUBTITLE = "Ingénierie Financière & Analyse de Risque"
     AUTHOR_NAME = "Clément Barbier"
-    DEVELOPED_BY = "Développé par"
-    RUN_BUTTON = "Lancer le calcul"
+    DEVELOPED_BY = "Propulsé par"
+
+    # --- Boutons et Actions ---
+    RUN_BUTTON = "Exécuter l'analyse"
+    VALIDATE_BUTTON = "Confirmer les hypothèses"
     DEFAULT_TICKER = "AAPL"
+
+    # --- Valeurs par défaut et Fallbacks ---
+    VALUE_NOT_AVAILABLE = "N/A"
+    VALUE_AUTO = "MODÈLE"
+    UNIT_YEARS = "ans"
+
+    # --- En-têtes de Tableaux ---
+    TABLE_HEADER_METRIC = "Indicateur"
+    TABLE_HEADER_VALUE = "Valeur"
+
+    # --- Statuts de Calcul (Glass Box) ---
+    STATUS_CALCULATED = "DÉTERMINÉ"
+    STATUS_AUDITED = "AUDITÉ"
+    STATUS_ADJUSTED = "AJUSTÉ"
+
+    # --- Labels de Composants Glass Box ---
+    STEP_GENERIC_LABEL = "Séquence de calcul"
+    DATA_ORIGIN_LABEL = "SOURCE DES DONNÉES"
+    AUTO_VALUE_IGNORED = "Surcharge manuelle détectée"
+    INTERPRETATION_LABEL = "COMMENTAIRE ANALYTIQUE"
 
 
 class OnboardingTexts:
-    """Contenu pédagogique de la page d'accueil."""
-    # Accroche
-    INTRO_INFO = "Plateforme d'analyse fondamentale automatisée pour l'estimation de la valeur intrinsèque."
+    """Contenu structurel de la page d'accueil et des piliers."""
+    INTRO_INFO = "Solution d'analyse fondamentale quantitative pour l'estimation de la valeur intrinsèque des capitaux propres."
     COMPLIANCE_BODY = (
-        "Les valorisations produites par cette application sont des projections basées sur des modèles de flux actualisés et de profits résiduels."
-        "Elles constituent une d'analyse fondamentale et ne doivent pas être interprétées comme des recommandations d'investissement."
+        "Les modélisations produites reposent sur des algorithmes de flux actualisés (DCF) et de profits résiduels (RIM). "
+        "Ces résultats constituent des outils d'aide à la décision et non des recommandations d'investissement."
     )
 
-    # Section : Méthodes de Valorisation
-    TITLE_METHODS = "Méthode de valorisation"
-    DESC_METHODS = (
-        "Modélisation à partir de 4 approches :"
-    )
-    MODEL_DCF_TITLE = "**Approche Entité (DCF)**"
-    MODEL_DCF_DESC = (
-        "Valorisation de l'actif économique total. Flux opérationnels actualisés au coût moyen du capital."
-    )
-    MODEL_EQUITY_TITLE = "**Approche Actionnaire (FCFE/DDM)**"
-    MODEL_EQUITY_DESC = (
-        "Estimation directe des fonds propres. Actualise les flux résiduels ou dividendes au coût des fonds propres."
-    )
-    MODEL_RIM_TITLE = "**Revenu Résiduel (RIM)**"
-    MODEL_RIM_DESC = (
-        "Standard pour les Banques et Assurances. Valorise l'actif net augmenté des profits excédant le coût du capital."
-    )
-    MODEL_GRAHAM_TITLE = "**Valeur Intrinsèque de Graham**"
-    MODEL_GRAHAM_DESC = (
-        "Approche reliant la puissance bénéficiaire aux taux obligataires pour une marge de sécurité réelle."
-    )
+    # Section : Méthodes
+    TITLE_METHODS = "Méthodologies de Valorisation"
+    DESC_METHODS = "Architecture multi-modèles pour une triangulation de la valeur :"
 
-    # Section : Intelligence de Données (Processus)
-    TITLE_PROCESS = "Flux de données selon le mode (Standard / Approfondi)"
-    STRATEGY_ACQUISITION_TITLE = "**Extraction Automatique (Standard)**"
-    STRATEGY_ACQUISITION_DESC = (
-        "Extraction automatisée des fondamentaux et indicateurs macro via Yahoo Finance. Le Design Pattern Strategy permet d'interchanger les fournisseurs de données via le code."
-    )
-    STRATEGY_MANUAL_TITLE = "**Paramétrage Manuel (Approfondi)**"
-    STRATEGY_MANUAL_DESC = (
-        "Surcharge totale des hypothèses financières pour modéliser vos propres convictions. Permet de simuler des scénarios spécifiques en modifiant les variables d'entrées."
-    )
-    STRATEGY_FALLBACK_TITLE = "**Continuité (Fallback)**"
-    STRATEGY_FALLBACK_DESC = (
-        "Recours aux moyennes sectorielles et valeurs par défaut en cas de données manquantes. Garantit la continuité du calcul et la production d'une valeur intrinsèque."
-    )
+    MODEL_DCF_TITLE = "Approche Entité (FCFF)"
+    MODEL_DCF_DESC = "Valeur de l'actif économique. Flux opérationnels actualisés au coût moyen pondéré du capital (WACC)."
 
-    # Section : Résultats
-    TITLE_RESULTS = "Architecture des Résultats"
-    DESC_RESULTS = "Résultats segmentée en 5 piliers différents :"
-    TAB_1_TITLE = "**1. Configuration**"
-    TAB_1_DESC = "Audit des hypothèses sources et récapitulatif des données utilisées."
-    TAB_2_TITLE = "**2. Trace Mathématique**"
-    TAB_2_DESC = "Détail intégral de chaque étape de calculs intermédiaires."
-    TAB_3_TITLE = "**3. Rapport d'Audit**"
-    TAB_3_DESC = "Score de fiabilité et détection des anomalies de modélisation."
-    TAB_4_TITLE = "**4. Analyse de Marché (mode Approfondi)**"
-    TAB_4_DESC = "Triangulation par multiples sectoriels et comparaison directe par pairs."
-    TAB_5_TITLE = "**5. Ingénierie du Risque (mode Approfondi)**"
-    TAB_5_DESC = "Simulations de Monte Carlo et stress-tests pour quantifier l'incertitude."
+    MODEL_EQUITY_TITLE = "Approche Actionnaire (FCFE/DDM)"
+    MODEL_EQUITY_DESC = "Valeur directe des fonds propres. Actualisation des flux nets de dette au coût des fonds propres (Ke)."
 
-    # Section : Diagnostics
-    DIAGNOSTIC_HEADER = "**Système de Diagnostics**"
-    DIAGNOSTIC_BLOQUANT = "**Bloquant** : Erreur de donnée ou paramètre manquant."
-    DIAGNOSTIC_WARN = "**Avertissement** : Hypothèse divergente (ex: g > WACC)."
-    DIAGNOSTIC_INFO = "**Information** : Note ou recommandation."
+    MODEL_RIM_TITLE = "Revenu Résiduel (Residual Income)"
+    MODEL_RIM_DESC = "Méthode comptable avancée. Valorisation basée sur la création de valeur excédentaire par rapport au coût du capital."
+
+    MODEL_GRAHAM_TITLE = "Formule de Benjamin Graham"
+    MODEL_GRAHAM_DESC = "Approche sécuritaire reliant la capacité bénéficiaire normalisée aux taux obligataires sans risque."
+
+    # Section : Intelligence de Données
+    TITLE_PROCESS = "Protocoles d'Acquisition"
+    STRATEGY_ACQUISITION_TITLE = "Extraction Automatisée"
+    STRATEGY_ACQUISITION_DESC = "Récupération des états financiers et données macro via fournisseurs de données institutionnels."
+
+    STRATEGY_MANUAL_TITLE = "Mode Ingénierie (Manual Override)"
+    STRATEGY_MANUAL_DESC = "Permet l'ajustement granulaire des hypothèses de croissance, de marge et de structure du capital."
+
+    STRATEGY_FALLBACK_TITLE = "Cohérence Sectorielle"
+    STRATEGY_FALLBACK_DESC = "Application de proxys sectoriels en cas de données historiques incomplètes ou aberrantes."
+
+    # Section : Architecture des 5 Piliers
+    TITLE_RESULTS = "Piliers d'Analyse"
+    DESC_RESULTS = "Le rapport est structuré selon les standards de la recherche 'Equity' :"
+    TAB_1_TITLE = "1. Configuration"
+    TAB_1_DESC = "Audit des inputs et récapitulatif des variables macro-économiques."
+    TAB_2_TITLE = "2. Trace Mathématique"
+    TAB_2_DESC = "Transparence totale (Glass Box) sur les étapes de calcul et les formules LaTeX."
+    TAB_3_TITLE = "3. Audit de Fiabilité"
+    TAB_3_DESC = "Vérification de la cohérence interne du modèle et détection d'anomalies."
+    TAB_4_TITLE = "4. Analyse de Marché"
+    TAB_4_DESC = "Triangulation par multiples boursiers (Peer Group Analysis)."
+    TAB_5_TITLE = "5. Ingénierie du Risque"
+    TAB_5_DESC = "Analyse de sensibilité, simulations de Monte Carlo et VaR de valorisation."
+
 
 class FeedbackMessages:
-    """Messages systeme et alertes de validation."""
-    TICKER_REQUIRED_SIDEBAR = "Veuillez saisir un ticker dans la barre latérale."
-    TICKER_INVALID = "Veuillez saisir un ticker valide."
+    """Messages système et alertes de validation."""
+    TICKER_REQUIRED_SIDEBAR = "Identifiant (Ticker) requis pour initialiser l'analyse."
+    TICKER_INVALID = "Symbole boursier non identifié par le fournisseur de données."
+    CALCULATION_SUCCESS = "Valorisation terminée avec succès."
 
 
 class LegalTexts:
-    """Textes juridiques, avertissements et notes de conformite."""
-    COMPLIANCE_TITLE = "Note de conformité"
+    """Textes juridiques et conformité."""
+    COMPLIANCE_TITLE = "Avertissement Légal"
+    DISCLAIMER = "Document à usage strictement professionnel et analytique."
+
 
 class TooltipsTexts:
-    """Infobulles et aides contextuelles pour le mode Expert."""
-    pass
+    """Aide contextuelle pour les concepts financiers (Indispensable pour corriger l'ImportError)."""
+    WACC_HELP = "Weighted Average Cost of Capital : taux d'actualisation global de l'entreprise (Dette + Equity)."
+    KE_HELP = "Cost of Equity : taux de rendement exigé par les actionnaires, calculé via le MEDAF (CAPM)."
+    SBC_HELP = "Stock-Based Compensation : ajustement de la dilution liée aux attributions d'actions au management."
+    TERMINAL_VALUE = "Valeur de l'entreprise au-delà de l'horizon de prévision explicite (Modèle de Gordon-Shapiro)."
+    GROWTH_G = "Taux de croissance à l'infini. Doit être inférieur au taux de croissance de l'économie nominale."
+    MARGIN_SAFETY = "Décote appliquée entre la valeur intrinsèque et le cours actuel pour absorber l'incertitude."
+
 
 class UIMessages:
     """Messages d'information et d'erreur de l'interface utilisateur."""
+    NO_VALID_PERIOD_DATA = "Historique financier insuffisant pour établir une tendance robuste."
+    CHART_UNAVAILABLE = "Données insuffisantes pour la génération graphique."
+    NO_CALCULATION_STEPS = "Trace mathématique indisponible pour ce moteur de calcul."
+    NO_DETAILED_TESTS = "Aucun test d'intégrité supplémentaire requis."
+    NO_TABS_TO_DISPLAY = "Initialisation de l'orchestrateur..."
 
-    # Messages d'information
-    NO_VALID_PERIOD_DATA = "Aucune donnée de période valide trouvée."
-    CHART_UNAVAILABLE = "Graphique non disponible (installer altair pour visualiser la distribution)."
-    NO_CALCULATION_STEPS = "Aucune étape de calcul disponible."
-    NO_DETAILED_TESTS = "Aucun test détaillé disponible."
-    NO_TABS_TO_DISPLAY = "Aucun onglet à afficher."
-
-    # Messages PDF
-    DOWNLOAD_PDF_BTN = "Télécharger le Rapport Pitchbook (PDF)"
-    GENERATING_PDF = "Génération du Pitchbook en cours..."
-    PDF_SUCCESS = "Pitchbook généré avec succès !"
-    PDF_UNAVAILABLE = "Export PDF indisponible (fpdf2 non installé)"
-    PDF_ERROR = "Erreur lors de la génération du PDF :"
+    # PDF / Export
+    DOWNLOAD_PDF_BTN = "Générer le Rapport d'Analyse (PDF)"
+    GENERATING_PDF = "Compilation du rapport institutionnel..."
+    PDF_SUCCESS = "Le rapport est prêt pour l'archivage."
+    PDF_UNAVAILABLE = "Module d'exportation non détecté sur l'instance courante."
+    PDF_ERROR = "Erreur lors de la génération du flux PDF."

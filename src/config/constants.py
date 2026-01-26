@@ -494,6 +494,26 @@ _validate_constants()
 
 
 # ==============================================================================
+# 13. PARAMÈTRES DE PILOTAGE UI
+# ==============================================================================
+
+@dataclass(frozen=True)
+class UIConstants:
+    """Constantes de pilotage de l'interface utilisateur."""
+
+    # Préfixes des étapes de calcul à ignorer dans l'onglet 'Preuve de Calcul' principal
+    # On utilise un tuple pour garantir l'immuabilité (Frozen)
+    EXCLUDED_STEP_PREFIXES: tuple[str, ...] = ("MC_", "SOTP_DETAIL_", "BACKTEST_")
+
+    # Paramètres de visualisation
+    MAX_STEPS_BEFORE_PAGINATION: int = 20
+    DEFAULT_CHART_HEIGHT: int = 400
+
+    # Seuils d'alerte visuelle (en complément de l'audit)
+    WACC_WARNING_THRESHOLD: float = 0.15  # 15%
+    UPSIDE_SUCCESS_THRESHOLD: float = 0.20  # 20% (Highlight en vert)
+
+# ==============================================================================
 # EXPORTS POUR FACILITER LES IMPORTS
 # ==============================================================================
 
@@ -512,4 +532,5 @@ __all__ = [
     "GrowthCalculationDefaults",
     "TechnicalDefaults",
     "ReportingConfig",
+    "UIConstants"
 ]

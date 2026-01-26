@@ -34,6 +34,8 @@ from src.i18n.fr import (
     BacktestTexts,
     ScenarioTexts,
     PillarLabels,
+    QuantTexts,
+    MarketTexts,
     # Backend
     WorkflowTexts,
     DiagnosticTexts,
@@ -67,6 +69,8 @@ __all__ = [
     "BacktestTexts",
     "ScenarioTexts",
     "PillarLabels",
+    "QuantTexts",
+    "MarketTexts",
     # Backend
     "WorkflowTexts",
     "DiagnosticTexts",

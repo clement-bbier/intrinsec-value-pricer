@@ -1,108 +1,136 @@
 """
-app/ui/result_tabs/core/audit_report.py
-Onglet — Rapport d'Audit (Fiabilité)
-
-Affiche le score de confiance et les tests passés/échoués.
+app/ui/results/core/audit_report.py
+Onglet — Rapport d'Audit & Procès-Verbal de Conformité (Pillier 3)
+Architecture : Pillar 3 - Robustesse & Intégrité des Invariants.
 """
 
-from typing import Any
-
+from typing import Any, List
 import streamlit as st
 
-from src.models import ValuationResult, AuditReport, AuditStep, AuditSeverity
-from src.i18n import AuditTexts, UIMessages
+from src.models import ValuationResult, AuditSeverity, AuditStep
+from src.i18n import AuditTexts, KPITexts, CommonTexts
 from app.ui.results.base_result import ResultTabBase
-
+from app.ui.components.ui_kpis import (
+    render_audit_reliability_gauge,
+    atom_kpi_metric
+)
+from app.ui.components.ui_glass_box_registry import get_step_metadata
 
 class AuditReportTab(ResultTabBase):
-    """Onglet du rapport d'audit."""
-    
+    """
+    Pillier 3 : Audit Report.
+    Rendu exhaustif des tests normatifs avec justification LaTeX.
+    """
+
     TAB_ID = "audit_report"
-    LABEL = "Audit"
-    ICON = ""
+    LABEL = KPITexts.TAB_AUDIT
     ORDER = 3
     IS_CORE = True
-    
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche le rapport d'audit."""
+        """Rendu du PV d'audit avec preuve numérique."""
         report = result.audit_report
-        
+
         if not report:
             st.info(AuditTexts.NO_REPORT)
             return
-        
-        # Score global
-        self._render_global_score(report)
-        
-        st.divider()
-        
-        # Détail des tests
-        self._render_audit_details(report)
-    
-    def _render_global_score(self, report: AuditReport) -> None:
-        """Affiche le score global avec jauge."""
-        st.markdown(f"### {AuditTexts.GLOBAL_SCORE.format(score=report.global_score)}")
-        
-        # Barre de progression colorée
-        color = self._get_score_color(report.global_score)
-        st.progress(report.global_score / 100)
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Rating", report.rating)
-        col2.metric("Couverture", f"{report.audit_coverage:.0%}")
-        col3.metric("Tests exécutés", report.audit_depth)
-    
-    def _render_audit_details(self, report: AuditReport) -> None:
-        """Affiche le detail des tests."""
-        st.markdown("**Detail des Tests**")
-        
-        if not report.audit_steps:
-            st.info(UIMessages.NO_DETAILED_TESTS)
-            return
-        
-        # Trier : échecs en premier
-        sorted_steps = sorted(report.audit_steps, key=lambda s: (s.verdict, s.step_key))
-        
-        for step in sorted_steps:
-            self._render_audit_card(step)
-    
-    def _render_audit_card(self, step: AuditStep) -> None:
-        """Affiche une carte pour un test d'audit."""
-        # Determiner le style selon le resultat
-        if step.verdict:
-            icon = "[OK]"
-            color = "#28a745"
-            status = "PASS"
-        else:
-            severity_styles = {
-                AuditSeverity.CRITICAL: ("[X]", "#dc3545", "CRITICAL"),
-                AuditSeverity.WARNING: ("[!]", "#ffc107", "WARNING"),
-                AuditSeverity.INFO: ("[i]", "#17a2b8", "INFO"),
-            }
-            icon, color, status = severity_styles.get(
-                step.severity, ("[-]", "#6c757d", "UNKNOWN")
-            )
-        
+
+        # --- SECTION 1 : SYNTHÈSE DE FIABILITÉ ---
         with st.container(border=True):
-            col1, col2 = st.columns([0.85, 0.15])
-            
-            with col1:
-                st.markdown(f"**{step.step_key}**")
-                if step.evidence:
-                    st.caption(step.evidence)
-            
-            with col2:
-                st.markdown(
-                    f"<span style='color:{color}; font-weight:bold;'>{icon} {status}</span>",
-                    unsafe_allow_html=True
-                )
-    
-    @staticmethod
-    def _get_score_color(score: float) -> str:
-        """Retourne la couleur selon le score."""
-        if score >= 80:
-            return "#28a745"  # Vert
-        elif score >= 60:
-            return "#ffc107"  # Jaune
+            col_gauge, col_metrics = st.columns([1, 1.2])
+
+            with col_gauge:
+                render_audit_reliability_gauge(report.score, report.rating)
+
+            with col_metrics:
+                m1, m2 = st.columns(2)
+                with m1:
+                    atom_kpi_metric(
+                        label=AuditTexts.COVERAGE,
+                        value=f"{report.audit_coverage:.0%}"
+                    )
+                with m2:
+                    # Utilisation du nombre de tests pour la profondeur
+                    atom_kpi_metric(
+                        label=AuditTexts.H_INDICATOR,
+                        value=str(len(report.steps))
+                    )
+
+        st.write("")
+
+        # --- SECTION 2 : RÉSUMÉ DES ALERTES CRITIQUES (RED FLAGS) ---
+        critical_fails = [s for s in report.steps if not s.verdict and s.severity == AuditSeverity.CRITICAL]
+        if critical_fails:
+            st.error(f"**{AuditTexts.STATUS_ALERT.upper()} : {len(critical_fails)} INVARIANTS VIOLÉS**")
+            for fail in critical_fails:
+                meta = get_step_metadata(fail.step_key)
+                st.caption(f"• {meta.get('label', fail.label)}")
+
+        st.divider()
+        st.markdown(f"**{AuditTexts.CHECK_TABLE.upper()}**")
+
+        # --- SECTION 3 : PROCÈS-VERBAL DÉTAILLÉ DES TESTS ---
+        # Tri : Verdicts négatifs (Alerte) d'abord, puis par sévérité
+        sorted_steps = sorted(
+            report.steps,
+            key=lambda s: (s.verdict, s.severity != AuditSeverity.CRITICAL)
+        )
+
+        for step in sorted_steps:
+            self._render_audit_step_card(step)
+
+    def _render_audit_step_card(self, step: AuditStep) -> None:
+        """Rendu d'une carte de test individuelle style Factsheet."""
+        meta = get_step_metadata(step.step_key)
+
+        # Détermination du statut institutionnel
+        if step.verdict:
+            status_color = ":green"
+            status_label = AuditTexts.STATUS_OK
         else:
-            return "#dc3545"  # Rouge
+            status_color = ":red" if step.severity == AuditSeverity.CRITICAL else ":orange"
+            status_label = AuditTexts.STATUS_ALERT
+
+        with st.container(border=True):
+            # En-tête : Label | Status
+            h_left, h_right = st.columns([0.75, 0.25])
+            h_left.markdown(f"**{meta.get('label', step.label).upper()}**")
+            h_right.markdown(
+                f"<div style='text-align:right;'>{status_color}[**{status_label.upper()}**]</div>",
+                unsafe_allow_html=True
+            )
+
+            st.caption(meta.get('description', ""))
+            st.write("")
+
+            # Preuve en 3 colonnes : Théorie | Réel | Résultat
+            c_rule, c_evidence, c_verdict = st.columns([1, 1, 1])
+
+            with c_rule:
+                st.caption(AuditTexts.H_RULE)
+                formula = meta.get('formula')
+                if formula:
+                    st.latex(formula)
+                else:
+                    st.markdown(f"`{CommonTexts.STATUS_AUDITED}`")
+
+            with c_evidence:
+                st.caption(AuditTexts.H_EVIDENCE)
+                if step.numerical_evidence:
+                    # Affichage mis en valeur de l'inégalité/preuve
+                    st.markdown(f"**{step.numerical_evidence}**")
+                else:
+                    st.markdown(f"`{CommonTexts.STATUS_CALCULATED}`")
+
+            with c_verdict:
+                st.caption(AuditTexts.H_VERDICT)
+                st.markdown(f"### {step.result_value}")
+
+            # Commentaire analytique (si présent)
+            if step.evidence:
+                st.divider()
+                st.caption(CommonTexts.INTERPRETATION_LABEL)
+                st.info(step.evidence, icon=None)
+
+    def is_visible(self, result: ValuationResult) -> bool:
+        return result.audit_report is not None

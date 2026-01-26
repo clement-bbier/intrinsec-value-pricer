@@ -1,74 +1,74 @@
 """
-app/ui/result_tabs/components/kpi_cards.py
-Composants pour l'affichage des KPIs.
+app/ui/results/components/kpi_cards.py
+Organisme gérant l'affichage des résultats de valorisation.
+Note : Version institutionnelle épurée.
 """
 
-from typing import Optional
-
-import numpy as np
 import streamlit as st
+from src.models import ValuationResult
+from src.i18n import KPITexts, TooltipsTexts
+from src.utilities.formatting import format_smart_number
+from app.ui.components.ui_kpis import atom_kpi_metric
 
+def render_valuation_summary_cards(result: ValuationResult):
+    """Affiche le bandeau supérieur des KPIs de valorisation (4 colonnes)."""
+    cols = st.columns(4)
 
-def format_smart_number(
-    value: Optional[float],
-    currency: str = "",
-    is_pct: bool = False,
-    decimals: int = 2
-) -> str:
-    """
-    Formate un nombre de manière lisible (M, B, T).
-    
-    Parameters
-    ----------
-    value : float
-        Valeur à formater.
-    currency : str
-        Symbole de devise optionnel.
-    is_pct : bool
-        Si True, affiche en pourcentage.
-    decimals : int
-        Nombre de décimales.
-    
-    Returns
-    -------
-    str
-        Chaîne formatée.
-    """
-    if value is None or (isinstance(value, float) and np.isnan(value)):
-        return "—"
-    
-    if is_pct:
-        return f"{value:.{decimals}%}"
-    
-    abs_val = abs(value)
-    if abs_val >= 1e12:
-        return f"{value/1e12:,.{decimals}f} T {currency}".strip()
-    if abs_val >= 1e9:
-        return f"{value/1e9:,.{decimals}f} B {currency}".strip()
-    if abs_val >= 1e6:
-        return f"{value/1e6:,.{decimals}f} M {currency}".strip()
-    
-    return f"{value:,.{decimals}f} {currency}".strip()
+    with cols[0]:
+        # Switch dynamique entre WACC (Entité) et Ke (Actionnaire)
+        label = KPITexts.WACC_LABEL if result.is_entity_approach else KPITexts.KE_LABEL
+        help_t = TooltipsTexts.WACC_HELP if result.is_entity_approach else TooltipsTexts.KE_HELP
+        atom_kpi_metric(
+            label=label,
+            value=format_smart_number(result.discount_rate, is_pct=True),
+            help_text=help_t
+        )
 
+    with cols[1]:
+        atom_kpi_metric(
+            label=KPITexts.GROWTH_G_LABEL,
+            value=format_smart_number(result.terminal_growth_rate, is_pct=True),
+            help_text=TooltipsTexts.GROWTH_G
+        )
 
-def render_kpi_metric(
-    label: str,
-    value: str,
-    delta: Optional[str] = None,
-    help_text: Optional[str] = None
-) -> None:
+    with cols[2]:
+        atom_kpi_metric(
+            label=KPITexts.MARKET_CAP_LABEL,
+            value=format_smart_number(result.market_cap, currency=result.currency),
+            help_text="Capitalisation boursière à la date d'analyse."
+        )
+
+    with cols[3]:
+        # Marge de sécurité avec indicateur de sens (normal/inverse)
+        upside = result.upside
+        atom_kpi_metric(
+            label=KPITexts.MARGIN_SAFETY_LABEL,
+            value=format_smart_number(upside, is_pct=True),
+            delta=format_smart_number(upside, is_pct=True),
+            delta_color="normal" if upside > 0 else "inverse",
+            help_text=KPITexts.HELP_MOS
+        )
+
+def render_instrument_details(result: ValuationResult):
     """
-    Affiche une métrique KPI avec style institutionnel.
-    
-    Parameters
-    ----------
-    label : str
-        Libellé de la métrique.
-    value : str
-        Valeur formatée.
-    delta : str, optional
-        Variation (affichée en vert/rouge).
-    help_text : str, optional
-        Texte d'aide au survol.
+    Affiche les détails de la valeur intrinsèque (Equity Value & Price Per Share).
+    Utilisé dans le résumé exécutif pour la section 'Prix vs Valeur'.
     """
-    st.metric(label, value, delta=delta, help=help_text)
+    with st.container(border=True):
+        col_equity, col_price = st.columns(2)
+
+        with col_equity:
+            # Valeur totale des fonds propres
+            atom_kpi_metric(
+                label=KPITexts.EQUITY_VALUE_LABEL,
+                value=format_smart_number(result.equity_value, currency=result.currency),
+                help_text=None
+            )
+
+        with col_price:
+            # Valeur intrinsèque par action (Le "Cours Cible" théorique)
+            atom_kpi_metric(
+                label=KPITexts.INTRINSIC_PRICE_LABEL,
+                value=format_smart_number(result.intrinsic_price, currency=result.currency),
+                help_text=KPITexts.HELP_IV
+            )

@@ -1,14 +1,14 @@
 """
-app/ui/result_tabs/components/
-Composants UI réutilisables pour les onglets.
+app/ui/results/components/
+Index des composants métiers pour les onglets de résultats.
 """
 
-from app.ui.results.components.step_renderer import render_calculation_step
-from app.ui.results.components.kpi_cards import render_kpi_metric
-from src.utilities.formatting import format_smart_number
+from .step_renderer import render_calculation_step
+from .kpi_cards import render_valuation_summary_cards, render_instrument_details, atom_kpi_metric
 
 __all__ = [
     "render_calculation_step",
-    "format_smart_number",
-    "render_kpi_metric",
+    "render_valuation_summary_cards",
+    "render_instrument_details",
+    "atom_kpi_metric"
 ]

@@ -1,169 +1,106 @@
 """
-app/ui/result_tabs/optional/scenario_analysis.py
-
-ONGLET — ANALYSE DE SCÉNARIOS (BULL/BASE/BEAR)
-
-Rôle : Affichage des résultats de valorisation sous différents scénarios
-Pattern : ResultTabBase (Template Method)
-Style : Numpy docstrings
-
-Correction de l'interface scenario_synthesis
-Risques financiers : Affichage de valorisations alternatives, pas de calculs
-
-Dépendances critiques :
-- streamlit >= 1.28.0
-- core.models.ValuationResult.scenario_synthesis
-- core.models.scenarios.ScenarioSynthesis
-
-Visible uniquement si scenario_synthesis contient des variants.
-Présente : tableau comparatif, valeurs pondérées, upside par scénario.
+app/ui/results/optional/scenario_analysis.py
+Pillier 4 — Ingénierie du Risque : Analyse de Scénarios Déterministes.
+Rôle : Comparaison Bull/Base/Bear et calcul de l'espérance mathématique.
 """
 
 from typing import Any
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Supprimer l'avertissement de dépréciation pandas
-pd.set_option('future.no_silent_downcasting', True)
-
 from src.models import ValuationResult
-from src.i18n import ScenarioTexts
-from app.ui.results.base_result import ResultTabBase
+from src.i18n import QuantTexts, KPITexts, CommonTexts
 from src.utilities.formatting import format_smart_number
-
+from app.ui.results.base_result import ResultTabBase
+from app.ui.components.ui_kpis import atom_kpi_metric
 
 class ScenarioAnalysisTab(ResultTabBase):
     """
-    Onglet d'analyse de scénarios déterministes.
-
-    Présente les résultats de valorisation sous différents scénarios
-    (Bull/Base/Bear) avec probabilités, valeurs intrinsèques et
-    calculs d'upside par rapport au prix de marché.
-
-    Attributes
-    ----------
-    TAB_ID : str
-        Identifiant unique "scenario_analysis".
-    LABEL : str
-        Label affiché "Scénarios".
-    ICON : str
-        Icône vide (style sobre).
-    ORDER : int
-        Position d'affichage (6ème onglet).
-    IS_CORE : bool
-        False - onglet optionnel (visible si scénarios présents).
-
-    Notes
-    -----
-    Utilise result.scenario_synthesis pour accéder aux données.
-    Calcule automatiquement l'upside par rapport au prix de marché.
-    Présente la valeur pondérée selon les probabilités des scénarios.
+    Onglet d'analyse de scénarios.
+    Affiche la triangulation entre les différentes visions stratégiques.
     """
-    
+
     TAB_ID = "scenario_analysis"
-    LABEL = "Scénarios"
-    ICON = ""
+    LABEL = KPITexts.TAB_SCENARIOS # Label i18n: "Analyse de Scénarios"
     ORDER = 6
     IS_CORE = False
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
-        """
-        Détermine si l'onglet doit être affiché.
-
-        Vérifie la présence de données de scénarios dans le résultat.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            Résultat de valorisation à analyser.
-
-        Returns
-        -------
-        bool
-            True si scenario_synthesis existe et contient des variants.
-        """
+        """L'onglet est visible si le moteur de scénarios a généré des variantes."""
         return (
             result.scenario_synthesis is not None
             and len(result.scenario_synthesis.variants) > 0
         )
-    
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Affiche l'analyse complète des scénarios déterministes.
-
-        Présente un tableau comparatif de tous les scénarios calculés
-        avec leurs caractéristiques et valeurs, plus la synthèse pondérée.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            Résultat contenant scenario_synthesis avec les variants.
-        **kwargs : Any
-            Paramètres additionnels (non utilisés).
-
-        Notes
-        -----
-        Calcule l'upside de chaque scénario par rapport au prix de marché.
-        Utilise expected_value pour la valorisation pondérée.
-        Gère les cas où market_price pourrait être nul.
-        """
-        scenario_synthesis = result.scenario_synthesis
+        """Rendu de la synthèse des scénarios pondérés."""
+        synthesis = result.scenario_synthesis
         currency = result.financials.currency
+        market_price = result.market_price
 
-        st.markdown(f"**{ScenarioTexts.TITLE_ANALYSIS}**")
-        st.caption(ScenarioTexts.CAPTION_ANALYSIS)
+        # --- HEADER SECTION ---
+        st.markdown(f"**{QuantTexts.SCENARIO_TITLE}**")
+        st.caption(KPITexts.LABEL_SCENARIO_RANGE)
 
-        # Tableau des scénarios
+        # --- 1. TABLEAU COMPARATIF (DETAILED VIEW) ---
         with st.container(border=True):
-            scenario_data = []
-            for scenario in scenario_synthesis.variants:
-                # Calcul de l'upside par rapport au prix de marché
-                market_price = result.financials.current_price or 0.0
-                upside_pct = ((scenario.intrinsic_value - market_price) / market_price) if market_price > 0 else 0.0
+            data = []
+            for variant in synthesis.variants:
+                # Calcul de l'upside spécifique au scénario
+                upside = (variant.intrinsic_value / market_price - 1) if market_price > 0 else 0
 
-                scenario_data.append({
-                    ScenarioTexts.COL_SCENARIO: scenario.label.upper(),
-                    ScenarioTexts.COL_PROBABILITY: scenario.probability,  # Valeur brute float
-                    ScenarioTexts.COL_GROWTH: scenario.growth_used,   # Valeur brute float
-                    ScenarioTexts.COL_MARGIN_FCF: scenario.margin_used if scenario.margin_used and scenario.margin_used != 0 else None,  # Valeur brute ou None
-                    ScenarioTexts.COL_VALUE_PER_SHARE: scenario.intrinsic_value,  # Valeur brute float
-                    ScenarioTexts.COL_UPSIDE: upside_pct,  # Valeur brute float
+                data.append({
+                    QuantTexts.COL_SCENARIO: variant.label.upper(),
+                    QuantTexts.COL_PROBABILITY: variant.probability,
+                    QuantTexts.COL_GROWTH: variant.growth_used,
+                    QuantTexts.COL_MARGIN_FCF: variant.margin_used if variant.margin_used else 0.0,
+                    QuantTexts.COL_VALUE_PER_SHARE: variant.intrinsic_value,
+                    QuantTexts.COL_UPSIDE: upside
                 })
 
-            df = pd.DataFrame(scenario_data)
+            df = pd.DataFrame(data)
 
-            # Traitement des données pour robustesse
-            df[ScenarioTexts.COL_MARGIN_FCF] = df[ScenarioTexts.COL_MARGIN_FCF].fillna(np.nan).infer_objects(copy=False)
-
-            # Configuration des colonnes avec formatage Streamlit
+            # Configuration des colonnes (Style Bloomberg / Reuters)
             column_config = {
-                ScenarioTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
-                ScenarioTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.1f%%"),
-                ScenarioTexts.COL_MARGIN_FCF: st.column_config.NumberColumn(format="%.1f%%"),
-                ScenarioTexts.COL_VALUE_PER_SHARE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
-                ScenarioTexts.COL_UPSIDE: st.column_config.NumberColumn(format="%.1f%%"),  # Format sans signe + pour éviter les crashes
+                QuantTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
+                QuantTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.2f%%"),
+                QuantTexts.COL_MARGIN_FCF: st.column_config.NumberColumn(format="%.2f%%"),
+                QuantTexts.COL_VALUE_PER_SHARE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
+                QuantTexts.COL_UPSIDE: st.column_config.ProgressColumn(
+                    label=QuantTexts.COL_UPSIDE,
+                    format="%.1%+",
+                    min_value=-1.0,
+                    max_value=1.0,
+                    color="blue"
+                )
             }
 
-            st.dataframe(df, hide_index=True, width='stretch', column_config=column_config)
+            st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
 
-        # Valeur pondérée
-        expected_value = scenario_synthesis.expected_value
-        if expected_value > 0:
-            market_price = result.financials.current_price or 0.0
-            weighted_upside = ((expected_value - market_price) / market_price) if market_price > 0 else 0.0
-
+        # --- 2. SYNTHÈSE PONDÉRÉE (EXPECTED VALUE HUB) ---
+        expected_val = synthesis.expected_value
+        if expected_val > 0:
+            st.write("")
             with st.container(border=True):
-                col1, col2 = st.columns(2)
-                col1.metric(
-                    ScenarioTexts.METRIC_WEIGHTED_VALUE,
-                    format_smart_number(expected_value, currency)
-                )
-                col2.metric(
-                    ScenarioTexts.METRIC_WEIGHTED_UPSIDE,
-                    f"{weighted_upside:+.1%}"
-                )
-    
+                col_val, col_upside = st.columns(2)
+
+                with col_val:
+                    atom_kpi_metric(
+                        label=QuantTexts.METRIC_WEIGHTED_VALUE,
+                        value=format_smart_number(expected_val, currency=currency),
+                        help_text=KPITexts.HELP_IV
+                    )
+
+                with col_upside:
+                    weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
+                    atom_kpi_metric(
+                        label=QuantTexts.METRIC_WEIGHTED_UPSIDE,
+                        value=f"{weighted_upside:+.1%}",
+                        delta=f"{weighted_upside:+.1%}",
+                        delta_color="normal" if weighted_upside > 0 else "inverse",
+                        help_text=KPITexts.HELP_MOS
+                    )
+
     def get_display_label(self) -> str:
         return self.LABEL

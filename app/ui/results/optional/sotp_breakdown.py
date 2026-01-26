@@ -1,76 +1,59 @@
 """
-app/ui/result_tabs/optional/sotp_breakdown.py
-Onglet — Sum-of-the-Parts (SOTP)
-
-Visible uniquement si une valorisation SOTP est disponible.
+app/ui/results/optional/sotp_breakdown.py
+Pillier 5 — Analyse de Marché : Décomposition SOTP.
+Rôle : Visualiser la 'cascade' de valeur des Business Units.
 """
 
 from typing import Any
-
 import streamlit as st
-import pandas as pd
 
 from src.models import ValuationResult
-from src.i18n import SOTPResultTexts as SOTPTexts
+from src.i18n import MarketTexts, SOTPTexts, KPITexts
 from app.ui.results.base_result import ResultTabBase
-from src.utilities.formatting import format_smart_number
-
+from app.ui.components.ui_charts import display_sotp_waterfall # Votre cascade Plotly
 
 class SOTPBreakdownTab(ResultTabBase):
-    """Onglet de décomposition SOTP."""
-    
+    """
+    Onglet Sum-of-the-Parts.
+    Décompose l'EV en Business Units et applique l'Equity Bridge.
+    """
+
     TAB_ID = "sotp_breakdown"
-    LABEL = "Sum-of-the-Parts"
-    ICON = ""
-    ORDER = 5
+    LABEL = MarketTexts.TITLE_SEGMENTATION
+    ORDER = 9
     IS_CORE = False
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
-        """Visible si SOTP disponible."""
-        return (
-            result.sotp_results is not None
-            and len(result.sotp_results.segments) > 0
-        )
-    
+        """Visible si le mode SOTP est activé dans les paramètres."""
+        return bool(result.params.sotp and result.params.sotp.enabled)
+
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Affiche la décomposition SOTP."""
-        sotp = result.sotp_results
-        currency = result.financials.currency
-        
-        st.markdown(f"**{SOTPTexts.TITLE_SEGMENTATION}**")
-        st.caption(SOTPTexts.CAPTION_SEGMENTATION)
-        
-        # Tableau des segments
+        """Rendu de la cascade de valeur SOTP."""
+        st.markdown(f"**{SOTPTexts.TITLE}**")
+        st.caption(MarketTexts.CAPTION_SEGMENTATION)
+
+        # --- 1. LA CASCADE VISUELLE (VOTRE COMPOSANT PLOTLY) ---
+        display_sotp_waterfall(result)
+
+        # --- 2. RÉSUMÉ DES CONTRIBUTIONS ---
+        st.write("")
         with st.container(border=True):
-            segments_data = []
-            for seg in sotp.segments:
-                segments_data.append({
-                    SOTPTexts.COL_SEGMENT: seg.name,
-                    SOTPTexts.COL_REVENUE: format_smart_number(seg.revenue, currency),
-                    SOTPTexts.COL_MULTIPLE: f"{seg.multiple:.1f}x",
-                    SOTPTexts.COL_VALUE: format_smart_number(seg.value, currency),
-                    SOTPTexts.COL_CONTRIBUTION: f"{seg.contribution_pct:.1%}",
-                })
-            
-            df = pd.DataFrame(segments_data)
-            st.dataframe(df, hide_index=True, width='stretch')
-        
-        # Synthèse
-        with st.container(border=True):
-            col1, col2, col3 = st.columns(3)
-            
-            col1.metric(
-                SOTPTexts.METRIC_GROSS_VALUE,
-                format_smart_number(sotp.gross_value, currency)
-            )
-            col2.metric(
-                SOTPTexts.METRIC_HOLDING_DISCOUNT,
-                f"{sotp.holding_discount:.1%}"
-            )
-            col3.metric(
-                SOTPTexts.METRIC_NET_VALUE,
-                format_smart_number(sotp.net_value, currency)
-            )
-    
-    def get_display_label(self) -> str:
-        return self.LABEL
+            col_id, col_val, col_pct = st.columns([2, 2, 1])
+
+            # En-têtes i18n
+            col_id.markdown(f"*{MarketTexts.COL_SEGMENT}*")
+            col_val.markdown(f"*{MarketTexts.COL_VALUE}*")
+            col_pct.markdown(f"*{MarketTexts.COL_CONTRIBUTION}*")
+            st.divider()
+
+            raw_ev_sum = sum(seg.enterprise_value for seg in result.params.sotp.segments)
+
+            for seg in result.params.sotp.segments:
+                c1, c2, c3 = st.columns([2, 2, 1])
+                c1.markdown(f"**{seg.name}**")
+                c2.markdown(f"{seg.enterprise_value:,.0f} {result.financials.currency}")
+
+                contrib = (seg.enterprise_value / raw_ev_sum) if raw_ev_sum > 0 else 0
+                c3.markdown(f"{contrib:.1%}")
+
+        st.caption(f"**{KPITexts.NOTE_ANALYSIS}** : {SOTPTexts.HELP_SOTP}")

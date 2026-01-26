@@ -1,33 +1,35 @@
 """
 src/utilities/formatting.py
-
-Utilitaires de formatage partagés.
-
-Ces fonctions sont utilisées à la fois par la logique métier
-et par l'interface utilisateur pour un formatage cohérent.
-
-Utilitaires de formatage - Type-safe
-Pattern : Pure Functions
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- Un formatage incorrect peut induire en erreur l'utilisateur
-- Les arrondis doivent être cohérents avec les conventions financières
+Utilitaires de formatage partagés — Grade Institutionnel.
 """
-
 from __future__ import annotations
-
 import numpy as np
 from typing import Optional
+from src.i18n import CommonTexts
 
+def format_smart_number(
+    val: Optional[float],
+    currency: str = "",
+    is_pct: bool = False,
+    decimals: int = 2
+) -> str:
+    """
+    Formatte les nombres pour éviter les coupures UI (Millions, Billions, Trillions).
+    Source unique de vérité pour l'application.
+    """
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return CommonTexts.VALUE_NOT_AVAILABLE
 
-def format_smart_number(val: Optional[float], currency: str = "", is_pct: bool = False) -> str:
-    """Formatte les nombres pour éviter les coupures UI (Millions, Billions)."""
-    if val is None or (isinstance(val, float) and np.isnan(val)): return "—"
-    if is_pct: return f"{val:.2%}"
+    if is_pct:
+        return f"{val:.{decimals}%}"
 
     abs_val = abs(val)
-    if abs_val >= 1e12: return f"{val/1e12:,.2f} T {currency}"
-    if abs_val >= 1e9:  return f"{val/1e9:,.2f} B {currency}"
-    if abs_val >= 1e6:  return f"{val/1e6:,.2f} M {currency}"
-    return f"{val:,.2f} {currency}"
+    # Conventions institutionnelles : T, B, M
+    if abs_val >= 1e12:
+        return f"{val/1e12:,.{decimals}f} T {currency}".strip()
+    if abs_val >= 1e9:
+        return f"{val/1e9:,.{decimals}f} B {currency}".strip()
+    if abs_val >= 1e6:
+        return f"{val/1e6:,.{decimals}f} M {currency}".strip()
+
+    return f"{val:,.{decimals}f} {currency}".strip()

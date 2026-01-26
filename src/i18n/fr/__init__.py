@@ -18,6 +18,8 @@ from src.i18n.fr.ui import (
     UIMessages,
     SharedTexts,
     KPITexts,
+    QuantTexts,
+    MarketTexts,
     AuditTexts,
     ChartTexts,
     SOTPTexts,
@@ -61,6 +63,8 @@ __all__ = [
     "BacktestTexts",
     "ScenarioTexts",
     "PillarLabels",
+    "QuantTexts",
+    "MarketTexts",
     # Backend
     "WorkflowTexts",
     "DiagnosticTexts",

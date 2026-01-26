@@ -1,42 +1,27 @@
 """
 app/ui/results/orchestrator.py
-
-ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS (V15.0)
+ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS
 ==========================================================
-Rôle : Coordination et rendu des onglets thématiques post-calcul.
-Garantit l'ordre institutionnel et la pertinence contextuelle (Smart Filtering).
-
-Architecture des 5 Piliers :
-    0. Synthèse (Executive Summary)
-    1. Configuration (Inputs/Hypothèses)
-    2. Trace Mathématique (Glass Box / Preuve de calcul)
-    3. Rapport d'Audit (Audit & Fiabilité)
-    4. Ingénierie du Risque (Quant : Monte Carlo / Scénarios / Backtest)
-    5. Analyse de Marché (Relatif : Triangulation / SOTP)
-
-Pattern : Strategy & Mediator
-Style : Numpy docstrings
 """
 
 from __future__ import annotations
-
 import hashlib
 import logging
-from typing import List, Any, Optional, Dict
+import numpy as np
+from typing import List, Any, Dict, Type
 
 import streamlit as st
 
 from src.models import ValuationResult, ValuationMode
+from src.i18n import UIMessages, PillarLabels, KPITexts
+from src.utilities.formatting import format_smart_number
 from .base_result import ResultTabBase
-from src.i18n import UIMessages, PillarLabels
 
-# --- IMPORT DES PILIERS CORE ---
+# --- PILLIERS CORE & OPTIONNELS ---
 from app.ui.results.core.executive_summary import ExecutiveSummaryTab
 from app.ui.results.core.inputs_summary import InputsSummaryTab
 from app.ui.results.core.calculation_proof import CalculationProofTab
 from app.ui.results.core.audit_report import AuditReportTab
-
-# --- IMPORT DES PILIERS OPTIONNELS ---
 from app.ui.results.optional.monte_carlo_distribution import MonteCarloDistributionTab
 from app.ui.results.optional.scenario_analysis import ScenarioAnalysisTab
 from app.ui.results.optional.historical_backtest import HistoricalBacktestTab
@@ -45,149 +30,112 @@ from app.ui.results.optional.sotp_breakdown import SOTPBreakdownTab
 
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-# CONSTANTES DE CACHE & SESSION (ST-3.4)
-# ============================================================================
-
-SESSION_KEY_RESULT_HASH = "result_cache_hash"
-SESSION_KEY_MC_DATA = "cached_monte_carlo_data"
-
-
-def _compute_result_hash(result: ValuationResult) -> str:
-    """Calcule un hash unique pour détecter un changement de contexte de calcul."""
-    key_components = (
-        result.ticker,
-        result.intrinsic_value_per_share,
-        result.mode.value if result.mode else "N/A",
-        len(result.simulation_results) if result.simulation_results else 0,
-    )
-    return hashlib.md5(str(key_components).encode('utf-8')).hexdigest()[:16]
-
-
-def _handle_cache_invalidation(result: ValuationResult) -> bool:
-    """Gère l'invalidation du cache de session si les données sources changent."""
-    current_hash = _compute_result_hash(result)
-    if st.session_state.get(SESSION_KEY_RESULT_HASH) != current_hash:
-        st.session_state[SESSION_KEY_RESULT_HASH] = current_hash
-        st.session_state[SESSION_KEY_MC_DATA] = None
-        return True
-    return False
-
-
-# ============================================================================
-# CLASSE ORCHESTRATEUR
-# ============================================================================
+SESSION_KEY_RESULT_HASH = "valuation_context_hash"
+SESSION_KEY_MC_DATA = "stats_monte_carlo_cache"
 
 class ResultTabOrchestrator:
-    """
-    Médiateur central pour le rendu des onglets de résultats financiers (ST-5.2).
-
-    Cette classe applique le 'Smart Filtering' pour masquer les analyses
-    non pertinentes (ex: Multiples pour Graham) et respecte la hiérarchie
-    des 5 piliers de recherche.
-    """
-
-    # Séquençage strict des 5 piliers institutionnels
-    _THEMATIC_TABS: List[type] = [
-        ExecutiveSummaryTab,        # Position 0 : Synthèse Décisionnelle
-        InputsSummaryTab,           # Position 1 : Configuration
-        CalculationProofTab,        # Position 2 : Trace Mathématique
-        AuditReportTab,             # Position 3 : Rapport d'Audit
-        # --- Pilier 4 : Ingénierie du Risque ---
-        MonteCarloDistributionTab,
-        ScenarioAnalysisTab,
-        HistoricalBacktestTab,
-        # --- Pilier 5 : Analyse de Marché ---
-        PeerMultiplesTab,
-        SOTPBreakdownTab
+    _THEMATIC_TABS_CLASSES: List[Type[ResultTabBase]] = [
+        ExecutiveSummaryTab, InputsSummaryTab, CalculationProofTab,
+        AuditReportTab, MonteCarloDistributionTab, ScenarioAnalysisTab,
+        HistoricalBacktestTab, PeerMultiplesTab, SOTPBreakdownTab
     ]
 
     def __init__(self):
-        """Initialise les instances d'onglets thématiques."""
-        self._tabs: List[ResultTabBase] = [TabClass() for TabClass in self._THEMATIC_TABS]
+        self._tabs = [TabClass() for TabClass in self._THEMATIC_TABS_CLASSES]
+
+    def _render_global_header(self, result: ValuationResult) -> None:
+        """Rendu du bandeau d'identité fixe (Golden Header)."""
+        f = result.financials
+        currency = f.currency  # Accès sécurisé via financials
+
+        with st.container(border=True):
+            col_id, col_val, col_audit = st.columns([2, 2.5, 1.5])
+
+            with col_id:
+                st.markdown(f"### {f.ticker}")
+                st.caption(f"{f.name} | {f.sector}")
+
+            with col_val:
+                # Correction Naming : upside_pct au lieu de upside
+                upside = result.upside_pct or 0.0
+                color = "green" if upside > 0 else "red"
+
+                st.markdown(f"**{KPITexts.LABEL_IV}**")
+                # Correction Naming : intrinsic_value_per_share
+                val_str = f"{format_smart_number(result.intrinsic_value_per_share, currency=currency)}"
+                diff_str = f"{upside:+.1%}"
+
+                st.markdown(f"## {val_str} (:{color}[{diff_str}])")
+                st.caption(f"{KPITexts.LABEL_PRICE} : {result.market_price:,.2f} {currency}")
+
+            with col_audit:
+                if result.audit_report:
+                    rating = result.audit_report.rating
+                    badge_color = "green" if rating.startswith("A") else "orange" if rating.startswith("B") else "red"
+                    st.markdown(f"<div style='text-align:right;'>{KPITexts.EXEC_CONFIDENCE}</div>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='text-align:right; font-size: 2.5rem; font-weight: bold; color: {badge_color};'>"
+                        f"{rating}</div>",
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(f"<div style='text-align:right;'>N/A</div>", unsafe_allow_html=True)
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Coordonne le rendu des onglets Streamlit (Logical Path).
+        """Coordonne le rendu dynamique des onglets."""
 
-        Parameters
-        ----------
-        result : ValuationResult
-            Le résultat complet de la valorisation issue du moteur.
-        **kwargs : Any
-            Arguments additionnels passés aux fonctions de rendu.
-        """
-        # 1. Gestion de l'état et du cache (ST-3.4)
-        _handle_cache_invalidation(result)
+        # --- PHASE 1 : AFFICHAGE DU HEADER FIXE ---
+        self._render_global_header(result)
+        st.write("") # Espacement léger
+
+        # 1. Gestion du Cache
+        self._handle_cache_invalidation(result)
         self._cache_technical_data(result)
+        mc_stats = st.session_state.get(SESSION_KEY_MC_DATA)
+        if mc_stats:
+            kwargs["mc_stats"] = mc_stats
 
-        cached_mc = st.session_state.get(SESSION_KEY_MC_DATA)
-        if cached_mc:
-            kwargs["cached_mc_stats"] = cached_mc
-
-        # 2. Smart Filtering & Visibilité contextuelle (Tâche 1.2.2)
+        # 2. Filtrage & Rendu des Onglets
         visible_tabs = self._filter_relevant_tabs(result)
-
         if not visible_tabs:
             st.warning(UIMessages.NO_TABS_TO_DISPLAY)
             return
 
-        # Tri final par propriété ORDER (Double sécurité)
-        visible_tabs.sort(key=lambda t: t.ORDER)
-
-        # 3. Rendu de l'interface par onglets natifs
         tab_labels = [tab.get_display_label() for tab in visible_tabs]
         st_tabs = st.tabs(tab_labels)
 
         for st_tab, tab_instance in zip(st_tabs, visible_tabs):
             with st_tab:
                 try:
-                    # Chaque onglet reçoit le résultat et le contexte (kwargs)
                     tab_instance.render(result, **kwargs)
                 except Exception as e:
-                    logger.error("Error rendering tab %s: %s", tab_instance.LABEL, str(e))
-                    st.error(f"Affichage momentanément indisponible : {tab_instance.LABEL}")
+                    logger.error(f"Render Error [{tab_instance.TAB_ID}]: {str(e)}")
+                    st.error(f"{UIMessages.CHART_UNAVAILABLE}")
 
     def _filter_relevant_tabs(self, result: ValuationResult) -> List[ResultTabBase]:
-        """
-        Applique les règles métier de filtrage des onglets (ST-5.1).
-
-        Règles :
-        - Un onglet doit avoir des données (is_visible).
-        - Les multiples sont masqués pour le modèle Graham (Tâche 1.2.2).
-        """
         filtered = []
         is_graham = (result.mode == ValuationMode.GRAHAM)
-
         for tab in self._tabs:
-            # 1. Vérification de la présence de données
-            if not tab.is_visible(result):
-                continue
-
-            # 2. Arbitrage spécifique Graham / Multiples
-            if is_graham and isinstance(tab, PeerMultiplesTab):
-                continue
-
+            if not tab.is_visible(result): continue
+            if is_graham and isinstance(tab, (MonteCarloDistributionTab, PeerMultiplesTab)): continue
             filtered.append(tab)
+        return sorted(filtered, key=lambda t: t.ORDER)
 
-        return filtered
+    def _handle_cache_invalidation(self, result: ValuationResult) -> None:
+        ctx_payload = (result.ticker, result.intrinsic_value_per_share,
+                       result.mode.value if result.mode else "NONE",
+                       len(result.simulation_results) if result.simulation_results else 0)
+        current_hash = hashlib.md5(str(ctx_payload).encode()).hexdigest()[:12]
+        if st.session_state.get(SESSION_KEY_RESULT_HASH) != current_hash:
+            st.session_state[SESSION_KEY_RESULT_HASH] = current_hash
+            st.session_state[SESSION_KEY_MC_DATA] = None
 
     def _cache_technical_data(self, result: ValuationResult) -> None:
-        """Met en cache les indicateurs statistiques de la simulation Monte Carlo."""
         if result.simulation_results and not st.session_state.get(SESSION_KEY_MC_DATA):
-            import numpy as np
-            # Nettoyage des None éventuels pour le calcul statistique
-            v = np.array([res for res in result.simulation_results if res is not None])
-            if len(v) > 0:
+            data = np.array([r for r in result.simulation_results if r is not None])
+            if data.size > 0:
                 st.session_state[SESSION_KEY_MC_DATA] = {
-                    "median": float(np.median(v)),
-                    "p10": float(np.percentile(v, 10)),
-                    "p90": float(np.percentile(v, 90)),
-                    "std": float(np.std(v)),
-                    "count": len(v)
+                    "median": np.median(data), "p10": np.percentile(data, 10),
+                    "p90": np.percentile(data, 90), "std": np.std(data),
+                    "var_95": np.percentile(data, 5)
                 }
-
-    def clear_cache(self) -> None:
-        """Réinitialise manuellement les données de cache de session."""
-        st.session_state[SESSION_KEY_RESULT_HASH] = None
-        st.session_state[SESSION_KEY_MC_DATA] = None

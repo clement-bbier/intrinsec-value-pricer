@@ -20,7 +20,9 @@ from src.i18n.fr.ui.results import (
     KPITexts,
     AuditTexts,
     ChartTexts,
-    PillarLabels
+    PillarLabels,
+    QuantTexts,
+    MarketTexts
 )
 
 from src.i18n.fr.ui.extensions import (
@@ -41,6 +43,8 @@ __all__ = [
     "SidebarTexts",
     "SharedTexts",
     "KPITexts",
+    "QuantTexts",
+    "MarketTexts",
     "AuditTexts",
     "ChartTexts",
     "SOTPTexts",
