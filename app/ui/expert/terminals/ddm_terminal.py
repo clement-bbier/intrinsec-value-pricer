@@ -38,7 +38,7 @@ class DDMTerminal(ExpertTerminalBase):
     # --- Configuration du Pipeline UI ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = True
+    SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 

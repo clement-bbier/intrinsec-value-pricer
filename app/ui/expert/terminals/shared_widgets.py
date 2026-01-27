@@ -347,102 +347,99 @@ def widget_equity_bridge(
 # ==============================================================================
 
 def widget_monte_carlo(
-        mode: ValuationMode,
-        terminal_method: Optional[TerminalValueMethod] = None,
-        custom_vols: Optional[Dict[str, str]] = None,
-        key_prefix: Optional[str] = None
+    mode: ValuationMode,
+    terminal_method: Optional[TerminalValueMethod] = None,
+    custom_vols: Optional[Dict[str, str]] = None,
+    key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget de calibration stochastique (Monte Carlo).
-    Standardisation i18n et orchestration dynamique des colonnes.
+    Widget de calibration stochastique (Monte Carlo) avec injection i18n dynamique.
+
+    Adapte les libellés de volatilité selon le modèle (EPS pour Graham, NI pour RIM,
+    FCF pour DCF) en utilisant exclusivement le référentiel SharedTexts.
     """
     prefix = key_prefix or "mc"
 
-    # 1. En-tête de section (i18n)
+    # 1. EN-TÊTE ET DESCRIPTION (i18n)
     st.markdown(SharedTexts.SEC_6_MC)
     st.info(SharedTexts.SEC_6_DESC_MC)
 
-    # 2. Toggle d'activation
+    # 2. TOGGLE D'ACTIVATION
     enable = st.toggle(SharedTexts.MC_CALIBRATION, value=False, key=f"{prefix}_enable")
-
     if not enable:
         return {"enable_monte_carlo": False}
 
-    # 3. Profondeur de simulation (Slider)
+    # 3. PROFONDEUR DE SIMULATION
     sims = st.select_slider(
         SharedTexts.MC_ITERATIONS,
         options=[1000, 5000, 10000, 20000],
         value=5000,
         key=f"{prefix}_sims"
     )
-
     st.caption(SharedTexts.MC_VOL_INCERTITUDE)
 
-    # 4. Grille de saisie (Distribution en 2 colonnes)
+    # 4. GRILLE DE SAISIE (Double colonne institutionnelle)
     v_col1, v_col2 = st.columns(2)
 
-    # --- COLONNE 1 : VOLATILITÉS DE BASE ---
-    # Détermination du label i18n pour le flux d'ancrage (FCF, Dividende, etc.)
-    label_base = (custom_vols or {}).get("base_flow_volatility", SharedTexts.MC_VOL_BASE_FLOW)
+    # --- LOGIQUE I18N CONTEXTUELLE ---
+    # Sélection du label pour le flux de base (Ancrage Year 0)
+    if mode == ValuationMode.GRAHAM:
+        label_base = SharedTexts.MC_VOL_EPS  # Ex: "Incertitude sur le BPA (EPS)"
+    elif mode == ValuationMode.RIM:
+        label_base = SharedTexts.MC_VOL_NI   # Ex: "Incertitude sur le Résultat Net"
+    elif mode == ValuationMode.DDM:
+        label_base = SharedTexts.MC_VOL_DIV  # Ex: "Incertitude sur le Dividende"
+    else:
+        label_base = SharedTexts.MC_VOL_BASE_FLOW # Ex: "Incertitude sur le FCF"
 
+    # 5. COLONNE 1 : VOLATILITÉS OPÉRATIONNELLES
     v_base = v_col1.number_input(
         label_base,
         min_value=0.0, max_value=0.5,
         value=None, format="%.3f",
-        key=f"{prefix}_v_base"
+        key=f"{prefix}_vol_flow",
+        help=SharedTexts.HELP_VOL_BASE # Assurez-vous que cette clé existe
     )
 
-    # --- COLONNE 2 : RISQUES SPÉCIFIQUES ---
-    # Bêta (Masqué si Graham car non utilisé par le modèle)
+    # Sélection du label pour la croissance (g ou ω)
+    label_growth = SharedTexts.LBL_VOL_OMEGA if mode == ValuationMode.RIM else SharedTexts.MC_VOL_G
+    v_growth = v_col1.number_input(
+        label_growth,
+        min_value=0.0, max_value=0.2,
+        value=None, format="%.3f",
+        key=f"{prefix}_vol_growth"
+    )
+
+    # 6. COLONNE 2 : RISQUES DE MARCHÉ & SORTIE
     v_beta = None
+    # Verrouillage financier : Graham n'utilise pas le Bêta
     if mode != ValuationMode.GRAHAM:
         v_beta = v_col2.number_input(
             SharedTexts.MC_VOL_BETA,
             min_value=0.0, max_value=1.0,
             value=None, format="%.3f",
-            key=f"{prefix}_v_beta"
+            key=f"{prefix}_vol_beta"
         )
 
-    # Exit Multiple (Uniquement si la méthode de sortie est le multiple)
     v_exit_m = None
+    # Verrouillage financier : Uniquement si la sortie est par multiple
     if terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
         v_exit_m = v_col2.number_input(
-            SharedTexts.INP_EXIT_MULT,  # Réutilisation du label i18n Exit Multiple
+            SharedTexts.LBL_VOL_EXIT_M, # Ex: "Volatilité du multiple terminal"
             min_value=0.0, max_value=0.4,
             value=None, format="%.3f",
-            key=f"{prefix}_v_exit_m"
+            key=f"{prefix}_vol_exit_m"
         )
 
-    # 5. Préparation du dictionnaire de sortie
-    config = {
+    # 7. CONSTRUCTION DU DICTIONNAIRE DE RÉPONSE (Contractualisé avec engines.py)
+    return {
         "enable_monte_carlo": True,
         "num_simulations": sims,
         "base_flow_volatility": v_base,
         "beta_volatility": v_beta,
+        "growth_volatility": v_growth,
         "exit_multiple_volatility": v_exit_m
     }
-
-    # 6. Injection des variables de croissance (g, omega...)
-    if custom_vols:
-        for tech_key, i18n_label in custom_vols.items():
-            # On évite de redemander la base_flow_volatility déjà traitée
-            if tech_key != "base_flow_volatility":
-                config[tech_key] = v_col1.number_input(
-                    i18n_label,
-                    min_value=0.0, max_value=0.5,
-                    value=None, format="%.3f",
-                    key=f"{prefix}_{tech_key}"
-                )
-    else:
-        # Fallback DCF standard : Volatilité de la croissance (gn)
-        config["growth_volatility"] = v_col1.number_input(
-            SharedTexts.MC_VOL_G,
-            min_value=0.0, max_value=0.2,
-            value=None, format="%.3f",
-            key=f"{prefix}_v_growth"
-        )
-
-    return config
 
 # ==============================================================================
 # 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)

@@ -25,7 +25,7 @@ from src.models import (
     ValuationRequest,
     ScenarioParameters,
     TerminalValueMethod,
-    DCFParameters, SOTPParameters
+    SOTPParameters
 )
 from src.i18n import SharedTexts
 
@@ -70,35 +70,37 @@ class ExpertTerminalBase(ABC):
 
     def render(self) -> Optional[ValuationRequest]:
         """
-        Orchestre le rendu complet selon le Logical Path (ST-3.1).
+        Orchestre le rendu complet selon la séquence de réflexion de l'analyste.
+        Ordre : Opérationnel -> Risque -> Sortie -> Structure -> Ingénierie.
         """
-        # 1. HEADER
+        # 1. HEADER (Identité du modèle)
         self._render_header()
 
-        # 2. OPÉRATIONNEL (Surchargé par les enfants)
+        # 2. ÉTAPE OPÉRATIONNELLE (Ancrage & Croissance spécifique au modèle)
         model_data = self.render_model_inputs()
         self._collected_data.update(model_data or {})
 
-        # 3. RISQUE & CAPITAL (Actualisation)
+        # 3. ÉTAPE RISQUE & CAPITAL (Actualisation / WACC / Ke)
         if self.SHOW_DISCOUNT_SECTION:
             self._render_step_header(SharedTexts.SEC_3_CAPITAL, SharedTexts.SEC_3_DESC)
             from app.ui.expert.terminals.shared_widgets import widget_cost_of_capital
             self._collected_data.update(widget_cost_of_capital(self.MODE) or {})
 
-        # 4. VALEUR DE SORTIE (Continuation)
+        # 4. ÉTAPE VALEUR DE SORTIE (Valeur Terminale / Horizon)
         if self.SHOW_TERMINAL_SECTION:
             from app.ui.expert.terminals.shared_widgets import widget_terminal_value_dcf
-            # Le widget gère son propre en-tête pour la dynamique LaTeX
+            # On passe le préfixe du mode pour éviter les collisions session_state
             self._collected_data.update(widget_terminal_value_dcf(key_prefix=self.MODE.name) or {})
 
-        # 5. EQUITY BRIDGE (inc. SBC)
+        # 5. ÉTAPE STRUCTURE & AJUSTEMENTS (Equity Bridge / SBC / Dette)
         if self.SHOW_BRIDGE_SECTION:
             self._collected_data.update(self._render_equity_bridge() or {})
 
-        # 6 à 9. EXTENSIONS OPTIONNELLES
+        # 6 à 9. ÉTAPES D'INGÉNIERIE (Extensions Optionnelles)
+        # Cette méthode coordonne l'affichage de MC, Scénarios, SOTP et Peers
         self._render_optional_features()
 
-        # 10. SUBMIT
+        # 10. BOUTON D'EXÉCUTION
         return self._render_submit()
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -299,30 +301,23 @@ class ExpertTerminalBase(ABC):
 
     def _extract_monte_carlo_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait la config MC de manière dynamique pour correspondre au widget.
+        Extrait la config Monte Carlo avec sécurité de présence des clés.
         """
-        p = "mc" # Préfixe constant défini dans shared_widgets.py
-        if not st.session_state.get(f"{p}_enable"):
+        p = "mc"  # Préfixe harmonisé avec shared_widgets.py
+
+        # Vérification robuste de l'activation
+        if not st.session_state.get(f"{p}_enable", False):
             return {"enable_monte_carlo": False}
 
-        # 1. Bases universelles
-        data = {
+        # Dictionnaire d'extraction sécurisé (.get() systématique)
+        return {
             "enable_monte_carlo": True,
             "num_simulations": st.session_state.get(f"{p}_sims", 5000),
             "base_flow_volatility": st.session_state.get(f"{p}_vol_flow"),
             "beta_volatility": st.session_state.get(f"{p}_vol_beta"),
-            "growth_volatility": st.session_state.get(f"{p}_vol_growth")
+            "growth_volatility": st.session_state.get(f"{p}_vol_growth"),
+            "exit_multiple_volatility": st.session_state.get(f"{p}_vol_exit_m")
         }
-
-        # 2. Extraction dynamique des clés spécifiques (RIM, Graham)
-        custom_vols = self.get_custom_monte_carlo_vols()
-        if custom_vols:
-            for tech_key in custom_vols.keys():
-                val = st.session_state.get(f"{p}_{tech_key}")
-                if val is not None:
-                    data[tech_key] = val
-
-        return data
 
     def _extract_peer_triangulation_data(self, key_prefix: str) -> Dict[str, Any]:
         """Extrait les comparables."""

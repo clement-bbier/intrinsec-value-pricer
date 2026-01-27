@@ -23,6 +23,11 @@ class SharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
+    MC_VOL_EPS = "Incertitude sur le BPA (EPS)"
+    MC_VOL_NI = "Incertitude sur le Résultat Net"
+    MC_VOL_DIV = "Incertitude sur le Dividende"
+    HELP_VOL_BASE = "Écart-type attendu sur le premier flux (Year 0) du modèle."
+    LBL_VOL_EXIT_M = "Volatilité du multiple terminal"
     SEC_3_CAPITAL = "#### Étape 3 : Profil de Risque (Actualisation)"
     SEC_3_DESC = "Détermination du taux requis pour rémunérer le risque opérationnel et financier (WACC ou Ke)."
 
@@ -67,11 +72,11 @@ class SharedTexts:
     MC_CALIBRATION = "Activer Monte Carlo"
     MC_ITERATIONS = "Nombre d'itérations"
     MC_VOL_INCERTITUDE = "**Calibration des incertitudes (écarts-types)**"
-    MC_VOL_BASE_FLOW = "Vol. Flux de Base (Y0)"
-    MC_VOL_BETA = "Vol. du Bêta"
-    MC_VOL_G = "Vol. du taux g"
-    LBL_VOL_OMEGA = "Vol. de ω (Persistance)"
-    LBL_VOL_GN = "Vol. de gn (Perp.)"
+    MC_VOL_BASE_FLOW = "Volatilité du flux d'ancrage"
+    MC_VOL_BETA = "Volatilité du coefficient Bêta"
+    MC_VOL_G = "Volatilité de la croissance (g)"
+    LBL_VOL_OMEGA = "Volatilité de la persistance (ω)"
+    LBL_VOL_GN = "Volatilité de la croissance perpétuelle (gn)"
 
     # ==========================================================================
     # 4. MODULE : ÉTAPE 8 - SCÉNARIOS (Bull/Base/Bear)

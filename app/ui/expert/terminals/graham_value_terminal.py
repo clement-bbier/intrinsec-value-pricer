@@ -36,10 +36,10 @@ class GrahamValueTerminal(ExpertTerminalBase):
     SHOW_TERMINAL_SECTION = False  # Pas de TV Gordon/Multiples
     SHOW_BRIDGE_SECTION = False    # Valorise directement l'action
 
-    SHOW_MONTE_CARLO = True        # Activé pour simuler l'EPS
-    SHOW_SCENARIOS = True
+    SHOW_MONTE_CARLO = False        # Activé pour simuler l'EPS
+    SHOW_SCENARIOS = False
     SHOW_SOTP = False              # Non applicable à Graham
-    SHOW_PEER_TRIANGULATION = True
+    SHOW_PEER_TRIANGULATION = False
     SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
