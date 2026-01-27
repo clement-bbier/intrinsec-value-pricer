@@ -64,7 +64,8 @@ class YahooMacroProvider:
         # Spread par défaut AAA corporate (70 bps)
         self.DEFAULT_AAA_SPREAD = MacroDefaults.DEFAULT_AAA_SPREAD
 
-    def _fetch_history_robust(self, ticker_obj: yf.Ticker) -> pd.DataFrame:
+    @staticmethod
+    def _fetch_history_robust(ticker_obj: yf.Ticker) -> pd.DataFrame:
         """Récupère l'historique avec résilience sur les périodes (Fix yfinance)."""
         for period in ["max", "10y", "5y", "1y"]:
             try:

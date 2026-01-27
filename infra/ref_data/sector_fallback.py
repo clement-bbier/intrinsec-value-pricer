@@ -168,10 +168,10 @@ def get_sector_fallback_with_metadata(sector: str) -> SectorFallbackResult:
     
     Examples
     --------
-    >>> result = get_sector_fallback_with_metadata("Technology")
-    >>> if result.is_fallback:
-    ...     display_degraded_mode_banner()
-    >>> multiples = result.multiples
+    >> result = get_sector_fallback_with_metadata("Technology")
+    >> if result.is_fallback:
+    ..     display_degraded_mode_banner()
+    >> multiples = result.multiples
     """
     all_multiples = _load_sector_multiples()
     key = _normalize_sector_key(sector)

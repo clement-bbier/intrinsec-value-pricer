@@ -10,7 +10,7 @@ Architecture : ST-4.1 (Screening & Probabiliste)
 Style : Numpy docstrings
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMode

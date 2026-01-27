@@ -31,7 +31,7 @@ class DataProvider(ABC):
     @abstractmethod
     def get_peer_multiples(self, ticker: str) -> MultiplesData:
         """
-        NOUVEAUTÉ  (Phase 3) :
+        NOUVEAUTÉ (Phase 3) :
         Découvre les concurrents et retourne leurs multiples normalisés.
         """
         raise NotImplementedError

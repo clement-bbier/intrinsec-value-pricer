@@ -155,6 +155,7 @@ class KPITexts:
     HELP_WACC = "Coût moyen pondéré du capital (Dette + Equity)."
     HELP_VAR = "Value-at-Risk : perte maximale possible dans 95% des scénarios simulés."
     HELP_OMEGA = "Coefficient de persistance des profits anormaux (0 = érosion immédiate)."
+    HELP_EQUITY_VALUE = "Valeur totale de l'actif économique revenant aux actionnaires après déduction de la dette nette et des intérêts minoritaires."
 
     SUB_CAPM_MATH = "{rf:.4f} + {beta:.2f} \times {mrp:.4f}"
     SUB_RIM_TV_MATH = "({ri:,.2f} \times {omega:.2f}) / (1 + {ke:.4f} - {omega:.2f})"

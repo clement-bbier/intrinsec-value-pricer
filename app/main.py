@@ -36,8 +36,7 @@ if str(_ROOT_PATH) not in sys.path:
 # IMPORTS APPLICATIFS
 # ==============================================================================
 
-from app.assets.style_system import inject_institutional_design, render_terminal_header
-# Module ui_inputs_expert supprimé - terminaux déplacés vers app/ui/expert_terminals/
+from app.assets.style_system import inject_institutional_design
 from app.workflow import run_workflow_and_display
 from src.models import (
     DCFParameters,
@@ -54,9 +53,7 @@ from src.i18n import (
     CommonTexts,
     SidebarTexts,
     OnboardingTexts,
-    FeedbackMessages,
-    LegalTexts,
-    SharedTexts
+    FeedbackMessages
 )
 
 # IMPORT DU REGISTRE CENTRALISÉ (DT-008)

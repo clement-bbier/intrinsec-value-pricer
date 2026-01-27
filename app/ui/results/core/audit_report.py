@@ -6,11 +6,11 @@ Rôle : Analyse de fiabilité des données et validation des invariants métier.
 Architecture : Homogénéité totale avec les Piliers de Configuration et de Calcul.
 """
 
-from typing import Any, List
+from typing import Any
 import streamlit as st
 
 from src.models import ValuationResult, AuditSeverity, AuditStep
-from src.i18n import AuditTexts, KPITexts, PillarLabels
+from src.i18n import AuditTexts, PillarLabels
 from app.ui.results.base_result import ResultTabBase
 from app.ui.components.ui_kpis import (
     render_audit_reliability_gauge,

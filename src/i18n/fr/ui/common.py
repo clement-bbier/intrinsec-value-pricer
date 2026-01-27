@@ -8,6 +8,7 @@ class CommonTexts:
     """Référentiel des textes génériques et statuts institutionnels."""
 
     # --- Métadonnées Application ---
+    PROJECT_BADGE = "QUANT ENGINE V1.0"
     APP_TITLE = "Terminal de Valorisation Intrinsèque"
     APP_SUBTITLE = "Ingénierie Financière & Analyse de Risque"
     AUTHOR_NAME = "Clément Barbier"
@@ -109,6 +110,7 @@ class FeedbackMessages:
 
 class LegalTexts:
     """Textes juridiques et conformité."""
+    COMPLIANCE_BODY = "Les simulations générées par ce terminal reposent sur des modèles mathématiques automatisés et ne constituent pas un conseil en investissement professionnel."
     COMPLIANCE_TITLE = "Avertissement Légal"
     DISCLAIMER = "Document à usage strictement professionnel et analytique."
 

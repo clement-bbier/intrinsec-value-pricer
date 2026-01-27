@@ -16,7 +16,6 @@ from src.models import (
 )
 from src.i18n import (
     AuditEngineTexts,
-    AuditCategories,
     AuditMessages,
     AuditTexts
 )

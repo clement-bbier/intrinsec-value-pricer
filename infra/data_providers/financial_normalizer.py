@@ -115,7 +115,8 @@ class FinancialDataNormalizer:
         # 3. Calcul des médianes robustes
         return self._build_multiples_summary(valid_peers)
 
-    def _is_peer_robust(self, peer: PeerMetric) -> bool:
+    @staticmethod
+    def _is_peer_robust(peer: PeerMetric) -> bool:
         """
         Applique des filtres de sécurité sur les multiples.
         On écarte les entreprises en perte (P/E négatif) ou les valorisations absurdes.
@@ -132,20 +133,21 @@ class FinancialDataNormalizer:
 
         return True
 
-    def _build_multiples_summary(self, peers: List[PeerMetric]) -> MultiplesData:
+    @staticmethod
+    def _build_multiples_summary(peers: List[PeerMetric]) -> MultiplesData:
         """Calcule les médianes sectorielles pour les colonnes du Football Field."""
         if not peers:
             return MultiplesData()
 
         # Extraction des listes pour calcul statistique (uniquement valeurs non nulles)
         pes = [p.pe_ratio for p in peers if p.pe_ratio is not None]
-        ebitdas = [p.ev_ebitda for p in peers if p.ev_ebitda is not None]
+        ebitda_list = [p.ev_ebitda for p in peers if p.ev_ebitda is not None]
         revs = [p.ev_revenue for p in peers if p.ev_revenue is not None]
 
         return MultiplesData(
             peers=peers,
             median_pe=statistics.median(pes) if pes else 0.0,
-            median_ev_ebitda=statistics.median(ebitdas) if ebitdas else 0.0,
+            median_ev_ebitda=statistics.median(ebitda_list) if ebitda_list else 0.0,
             median_ev_rev=statistics.median(revs) if revs else 0.0
         )
 
@@ -153,7 +155,8 @@ class FinancialDataNormalizer:
     # HELPERS DE RECONSTRUCTION ( - MAINTENANCE)
     # =========================================================================
 
-    def _reconstruct_shares(self, info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:
+    @staticmethod
+    def _reconstruct_shares(info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:
         """Extrait le nombre d'actions actuel (inchangé)."""
         shares = info.get("sharesOutstanding")
         if not shares and bs is not None:
@@ -164,7 +167,8 @@ class FinancialDataNormalizer:
                 shares = mcap / price
         return float(shares) if shares else 1.0
 
-    def extract_shares_history(self, bs: Optional[pd.DataFrame]) -> List[float]:
+    @staticmethod
+    def extract_shares_history(bs: Optional[pd.DataFrame]) -> List[float]:
         """
         Extrait la série historique des actions.
         Retourne la liste ordonnée du passé vers le présent.
@@ -176,7 +180,7 @@ class FinancialDataNormalizer:
         for key in keys:
             if key in bs.index:
                 # On récupère les valeurs, on enlève les NaN et on inverse l'ordre
-                # (Yahoo livre du plus récent au plus ancien)
+                # (Yahoo livre du plus récent au plus ancien.)
                 series = bs.loc[key].dropna().iloc[::-1].tolist()
                 if len(series) >= 2:
                     return [float(v) for v in series]
@@ -189,6 +193,7 @@ class FinancialDataNormalizer:
             is_: Optional[pd.DataFrame],
             cf: Optional[pd.DataFrame]
     ) -> Dict[str, Any]:
+        """Reconstruit les éléments du bridge (dette, cash, provisions)."""
         debt = self._extract_total_debt(info, bs)
         cash = self._extract_cash(info, bs)
         minority = self._extract_minority_interests(bs)
@@ -212,6 +217,7 @@ class FinancialDataNormalizer:
 
     def _reconstruct_profitability(self, info: Dict[str, Any], is_a: Optional[pd.DataFrame], cf_a: Optional[pd.DataFrame],
                                  is_q: Optional[pd.DataFrame], cf_q: Optional[pd.DataFrame]) -> Dict[str, Any]:
+        """Agrège les métriques de rentabilité TTM et lissées."""
         rev_ttm = self._sum_last_4_quarters(is_q, ["Total Revenue", "Revenue"])
         ebit_ttm = self._sum_last_4_quarters(is_q, ["EBIT", "Operating Income"])
         ni_ttm = self._sum_last_4_quarters(is_q, ["Net Income Common Stockholders", "Net Income"])
@@ -241,15 +247,21 @@ class FinancialDataNormalizer:
             "depreciation_and_amortization": float(da) if da is not None else None
         }
 
-    def _extract_net_borrowing(self, cf: Optional[pd.DataFrame]) -> Optional[float]:
-        if cf is None: return 0.0
+    @staticmethod
+    def _extract_net_borrowing(cf: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait la variation nette de l'endettement."""
+        if cf is None:
+            return 0.0
         net_flow = extract_most_recent_value(cf, ["Net Issuance Payments Of Debt"])
-        if net_flow is not None: return net_flow
+        if net_flow is not None:
+            return net_flow
         issuance = extract_most_recent_value(cf, DEBT_ISSUANCE_KEYS) or 0.0
         repayment = extract_most_recent_value(cf, DEBT_REPAYMENT_KEYS) or 0.0
         return issuance + repayment
 
-    def _extract_total_debt(self, info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
+    @staticmethod
+    def _extract_total_debt(info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait la dette brute totale."""
         debt = info.get("totalDebt")
         if not debt and bs is not None:
             debt = extract_most_recent_value(bs, ["Total Debt", "Net Debt"])
@@ -259,25 +271,38 @@ class FinancialDataNormalizer:
                 debt = (std + ltd) if (std + ltd) > 0 else None
         return debt
 
-    def _extract_cash(self, info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
+    @staticmethod
+    def _extract_cash(info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait la trésorerie totale."""
         cash = info.get("totalCash")
         if not cash and bs is not None:
             cash = extract_most_recent_value(bs, ["Cash And Cash Equivalents", "Cash Financial"])
         return cash
 
-    def _extract_minority_interests(self, bs: Optional[pd.DataFrame]) -> Optional[float]:
-        if bs is None: return 0.0
+    @staticmethod
+    def _extract_minority_interests(bs: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait les intérêts minoritaires."""
+        if bs is None:
+            return 0.0
         return extract_most_recent_value(bs, ["Minority Interest", "Non Controlling Interest"])
 
-    def _extract_pension_provisions(self, bs: Optional[pd.DataFrame]) -> Optional[float]:
-        if bs is None: return 0.0
+    @staticmethod
+    def _extract_pension_provisions(bs: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait les provisions pour retraites."""
+        if bs is None:
+            return 0.0
         return extract_most_recent_value(bs, ["Long Term Provisions", "Pension And Other Postretirement Benefit Plans"])
 
-    def _extract_interest_expense(self, is_: Optional[pd.DataFrame]) -> Optional[float]:
-        if is_ is None: return None
+    @staticmethod
+    def _extract_interest_expense(is_: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait la charge d'intérêt."""
+        if is_ is None:
+            return None
         return extract_most_recent_value(is_, ["Interest Expense", "Interest Expense Non Operating"])
 
-    def _extract_depreciation_amortization(self, cf_a: Optional[pd.DataFrame]) -> Optional[float]:
+    @staticmethod
+    def _extract_depreciation_amortization(cf_a: Optional[pd.DataFrame]) -> Optional[float]:
+        """Extrait les dotations aux amortissements."""
         da = extract_most_recent_value(cf_a, DA_KEYS)
         if da is None and cf_a is not None:
             dep = extract_most_recent_value(cf_a, ["Depreciation"]) or 0
@@ -285,8 +310,11 @@ class FinancialDataNormalizer:
             da = (dep + amo) if (dep + amo) > 0 else None
         return da
 
-    def _sum_last_4_quarters(self, df: Optional[pd.DataFrame], keys: List[str]) -> Optional[float]:
-        if df is None or df.empty: return None
+    @staticmethod
+    def _sum_last_4_quarters(df: Optional[pd.DataFrame], keys: List[str]) -> Optional[float]:
+        """Somme les quatre derniers trimestres pour une métrique donnée."""
+        if df is None or df.empty:
+            return None
         for key in keys:
             if key in df.index:
                 last_4 = df.loc[key].iloc[: 4]

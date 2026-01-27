@@ -8,12 +8,12 @@ class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""
     TITLE = "Analyse Sum-Of-The-Parts (SOTP)"
     SEC_SEGMENTS = "#### 1. Definition des Business Units (Segments)"
-    SEC_ADJUSTMENTS = "#### 2. Ajustements de Conglomerat"
+    SEC_ADJUSTMENTS = "#### 2. Ajustements de Conglomérat"
 
     LBL_SEGMENT_NAME = "Nom du Segment"
     LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
     LBL_SEGMENT_METHOD = "Methode de Valorisation"
-    LBL_DISCOUNT = "Decote de Conglomerat (%)"
+    LBL_DISCOUNT = "Décote de Conglomérat (%)"
     LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise (EV)"
     LBL_EQUITY_VALUE = "Valeur des Fonds Propres"
     LBL_BU_DETAILS = "Detail des Business Units"
@@ -27,8 +27,9 @@ class SOTPTexts:
 
     HELP_SOTP = "La valeur totale est la somme des EV de chaque segment moins la dette nette globale."
     DESC_WATERFALL = "Decomposition de la valeur par Business Unit"
-    INTERP_CONSOLIDATION = "Valeur d'entreprise consolidee pour {count} segments apres decote."
+    INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments apres décote."
     STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
+    DESC_SOTP_VALUATION = "Analyse granulaire de la contribution de chaque Business Unit à la Valeur d'Entreprise (EV) totale, incluant la décote de holding appliquée."
 
 
 class BacktestTexts:

@@ -355,8 +355,8 @@ def widget_monte_carlo(
     """
     Widget de calibration stochastique (Monte Carlo) avec injection i18n dynamique.
 
-    Adapte les libellés de volatilité selon le modèle (EPS pour Graham, NI pour RIM,
-    FCF pour DCF) en utilisant exclusivement le référentiel SharedTexts.
+    Utilise 'custom_vols' pour surcharger les libellés par défaut si fournis,
+    sinon sélectionne le label via le 'mode' (BPA, NI, FCF).
     """
     prefix = key_prefix or "mc"
 
@@ -381,16 +381,18 @@ def widget_monte_carlo(
     # 4. GRILLE DE SAISIE (Double colonne institutionnelle)
     v_col1, v_col2 = st.columns(2)
 
-    # --- LOGIQUE I18N CONTEXTUELLE ---
-    # Sélection du label pour le flux de base (Ancrage Year 0)
-    if mode == ValuationMode.GRAHAM:
-        label_base = SharedTexts.MC_VOL_EPS  # Ex: "Incertitude sur le BPA (EPS)"
+    # --- LOGIQUE DE LIBELLÉ AVEC SURCHARGE (Fix IDE Warning) ---
+    # On vérifie si custom_vols propose un label spécifique, sinon fallback sur le mode
+    if custom_vols and "base_flow_volatility" in custom_vols:
+        label_base = custom_vols["base_flow_volatility"]
+    elif mode == ValuationMode.GRAHAM:
+        label_base = SharedTexts.MC_VOL_EPS
     elif mode == ValuationMode.RIM:
-        label_base = SharedTexts.MC_VOL_NI   # Ex: "Incertitude sur le Résultat Net"
+        label_base = SharedTexts.MC_VOL_NI
     elif mode == ValuationMode.DDM:
-        label_base = SharedTexts.MC_VOL_DIV  # Ex: "Incertitude sur le Dividende"
+        label_base = SharedTexts.MC_VOL_DIV
     else:
-        label_base = SharedTexts.MC_VOL_BASE_FLOW # Ex: "Incertitude sur le FCF"
+        label_base = SharedTexts.MC_VOL_BASE_FLOW
 
     # 5. COLONNE 1 : VOLATILITÉS OPÉRATIONNELLES
     v_base = v_col1.number_input(
@@ -398,11 +400,15 @@ def widget_monte_carlo(
         min_value=0.0, max_value=0.5,
         value=None, format="%.3f",
         key=f"{prefix}_vol_flow",
-        help=SharedTexts.HELP_VOL_BASE # Assurez-vous que cette clé existe
+        help=SharedTexts.HELP_VOL_BASE
     )
 
-    # Sélection du label pour la croissance (g ou ω)
-    label_growth = SharedTexts.LBL_VOL_OMEGA if mode == ValuationMode.RIM else SharedTexts.MC_VOL_G
+    # Label croissance (g ou ω) - Surchargeable également
+    if custom_vols and "growth_volatility" in custom_vols:
+        label_growth = custom_vols["growth_volatility"]
+    else:
+        label_growth = SharedTexts.LBL_VOL_OMEGA if mode == ValuationMode.RIM else SharedTexts.MC_VOL_G
+
     v_growth = v_col1.number_input(
         label_growth,
         min_value=0.0, max_value=0.2,
@@ -412,7 +418,6 @@ def widget_monte_carlo(
 
     # 6. COLONNE 2 : RISQUES DE MARCHÉ & SORTIE
     v_beta = None
-    # Verrouillage financier : Graham n'utilise pas le Bêta
     if mode != ValuationMode.GRAHAM:
         v_beta = v_col2.number_input(
             SharedTexts.MC_VOL_BETA,
@@ -422,16 +427,14 @@ def widget_monte_carlo(
         )
 
     v_exit_m = None
-    # Verrouillage financier : Uniquement si la sortie est par multiple
     if terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
         v_exit_m = v_col2.number_input(
-            SharedTexts.LBL_VOL_EXIT_M, # Ex: "Volatilité du multiple terminal"
+            SharedTexts.LBL_VOL_EXIT_M,
             min_value=0.0, max_value=0.4,
             value=None, format="%.3f",
             key=f"{prefix}_vol_exit_m"
         )
 
-    # 7. CONSTRUCTION DU DICTIONNAIRE DE RÉPONSE (Contractualisé avec engines.py)
     return {
         "enable_monte_carlo": True,
         "num_simulations": sims,

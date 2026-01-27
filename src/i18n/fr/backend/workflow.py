@@ -6,6 +6,7 @@ Messages d'etat du cycle de vie de l'analyse.
 
 class WorkflowTexts:
     """Messages d'etat du workflow."""
+    STATUS_DEGRADED_LABEL = "Mode Dégradé : Multiples Sectoriels"
     STATUS_MAIN_LABEL = "Initialisation de l'analyse..."
     STATUS_DATA_ACQUISITION = "Acquisition des donnees de marche et macro-economiques..."
     STATUS_SMART_MERGE = "Conciliation des hypotheses (Smart Merge)..."

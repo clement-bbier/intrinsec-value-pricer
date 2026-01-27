@@ -97,7 +97,6 @@ class ExpertTerminalBase(ABC):
             self._collected_data.update(self._render_equity_bridge() or {})
 
         # 6 à 9. ÉTAPES D'INGÉNIERIE (Extensions Optionnelles)
-        # Cette méthode coordonne l'affichage de MC, Scénarios, SOTP et Peers
         self._render_optional_features()
 
         # 10. BOUTON D'EXÉCUTION
@@ -107,7 +106,8 @@ class ExpertTerminalBase(ABC):
     # MÉTHODES DE RENDU INTERNES
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _render_step_header(self, title: str, description: str) -> None:
+    @staticmethod
+    def _render_step_header(title: str, description: str) -> None:
         """Affiche un en-tête d'étape standardisé sans bordures."""
         st.markdown(title)
         st.info(description)
@@ -174,14 +174,6 @@ class ExpertTerminalBase(ABC):
     def get_custom_monte_carlo_vols(self) -> Optional[Dict[str, str]]:
         """
         Dynamise les entrées de Monte Carlo selon la méthodologie choisie (ST-4.2).
-
-        Cette méthode implémente la logique expert : adapter les paramètres de
-        dispersion aux variables critiques de chaque modèle (g, ω, ou EPS).
-
-        Returns
-        -------
-        Optional[Dict[str, str]]
-            Dictionnaire de correspondance {clé_technique: label_i18n}.
         """
         # 1. Modèles de flux (FCFF/FCFE/DDM) : Focus sur la croissance g
         if self.MODE in [
@@ -236,9 +228,9 @@ class ExpertTerminalBase(ABC):
         if self.SHOW_BRIDGE_SECTION:
             collected_data.update(self._extract_bridge_data(key_prefix))
         if self.SHOW_MONTE_CARLO:
-            collected_data.update(self._extract_monte_carlo_data(key_prefix))
+            collected_data.update(self._extract_monte_carlo_data())
         if self.SHOW_PEER_TRIANGULATION:
-            collected_data.update(self._extract_peer_triangulation_data(key_prefix))
+            collected_data.update(self._extract_peer_triangulation_data())
 
         # Données spécifiques (Ancrage & Croissance harmonisés)
         collected_data.update(self._extract_model_inputs_data(key_prefix))
@@ -248,7 +240,7 @@ class ExpertTerminalBase(ABC):
 
         # Scénarios et SOTP (Vérification de pertinence)
         if self.SHOW_SCENARIOS:
-            params.scenarios = self._extract_scenarios_data(key_prefix)
+            params.scenarios = self._extract_scenarios_data()
 
         if self.SHOW_SOTP:
             # Extraction sécurisée via le buffer instance
@@ -273,7 +265,8 @@ class ExpertTerminalBase(ABC):
     # MÉTHODES D'EXTRACTION PRIVÉES (Mapping technique)
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _extract_discount_data(self, key_prefix: str) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_discount_data(key_prefix: str) -> Dict[str, Any]:
         """Extrait Rf, Beta, MRP, Price, Kd, Tax."""
         data = {}
         mapping = {
@@ -285,7 +278,8 @@ class ExpertTerminalBase(ABC):
             if key in st.session_state: data[field] = st.session_state[key]
         return data
 
-    def _extract_bridge_data(self, key_prefix: str) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_bridge_data(key_prefix: str) -> Dict[str, Any]:
         """Extrait la structure du bilan et le SBC."""
         data = {}
         p = f"bridge_{key_prefix}"
@@ -299,7 +293,8 @@ class ExpertTerminalBase(ABC):
             if k in st.session_state: data[f] = st.session_state[k]
         return data
 
-    def _extract_monte_carlo_data(self, key_prefix: str) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_monte_carlo_data() -> Dict[str, Any]:
         """
         Extrait la config Monte Carlo avec sécurité de présence des clés.
         """
@@ -319,7 +314,8 @@ class ExpertTerminalBase(ABC):
             "exit_multiple_volatility": st.session_state.get(f"{p}_vol_exit_m")
         }
 
-    def _extract_peer_triangulation_data(self, key_prefix: str) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_peer_triangulation_data() -> Dict[str, Any]:
         """Extrait les comparables."""
         data = {}
         if st.session_state.get("peer_peer_enable"):
@@ -328,7 +324,8 @@ class ExpertTerminalBase(ABC):
             if raw: data["manual_peers"] = [p.strip().upper() for p in raw.split(",") if p.strip()]
         return data
 
-    def _extract_scenarios_data(self, key_prefix: str) -> Optional[ScenarioParameters]:
+    @staticmethod
+    def _extract_scenarios_data() -> Optional[ScenarioParameters]:
         """Extrait Bull/Base/Bear."""
         from src.models import ScenarioVariant
         p = "scenario"
@@ -353,12 +350,10 @@ class ExpertTerminalBase(ABC):
     def render_model_inputs(self) -> Dict[str, Any]: pass
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]: return {}
 
-    def _extract_terminal_data(self, key_prefix: str) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_terminal_data(key_prefix: str) -> Dict[str, Any]:
         """
         Extrait les paramètres de la Valeur Terminale (Gordon ou Multiples).
-
-        Récupère dynamiquement le taux de croissance perpétuelle (gn) ou
-        le multiple de sortie selon le choix de l'utilisateur.
         """
         data = {}
         method_key = f"{key_prefix}_method"

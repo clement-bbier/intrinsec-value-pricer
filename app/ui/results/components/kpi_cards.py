@@ -11,7 +11,7 @@ from src.utilities.formatting import format_smart_number
 from app.ui.components.ui_kpis import atom_kpi_metric
 
 def render_valuation_summary_cards(result: ValuationResult):
-    """Affiche le bandeau supérieur des KPIs de valorisation (4 colonnes)."""
+    """Affiche le bandeau supérieur des KPIs de valorisation (quatre colonnes)."""
     cols = st.columns(4)
 
     with cols[0]:
@@ -62,7 +62,7 @@ def render_instrument_details(result: ValuationResult):
             atom_kpi_metric(
                 label=KPITexts.EQUITY_VALUE_LABEL,
                 value=format_smart_number(result.equity_value, currency=result.currency),
-                help_text=None
+                help_text=KPITexts.HELP_EQUITY_VALUE
             )
 
         with col_price:

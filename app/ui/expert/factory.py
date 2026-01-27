@@ -231,9 +231,9 @@ class ExpertTerminalFactory:
         
         Examples
         --------
-        >>> tiers = ExpertTerminalFactory.get_modes_by_tier()
-        >>> for tier, modes in tiers.items():
-        ...     print(f"{tier.name}: {[m.value for m, _ in modes]}")
+        >> tiers = ExpertTerminalFactory.get_modes_by_tier()
+        >> for tier, modes in tiers.items():
+            print(f"{tier.name}: {[m.value for m, _ in modes]}")
         DEFENSIVE: ['Graham Intrinsic Value']
         RELATIVE: ['Residual Income Model', 'Dividend Discount Model']
         FUNDAMENTAL: ['DCF - Free Cash Flow to Firm', ...]
@@ -288,7 +288,7 @@ def create_expert_terminal(mode: ValuationMode, ticker: str) -> ExpertTerminalBa
     
     Example
     -------
-    >>> terminal = create_expert_terminal(ValuationMode.DDM, "AAPL")
-    >>> request = terminal.render()  # Affiche l'UI
+    >> terminal = create_expert_terminal(ValuationMode.DDM, "AAPL")
+    >> request = terminal.render()  # Affiche l'UI
     """
     return ExpertTerminalFactory.create(mode, ticker)

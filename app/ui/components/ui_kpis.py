@@ -3,19 +3,18 @@ app/ui/components/ui_kpis.py
 Composants atomiques — Zéro émoji, style épuré.
 """
 from __future__ import annotations
-from typing import List, Optional
+from typing import Optional, Literal
 import streamlit as st
 
 from src.models import AuditStep, AuditSeverity
-from src.i18n import AuditTexts, CommonTexts
-from src.utilities.formatting import format_smart_number
+from src.i18n import AuditTexts
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 
 def atom_kpi_metric(
     label: str,
     value: str,
     delta: Optional[str] = None,
-    delta_color: str = "normal",
+    delta_color: Literal["normal", "inverse", "off", "red", "orange", "yellow", "green", "blue", "violet", "gray", "grey", "primary"] = "normal",
     help_text: str = ""
 ) -> None:
     """Composant de base pour les métriques financières."""
