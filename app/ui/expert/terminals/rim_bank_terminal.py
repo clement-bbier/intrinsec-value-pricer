@@ -2,7 +2,7 @@
 app/ui/expert/terminals/rim_bank_terminal.py
 
 EXPERT TERMINAL — RESIDUAL INCOME MODEL (RIM)
-==============================================
+=============================================
 Dedicated interface for valuing financial institutions and banks.
 The model relies on Book Value and the persistence of Residual Income.
 
@@ -36,6 +36,17 @@ class RIMBankTerminal(ExpertTerminalBase):
 
     This model values a firm as the sum of its current book value
     and the present value of future abnormal profits (Residual Income).
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to RIM for bank and financial institution valuation.
+
+    Note
+    ----
+    The RIM model integrates its own exit logic (omega persistence factor)
+    within Step 2, so SHOW_TERMINAL_SECTION is disabled to avoid
+    duplicate terminal value configuration.
     """
 
     MODE = ValuationMode.RIM
@@ -110,7 +121,7 @@ class RIMBankTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts RIM data from the session_state.
+        Extracts RIM data from the session_state with normalization.
 
         Parameters
         ----------
@@ -125,11 +136,12 @@ class RIMBankTerminal(ExpertTerminalBase):
         Note
         ----
         Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
-        Book value, Net Income, and Omega (persistence factor) remain unchanged:
-        - Book value and NI are absolute currency values
-        - Omega is already a persistence coefficient between 0 and 1
+
+        The following parameters remain UNCHANGED:
+        - Book value and Net Income: absolute currency values
+        - Omega (persistence factor): already a coefficient in range [0, 1]
         """
-        # Extract raw values
+        # Extract raw growth rate
         raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
 
         # Normalize growth rate from percentage to decimal
@@ -142,6 +154,5 @@ class RIMBankTerminal(ExpertTerminalBase):
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_ni_ttm"),
             "fcf_growth_rate": normalized_growth_rate,
             "projection_years": st.session_state.get(f"{key_prefix}_years"),
-            # Omega is NOT normalized - it's already a coefficient [0, 1]
             "exit_multiple_value": st.session_state.get(f"{key_prefix}_omega")
         }

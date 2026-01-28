@@ -31,6 +31,17 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     While the original model is deterministic, this terminal allows for
     sensitivity analysis through the global valuation engine.
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to GRAHAM for defensive value investing.
+
+    Note
+    ----
+    This terminal disables most optional features (Monte Carlo, Scenarios,
+    SOTP, Peers) as Graham's formula is self-contained and does not
+    require complex discount rate or terminal value mechanics.
     """
 
     MODE = ValuationMode.GRAHAM
@@ -46,6 +57,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
     SHOW_SCENARIOS = False
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = False
+    SHOW_BACKTEST = False
     SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
@@ -119,7 +131,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Graham input data from streamlit session_state.
+        Extracts Graham input data from streamlit session_state with normalization.
 
         Parameters
         ----------
@@ -133,12 +145,14 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
         Note
         ----
-        Three rate parameters require normalization:
+        CRITICAL: Three rate parameters require normalization from percentage
+        to decimal:
+
         - fcf_growth_rate (g): Long-term growth expectation
         - corporate_aaa_yield (Y): Current AAA corporate bond yield
         - tax_rate (tau): Effective corporate tax rate
 
-        EPS remains unchanged (absolute currency value per share).
+        EPS remains unchanged as it is an absolute currency value per share.
         """
         # Helper function for percentage normalization
         def normalize(value):
@@ -146,15 +160,20 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 return None
             return value / _PERCENTAGE_DIVISOR
 
-        # Extract raw values
+        # Extract raw values from session state
         raw_growth = st.session_state.get(f"{key_prefix}_growth_lt")
         raw_yield = st.session_state.get(f"{key_prefix}_yield_aaa")
         raw_tax = st.session_state.get(f"{key_prefix}_tax_rate")
 
         return {
+            # EPS: Absolute value, no normalization
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),
+            # Growth rate: Percentage to decimal
             "fcf_growth_rate": normalize(raw_growth),
+            # AAA Yield: Percentage to decimal
             "corporate_aaa_yield": normalize(raw_yield),
+            # Tax rate: Percentage to decimal
             "tax_rate": normalize(raw_tax),
+            # Fixed projection for Graham model
             "projection_years": 1
         }

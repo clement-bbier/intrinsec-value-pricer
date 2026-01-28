@@ -2,7 +2,7 @@
 app/ui/expert/terminals/ddm_terminal.py
 
 EXPERT TERMINAL — DIVIDEND DISCOUNT MODEL (DDM)
-==============================================
+===============================================
 Valuation interface based on discounted future dividends.
 Implements steps 1 and 2 for mature dividend-paying firms.
 
@@ -36,6 +36,11 @@ class DDMTerminal(ExpertTerminalBase):
 
     The DDM values a share as the present value of all expected
     future dividends, discounted at the cost of equity (Ke).
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to DDM for dividend-based valuation.
     """
 
     MODE = ValuationMode.DDM
@@ -103,7 +108,7 @@ class DDMTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts DDM data from streamlit session_state.
+        Extracts DDM data from streamlit session_state with normalization.
 
         Parameters
         ----------
@@ -118,8 +123,9 @@ class DDMTerminal(ExpertTerminalBase):
         Note
         ----
         Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
+        Dividend base remains unchanged (absolute currency value).
         """
-        # Extract raw values
+        # Extract raw growth rate
         raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
 
         # Normalize growth rate from percentage to decimal

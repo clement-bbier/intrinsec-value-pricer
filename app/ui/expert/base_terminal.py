@@ -5,7 +5,7 @@ ABSTRACT CLASS — Expert Entry Terminal (V15 - Continuous Flow)
 ==============================================================
 Renders inputs following the professional valuation sequence:
 1. Header → 2. Operational (Hook) → 3. Risk (WACC) → 4. Exit (TV)
-→ 5. Bridge (inc. SBC) → 6. Monte Carlo → 7. Peers → 8. Scenarios → 9. SOTP
+→ 5. Bridge (inc. SBC) → 6. Monte Carlo → 7. Peers → 8. Scenarios → 9. SOTP → 10. Backtest
 
 Pattern: Template Method (GoF)
 Style: Numpy docstrings
@@ -42,6 +42,21 @@ _PERCENTAGE_DIVISOR = 100.0
 class ExpertTerminalBase(ABC):
     """
     Abstract base class defining the expert valuation entry workflow.
+
+    This class implements the Template Method pattern, orchestrating a 10-step
+    valuation input sequence while allowing concrete terminals to customize
+    model-specific operational inputs (Step 2).
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        The valuation methodology this terminal implements.
+    DISPLAY_NAME : str
+        Human-readable name shown in the UI header.
+    DESCRIPTION : str
+        Brief description of the methodology.
+    ICON : str
+        Optional emoji/icon for visual identification.
     """
 
     # --- Default Configuration (Overridden by concrete terminals) ---
@@ -55,6 +70,7 @@ class ExpertTerminalBase(ABC):
     SHOW_TERMINAL_SECTION: bool = True
     SHOW_BRIDGE_SECTION: bool = True
     SHOW_MONTE_CARLO: bool = True
+    SHOW_BACKTEST: bool = True
     SHOW_SCENARIOS: bool = True
     SHOW_SOTP: bool = True
     SHOW_PEER_TRIANGULATION: bool = True
@@ -65,7 +81,14 @@ class ExpertTerminalBase(ABC):
     BRIDGE_FORMULA: str = SharedTexts.FORMULA_BRIDGE
 
     def __init__(self, ticker: str):
-        """Initializes the expert terminal with a target ticker."""
+        """
+        Initializes the expert terminal with a target ticker.
+
+        Parameters
+        ----------
+        ticker : str
+            The stock ticker symbol for valuation.
+        """
         self.ticker = ticker
         self._collected_data: Dict[str, Any] = {}
         self._scenarios: Optional[ScenarioParameters] = None
@@ -78,7 +101,13 @@ class ExpertTerminalBase(ABC):
     def render(self) -> Optional[ValuationRequest]:
         """
         Orchestrates the full rendering sequence based on analyst logic.
+
         Sequence: Operational -> Risk -> Exit -> Structure -> Engineering.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            The constructed request if submission is triggered, None otherwise.
         """
         # 1. HEADER (Model Identity)
         self._render_header()
@@ -110,10 +139,10 @@ class ExpertTerminalBase(ABC):
             self._collected_data.update(self._render_equity_bridge() or {})
             st.divider()
 
-        # 6 to 9. ENGINEERING STEPS (Optional Extensions)
+        # 6 to 10. ENGINEERING STEPS (Optional Extensions)
         self._render_optional_features()
 
-        # 10. EXECUTION BUTTON
+        # 11. EXECUTION BUTTON
         return self._render_submit()
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -122,7 +151,16 @@ class ExpertTerminalBase(ABC):
 
     @staticmethod
     def _render_step_header(title: str, description: str) -> None:
-        """Displays a standardized step header."""
+        """
+        Displays a standardized step header.
+
+        Parameters
+        ----------
+        title : str
+            The step title (typically from i18n).
+        description : str
+            Brief description shown in an info box.
+        """
         st.markdown(title)
         st.info(description)
 
@@ -137,7 +175,14 @@ class ExpertTerminalBase(ABC):
     def _render_equity_bridge(self) -> Dict[str, Any]:
         """
         Section 5: Structure adjustments (Equity Bridge).
+
         Adapts LaTeX formula and complexity based on valuation mode.
+        Direct equity models use a simplified bridge formula.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Bridge parameters collected from UI widgets.
         """
         from app.ui.expert.terminals.shared_widgets import widget_equity_bridge
 
@@ -152,7 +197,7 @@ class ExpertTerminalBase(ABC):
         return widget_equity_bridge(formula, self.MODE)
 
     def _render_optional_features(self) -> None:
-        """Coordinates complementary analytical modules (Steps 6 to 9)."""
+        """Coordinates complementary analytical modules (Steps 6 to 10)."""
         from app.ui.expert.terminals.shared_widgets import (
             widget_monte_carlo, widget_scenarios, widget_peer_triangulation, widget_sotp
         )
@@ -184,9 +229,20 @@ class ExpertTerminalBase(ABC):
             widget_sotp(temp_params, is_conglomerate=False)
             self._collected_data["sotp"] = temp_params.sotp
 
+        # 10. Historical Backtest
+        if self.SHOW_BACKTEST:
+            from app.ui.expert.terminals.shared_widgets import widget_backtest
+            backtest_data = widget_backtest()
+            self._collected_data.update(backtest_data or {})
+
     def get_custom_monte_carlo_vols(self) -> Optional[Dict[str, str]]:
         """
         Dynamically adjusts Monte Carlo inputs based on methodology (ST-4.2).
+
+        Returns
+        -------
+        Optional[Dict[str, str]]
+            Custom volatility labels for the Monte Carlo widget, or None for defaults.
         """
         # 1. Cash Flow models: focus on growth volatility (g)
         if self.MODE in [
@@ -212,7 +268,14 @@ class ExpertTerminalBase(ABC):
         return None
 
     def _render_submit(self) -> Optional[ValuationRequest]:
-        """Final submission button rendering."""
+        """
+        Final submission button rendering.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            The constructed request if button is clicked, None otherwise.
+        """
         if not self.SHOW_SUBMIT_BUTTON:
             return None
         st.divider()
@@ -227,13 +290,21 @@ class ExpertTerminalBase(ABC):
     def build_request(self) -> Optional[ValuationRequest]:
         """
         Constructs the final ValuationRequest domain object.
+
+        Aggregates all collected data from UI widgets, applies percentage
+        normalization, and builds the complete request for the valuation engine.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            The fully constructed valuation request.
         """
         from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
 
         key_prefix = self.MODE.name
         collected_data = {"projection_years": st.session_state.get(f"{key_prefix}_years", 5)}
 
-        # Block-based data extraction
+        # Block-based data extraction with normalization
         collected_data.update(self._extract_discount_data(key_prefix))
         if self.SHOW_TERMINAL_SECTION:
             collected_data.update(self._extract_terminal_data(key_prefix))
@@ -243,8 +314,10 @@ class ExpertTerminalBase(ABC):
             collected_data.update(self._extract_monte_carlo_data())
         if self.SHOW_PEER_TRIANGULATION:
             collected_data.update(self._extract_peer_triangulation_data())
+        if self.SHOW_BACKTEST:
+            collected_data.update(self._extract_backtest_data())
 
-        # Model-specific inputs (Anchoring & Growth)
+        # Model-specific inputs (Anchoring & Growth) - with normalization
         collected_data.update(self._extract_model_inputs_data(key_prefix))
 
         # Build parameters object
@@ -266,7 +339,14 @@ class ExpertTerminalBase(ABC):
         )
 
     def _extract_sotp_data(self) -> Optional[SOTPParameters]:
-        """Retrieves SOTP segments stored during Step 9 rendering."""
+        """
+        Retrieves SOTP segments stored during Step 9 rendering.
+
+        Returns
+        -------
+        Optional[SOTPParameters]
+            The SOTP configuration, or None if not set.
+        """
         return self._collected_data.get("sotp")
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -297,8 +377,18 @@ class ExpertTerminalBase(ABC):
         """
         Maps Rf, Beta, MRP, Price, Kd, and Tax from session state.
 
-        Note: Rates are normalized from percentage to decimal.
-        Beta and Price remain unchanged (not percentages).
+        Rates (Rf, MRP, Kd, Tax) are normalized from percentage to decimal.
+        Beta and Price remain unchanged as they are not percentages.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Session state key prefix (typically the ValuationMode name).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Extracted and normalized discount parameters.
         """
         data = {}
 
@@ -334,7 +424,18 @@ class ExpertTerminalBase(ABC):
         """
         Maps Balance Sheet structure and SBC dilution from session state.
 
-        Note: SBC dilution rate is normalized from percentage to decimal.
+        SBC dilution rate is normalized from percentage to decimal.
+        Currency amounts remain unchanged.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Session state key prefix (typically the ValuationMode name).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Extracted and normalized bridge parameters.
         """
         data = {}
         p = f"bridge_{key_prefix}"
@@ -370,7 +471,18 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Terminal Value parameters (Gordon or Exit Multiples).
 
-        Note: If Gordon Growth method, perpetual_growth_rate is normalized.
+        If Gordon Growth method is selected, perpetual_growth_rate is normalized
+        from percentage to decimal. Exit multiples remain unchanged.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Session state key prefix (typically the ValuationMode name).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Extracted and normalized terminal value parameters.
         """
         data = {}
         method_key = f"{key_prefix}_method"
@@ -378,11 +490,15 @@ class ExpertTerminalBase(ABC):
         if method_key in st.session_state:
             method = st.session_state[method_key]
             data["terminal_method"] = method
+
             if method == TerminalValueMethod.GORDON_GROWTH:
-                val = st.session_state.get(f"{key_prefix}_gn")
-                data["perpetual_growth_rate"] = val / 100.0 if val is not None else None
+                # Normalize perpetual growth rate from percentage to decimal
+                raw_gn = st.session_state.get(f"{key_prefix}_gn")
+                data["perpetual_growth_rate"] = ExpertTerminalBase._normalize_percentage(raw_gn)
             else:
+                # Exit multiple is not a percentage, no normalization needed
                 data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
+
         return data
 
     @staticmethod
@@ -390,7 +506,12 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Monte Carlo configuration with safety checks.
 
-        Note: All volatility parameters are normalized from percentage to decimal.
+        All volatility parameters are normalized from percentage to decimal.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Monte Carlo configuration with normalized volatilities.
         """
         p = "mc"
         if not st.session_state.get(f"{p}_enable", False):
@@ -412,7 +533,14 @@ class ExpertTerminalBase(ABC):
 
     @staticmethod
     def _extract_peer_triangulation_data() -> Dict[str, Any]:
-        """Extracts peer cohort tickers."""
+        """
+        Extracts peer cohort tickers for multiples triangulation.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Peer triangulation configuration.
+        """
         data = {}
         if st.session_state.get("peer_peer_enable"):
             data["enable_peer_multiples"] = True
@@ -426,7 +554,13 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Bull/Base/Bear scenario variants.
 
-        Note: Growth rates and FCF margins are normalized from percentage to decimal.
+        Growth rates and FCF margins are normalized from percentage to decimal.
+        Probabilities remain unchanged (already in decimal form 0-1).
+
+        Returns
+        -------
+        Optional[ScenarioParameters]
+            Scenario configuration with normalized rates, or disabled if not set.
         """
         from src.models import ScenarioVariant
         p = "scenario"
@@ -464,18 +598,68 @@ class ExpertTerminalBase(ABC):
         except (KeyError, RuntimeError, ValueError):
             return ScenarioParameters(enabled=False)
 
+    @staticmethod
+    def _extract_backtest_data() -> Dict[str, Any]:
+        """
+        Extracts historical backtest configuration.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Backtest enable flag.
+        """
+        return {"enable_backtest": st.session_state.get("bt_enable", False)}
+
     def _build_options(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sets internal flags for final request construction."""
+        """
+        Sets internal flags for final request construction.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Collected data dictionary.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Options dictionary for ValuationRequest.
+        """
         return {
             "manual_peers": self._manual_peers,
             "enable_peer_multiples": data.get("enable_peer_multiples", False),
+            "enable_backtest": data.get("enable_backtest", False),
         }
 
     @abstractmethod
     def render_model_inputs(self) -> Dict[str, Any]:
-        """Abstract hook for specific model operational inputs."""
+        """
+        Abstract hook for specific model operational inputs.
+
+        Each concrete terminal must implement this to render model-specific
+        widgets for Step 2 (Operational Anchoring & Growth).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Model-specific parameters collected from UI widgets.
+        """
         pass
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """Default hook for model-specific data extraction."""
+        """
+        Default hook for model-specific data extraction.
+
+        Override this in concrete terminals to extract and normalize
+        model-specific parameters from session state.
+
+        Parameters
+        ----------
+        key_prefix : str
+            Session state key prefix (typically the ValuationMode name).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Empty dict by default, overridden by concrete terminals.
+        """
         return {}

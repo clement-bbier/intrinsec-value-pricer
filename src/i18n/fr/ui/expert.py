@@ -215,6 +215,12 @@ class SharedTexts:
     FORMULA_TV_GORDON = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
     FORMULA_TV_EXIT = r"TV_n = FCF_{n} \cdot Multiple_{exit}"
 
+    # Extensions optionnelles (Index 6 à 10)
+    SEC_10_BACKTEST = "#### Option : Validation Historique (Backtest)"
+    SEC_10_DESC_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) aux cours de clôture historiques pour tester la fiabilité du modèle."
+    LBL_BACKTEST_ENABLE = "Activer le Backtesting temporel"
+    HELP_BACKTEST_ENABLE = "Recalcule le modèle sur les 3 dernières années pour vérifier si le prix intrinsèque a historiquement anticipé les mouvements de marché."
+
 
 # ==============================================================================
 # CLASSES NARRATIVES SPÉCIFIQUES (Héritage de SharedTexts)

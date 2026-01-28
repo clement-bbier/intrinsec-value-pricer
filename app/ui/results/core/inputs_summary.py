@@ -135,4 +135,4 @@ class InputsSummaryTab(ResultTabBase):
         """Renders a clean Key-Value row for institutional fact sheets."""
         col_l, col_v = st.columns([0.65, 0.35])
         col_l.markdown(f"<span style='color: #64748b; font-size: 0.85rem;'>{label}</span>", unsafe_allow_html=True)
-        col_v.markdown(f"<div style='text-align: right; font-weight: 600; font-size: 0.9rem;'>{value if value is not None else '—'}div>", unsafe_allow_html=True)
+        col_v.markdown(f"<div style='text-align: right; font-weight: 600; font-size: 0.9rem;'>{value if value is not None else '—'}</div>", unsafe_allow_html=True)

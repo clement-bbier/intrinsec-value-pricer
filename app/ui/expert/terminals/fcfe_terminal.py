@@ -36,6 +36,11 @@ class FCFETerminal(ExpertTerminalBase):
 
     The FCFE model values equity directly by discounting residual
     cash flows after debt service at the cost of equity (Ke).
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to FCFE for direct equity valuation.
     """
 
     MODE = ValuationMode.FCFE
@@ -50,8 +55,6 @@ class FCFETerminal(ExpertTerminalBase):
     SHOW_SUBMIT_BUTTON = False
 
     # --- Narrative LaTeX Formulas ---
-    # The base class automatically uses SharedTexts.FORMULA_BRIDGE_SIMPLE
-    # because ValuationMode.FCFE.is_direct_equity is True.
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCFE_n(1+g_n)}{k_e - g_n}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
@@ -112,7 +115,7 @@ class FCFETerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFE data from the session_state.
+        Extracts FCFE data from the session_state with normalization.
 
         Parameters
         ----------
@@ -127,8 +130,9 @@ class FCFETerminal(ExpertTerminalBase):
         Note
         ----
         Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
+        FCF base and net borrowing remain unchanged (absolute currency values).
         """
-        # Extract raw values
+        # Extract raw growth rate
         raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
 
         # Normalize growth rate from percentage to decimal

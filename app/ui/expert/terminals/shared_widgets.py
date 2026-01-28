@@ -432,6 +432,16 @@ def widget_monte_carlo(
         "exit_multiple_volatility": v_exit_m
     }
 
+
+def widget_backtest(key_prefix: Optional[str] = None) -> Dict[str, Any]:
+    prefix = key_prefix or "bt"
+    st.markdown(SharedTexts.SEC_10_BACKTEST)
+    st.info(SharedTexts.SEC_10_DESC_BACKTEST)
+
+    enable = st.toggle(SharedTexts.LBL_BACKTEST_ENABLE, value=False, key=f"{prefix}_enable",
+                       help=SharedTexts.HELP_BACKTEST_ENABLE)
+    return {"enable_backtest": enable}
+
 # ==============================================================================
 # 6. PEER TRIANGULATION WIDGET (Section 7 - Optional)
 # ==============================================================================

@@ -36,6 +36,11 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
     This model uses a 'smoothed' or normative cash flow anchor to avoid
     valuation distortions caused by temporary cyclical peaks or troughs.
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to FCFF_NORMALIZED for mid-cycle valuation.
     """
 
     MODE = ValuationMode.FCFF_NORMALIZED
@@ -81,7 +86,7 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Normalized FCFF data from the session_state.
+        Extracts Normalized FCFF data from the session_state with normalization.
 
         Parameters
         ----------
@@ -96,8 +101,9 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
         Note
         ----
         Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
+        FCF base remains unchanged (absolute currency value).
         """
-        # Extract raw values
+        # Extract raw growth rate
         raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
 
         # Normalize growth rate from percentage to decimal

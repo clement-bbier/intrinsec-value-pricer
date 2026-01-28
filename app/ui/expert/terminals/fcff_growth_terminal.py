@@ -32,6 +32,11 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
     This approach is ideal for growth companies where margins are expected
     to converge toward an industry target over a projection horizon.
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to FCFF_GROWTH for revenue-driven valuation.
     """
 
     MODE = ValuationMode.FCFF_GROWTH
@@ -83,7 +88,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF Growth data from the session_state.
+        Extracts FCFF Growth data from the session_state with normalization.
 
         Parameters
         ----------
@@ -97,8 +102,9 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
         Note
         ----
-        Both growth rate (revenue growth) AND target FCF margin are normalized
-        from percentage (e.g., 15) to decimal (0.15).
+        CRITICAL: Both growth rate (revenue growth) AND target FCF margin
+        are normalized from percentage (e.g., 15) to decimal (0.15).
+        Revenue base remains unchanged (absolute currency value).
         """
         # Extract raw values
         raw_growth_rate = st.session_state.get(f"{key_prefix}_rev_growth")

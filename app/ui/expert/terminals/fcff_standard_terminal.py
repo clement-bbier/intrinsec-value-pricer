@@ -36,6 +36,11 @@ class FCFFStandardTerminal(ExpertTerminalBase):
     This module guides the analyst in defining the cash flow anchor (Y0)
     and the growth trajectory before proceeding to risk and capital
     structure steps managed by the base class.
+
+    Attributes
+    ----------
+    MODE : ValuationMode
+        Set to FCFF_STANDARD for entity-level DCF valuation.
     """
 
     MODE = ValuationMode.FCFF_STANDARD
@@ -95,7 +100,7 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF-specific data from the session_state.
+        Extracts FCFF-specific data from the session_state with normalization.
 
         Parameters
         ----------
@@ -110,8 +115,9 @@ class FCFFStandardTerminal(ExpertTerminalBase):
         Note
         ----
         Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
+        FCF base remains unchanged (absolute currency value).
         """
-        # Extract raw values
+        # Extract raw growth rate
         raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
 
         # Normalize growth rate from percentage to decimal

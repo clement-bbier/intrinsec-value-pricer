@@ -23,7 +23,9 @@ from app.ui.components.ui_glass_box_registry import get_step_metadata
 class AuditReportTab(ResultTabBase):
     """
     Pillar 3: Reliability Audit.
+
     Design: Institutional FactSheet with confidence indicators and detailed logs.
+    Displays audit results with hierarchical anomaly prioritization.
     """
 
     TAB_ID = "audit_report"
@@ -34,6 +36,13 @@ class AuditReportTab(ResultTabBase):
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """
         Renders the audit report with prioritized anomaly hierarchical display.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            The valuation result containing audit report data.
+        **kwargs : Any
+            Additional rendering options (unused).
         """
         report = result.audit_report
 
@@ -47,7 +56,6 @@ class AuditReportTab(ResultTabBase):
         st.write("")
 
         # --- 2. RELIABILITY SYNTHESIS (Gauge & Key Metrics) ---
-
         with st.container(border=True):
             col_gauge, col_metrics = st.columns([1, 1.2])
 
@@ -56,7 +64,7 @@ class AuditReportTab(ResultTabBase):
                 render_audit_reliability_gauge(report.global_score, report.rating)
 
             with col_metrics:
-                st.write("") # Vertical alignment
+                st.write("")  # Vertical alignment
                 m1, m2 = st.columns(2)
                 with m1:
                     atom_kpi_metric(
@@ -73,7 +81,10 @@ class AuditReportTab(ResultTabBase):
                 st.caption(f"_{AuditTexts.GLOBAL_SCORE.format(score=report.global_score)}_")
 
         # --- 3. CRITICAL ALERTS (Red Flag Management) ---
-        critical_fails = [s for s in report.audit_steps if not s.verdict and s.severity == AuditSeverity.CRITICAL]
+        critical_fails = [
+            s for s in report.audit_steps
+            if not s.verdict and s.severity == AuditSeverity.CRITICAL
+        ]
         if critical_fails:
             st.write("")
             # Uses localized critical alert text
@@ -102,13 +113,20 @@ class AuditReportTab(ResultTabBase):
     def _render_audit_step_card(step: AuditStep) -> None:
         """
         Renders an audit card following the 'Compliance Report' visual standard.
-        Uses specialized HTML badges for precise signaling.
+
+        Uses specialized HTML badges for precise signaling with color-coded
+        severity indicators.
+
+        Parameters
+        ----------
+        step : AuditStep
+            The audit step to render.
         """
         meta = get_step_metadata(step.step_key)
 
         # 1. Signaling Logic (Colors & Icons)
         if step.verdict:
-            color = "#10b981"  # Green
+            color = "#10b981"  # Green - Pass
             status_label = AuditTexts.STATUS_OK
             icon = "✅"
         else:
@@ -143,15 +161,24 @@ class AuditReportTab(ResultTabBase):
             c_rule, c_evidence, c_verdict = st.columns([1.2, 1, 0.8])
 
             with c_rule:
-                st.markdown(f"<p style='font-size:0.8rem; color:gray; margin-bottom:0;'>{AuditTexts.H_RULE}</p>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<p style='font-size:0.8rem; color:gray; margin-bottom:0;'>{AuditTexts.H_RULE}</p>",
+                    unsafe_allow_html=True
+                )
                 st.latex(step.rule_formula or AuditTexts.DEFAULT_FORMULA)
 
             with c_evidence:
-                st.markdown(f"<p style='font-size:0.8rem; color:gray; margin-bottom:5px;'>{AuditTexts.H_EVIDENCE}</p>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<p style='font-size:0.8rem; color:gray; margin-bottom:5px;'>{AuditTexts.H_EVIDENCE}</p>",
+                    unsafe_allow_html=True
+                )
                 st.markdown(f"_{step.evidence or AuditTexts.INTERNAL_CALC}_")
 
             with c_verdict:
-                st.markdown(f"<p style='font-size:0.8rem; color:gray; margin-bottom:5px;'>{AuditTexts.H_VERDICT}</p>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<p style='font-size:0.8rem; color:gray; margin-bottom:5px;'>{AuditTexts.H_VERDICT}</p>",
+                    unsafe_allow_html=True
+                )
 
                 # Dynamic formatting of indicator value
                 val = step.indicator_value
@@ -165,5 +192,17 @@ class AuditReportTab(ResultTabBase):
                 st.markdown(f"**{display_val}**")
 
     def is_visible(self, result: ValuationResult) -> bool:
-        """The tab is only visible if the engine generated an audit report."""
+        """
+        Determines if the tab should be visible.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            The valuation result to check.
+
+        Returns
+        -------
+        bool
+            True if the engine generated an audit report.
+        """
         return result.audit_report is not None

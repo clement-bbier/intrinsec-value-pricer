@@ -80,4 +80,7 @@ class RiskEngineeringTab(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """The tab is always visible to centralize risk analysis management."""
-        return True
+        p = result.params
+        return (p.monte_carlo.enabled or
+                p.scenarios.enabled or
+                (result.backtest_report is not None))
