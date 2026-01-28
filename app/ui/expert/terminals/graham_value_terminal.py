@@ -1,13 +1,13 @@
 """
 app/ui/expert_terminals/graham_value_terminal.py
 
-TERMINAL EXPERT — GRAHAM INTRINSIC VALUE (QUANT REVISED)
+EXPERT TERMINAL — GRAHAM INTRINSIC VALUE (QUANT REVISED)
 ========================================================
-Formule de screening défensive (Revised 1974) enrichie par
-une approche stochastique (Monte Carlo sur EPS).
+Defensive screening formula (Revised 1974) enhanced with
+a stochastic approach for earnings volatility.
 
-Architecture : ST-4.1 (Screening & Probabiliste)
-Style : Numpy docstrings
+Architecture: ST-4.1 (Screening & Probabilistic)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -20,41 +20,40 @@ from ..base_terminal import ExpertTerminalBase
 
 class GrahamValueTerminal(ExpertTerminalBase):
     """
-    Terminal expert pour la formule de Graham.
+    Expert terminal for Benjamin Graham's intrinsic value formula.
 
-    Bien que le modèle original soit déterministe, ce terminal permet
-    une analyse de sensibilité via Monte Carlo sur les bénéfices (EPS)
-    et les scénarios de croissance.
+    While the original model is deterministic, this terminal allows for
+    sensitivity analysis through the global valuation engine.
     """
 
     MODE = ValuationMode.GRAHAM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI (Adaptation Statique) ---
-    SHOW_DISCOUNT_SECTION = False  # Pas de WACC/Ke explicite
-    SHOW_TERMINAL_SECTION = False  # Pas de TV Gordon/Multiples
-    SHOW_BRIDGE_SECTION = False    # Valorise directement l'action
+    # --- UI Pipeline Configuration (Static Adaptation) ---
+    SHOW_DISCOUNT_SECTION = False  # No explicit WACC/Ke required
+    SHOW_TERMINAL_SECTION = False  # No Gordon/Exit Multiples
+    SHOW_BRIDGE_SECTION = False    # Values the share directly
 
-    SHOW_MONTE_CARLO = False        # Activé pour simuler l'EPS
+    SHOW_MONTE_CARLO = False
     SHOW_SCENARIOS = False
-    SHOW_SOTP = False              # Non applicable à Graham
+    SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = False
     SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu des entrées spécifiques au modèle Graham (Étapes 1 & 2).
+        Renders operational inputs for the Graham model (Steps 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Paramètres : manual_fcf_base (EPS), fcf_growth_rate (g),
+            Parameters: manual_fcf_base (EPS), fcf_growth_rate (g),
             corporate_aaa_yield (Y), tax_rate (tau).
         """
         prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : BÉNÉFICES & CROISSANCE ---
+        # --- STEP 1: EARNINGS & GROWTH ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
 
@@ -79,7 +78,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
         st.divider()
 
-        # --- ÉTAPE 2 : CONDITIONS DE MARCHÉ ---
+        # --- STEP 2: MARKET CONDITIONS ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
@@ -114,17 +113,17 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données Graham depuis le session_state.
+        Extracts Graham input data from streamlit session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe basé sur le ValuationMode.
+            Prefix based on the ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données opérationnelles pour build_request.
+            Operational data for build_request.
         """
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),

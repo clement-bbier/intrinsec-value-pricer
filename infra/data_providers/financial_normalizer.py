@@ -1,11 +1,13 @@
 """
 infra/data_providers/financial_normalizer.py
 
-Normalisation des données financières
-Rôle : Reconstruction TTM et normalisation des pairs (Multiples sectoriels).
-Responsabilité : Transformer les données brutes Yahoo en modèles validés (CompanyFinancials & MultiplesData).
+FINANCIAL DATA NORMALIZER
+=========================
+Role: TTM (Trailing Twelve Months) reconstruction and peer normalization.
+Responsibility: Transforms raw Yahoo data into validated models (CompanyFinancials & MultiplesData).
 
-Paradigme : Honest Data — Filtrage strict des aberrations pour la triangulation.
+Paradigm: Honest Data — Strict filtering of outliers for accurate triangulation.
+Architecture: Data Infrastructure Layer.
 """
 
 from __future__ import annotations
@@ -18,7 +20,6 @@ import pandas as pd
 from pydantic import ValidationError
 
 from src.models import CompanyFinancials, PeerMetric, MultiplesData
-# DT-001/002: Import depuis core.i18n
 from src.i18n import DiagnosticTexts
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from infra.data_providers.extraction_utils import (
@@ -36,16 +37,20 @@ logger = logging.getLogger(__name__)
 
 class FinancialDataNormalizer:
     """
-    Transforme les données brutes Yahoo en structures financières standardisées.
-    Gère la validation Pydantic des multiples pour éliminer les outliers sectoriels.
+    Orchestrates the transformation of raw API payloads into standardized
+    financial structures. Enforces Pydantic-based validation and economic
+    robustness filters for sector comparison.
     """
 
     # =========================================================================
-    # 1. NORMALISATION DE L'ENTREPRISE CIBLE
+    # 1. TARGET COMPANY NORMALIZATION
     # =========================================================================
 
     def normalize(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
-        """Orchestrateur de la normalisation pour l'entreprise principale."""
+        """
+        Main orchestrator for company data normalization.
+        Reconstructs the capital structure and TTM profitability.
+        """
         if not raw.is_valid:
             logger.warning("[Normalizer] Invalid raw data for %s", raw.ticker)
             return None
@@ -53,7 +58,7 @@ class FinancialDataNormalizer:
         info = raw.info
         currency, current_price = normalize_currency_and_price(info)
 
-        # Reconstruction par segments
+        # Segmented reconstruction logic
         shares = self._reconstruct_shares(info, raw.balance_sheet, current_price)
         capital_structure = self._reconstruct_capital_structure(
             info, raw.balance_sheet, raw.income_stmt, raw.cash_flow
@@ -80,20 +85,20 @@ class FinancialDataNormalizer:
         )
 
     # =========================================================================
-    # 2. NORMALISATION DES PAIRS ( - PHASE 3)
+    # 2. PEER NORMALIZATION (PILLAR 5)
     # =========================================================================
 
     def normalize_peers(self, raw_peers: List[Dict[str, Any]]) -> MultiplesData:
         """
-        Transforme une liste de dictionnaires bruts en synthèse de multiples validés.
-        Filtre les données aberrantes (ex: P/E > 100) pour protéger la triangulation.
+        Converts raw peer lists into a summary of validated valuation multiples.
+        Filters extreme economic outliers (e.g., P/E > 100) to protect triangulation.
         """
         valid_peers: List[PeerMetric] = []
 
         for p_info in raw_peers:
             ticker = p_info.get("symbol", "N/A")
             try:
-                # 1. Instanciation via Pydantic pour validation de type
+                # 1. Type validation via Pydantic model
                 peer = PeerMetric(
                     ticker=ticker,
                     name=p_info.get("shortName", ticker),
@@ -103,7 +108,7 @@ class FinancialDataNormalizer:
                     market_cap=p_info.get("marketCap", 0.0)
                 )
 
-                # 2. Filtrage des aberrations économiques (Robustesse)
+                # 2. Economic Robustness Filtering
                 if self._is_peer_robust(peer):
                     valid_peers.append(peer)
                 else:
@@ -112,21 +117,21 @@ class FinancialDataNormalizer:
             except (ValidationError, TypeError, ValueError):
                 continue
 
-        # 3. Calcul des médianes robustes
+        # 3. Robust statistics calculation (Median-based)
         return self._build_multiples_summary(valid_peers)
 
     @staticmethod
     def _is_peer_robust(peer: PeerMetric) -> bool:
         """
-        Applique des filtres de sécurité sur les multiples.
-        On écarte les entreprises en perte (P/E négatif) ou les valorisations absurdes.
+        Applies safety thresholds on valuation multiples.
+        Filters out money-losing firms (Negative P/E) or absurd valuations.
         """
-        # Filtrage P/E (Trailing)
+        # P/E Filtering (Trailing)
         if peer.pe_ratio is not None:
             if not (0.1 < peer.pe_ratio < 100.0):
                 return False
 
-        # Filtrage EV/EBITDA
+        # EV/EBITDA Filtering
         if peer.ev_ebitda is not None:
             if not (0.1 < peer.ev_ebitda < 60.0):
                 return False
@@ -135,11 +140,11 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _build_multiples_summary(peers: List[PeerMetric]) -> MultiplesData:
-        """Calcule les médianes sectorielles pour les colonnes du Football Field."""
+        """Calculates sectoral medians for the Football Field visualization."""
         if not peers:
             return MultiplesData()
 
-        # Extraction des listes pour calcul statistique (uniquement valeurs non nulles)
+        # Extract lists for statistical processing
         pes = [p.pe_ratio for p in peers if p.pe_ratio is not None]
         ebitda_list = [p.ev_ebitda for p in peers if p.ev_ebitda is not None]
         revs = [p.ev_revenue for p in peers if p.ev_revenue is not None]
@@ -152,12 +157,12 @@ class FinancialDataNormalizer:
         )
 
     # =========================================================================
-    # HELPERS DE RECONSTRUCTION ( - MAINTENANCE)
+    # RECONSTRUCTION HELPERS (STRICT AUDIT)
     # =========================================================================
 
     @staticmethod
     def _reconstruct_shares(info: Dict[str, Any], bs: Optional[pd.DataFrame], price: float) -> float:
-        """Extrait le nombre d'actions actuel (inchangé)."""
+        """Extracts current share count using fallback hierarchy."""
         shares = info.get("sharesOutstanding")
         if not shares and bs is not None:
             shares = extract_most_recent_value(bs, ["Ordinary Shares Number", "Share Issued"])
@@ -169,18 +174,14 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def extract_shares_history(bs: Optional[pd.DataFrame]) -> List[float]:
-        """
-        Extrait la série historique des actions.
-        Retourne la liste ordonnée du passé vers le présent.
-        """
+        """Extracts chronological share count series (Oldest to Newest)."""
         if bs is None or bs.empty:
             return []
 
         keys = ["Ordinary Shares Number", "Share Issued"]
         for key in keys:
             if key in bs.index:
-                # On récupère les valeurs, on enlève les NaN et on inverse l'ordre
-                # (Yahoo livre du plus récent au plus ancien.)
+                # Reverse Yahoo's New-to-Old delivery
                 series = bs.loc[key].dropna().iloc[::-1].tolist()
                 if len(series) >= 2:
                     return [float(v) for v in series]
@@ -193,7 +194,7 @@ class FinancialDataNormalizer:
             is_: Optional[pd.DataFrame],
             cf: Optional[pd.DataFrame]
     ) -> Dict[str, Any]:
-        """Reconstruit les éléments du bridge (dette, cash, provisions)."""
+        """Reconstructs the Equity Bridge components (Debt, Cash, Provisions)."""
         debt = self._extract_total_debt(info, bs)
         cash = self._extract_cash(info, bs)
         minority = self._extract_minority_interests(bs)
@@ -217,11 +218,12 @@ class FinancialDataNormalizer:
 
     def _reconstruct_profitability(self, info: Dict[str, Any], is_a: Optional[pd.DataFrame], cf_a: Optional[pd.DataFrame],
                                  is_q: Optional[pd.DataFrame], cf_q: Optional[pd.DataFrame]) -> Dict[str, Any]:
-        """Agrège les métriques de rentabilité TTM et lissées."""
+        """Aggregates TTM (Trailing Twelve Months) and smoothed profitability metrics."""
         rev_ttm = self._sum_last_4_quarters(is_q, ["Total Revenue", "Revenue"])
         ebit_ttm = self._sum_last_4_quarters(is_q, ["EBIT", "Operating Income"])
         ni_ttm = self._sum_last_4_quarters(is_q, ["Net Income Common Stockholders", "Net Income"])
 
+        # TTM Fallback logic
         rev_ttm = rev_ttm or info.get("totalRevenue") or extract_most_recent_value(is_a, ["Total Revenue"])
         ebit_ttm = ebit_ttm or info.get("operatingCashflow") or extract_most_recent_value(is_a, ["EBIT", "Operating Income"])
         ni_ttm = ni_ttm or info.get("netIncomeToCommon") or extract_most_recent_value(is_a, ["Net Income"])
@@ -249,7 +251,7 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _extract_net_borrowing(cf: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait la variation nette de l'endettement."""
+        """Extracts net change in debt (Net Borrowing)."""
         if cf is None:
             return 0.0
         net_flow = extract_most_recent_value(cf, ["Net Issuance Payments Of Debt"])
@@ -261,7 +263,7 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _extract_total_debt(info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait la dette brute totale."""
+        """Extracts gross total debt."""
         debt = info.get("totalDebt")
         if not debt and bs is not None:
             debt = extract_most_recent_value(bs, ["Total Debt", "Net Debt"])
@@ -273,7 +275,7 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _extract_cash(info: Dict, bs: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait la trésorerie totale."""
+        """Extracts total cash and equivalents."""
         cash = info.get("totalCash")
         if not cash and bs is not None:
             cash = extract_most_recent_value(bs, ["Cash And Cash Equivalents", "Cash Financial"])
@@ -281,28 +283,28 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _extract_minority_interests(bs: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait les intérêts minoritaires."""
+        """Extracts minority interests (non-controlling)."""
         if bs is None:
             return 0.0
         return extract_most_recent_value(bs, ["Minority Interest", "Non Controlling Interest"])
 
     @staticmethod
     def _extract_pension_provisions(bs: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait les provisions pour retraites."""
+        """Extracts pension and post-retirement provisions."""
         if bs is None:
             return 0.0
         return extract_most_recent_value(bs, ["Long Term Provisions", "Pension And Other Postretirement Benefit Plans"])
 
     @staticmethod
     def _extract_interest_expense(is_: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait la charge d'intérêt."""
+        """Extracts interest expense."""
         if is_ is None:
             return None
         return extract_most_recent_value(is_, ["Interest Expense", "Interest Expense Non Operating"])
 
     @staticmethod
     def _extract_depreciation_amortization(cf_a: Optional[pd.DataFrame]) -> Optional[float]:
-        """Extrait les dotations aux amortissements."""
+        """Extracts depreciation and amortization charges."""
         da = extract_most_recent_value(cf_a, DA_KEYS)
         if da is None and cf_a is not None:
             dep = extract_most_recent_value(cf_a, ["Depreciation"]) or 0
@@ -312,12 +314,13 @@ class FinancialDataNormalizer:
 
     @staticmethod
     def _sum_last_4_quarters(df: Optional[pd.DataFrame], keys: List[str]) -> Optional[float]:
-        """Somme les quatre derniers trimestres pour une métrique donnée."""
+        """Aggregates the last 4 quarters for a given metric to build TTM values."""
         if df is None or df.empty:
             return None
         for key in keys:
             if key in df.index:
                 last_4 = df.loc[key].iloc[: 4]
+                # Ensure we have exactly 4 quarters for a robust TTM reconstruction
                 if len(last_4) == 4 and not last_4.isnull().any():
                     return float(last_4.sum())
         return None

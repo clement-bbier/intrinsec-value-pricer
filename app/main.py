@@ -1,16 +1,14 @@
 """
 app/main.py
 
-POINT D'ENTRÉE — INTERFACE UTILISATEUR
-Point d'entrée - Registre centralisé
+APPLICATION ENTRY POINT — USER INTERFACE
+========================================
+Centralized Registry System (DT-007/008/009).
+This module orchestrates the sidebar inputs and the main content area,
+supporting both automated and expert-led valuation workflows.
 
-Principes appliqués :
-- Conservation intégrale de la logique V9.1
-- Registre centralisé (DT-007/008/009) au lieu de registres manuels
-- Support de la nouvelle segmentation Direct Equity
-
-Note DT-008: Les registres VALUATION_DISPLAY_NAMES et EXPERT_UI_REGISTRY
-sont maintenant générés depuis core/valuation/registry.py
+Architecture: ST-4.0 (Centralized Orchestration)
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -23,7 +21,7 @@ from typing import Callable, Dict
 import streamlit as st
 
 # ==============================================================================
-# CONFIGURATION DU PATH
+# PATH CONFIGURATION
 # ==============================================================================
 
 _FILE_PATH = Path(__file__).resolve()
@@ -33,7 +31,7 @@ if str(_ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(_ROOT_PATH))
 
 # ==============================================================================
-# IMPORTS APPLICATIFS
+# APPLICATION IMPORTS
 # ==============================================================================
 
 from app.assets.style_system import inject_institutional_design
@@ -45,10 +43,11 @@ from src.models import (
     ValuationRequest,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig, SOTPParameters
+    MonteCarloConfig,
+    SOTPParameters
 )
 
-# IMPORT DU RÉFÉRENTIEL TEXTUEL
+# I18N TEXTUAL REFERENTIAL
 from src.i18n import (
     CommonTexts,
     SidebarTexts,
@@ -56,43 +55,46 @@ from src.i18n import (
     FeedbackMessages
 )
 
-# IMPORT DU REGISTRE CENTRALISÉ (DT-008)
+# CENTRALIZED REGISTRY (DT-008)
 from src.valuation.registry import get_display_names
 
-# Import de la factory pour la correction du registre
+# EXPERT FACTORY
 from app.ui.expert.factory import create_expert_terminal
 
 # ==============================================================================
-# CONFIGURATION & LOGGING
+# LOGGING & CONFIGURATION
 # ==============================================================================
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# REGISTRES DE CONFIGURATION (FACADE VERS REGISTRE CENTRALISÉ)
+# CONFIGURATION REGISTRIES (FACADE TO CENTRAL REGISTRY)
 # ==============================================================================
 
-# DT-008: Ces registres sont maintenant des facades vers le registre centralisé
+# Valuation display names mapped from the central registry
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
 def _expert_render_wrapper(mode: ValuationMode, ticker: str):
-    """Wrapper pour rendre le terminal expert via la factory."""
+    """
+    Wrapper to render the expert terminal via the factory.
+
+    Parameters
+    ----------
+    mode : ValuationMode
+        The selected valuation methodology.
+    ticker : str
+        The target company ticker.
+    """
     return create_expert_terminal(mode, ticker).render()
 
-# Registre des terminaux expert
+# Expert UI Registry for dynamic component injection
 EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
     mode: _expert_render_wrapper for mode in ValuationMode
 }
 
-
-# Fonction supprimée - terminaux déplacés vers app/ui/expert_terminals/
-
-
-# Registre legacy supprimé - terminaux déplacés vers app/ui/expert_terminals/
-
 # ==============================================================================
-# CONSTANTES UI (DT-011: Centralisées dans core/config)
+# UI CONSTANTS (DT-011: Centralized in core/config)
 # ==============================================================================
 
 from src.config import MonteCarloDefaults, SystemDefaults
@@ -108,11 +110,11 @@ _MC_SIMULATIONS_STEP = MonteCarloDefaults.STEP_SIMULATIONS
 
 
 # ==============================================================================
-# GESTION DU STATE
+# SESSION STATE MANAGEMENT
 # ==============================================================================
 
 def _init_session_state() -> None:
-    """Initialise les variables de session si absentes."""
+    """Initializes session variables if absent."""
     defaults = {
         "active_request": None,
         "last_config": "",
@@ -123,24 +125,26 @@ def _init_session_state() -> None:
 
 
 def _reset_on_config_change(current_config: str) -> None:
-    """Reset la requête active si la configuration a changé."""
+    """
+    Resets the active request if the configuration (ticker/mode) has changed.
+    """
     if st.session_state.last_config != current_config:
         st.session_state.active_request = None
         st.session_state.last_config = current_config
 
 
 def _set_active_request(request: ValuationRequest) -> None:
-    """Enregistre la requête active et relance l'app."""
+    """Registers the active request and triggers a UI rerun."""
     st.session_state.active_request = request
     st.rerun()
 
 
 # ==============================================================================
-# SETUP PAGE
+# PAGE SETUP
 # ==============================================================================
 
 def _setup_page() -> None:
-    """Configure la page Streamlit avec le design institutionnel."""
+    """Configures the Streamlit page with institutional branding."""
     st.set_page_config(
         page_title=CommonTexts.APP_TITLE,
         page_icon="📊",
@@ -149,11 +153,11 @@ def _setup_page() -> None:
     inject_institutional_design()
 
 # ==============================================================================
-# SIDEBAR — INPUTS UTILISATEUR
+# SIDEBAR — USER INPUTS
 # ==============================================================================
 
 def _render_sidebar_ticker() -> str:
-    """Rend le champ de saisie du ticker."""
+    """Renders the ticker input field."""
     st.header(SidebarTexts.SEC_1_COMPANY)
     ticker = st.text_input(SidebarTexts.TICKER_LABEL, value=_DEFAULT_TICKER)
     st.divider()
@@ -161,7 +165,7 @@ def _render_sidebar_ticker() -> str:
 
 
 def _render_sidebar_methodology() -> ValuationMode:
-    """Rend le sélecteur de méthodologie."""
+    """Renders the methodology selector."""
     st.header(SidebarTexts.SEC_2_METHODOLOGY)
     selected_name = st.selectbox(
         SidebarTexts.METHOD_LABEL,
@@ -175,7 +179,10 @@ def _render_sidebar_methodology() -> ValuationMode:
 
 
 def _render_sidebar_source() -> bool:
-    """Rend le sélecteur de source de données. Retourne True si mode Expert."""
+    """
+    Renders the data source selector.
+    Returns True if Expert Mode is selected.
+    """
     st.header(SidebarTexts.SEC_3_SOURCE)
     input_mode = st.radio(
         SidebarTexts.STRATEGY_LABEL,
@@ -185,8 +192,8 @@ def _render_sidebar_source() -> bool:
     return input_mode == SidebarTexts.SOURCE_OPTIONS[1]
 
 
-def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
-    """Rend les options spécifiques au mode Auto."""
+def _render_sidebar_auto_options(_mode: ValuationMode) -> Dict:
+    """Renders options specific to the Automated (Standard) mode."""
     st.header(SidebarTexts.SEC_4_HORIZON)
     years = st.slider(
         SidebarTexts.YEARS_LABEL,
@@ -195,13 +202,15 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
         value=_DEFAULT_PROJECTION_YEARS,
     )
     st.divider()
-    return {"years": years,
+    return {
+        "years": years,
         "enable_mc": False,
-        "mc_sims": _DEFAULT_MC_SIMULATIONS}
+        "mc_sims": _DEFAULT_MC_SIMULATIONS
+    }
 
 
 def _render_sidebar_footer() -> None:
-    """Rend le footer de la sidebar."""
+    """Renders the institutional sidebar footer."""
     st.markdown(
         f"""
         <div style="margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; 
@@ -209,7 +218,7 @@ def _render_sidebar_footer() -> None:
             {CommonTexts.DEVELOPED_BY} <br>
             <a href="https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/" 
                target="_blank" 
-               style="color: #6366f1; text-decoration:  none; font-weight: 600;">
+               style="color: #6366f1; text-decoration: none; font-weight: 600;">
                {CommonTexts.AUTHOR_NAME}
             </a><br>
         </div>
@@ -219,26 +228,29 @@ def _render_sidebar_footer() -> None:
 
 
 # ==============================================================================
-# CONTENT — AFFICHAGE PRINCIPAL
+# CONTENT — MAIN DISPLAY
 # ==============================================================================
 
 def _render_onboarding_guide() -> None:
     """
-    Guide d'onboarding — Design institutionnel homogène.
-    Utilise des conteneurs avec bordures pour toutes les sections clés.
+    Onboarding Guide — Homogeneous institutional design.
+    Uses bordered containers for all key methodology and process sections.
     """
-    # 1. HEADER & ACCROCHE (Hero Section)
+    # 1. HEADER & COMPLIANCE
     st.header(CommonTexts.APP_TITLE)
     st.markdown(OnboardingTexts.INTRO_INFO)
     st.caption(OnboardingTexts.COMPLIANCE_BODY)
     st.divider()
 
-    # 2. MÉTHODES DE VALORISATION (Homogénéisé avec bordures)
+    # 2. VALUATION METHODOLOGIES (Grid with formulas)
     st.subheader(OnboardingTexts.TITLE_METHODS)
     st.markdown(OnboardingTexts.DESC_METHODS)
+
+
+
     m_cols = st.columns(4)
     methods = [
-        (OnboardingTexts.MODEL_DCF_TITLE, r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+Wacc)^t} + \frac{TV_n}{(1+Wacc)^n}",
+        (OnboardingTexts.MODEL_DCF_TITLE, r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}",
          OnboardingTexts.MODEL_DCF_DESC),
         (OnboardingTexts.MODEL_EQUITY_TITLE, r"P = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}",
          OnboardingTexts.MODEL_EQUITY_DESC),
@@ -256,7 +268,7 @@ def _render_onboarding_guide() -> None:
                             unsafe_allow_html=True)
     st.divider()
 
-    # 3. FLUX DE DONNÉES PAR MODE D'ANALYSE
+    # 3. DATA WORKFLOWS
     st.subheader(OnboardingTexts.TITLE_PROCESS)
     p_cols = st.columns(3)
     processes = [
@@ -273,9 +285,12 @@ def _render_onboarding_guide() -> None:
                     unsafe_allow_html=True)
     st.divider()
 
-    # 4. ARCHITECTURE DES RÉSULTATS (Les 5 Piliers)
+    # 4. RESULTS ARCHITECTURE (The 5 Pillars)
     st.subheader(OnboardingTexts.TITLE_RESULTS)
     st.markdown(OnboardingTexts.DESC_RESULTS)
+
+
+
     r_cols = st.columns(5)
     results_pillars = [
         (OnboardingTexts.TAB_1_TITLE, OnboardingTexts.TAB_1_DESC),
@@ -293,7 +308,7 @@ def _render_onboarding_guide() -> None:
                     unsafe_allow_html=True)
     st.divider()
 
-    # 5. SYSTÈME DE DIAGNOSTIC (Footer)
+    # 5. DIAGNOSTIC SYSTEM (Footer)
     st.subheader(OnboardingTexts.DIAGNOSTIC_HEADER)
     d1, d2, d3 = st.columns(3)
     d1.error(OnboardingTexts.DIAGNOSTIC_BLOQUANT)
@@ -302,28 +317,28 @@ def _render_onboarding_guide() -> None:
 
 def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
     """
-    Gère l'affichage du terminal expert et le lancement de la valorisation.
+    Handles expert terminal rendering and valuation triggering.
 
     Parameters
     ----------
     ticker : str
-        Symbole boursier de l'entreprise.
+        Stock symbol.
     mode : ValuationMode
-        Méthodologie de valorisation sélectionnée.
+        Selected methodology.
     external_launch : bool, optional
-        Indique si le calcul est déclenché par un composant externe (ex: Sidebar), par défaut False.
+        Indicates if calculation is triggered from a secondary UI element (e.g. Sidebar).
     """
     if not ticker:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
         return
 
-    from app.ui.expert.factory import create_expert_terminal
+    # Use factory to create the dedicated expert terminal
     terminal = create_expert_terminal(mode, ticker)
 
-    # Toujours afficher le formulaire (widgets persistent dans st.session_state)
+    # Widgets persist in st.session_state via the render call
     terminal.render()
 
-    # Si déclenchement externe (bouton sidebar), extraire et lancer le calcul
+    # If external launch (sidebar button), build the final request
     if external_launch:
         request = terminal.build_request()
         if request:
@@ -331,16 +346,16 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool 
 
 
 def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
-    """Gère le lancement en mode Auto avec support des scénarios par défaut."""
+    """Handles automated analysis launch with default risk parameters."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_INVALID)
         return
 
     options.setdefault("manual_peers", [])
 
-    # Instanciation segmentée avec Scénarios désactivés par défaut
-    from src.models import ScenarioParameters  # Import local si nécessaire
+    from src.models import ScenarioParameters
 
+    # Standard configuration with Scenarios disabled for Auto Mode
     config_params = DCFParameters(
         rates=CoreRateParameters(),
         growth=GrowthParameters(projection_years=options["years"]),
@@ -349,7 +364,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
             num_simulations=options["mc_sims"]
         ),
         scenarios=ScenarioParameters(enabled=False),
-        sotp = SOTPParameters(enabled=False)
+        sotp=SOTPParameters(enabled=False)
     )
 
     request = ValuationRequest(
@@ -365,27 +380,27 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
 
 
 # ==============================================================================
-# POINT D'ENTRÉE PRINCIPAL
+# MAIN ENTRY POINT
 # ==============================================================================
 
 def main() -> None:
-    """Point d'entrée principal de l'application."""
+    """Main application entry point."""
     _setup_page()
     _init_session_state()
 
     # =========================================================================
-    # SIDEBAR — Collecte des inputs
+    # SIDEBAR — Input Collection
     # =========================================================================
     with st.sidebar:
         ticker = _render_sidebar_ticker()
         selected_mode = _render_sidebar_methodology()
         is_expert = _render_sidebar_source()
 
-        # Reset si la configuration change
+        # Check for config changes to reset previous results
         current_config = f"{ticker}_{is_expert}_{selected_mode.value}"
         _reset_on_config_change(current_config)
 
-        # Options spécifiques au mode Auto
+        # UI Branching for Auto/Expert parameters
         auto_options = {}
         launch_analysis = False
 
@@ -395,29 +410,33 @@ def main() -> None:
         launch_analysis = st.button(
             CommonTexts.RUN_BUTTON,
             type="primary",
-            width="stretch",
+            use_container_width=True,
         )
 
         _render_sidebar_footer()
 
     # =========================================================================
-    # CONTENT — Affichage principal
+    # CONTENT — Main Rendering Logic
     # =========================================================================
     if st.session_state.active_request:
+        # Launch valuation engine and display results via workflow
         run_workflow_and_display(st.session_state.active_request)
 
     elif is_expert:
+        # Delegate to specific expert terminal
         _handle_expert_mode(ticker, selected_mode, external_launch=launch_analysis)
 
     elif launch_analysis:
+        # Trigger automated data acquisition and calculation
         _handle_auto_launch(ticker, selected_mode, auto_options)
 
     else:
+        # Display initial fact sheet
         _render_onboarding_guide()
 
 
 # ==============================================================================
-# EXÉCUTION
+# EXECUTION
 # ==============================================================================
 
 if __name__ == "__main__":

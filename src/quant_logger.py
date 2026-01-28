@@ -1,31 +1,16 @@
 """
 src/quant_logger.py
 
-QUANTLOGGER — Logging Institutionnel Standardisé
+QUANTLOGGER — INSTITUTIONAL STANDARDIZED LOGGING
+================================================
+Role: Standardized telemetry for valuation events and mathematical audits.
+Pattern: Decorator + Structured Logging.
+Architecture: ST-4.2 Compliance.
 
-Logging institutionnel standardisé
-Pattern : Decorator + Structured Logging
-Style : Numpy docstrings
+Format:
+[DOMAIN][LEVEL] Ticker: XXX | Key: Value | Key: Value
 
-ST-4.2 : STANDARDISATION DU LOG
-================================
-Format institutionnel uniforme pour tous les événements de valorisation :
-[VALUATION][SUCCESS] Ticker: AAPL | Model: FCFF_STANDARD | IV: 185.20 | AuditScore: 88.5%
-
-Financial Impact:
-    Les logs structurés permettent l'analyse post-hoc des valorisations
-    et facilitent l'audit des décisions d'investissement.
-
-Usage:
-    from src.quant_logger import QuantLogger, log_valuation
-    
-    # Via le décorateur
-    @log_valuation
-    def run_valuation(request, financials, params):
-        ...
-    
-    # Via le logger directement
-    QuantLogger.log_success(ticker="AAPL", mode="FCFF_STANDARD", iv=185.20, audit_score=88.5)
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -33,15 +18,15 @@ from __future__ import annotations
 import logging
 import functools
 from datetime import datetime
-from typing import Any, Callable, Optional, TypeVar, Dict
+from typing import Any, Callable, Optional, TypeVar, Union
 from enum import Enum
 
-# Type variable pour les décorateurs
+# Type variable for preserving function signatures in decorators
 F = TypeVar('F', bound=Callable[..., Any])
 
 
 class LogLevel(Enum):
-    """Niveaux de log pour les événements de valorisation."""
+    """Log severity levels for valuation telemetry."""
     SUCCESS = "SUCCESS"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -50,44 +35,35 @@ class LogLevel(Enum):
 
 
 class LogDomain(Enum):
-    """Domaines fonctionnels pour le routage des logs."""
+    """Functional domains for log routing and filtering."""
     VALUATION = "VALUATION"
     DATA = "DATA"
     AUDIT = "AUDIT"
     MONTE_CARLO = "MC"
     PROVIDER = "PROVIDER"
+    ENGINE = "ENGINE"
 
 
-# Configuration du logger racine pour le module
+# Configure specialized quant logger
 _logger = logging.getLogger("quant")
 _logger.setLevel(logging.DEBUG)
+
+# Terminal Handler (Standard Out)
+if not _logger.handlers:
+    sh = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    sh.setFormatter(formatter)
+    _logger.addHandler(sh)
 
 
 class QuantLogger:
     """
-    Logger institutionnel pour les événements de valorisation.
-    
-    Implémente un format standardisé pour tous les logs :
-    [DOMAIN][LEVEL] Ticker: XXX | Key1: Val1 | Key2: Val2
-    
-    Examples
-    --------
-    >>> QuantLogger.log_success(
-    ...     ticker="AAPL",
-    ...     mode="FCFF_STANDARD",
-    ...     iv=185.20,
-    ...     audit_score=88.5
-    ... )
-    [VALUATION][SUCCESS] Ticker: AAPL | Model: FCFF_STANDARD | IV: 185.20 | AuditScore: 88.5%
-    
-    >>> QuantLogger.log_warning(
-    ...     ticker="MSFT",
-    ...     message="Mode dégradé activé",
-    ...     reason="API failure"
-    ... )
-    [DATA][WARNING] Ticker: MSFT | Mode dégradé activé | Reason: API failure
+    Institutional logger for high-precision financial events.
+
+    Implements a standardized, machine-readable format:
+    [DOMAIN][LEVEL] Ticker: XXX | Field: Value | Field: Value
     """
-    
+
     @staticmethod
     def _format_message(
         domain: LogDomain,
@@ -96,36 +72,35 @@ class QuantLogger:
         **kwargs: Any
     ) -> str:
         """
-        Formate un message de log selon le standard institutionnel.
-        
+        Formats a message into the institutional pipe-separated standard.
+
         Parameters
         ----------
         domain : LogDomain
-            Domaine fonctionnel.
+            Functional domain of the event.
         level : LogLevel
-            Niveau de log.
+            Event severity.
         ticker : str
-            Symbole boursier.
+            The stock ticker associated with the event.
         **kwargs
-            Paramètres additionnels à inclure.
-        
+            Key-value pairs to include in the structured segment.
+
         Returns
         -------
         str
-            Message formaté.
+            The formatted log string.
         """
         parts = [f"[{domain.value}][{level.value}]", f"Ticker: {ticker}"]
-        
-        # Formatage des paramètres avec types intelligents
+
         for key, value in kwargs.items():
             if value is None:
                 continue
-            
-            # Formatage contextuel
+
+            # Smart context-aware formatting
             if isinstance(value, float):
-                if "score" in key.lower() or "ratio" in key.lower():
+                if any(x in key.lower() for x in ["score", "ratio", "accuracy"]):
                     formatted = f"{value:.1f}%"
-                elif "rate" in key.lower() or "growth" in key.lower():
+                elif any(x in key.lower() for x in ["rate", "growth", "spread", "yield"]):
                     formatted = f"{value:.2%}"
                 elif abs(value) >= 1e9:
                     formatted = f"{value/1e9:,.2f}B"
@@ -133,15 +108,17 @@ class QuantLogger:
                     formatted = f"{value/1e6:,.2f}M"
                 else:
                     formatted = f"{value:,.2f}"
+            elif isinstance(value, (datetime, str)):
+                formatted = str(value)
             else:
                 formatted = str(value)
-            
-            # CamelCase pour les clés
-            display_key = key.replace("_", " ").title().replace(" ", "")
+
+            # Key normalization (PascalCase for log consistency)
+            display_key = "".join(word.title() for word in key.split("_"))
             parts.append(f"{display_key}: {formatted}")
-        
+
         return " | ".join(parts)
-    
+
     @classmethod
     def log_success(
         cls,
@@ -149,267 +126,125 @@ class QuantLogger:
         mode: str,
         iv: float,
         audit_score: Optional[float] = None,
-        market_price: Optional[float] = None,
         upside: Optional[float] = None,
+        duration_ms: Optional[int] = None,
         **extra: Any
     ) -> None:
-        """
-        Log un événement de valorisation réussie.
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        mode : str
-            Mode de valorisation (ex: "FCFF_STANDARD").
-        iv : float
-            Valeur intrinsèque par action.
-        audit_score : float, optional
-            Score d'audit (0-100).
-        market_price : float, optional
-            Prix de marché actuel.
-        upside : float, optional
-            Potentiel haussier (%).
-        **extra
-            Paramètres additionnels.
-        """
+        """Logs a successful valuation completion."""
         msg = cls._format_message(
             LogDomain.VALUATION,
             LogLevel.SUCCESS,
             ticker,
             model=mode,
-            iv=iv,
+            intrinsic_value=iv,
             audit_score=audit_score,
-            market_price=market_price,
             upside=upside,
+            compute_time=f"{duration_ms}ms" if duration_ms else None,
             **extra
         )
         _logger.info(msg)
-    
-    @classmethod
-    def log_warning(
-        cls,
-        ticker: str,
-        message: str,
-        domain: LogDomain = LogDomain.DATA,
-        **context: Any
-    ) -> None:
-        """
-        Log un avertissement.
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        message : str
-            Message d'avertissement.
-        domain : LogDomain
-            Domaine concerné.
-        **context
-            Contexte additionnel.
-        """
-        msg = cls._format_message(
-            domain,
-            LogLevel.WARNING,
-            ticker,
-            warning=message,
-            **context
-        )
-        _logger.warning(msg)
-    
-    @classmethod
-    def log_error(
-        cls,
-        ticker: str,
-        error: str,
-        domain: LogDomain = LogDomain.VALUATION,
-        **context: Any
-    ) -> None:
-        """
-        Log une erreur.
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        error : str
-            Message d'erreur.
-        domain : LogDomain
-            Domaine concerné.
-        **context
-            Contexte additionnel.
-        """
-        msg = cls._format_message(
-            domain,
-            LogLevel.ERROR,
-            ticker,
-            error=error,
-            **context
-        )
-        _logger.error(msg)
-    
-    @classmethod
-    def log_monte_carlo(
-        cls,
-        ticker: str,
-        simulations: int,
-        valid_ratio: float,
-        p50: float,
-        p10: float,
-        p90: float
-    ) -> None:
-        """
-        Log les résultats d'une simulation Monte Carlo.
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        simulations : int
-            Nombre de simulations.
-        valid_ratio : float
-            Ratio de simulations valides.
-        p50 : float
-            Médiane (percentile 50).
-        p10, p90 : float
-            Bornes de l'intervalle de confiance.
-        """
-        msg = cls._format_message(
-            LogDomain.MONTE_CARLO,
-            LogLevel.INFO,
-            ticker,
-            simulations=simulations,
-            valid_ratio=valid_ratio,
-            p50=p50,
-            range_80=f"{p10:.2f}-{p90:.2f}"
-        )
-        _logger.info(msg)
-    
+
     @classmethod
     def log_audit(
         cls,
         ticker: str,
         score: float,
+        grade: str,
         passed: int,
-        failed: int,
-        grade: str
+        failed: int
     ) -> None:
-        """
-        Log le résultat d'un audit.
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        score : float
-            Score global (0-100).
-        passed : int
-            Nombre de tests réussis.
-        failed : int
-            Nombre de tests échoués.
-        grade : str
-            Grade final (A, B, C, D, F).
-        """
+        """Logs a Pillar 3 audit result summary."""
         msg = cls._format_message(
             LogDomain.AUDIT,
             LogLevel.INFO,
             ticker,
-            score=score,
-            passed=passed,
-            failed=failed,
-            grade=grade
+            global_score=score,
+            rating=grade,
+            checks_passed=passed,
+            checks_failed=failed
         )
         _logger.info(msg)
-    
+
     @classmethod
     def log_degraded_mode(
         cls,
         ticker: str,
         reason: str,
-        fallback_source: str,
-        confidence: float
+        fallback: str,
+        confidence: float = 0.0
     ) -> None:
-        """
-        Log l'activation du mode dégradé (ST-4.1).
-        
-        Parameters
-        ----------
-        ticker : str
-            Symbole boursier.
-        reason : str
-            Raison du passage en mode dégradé.
-        fallback_source : str
-            Source de fallback utilisée.
-        confidence : float
-            Score de confiance des données.
-        """
+        """Logs ST-4.1 Degraded Mode activation."""
         msg = cls._format_message(
             LogDomain.PROVIDER,
             LogLevel.WARNING,
             ticker,
-            degraded_mode="ACTIVE",
+            status="DEGRADED_MODE",
             reason=reason,
-            source=fallback_source,
+            fallback_source=fallback,
             confidence_score=confidence
         )
         _logger.warning(msg)
 
+    @classmethod
+    def log_error(
+        cls,
+        ticker: str,
+        error: Union[str, Exception],
+        domain: LogDomain = LogDomain.ENGINE,
+        **context: Any
+    ) -> None:
+        """Logs a critical engine or data error."""
+        error_msg = str(error)
+        msg = cls._format_message(
+            domain,
+            LogLevel.ERROR,
+            ticker,
+            error=error_msg,
+            **context
+        )
+        _logger.error(msg)
+
 
 def log_valuation(func: F) -> F:
     """
-    Décorateur pour logger automatiquement les valorisations.
-    
-    Parameters
-    ----------
-    func : Callable
-        Fonction de valorisation à décorer.
-    
-    Returns
-    -------
-    Callable
-        Fonction décorée avec logging automatique.
-    
-    Examples
-    --------
-    >>> @log_valuation
-    ... def run_valuation(request, financials, params):
-    ...     # ... logique de valorisation ...
-    ...     return result
+    Decorator for automated valuation lifecycle telemetry.
+
+    Captures duration, ticker resolution, and success/failure states.
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = datetime.now()
-        
-        # Extraction du ticker depuis les arguments
-        ticker = "UNKNOWN"
-        if args:
-            first_arg = args[0]
-            if hasattr(first_arg, 'ticker'):
-                ticker = first_arg.ticker
-        
+
+        # Ticker resolution logic from request object
+        ticker = "N/A"
+        if args and hasattr(args[0], 'ticker'):
+            ticker = args[0].ticker
+        elif 'request' in kwargs and hasattr(kwargs['request'], 'ticker'):
+            ticker = kwargs['request'].ticker
+
         try:
             result = func(*args, **kwargs)
-            
-            # Log du succès
+
+            # Extract metrics if result follows ValuationResult contract
             if hasattr(result, 'intrinsic_value_per_share'):
-                duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+                duration = int((datetime.now() - start_time).total_seconds() * 1000)
                 QuantLogger.log_success(
                     ticker=ticker,
                     mode=result.mode.value if hasattr(result, 'mode') else "UNKNOWN",
                     iv=result.intrinsic_value_per_share,
-                    audit_score=result.audit_report.global_score if hasattr(result, 'audit_report') and result.audit_report else None,
-                    market_price=result.market_price if hasattr(result, 'market_price') else None,
-                    duration_ms=int(duration_ms)
+                    audit_score=result.audit_report.global_score if result.audit_report else None,
+                    upside=result.upside_pct,
+                    duration_ms=duration
                 )
-            
+
             return result
-            
+
         except Exception as e:
             QuantLogger.log_error(
                 ticker=ticker,
-                error=str(e),
+                error=e,
                 domain=LogDomain.VALUATION
             )
             raise
-    
-    return wrapper  # type: ignore
+
+    return wrapper

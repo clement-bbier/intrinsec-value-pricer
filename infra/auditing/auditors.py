@@ -1,8 +1,12 @@
 """
 infra/auditing/auditors.py
-MOTEUR D'AUDIT INSTITUTIONNEL
-=============================
-Architecture : SOLID - Chaque auditeur gère les piliers spécifiques à son modèle.
+
+INSTITUTIONAL AUDITORS — Specialized model validation.
+======================================================
+Architecture: SOLID - Each auditor manages pillars specific to its valuation logic.
+This module provides the granular test implementation for the Audit Engine.
+
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -19,28 +23,38 @@ from src.i18n import StrategyFormulas
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# 1. INTERFACES ET BASE
+# 1. INTERFACES AND BASE CLASS
 # ==============================================================================
 
 class IValuationAuditor(ABC):
+    """Interface defining the contract for valuation-specific auditing."""
+
     @abstractmethod
     def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+        """Calculates score and diagnostics for each audit pillar."""
         pass
 
     @abstractmethod
     def get_max_potential_checks(self) -> int:
+        """Returns the total number of tests this auditor can perform."""
         pass
 
 class BaseAuditor(IValuationAuditor, ABC):
-    """Socle commun fournissant la mécanique d'enregistrement des tests."""
+    """
+    Base Auditor providing common mechanics for test registration
+    and cross-model data validation.
+    """
 
     def __init__(self):
+        # Internal registry for individual audit steps
         self._audit_steps: List[AuditStep] = []
 
     def _add_audit_step(self, key: str, value: Any, threshold: Any,
                         severity: AuditSeverity, condition: bool,
                         penalty: float = 0.0, formula: Optional[str] = None) -> float:
-        """Enregistre un point de contrôle et retourne la pénalité si échec."""
+        """
+        Registers a control point and returns the penalty if the check fails.
+        """
         verdict = bool(condition)
         self._audit_steps.append(AuditStep(
             step_id=len(self._audit_steps) + 1,
@@ -55,11 +69,13 @@ class BaseAuditor(IValuationAuditor, ABC):
         return 0.0 if verdict else penalty
 
     def _audit_data_confidence(self, result: ValuationResult) -> Tuple[float, int]:
-        """Analyse transverse de la qualité des données sources."""
+        """
+        Transversal analysis of source data quality (e.g., Beta stability).
+        """
         score = 100.0
         f = result.financials
 
-        # Test Bêta
+        # Beta Validity Test: Checks if the systemic risk is within normal bounds
         score -= self._add_audit_step(
             key="AUDIT_DATA_BETA",
             value=f.beta,
@@ -71,13 +87,14 @@ class BaseAuditor(IValuationAuditor, ABC):
         return max(0.0, score), len(self._audit_steps)
 
 # ==============================================================================
-# 2. IMPLÉMENTATIONS SPÉCIFIQUES
+# 2. SPECIFIC IMPLEMENTATIONS
 # ==============================================================================
 
 class DCFAuditor(BaseAuditor):
-    """Auditeur pour les modèles DCF (FCFF, FCFE, DDM)."""
+    """Auditor for DCF-based models (FCFF, FCFE, DDM)."""
 
     def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+        """Audits DCF-specific pillars: Data Confidence and Model Risk."""
         score_data, count = self._audit_data_confidence(result)
 
         return {
@@ -88,7 +105,7 @@ class DCFAuditor(BaseAuditor):
             ),
             AuditPillar.MODEL_RISK: AuditPillarScore(
                 pillar=AuditPillar.MODEL_RISK,
-                score=100.0,
+                score=100.0, # Base score, to be penalized by specific DCF checks
                 check_count=1
             )
         }
@@ -97,24 +114,31 @@ class DCFAuditor(BaseAuditor):
         return 5
 
 class RIMAuditor(DCFAuditor):
-    """Auditeur spécialisé pour le Residual Income (Banques)."""
+    """Specialized auditor for Residual Income Models (Banks)."""
     pass
 
 class GrahamAuditor(BaseAuditor):
-    """Auditeur spécialisé pour la valeur intrinsèque de Graham."""
+    """Specialized auditor for Graham's Defensive Value."""
+
     def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
-        # Logique simplifiée (Graham n'utilise pas de Bêta/WACC)
+        # Simplified logic: Graham does not rely on Beta or WACC
         return {
-            AuditPillar.DATA_CONFIDENCE: AuditPillarScore(pillar=AuditPillar.DATA_CONFIDENCE, score=100.0)
+            AuditPillar.DATA_CONFIDENCE: AuditPillarScore(
+                pillar=AuditPillar.DATA_CONFIDENCE,
+                score=100.0,
+                check_count=1
+            )
         }
-    def get_max_potential_checks(self) -> int: return 2
+
+    def get_max_potential_checks(self) -> int:
+        return 2
 
 class MultiplesAuditor(DCFAuditor):
-    """Auditeur pour la triangulation par multiples."""
+    """Auditor for relative valuation triangulation."""
     pass
 
 # ==============================================================================
-# 3. ALIAS ET COMPATIBILITÉ (TOUJOURS EN FIN DE FICHIER)
+# 3. ALIASES AND BACKWARD COMPATIBILITY
 # ==============================================================================
 
 StandardValuationAuditor = DCFAuditor

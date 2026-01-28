@@ -1,23 +1,24 @@
 """
 app/ui/base/base_result.py
-CLASSE ABSTRAITE — Onglet de Résultats
 
-Pattern : Strategy (GoF)
+ABSTRACT BASE CLASS — Result Tab Interface
+==========================================
+Role: Defines the standard interface for all valuation result tabs.
+Pattern: Strategy (GoF)
 
-Chaque onglet implémente cette interface.
-L'orchestrator gère l'ordre et la visibilité.
+Each tab implements this interface, while the orchestrator manages
+display priority and conditional visibility.
 
-Onglets Core (toujours visibles) :
-- InputsSummaryTab       : Hypothèses utilisées
-- CalculationProofTab    : Glass Box
-- AuditReportTab         : Score de fiabilité
+Core Pillars (Always visible):
+- InputsSummaryTab       : Pillar 1 (Hypotheses)
+- CalculationProofTab    : Pillar 2 (Glass Box)
+- AuditReportTab         : Pillar 3 (Reliability Score)
 
-Onglets Optional (conditionnels) :
-- PeerMultiplesTab       : Triangulation par multiples
-- SOTPBreakdownTab       : Sum-of-the-Parts
-- ScenarioAnalysisTab    : Bull/Base/Bear
-- HistoricalBacktestTab  : Validation passée
-- MonteCarloDistributionTab : Simulations
+Optional Pillars (Conditional):
+- MarketAnalysisTab      : Pillar 5 (Peers & SOTP)
+- RiskEngineeringTab     : Pillar 4 (Monte Carlo, Scenarios, Backtest)
+
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -30,57 +31,69 @@ from src.models import ValuationResult
 
 class ResultTabBase(ABC):
     """
-    Interface abstraite pour un onglet de résultats.
-    
+    Abstract interface for a valuation result tab.
+
     Attributes
     ----------
     TAB_ID : str
-        Identifiant unique (snake_case).
+        Unique identifier for the tab (snake_case).
     LABEL : str
-        Label affiché dans l'UI.
+        Display label used in the Streamlit UI.
     ICON : str
-        Emoji représentatif.
+        Representative icon (institutional style, minimal usage).
     ORDER : int
-        Priorité d'affichage (1 = premier).
+        Display priority (lower values appear first).
     IS_CORE : bool
-        True si toujours visible, False si conditionnel.
+        True if the tab is always visible, False if conditional.
     """
-    
-    # A surcharger dans chaque sous-classe
+
+    # To be overridden in concrete subclasses
     TAB_ID: str = "base"
-    LABEL: str = "Onglet"
-    ICON: str = ""  # Style sobre, pas d'emojis
+    LABEL: str = "Tab"
+    ICON: str = ""
     ORDER: int = 100
     IS_CORE: bool = False
-    
+
     @abstractmethod
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """
-        Affiche le contenu de l'onglet.
-        
+        Renders the tab content within the Streamlit interface.
+
         Parameters
         ----------
         result : ValuationResult
-            Résultat de valorisation.
+            The processed valuation output containing financials and trace.
         **kwargs
-            Contexte additionnel (provider, etc.).
+            Additional context (e.g., mc_stats, calculation providers).
         """
         pass
-    
+
     def is_visible(self, result: ValuationResult) -> bool:
         """
-        Détermine si l'onglet doit être affiché.
-        
-        Les onglets core retournent toujours True.
-        Les onglets optionnels vérifient leurs conditions.
-        
+        Determines if the tab should be rendered based on results data.
+
+        Core tabs always return True.
+        Optional tabs check for specific data presence (e.g., mc_results).
+
+        Parameters
+        ----------
+        result : ValuationResult
+            The processed valuation output.
+
         Returns
         -------
         bool
-            True si visible.
+            True if the tab should be visible.
         """
         return self.IS_CORE
-    
+
     def get_display_label(self) -> str:
-        """Label pour st.tabs()."""
+        """
+        Constructs the final label for the st.tabs() component.
+
+        Returns
+        -------
+        str
+            The localized display label.
+        """
         return self.LABEL

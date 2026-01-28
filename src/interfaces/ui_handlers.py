@@ -1,36 +1,20 @@
 """
 src/interfaces/ui_handlers.py
 
-INTERFACES UI ABSTRAITES/017 Resolution
+ABSTRACT UI INTERFACES (DT-017 Resolution)
+==========================================
+Role: Defines abstract contracts for UI communication.
+Pattern: Strategy + Null Object (GoF).
+Style: Numpy Style docstrings.
 
-Interfaces UI abstraites
-Pattern : Strategy + Null Object (GoF)
-Style : Numpy Style docstrings
+Responsibility:
+    Decouples src/ (Financial Core) from app/ (Streamlit UI).
+    Interfaces are defined here; concrete implementations reside in app/adapters/.
 
-Responsabilité:
-    Définit les interfaces abstraites pour la communication UI.
-    Ces interfaces permettent de découpler src/ (core financier) de app/ (UI Streamlit).
-
-Architecture (Inversion de Dépendances):
-    - Interfaces abstraites définies ICI dans src/interfaces/
-    - Implémentations concrètes dans app/adapters/
-    - Injection optionnelle avec fallback vers NullObject
-
-Usage dans app/ (Production):
-    >>> from app.adapters import StreamlitProgressHandler
-    >>> handler = StreamlitProgressHandler()
-    
-Usage dans tests/ (Headless):
-    >>> from src.interfaces import NullProgressHandler
-    >>> handler = NullProgressHandler()  # Ne fait rien
-
-RISQUES FINANCIERS:
-    - Aucun impact direct sur les calculs de valorisation
-    - Interface de présentation uniquement
-
-Note Étanchéité:
-    Ce fichier fait partie de src/ et ne doit JAMAIS importer de app/ ou streamlit.
-    Les exemples ci-dessus montrent l'usage DEPUIS app/, pas DANS ce fichier.
+Financial Impact:
+-----------------
+None. These interfaces manage presentation and status reporting only;
+they do not affect intrinsic value calculations.
 """
 
 from __future__ import annotations
@@ -44,119 +28,129 @@ if TYPE_CHECKING:
 
 
 # ==============================================================================
-# 1. PROTOCOLS POUR TYPAGE STRUCTUREL (Évite les dépendances circulaires)
+# 1. STRUCTURAL PROTOCOLS (Prevention of Circular Dependencies)
 # ==============================================================================
 
 class DataProviderProtocol(Protocol):
-    """Protocol définissant l'interface minimale d'un fournisseur de données."""
-    
+    """
+    Protocol defining the minimal interface required for a data provider.
+    Used to resolve metadata without importing concrete infrastructure.
+    """
+
     def get_company_name(self, ticker: str) -> str:
-        """Retourne le nom de l'entreprise."""
+        """
+        Retrieves the legal name of the entity.
+
+        Parameters
+        ----------
+        ticker : str
+            The stock symbol to resolve.
+        """
         ...
 
 
 # ==============================================================================
-# 2. INTERFACE PROGRESS HANDLER (DT-017)
+# 2. PROGRESS HANDLER INTERFACE (DT-017)
 # ==============================================================================
 
 class IUIProgressHandler(ABC):
     """
-    Interface pour la gestion de la progression UI.
-    
-    Permet de découpler infra/ de Streamlit en définissant un contrat
-    abstrait que les implémentations concrètes (Streamlit, CLI, tests) 
-    doivent respecter.
+    Interface for UI progress management.
 
-    Financial Impact
-    ----------------
-    Aucun impact direct sur les calculs de valorisation.
-    Interface de présentation uniquement.
+    Defines the contract for status indicators across Streamlit, CLI, or Tests.
     """
-    
+
     @abstractmethod
     def start_status(self, label: str) -> IUIProgressHandler:
-        """Démarre un indicateur de statut."""
+        """
+        Initializes a status indicator.
+
+        Parameters
+        ----------
+        label : str
+            Localized title for the operation (i18n).
+        """
         ...
-    
+
     @abstractmethod
     def update_status(self, message: str) -> None:
-        """Met à jour le message de progression."""
+        """
+        Updates the current progress message.
+
+        Parameters
+        ----------
+        message : str
+            Localized progress description.
+        """
         ...
-    
+
     @abstractmethod
     def complete_status(self, label: str, state: str = "complete") -> None:
-        """Finalise l'indicateur de statut."""
+        """
+        Finalizes the status indicator as successful.
+        """
         ...
-    
+
     @abstractmethod
     def error_status(self, label: str) -> None:
-        """Indique une erreur."""
+        """
+        Marks the status indicator as failed.
+        """
         ...
-    
+
     def __enter__(self) -> IUIProgressHandler:
         return self
-    
+
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None
     ) -> None:
+        """Context manager support for scoped status blocks."""
         pass
 
 
 class NullProgressHandler(IUIProgressHandler):
     """
-    Implémentation Null Object pour les tests et modes headless.
-    
-    Ne fait rien mais respecte l'interface.
-    Utilisé pour les tests unitaires et les exécutions sans UI.
+    Null Object implementation for Headless or Unit Test environments.
+
+    Functions as a no-op handler that satisfies the interface contract.
     """
-    
+
     def start_status(self, label: str) -> NullProgressHandler:
         return self
-    
+
     def update_status(self, message: str) -> None:
         pass
-    
+
     def complete_status(self, label: str, state: str = "complete") -> None:
         pass
-    
+
     def error_status(self, label: str) -> None:
         pass
 
 
 # ==============================================================================
-# 3. INTERFACE RESULT RENDERER (DT-016)
+# 3. RESULT RENDERER INTERFACE (DT-016)
 # ==============================================================================
 
 class IResultRenderer(ABC):
     """
-    Interface pour le rendu des résultats de valorisation.
-    
-    Permet de découpler workflow.py de ui_kpis en définissant un contrat
-    abstrait pour l'affichage des résultats.
+    Interface for rendering valuation results.
 
-    Financial Impact
-    ----------------
-    Aucun impact direct sur les calculs de valorisation.
-    Interface de présentation uniquement.
-
-    Notes
-    -----
-    ST 1.2 Naming Blueprint: La méthode principale est désormais `render_results`.
-    `display_valuation_details` est conservée pour rétrocompatibilité.
+    Decouples the logic orchestrator (workflow.py) from visual components.
     """
-    
+
     @abstractmethod
     def render_executive_summary(self, result: ValuationResult) -> None:
         """
-        Affiche le résumé exécutif de la valorisation.
-        
-        Args
-        ----
+        Displays the high-level executive summary (Golden Header).
+
+        Parameters
+        ----------
         result : ValuationResult
-            Résultat complet de la valorisation à afficher.
+            The comprehensive valuation result object.
         """
         ...
 
@@ -167,67 +161,60 @@ class IResultRenderer(ABC):
         provider: DataProviderProtocol | None = None
     ) -> None:
         """
-        Affiche les résultats de valorisation complets.
-        
-        Méthode principale de rendu (ST 1.2 Naming Blueprint).
-        
-        Args
-        ----
+        Renders the complete multi-pillar results view.
+
+        Standard Rendering Entry Point (ST 1.2 Naming Blueprint).
+
+        Parameters
+        ----------
         result : ValuationResult
-            Résultat complet de la valorisation à afficher.
-        provider : DataProviderProtocol | None
-            Fournisseur de données optionnel pour les informations complémentaires.
+            Result container to visualize.
+        provider : DataProviderProtocol, optional
+            Optional provider for supplemental metadata.
         """
         ...
-    
+
     @abstractmethod
     def display_valuation_details(
-        self, 
-        result: ValuationResult, 
+        self,
+        result: ValuationResult,
         provider: DataProviderProtocol
     ) -> None:
         """
-        Affiche les détails de valorisation.
-        
-        .. deprecated::
-            Utilisez :meth:`render_results` à la place.
-        
-        Args
-        ----
-        result : ValuationResult
-            Résultat complet de la valorisation.
-        provider : DataProviderProtocol
-            Fournisseur de données pour les informations complémentaires.
+        Renders granular valuation details.
+
+        .. deprecated:: 2.0
+            Use :meth:`render_results` instead.
         """
         ...
-    
+
     @abstractmethod
     def display_error(self, message: str, details: Optional[str] = None) -> None:
         """
-        Affiche une erreur à l'utilisateur.
-        
-        Args
-        ----
+        Communicates a business or system error to the user.
+
+        Parameters
+        ----------
         message : str
-            Message d'erreur principal.
-        details : Optional[str]
-            Détails techniques optionnels.
+            Primary error notification.
+        details : str, optional
+            Technical stack trace or diagnostic details.
         """
         ...
 
 
 class NullResultRenderer(IResultRenderer):
     """
-    Implémentation Null Object pour les tests.
-    
-    Stocke les résultats pour vérification sans affichage.
-    Utile pour les tests unitaires où on veut vérifier ce qui aurait été affiché.
+    Null Object implementation for Test Scenarios.
+
+    Captures result objects internally for assertion checks without
+    triggering UI components.
     """
-    
+
     def __init__(self) -> None:
         self.last_result: ValuationResult | None = None
         self.last_error: str | None = None
-    
+
     def render_executive_summary(self, result: ValuationResult) -> None:
         self.last_result = result
 
@@ -237,13 +224,13 @@ class NullResultRenderer(IResultRenderer):
         provider: DataProviderProtocol | None = None
     ) -> None:
         self.last_result = result
-    
+
     def display_valuation_details(
-        self, 
-        result: ValuationResult, 
+        self,
+        result: ValuationResult,
         provider: DataProviderProtocol
     ) -> None:
         self.render_results(result, provider)
-    
+
     def display_error(self, message: str, details: Optional[str] = None) -> None:
         self.last_error = message

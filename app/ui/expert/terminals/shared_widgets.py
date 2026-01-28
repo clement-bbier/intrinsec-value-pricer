@@ -1,18 +1,18 @@
 """
 app/ui/expert_terminals/shared_widgets.py
 
-WIDGETS PARTAGÉS — Composants UI réutilisables entre terminaux experts.
+SHARED WIDGETS — Reusable UI components across expert terminals.
 
-Pattern : Single Responsibility (SOLID)
-Style : Numpy docstrings
+Pattern: Single Responsibility (SOLID)
+Style: Numpy docstrings
 
-Conventions de nommage :
-    - widget_* : Widgets interactifs (retournent des données utilisateur)
-    - build_* : Constructeurs (transforment les données en objets métier)
-    - display_* : Affichage pur (ne retournent rien, side-effects only)
+Naming Conventions:
+    - widget_* : Interactive widgets (return user data)
+    - build_* : Constructors (transform data into domain objects)
+    - display_* : Pure display (no return, side-effects only)
 
-Note : Les widgets reproduisent fidèlement les fonctionnalités du legacy
-       (ui_inputs_expert.py) tout en améliorant la structure et la lisibilité.
+Note: These widgets reproduce the legacy functionalities (ui_inputs_expert.py)
+       while improving structure and readability.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
-# 1. WIDGETS D'ENTRÉE DE BASE (Sections 1-2)
+# 1. BASE INPUT WIDGETS (Sections 1-2)
 # ==============================================================================
 
 def widget_projection_years(
@@ -50,28 +50,27 @@ def widget_projection_years(
     key_prefix: Optional[str] = None
 ) -> int:
     """
-    Affiche un curseur (slider) pour sélectionner l'horizon de projection.
+    Displays a slider to select the projection horizon.
 
-    Cette fonction utilise les bornes définies dans la configuration centrale
-    pour garantir la cohérence des modèles DCF.
+    Uses boundaries defined in central configuration to ensure DCF model consistency.
 
     Parameters
     ----------
     default : int, optional
-        Valeur initiale du slider (défaut issu de UIWidgetDefaults).
+        Initial slider value (from UIWidgetDefaults).
     min_years : int, optional
-        Borne inférieure de projection (défaut issu de UIWidgetDefaults).
+        Lower bound for projection (from UIWidgetDefaults).
     max_years : int, optional
-        Borne supérieure de projection (défaut issu de UIWidgetDefaults).
+        Upper bound for projection (from UIWidgetDefaults).
     key_prefix : str, optional
-        Préfixe unique pour la clé Streamlit (ex: "FCFF_STANDARD").
+        Unique prefix for the Streamlit key (e.g., "FCFF_STANDARD").
 
     Returns
     -------
     int
-        Le nombre d'années de projection (t) sélectionné.
+        The selected number of projection years (t).
     """
-    # Sécurisation de la clé pour st.session_state
+    # Key sanitization for st.session_state
     prefix = key_prefix or "projection"
 
     return st.slider(
@@ -93,27 +92,27 @@ def widget_growth_rate(
     key_prefix: Optional[str] = None
 ) -> Optional[float]:
     """
-    Widget pour saisir un taux de croissance.
+    Widget to input a growth rate.
 
     Parameters
     ----------
     label : str, optional
-        Label du champ.
+        Field label.
     min_val : float, optional
-        Valeur minimale.
+        Minimum value.
     max_val : float, optional
-        Valeur maximale.
+        Maximum value.
     default : float, optional
-        Valeur par défaut (None = Auto Yahoo).
+        Default value (None = Yahoo Auto).
     key_prefix : str, optional
-        Préfixe pour les clés Streamlit (défaut: "growth").
+        Prefix for Streamlit keys (default: "growth").
 
     Returns
     -------
     Optional[float]
-        Taux de croissance saisi ou None si vide.
+        Selected growth rate or None if empty.
     """
-    # Générer la clé si non fournie
+    # Generate key if not provided
     if key_prefix is None:
         key_prefix = "growth"
 
@@ -129,25 +128,25 @@ def widget_growth_rate(
 
 
 # ==============================================================================
-# 2. WIDGET COÛT DU CAPITAL (Section 3)
+# 2. COST OF CAPITAL WIDGET (Section 3)
 # ==============================================================================
 
 def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
-    Saisie des paramètres d'actualisation (WACC ou Ke).
+    Inputs for discount parameters (WACC or Ke).
 
-    Délègue l'en-tête à la classe de base pour éviter les doublons visuels.
-    Affiche dynamiquement la formule LaTeX adaptée au mode.
+    Delegates the header rendering to the base class to avoid visual duplication.
+    Dynamically displays the LaTeX formula adapted to the valuation mode.
     """
     prefix = key_prefix or mode.name
 
-    # Formule théorique dynamique
+    # Dynamic theoretical formula
     st.latex(
         SharedTexts.FORMULA_CAPITAL_KE if mode.is_direct_equity
         else SharedTexts.FORMULA_CAPITAL_WACC
     )
 
-    # Saisie du prix de référence
+    # Reference price input
     manual_price = st.number_input(
         SharedTexts.INP_PRICE_WEIGHTS, 0.0, 100000.0, None, 0.01, "%.2f",
         help=SharedTexts.HELP_PRICE_WEIGHTS, key=f"{prefix}_price"
@@ -169,34 +168,34 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
     return data
 
 # ==============================================================================
-# 3. WIDGET VALEUR TERMINALE (Section 4)
+# 3. TERMINAL VALUE WIDGET (Section 4)
 # ==============================================================================
 
 @st.fragment
 def widget_terminal_value_dcf(key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
-    Widget Étape 4 : Sélection et calibration de la Valeur Terminale (TV).
+    Widget Step 4: Selection and calibration of Terminal Value (TV).
 
-    Affiche la formule LaTeX de manière centrale sous la description,
-    actualisée dynamiquement selon la méthode choisie.
+    Displays the LaTeX formula centrally under the description,
+    dynamically updated based on the selected method.
 
     Parameters
     ----------
     key_prefix : str, optional
-        Préfixe pour les clés st.session_state, par défaut "terminal".
+        Prefix for st.session_state keys, defaults to "terminal".
 
     Returns
     -------
     Dict[str, Any]
-        Paramètres TV : méthode, taux de croissance ou multiple.
+        TV parameters: method, growth rate, or multiple.
     """
     prefix = key_prefix or "terminal"
 
-    # 1. En-tête de section
+    # 1. Section Header
     st.markdown(SharedTexts.SEC_4_TERMINAL)
     st.info(SharedTexts.SEC_4_DESC)
 
-    # 2. Choix de la méthode (Radio)
+    # 2. Method selection (Radio)
     method = st.radio(
         SharedTexts.RADIO_TV_METHOD,
         options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
@@ -208,13 +207,13 @@ def widget_terminal_value_dcf(key_prefix: Optional[str] = None) -> Dict[str, Any
         key=f"{prefix}_method"
     )
 
-    # 3. Formule dynamique centrée
+    # 3. Centered dynamic formula
     if method == TerminalValueMethod.GORDON_GROWTH:
         st.latex(SharedTexts.FORMULA_TV_GORDON)
     else:
         st.latex(SharedTexts.FORMULA_TV_EXIT)
 
-    # 4. Saisie des données
+    # 4. Data input
     col_inp, _ = st.columns(2)
 
     if method == TerminalValueMethod.GORDON_GROWTH:
@@ -241,25 +240,24 @@ def widget_terminal_value_dcf(key_prefix: Optional[str] = None) -> Dict[str, Any
 
 def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
-    Widget pour la valeur terminale du modèle RIM (facteur de persistance).
+    Widget for RIM model terminal value (persistence factor).
 
-    Le RIM utilise un facteur omega (ω) représentant la persistance
-    des profits anormaux au-delà de l'horizon explicite.
+    RIM uses an omega (ω) factor representing the persistence of
+    abnormal profits beyond the explicit horizon.
 
     Parameters
     ----------
     formula_latex : str
-        Formule LaTeX du RIM terminal value.
+        LaTeX formula for RIM terminal value.
     key_prefix : str, optional
-        Préfixe pour les clés Streamlit (défaut: "terminal").
+        Prefix for Streamlit keys (default: "terminal").
 
     Returns
     -------
     Dict[str, Any]
-        - terminal_method : EXIT_MULTIPLE (convention RIM)
-        - exit_multiple_value : Facteur omega
+        - terminal_method: EXIT_MULTIPLE (RIM convention)
+        - exit_multiple_value: omega factor
     """
-    # Générer le préfixe de clé si non fourni
     if key_prefix is None:
         key_prefix = "terminal"
 
@@ -286,23 +284,23 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = No
 
 
 # ==============================================================================
-# 4. WIDGET EQUITY BRIDGE (Section 5) Pitchbook Design
+# 4. EQUITY BRIDGE WIDGET (Section 5) Pitchbook Design
 # ==============================================================================
 
 @st.fragment
 def widget_equity_bridge(
-    formula_latex: str,  # Gardé pour ne pas décaler les arguments lors de l'appel
+    formula_latex: str,  # Kept to maintain argument order during calls
     mode: ValuationMode,
     key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget Étape 5 : Interface unifiée d'Equity Bridge et Dilution SBC.
-    Répare l'AttributeError en respectant l'ordre des arguments (formula, mode).
+    Widget Step 5: Unified Equity Bridge and SBC Dilution interface.
+    Fixes AttributeError by respecting argument order (formula, mode).
     """
     prefix = key_prefix or f"bridge_{mode.value}"
     is_direct_equity = mode.is_direct_equity
 
-    # --- EN-TÊTE NARRATIF UNIQUE ---
+    # --- UNIQUE NARRATIVE HEADER ---
     st.markdown(SharedTexts.SEC_5_BRIDGE)
     st.info(SharedTexts.SEC_5_DESC)
     st.latex(formula_latex)
@@ -315,20 +313,20 @@ def widget_equity_bridge(
         )
         return {"manual_shares_outstanding": shares}
 
-    # PARTIE 1 : Structure
+    # PART 1: Structure
     st.markdown(SharedTexts.BRIDGE_COMPONENTS)
     c_d, c_c = st.columns(2)
     debt = c_d.number_input(SharedTexts.INP_DEBT, value=None, format="%.0f", key=f"{prefix}_debt")
     cash = c_c.number_input(SharedTexts.INP_CASH, value=None, format="%.0f", key=f"{prefix}_cash")
 
-    # PARTIE 2 : Ajustements
+    # PART 2: Adjustments
     st.markdown(SharedTexts.BRIDGE_ADJUSTMENTS)
     c_m, c_p, c_s = st.columns(3)
     minorities = c_m.number_input(SharedTexts.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_min")
     pensions = c_p.number_input(SharedTexts.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_pen")
     shares = c_s.number_input(SharedTexts.INP_SHARES, value=None, format="%.0f", key=f"{prefix}_shares")
 
-    # PARTIE 3 : Dilution (SBC)
+    # PART 3: Dilution (SBC)
     st.markdown(SharedTexts.BRIDGE_DILUTION)
     sbc_rate = st.number_input(
         SharedTexts.INP_SBC_DILUTION, 0.0, 0.10, None, 0.005, format="%.3f",
@@ -343,7 +341,7 @@ def widget_equity_bridge(
     }
 
 # ==============================================================================
-# 5. WIDGET MONTE CARLO (Section 6 - Optionnel)
+# 5. MONTE CARLO WIDGET (Section 6 - Optional)
 # ==============================================================================
 
 def widget_monte_carlo(
@@ -353,23 +351,23 @@ def widget_monte_carlo(
     key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget de calibration stochastique (Monte Carlo) avec injection i18n dynamique.
+    Stochastic calibration widget (Monte Carlo) with dynamic i18n injection.
 
-    Utilise 'custom_vols' pour surcharger les libellés par défaut si fournis,
-    sinon sélectionne le label via le 'mode' (BPA, NI, FCF).
+    Uses 'custom_vols' to override default labels if provided,
+    otherwise selects the label based on 'mode' (EPS, NI, FCF).
     """
     prefix = key_prefix or "mc"
 
-    # 1. EN-TÊTE ET DESCRIPTION (i18n)
+    # 1. HEADER AND DESCRIPTION (i18n)
     st.markdown(SharedTexts.SEC_6_MC)
     st.info(SharedTexts.SEC_6_DESC_MC)
 
-    # 2. TOGGLE D'ACTIVATION
+    # 2. ACTIVATION TOGGLE
     enable = st.toggle(SharedTexts.MC_CALIBRATION, value=False, key=f"{prefix}_enable")
     if not enable:
         return {"enable_monte_carlo": False}
 
-    # 3. PROFONDEUR DE SIMULATION
+    # 3. SIMULATION DEPTH
     sims = st.select_slider(
         SharedTexts.MC_ITERATIONS,
         options=[1000, 5000, 10000, 20000],
@@ -378,11 +376,10 @@ def widget_monte_carlo(
     )
     st.caption(SharedTexts.MC_VOL_INCERTITUDE)
 
-    # 4. GRILLE DE SAISIE (Double colonne institutionnelle)
+    # 4. INPUT GRID (Institutional double column)
     v_col1, v_col2 = st.columns(2)
 
-    # --- LOGIQUE DE LIBELLÉ AVEC SURCHARGE (Fix IDE Warning) ---
-    # On vérifie si custom_vols propose un label spécifique, sinon fallback sur le mode
+    # --- LABEL LOGIC WITH OVERRIDE ---
     if custom_vols and "base_flow_volatility" in custom_vols:
         label_base = custom_vols["base_flow_volatility"]
     elif mode == ValuationMode.GRAHAM:
@@ -394,7 +391,7 @@ def widget_monte_carlo(
     else:
         label_base = SharedTexts.MC_VOL_BASE_FLOW
 
-    # 5. COLONNE 1 : VOLATILITÉS OPÉRATIONNELLES
+    # 5. COLUMN 1: OPERATIONAL VOLATILITIES
     v_base = v_col1.number_input(
         label_base,
         min_value=0.0, max_value=0.5,
@@ -403,7 +400,7 @@ def widget_monte_carlo(
         help=SharedTexts.HELP_VOL_BASE
     )
 
-    # Label croissance (g ou ω) - Surchargeable également
+    # Growth label (g or ω) - Also overridable
     if custom_vols and "growth_volatility" in custom_vols:
         label_growth = custom_vols["growth_volatility"]
     else:
@@ -416,7 +413,7 @@ def widget_monte_carlo(
         key=f"{prefix}_vol_growth"
     )
 
-    # 6. COLONNE 2 : RISQUES DE MARCHÉ & SORTIE
+    # 6. COLUMN 2: MARKET & EXIT RISKS
     v_beta = None
     if mode != ValuationMode.GRAHAM:
         v_beta = v_col2.number_input(
@@ -445,17 +442,17 @@ def widget_monte_carlo(
     }
 
 # ==============================================================================
-# 6. WIDGET PEER TRIANGULATION (Section 7 - Optionnel)
+# 6. PEER TRIANGULATION WIDGET (Section 7 - Optional)
 # ==============================================================================
 
 def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any]:
     """
-    Widget plat pour la cohorte de comparables.
+    Flat widget for the peer group cohort.
 
     Returns
     -------
     Dict[str, Any]
-        Dictionnaire contenant l'état d'activation et la liste des tickers.
+        Dictionary containing activation state and ticker list.
     """
     if key_prefix is None:
         key_prefix = "peer"
@@ -493,11 +490,11 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
 
 
 # ==============================================================================
-# 7. WIDGET SCÉNARIOS (Section 8 - Optionnel)
+# 7. SCENARIOS WIDGET (Section 8 - Optional)
 # ==============================================================================
 
 def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
-    """Analyse multi-scénarios déterministes."""
+    """Multi-deterministic scenario analysis."""
     prefix = key_prefix or "scenario"
     st.markdown(SharedTexts.SEC_8_SCENARIOS)
     st.info(SharedTexts.SEC_8_DESC_SCENARIOS)
@@ -524,7 +521,7 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
         st.error(SharedTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int((p_bull+p_base+p_bear)*100)))
         return ScenarioParameters(enabled=False)
 
-    # CORRECTION : Utilisation impérative de Keyword Arguments pour Pydantic
+    # IMPERATIVE: Use Keyword Arguments for Pydantic compatibility
     return ScenarioParameters(
         enabled=True,
         bull=ScenarioVariant(label=SharedTexts.LBL_BULL, probability=p_bull, growth_rate=g_bull, target_fcf_margin=m_bull),
@@ -533,38 +530,38 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     )
 
 # ==============================================================================
-# 8. WIDGET SOTP (Sum-of-the-Parts - Optionnel)
+# 8. SOTP WIDGET (Sum-of-the-Parts - Optional)
 # ==============================================================================
 
 def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix: Optional[str] = None) -> None:
     """
-    Widget Etape 9 : Segmentation SOTP avec arbitrage de pertinence (ST-4.2).
+    Step 9 Widget: SOTP Segmentation with relevance arbitrage (ST-4.2).
 
-    Cette fonction permet de diviser la valeur totale entre différentes Business Units.
-    Elle inclut un test de pertinence pour limiter l'usage du SOTP aux structures
-    diversifiees ou aux besoins de decomposition specifiques.
+    Allows splitting total value across different Business Units.
+    Includes a relevance test to limit SOTP usage to diversified structures
+    or specific breakdown needs.
 
     Parameters
     ----------
     params : DCFParameters
-        Objet de parametres a peupler pour le moteur de calcul.
+        Parameter object to be populated for the calculation engine.
     is_conglomerate : bool, optional
-        Indique si l'entreprise est identifiee comme un conglomerat (defaut: False).
+        Indicates if the firm is identified as a conglomerate (default: False).
     key_prefix : str, optional
-        Prefixe pour garantir l'unicite des cles dans le session_state.
+        Prefix to ensure key uniqueness in session_state.
     """
     prefix = key_prefix or "sotp"
 
-    # --- EN-TETE ET DESCRIPTION ---
+    # --- HEADER AND DESCRIPTION ---
     st.markdown(SharedTexts.SEC_9_SOTP)
     st.info(SharedTexts.SEC_9_DESC)
 
-    # --- ARBITRAGE DE PERTINENCE ---
-    # Si l'entreprise n'est pas un conglomerat, on affiche un avertissement preventif
+    # --- RELEVANCE ARBITRAGE ---
+    # Display a preventive warning if the firm is not a conglomerate
     if not is_conglomerate:
         st.warning(SharedTexts.WARN_SOTP_RELEVANCE)
 
-    # --- ACTIVATION DU MODULE ---
+    # --- MODULE ACTIVATION ---
     enabled = st.toggle(
         SharedTexts.LBL_SOTP_ENABLE,
         value=params.sotp.enabled,
@@ -576,15 +573,15 @@ def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix
     if not enabled:
         return
 
-    # --- CONFIGURATION DU TABLEAU DE SEGMENTS ---
-    # Initialisation avec typage float64 pour prevenir les FutureWarnings de pandas
+    # --- SEGMENT TABLE CONFIGURATION ---
+    # Initialize with float64 typing to prevent pandas FutureWarnings
     df_init = pd.DataFrame([{
-        SharedTexts.LBL_SEGMENT_NAME: "Segment A",
+        SharedTexts.LBL_SEGMENT_NAME: SharedTexts.DEFAULT_SEGMENT_NAME,
         SharedTexts.LBL_SEGMENT_VALUE: 0.0,
         SharedTexts.LBL_SEGMENT_METHOD: SOTPMethod.DCF.value
     }]).astype({SharedTexts.LBL_SEGMENT_VALUE: 'float64'})
 
-    # Editeur de donnees dynamique (Pitchbook style)
+    # Dynamic data editor (Pitchbook style)
     edited_df = st.data_editor(
         df_init,
         num_rows="dynamic",
@@ -592,8 +589,8 @@ def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix
         key=f"{prefix}_editor"
     )
 
-    # --- EXTRACTION ET VALIDATION PYDANTIC ---
-    # Utilisation d'arguments nommes pour la compatibilite BusinessUnit
+    # --- EXTRACTION AND PYDANTIC VALIDATION ---
+    # Named arguments used for BusinessUnit compatibility
     params.sotp.segments = [
         BusinessUnit(
             name=row[SharedTexts.LBL_SEGMENT_NAME],
@@ -603,10 +600,10 @@ def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix
         for _, row in edited_df.iterrows() if row[SharedTexts.LBL_SEGMENT_NAME]
     ]
 
-    # --- AJUSTEMENTS DE HOLDING ---
+    # --- HOLDING ADJUSTMENTS ---
     st.markdown(SharedTexts.SEC_SOTP_ADJUSTMENTS)
 
-    # Calcul de la valeur initiale en pourcentage pour le slider
+    # Calculate initial percentage value for the slider
     current_discount = int(params.sotp.conglomerate_discount * 100)
 
     params.sotp.conglomerate_discount = st.slider(
@@ -619,11 +616,11 @@ def widget_sotp(params: DCFParameters, is_conglomerate: bool = False, key_prefix
     ) / 100.0
 
 # ==============================================================================
-# 9. CONSTRUCTEUR DE PARAMÈTRES
+# 9. PARAMETERS CONSTRUCTOR
 # ==============================================================================
 
 def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
-    """Constructeur final avec constantes validées."""
+    """Final constructor with validated constants."""
     defaults = {
         "projection_years": VALUATION_CONFIG.default_projection_years,
         "terminal_method": TerminalValueMethod.GORDON_GROWTH,

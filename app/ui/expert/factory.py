@@ -1,35 +1,31 @@
 """
 app/ui/expert_terminals/factory.py
 
-FACTORY — Création dynamique des terminaux experts.
+TERMINAL FACTORY — Dynamic creation of expert terminals.
 
-Factory des terminaux - Logical Path
-Pattern : Factory Method (GoF)
-Style : Numpy docstrings
+Logical Path Factory
+Pattern: Factory Method (GoF)
+Style: Numpy docstrings
 
-La factory maintient un registre de tous les terminaux disponibles
-et instancie le bon selon le mode de valorisation sélectionné.
+The factory maintains a registry of all available terminals and
+instantiates the correct one based on the selected valuation mode.
 
-HIÉRARCHIE ANALYTIQUE (ST-3.1 — McKinsey/Damodaran):
+ANALYTICAL HIERARCHY (ST-3.1 — McKinsey/Damodaran):
 =====================================================
-Les modes sont ordonnés selon une montée en puissance analytique :
+Modes are ordered by increasing analytical depth:
 
-1. DÉFENSIF (Quick Screening)
-   - Graham Value : Barrière de sécurité conservatrice
+1. DEFENSIVE (Quick Screening)
+   - Graham Value: Conservative safety barrier
 
-2. RELATIF (Market Comparison)  
-   - RIM Banks : Valorisation des institutions financières
-   - DDM : Dividend Discount pour les entreprises matures
+2. RELATIVE (Market Comparison)
+   - RIM Banks: Specialized for financial institutions
+   - DDM: Dividend Discount for mature firms
 
-3. FONDAMENTAL (Intrinsic Value)
-   - FCFF Standard : DCF classique pour entreprises stables
-   - FCFF Normalized : DCF avec flux normalisés (cycliques)
-   - FCFF Growth : DCF piloté par les revenus (high-growth)
-   - FCFE : Direct Equity pour structures complexes
-
-Usage :
-    terminal = create_expert_terminal(ValuationMode.DDM, "AAPL")
-    request = terminal.render()
+3. FUNDAMENTAL (Intrinsic Value)
+   - FCFF Standard: Classic DCF for stable firms
+   - FCFF Normalized: DCF with smoothed flows (cyclical)
+   - FCFF Growth: Revenue-driven DCF (high-growth)
+   - FCFE: Direct Equity for complex structures
 """
 
 from __future__ import annotations
@@ -42,7 +38,7 @@ from src.models import ValuationMode
 from src.i18n import SharedTexts
 from .base_terminal import ExpertTerminalBase
 
-# Import des terminaux concrets
+# Concrete terminal imports
 from app.ui.expert.terminals.fcff_standard_terminal import FCFFStandardTerminal
 from app.ui.expert.terminals.fcff_normalized_terminal import FCFFNormalizedTerminal
 from app.ui.expert.terminals.fcff_growth_terminal import FCFFGrowthTerminal
@@ -54,30 +50,30 @@ from app.ui.expert.terminals.graham_value_terminal import GrahamValueTerminal
 
 class AnalyticalTier(IntEnum):
     """
-    Niveau de complexité analytique pour le tri des modèles.
-    
-    Plus le tier est bas, plus le modèle est simple/défensif.
+    Analytical complexity level for model sorting.
+
+    A lower tier indicates a simpler/more defensive model.
     """
-    DEFENSIVE = 1      # Screening rapide, barrière de sécurité
-    RELATIVE = 2       # Comparaison marché, multiples
-    FUNDAMENTAL = 3    # Valeur intrinsèque, DCF complet
+    DEFENSIVE = 1      # Quick screening, safety barrier
+    RELATIVE = 2       # Market comparison, multiples
+    FUNDAMENTAL = 3    # Intrinsic value, full DCF
 
 
 @dataclass(frozen=True)
 class TerminalMetadata:
     """
-    Métadonnées d'un terminal pour le tri et l'affichage.
-    
+    Terminal metadata for sorting and display purposes.
+
     Attributes
     ----------
     terminal_cls : Type[ExpertTerminalBase]
-        Classe du terminal.
+        The terminal class to instantiate.
     tier : AnalyticalTier
-        Niveau de complexité analytique.
+        Analytical complexity tier.
     sort_order : int
-        Ordre de tri au sein du tier.
+        Sorting order within the tier.
     category_label : str
-        Label de la catégorie pour l'affichage groupé.
+        I18n label for the UI category display.
     """
     terminal_cls: Type[ExpertTerminalBase]
     tier: AnalyticalTier
@@ -87,21 +83,21 @@ class TerminalMetadata:
 
 class ExpertTerminalFactory:
     """
-    Factory pour créer les terminaux experts.
-    
-    Le registre associe chaque ValuationMode à sa classe de terminal
-    avec des métadonnées de tri selon la hiérarchie analytique.
-    
+    Factory for creating expert terminals.
+
+    The registry maps each ValuationMode to its corresponding terminal class
+    and metadata for sorting within the analytical hierarchy.
+
     Notes
     -----
-    ST-3.1 : Les modes sont ordonnés pour guider l'analyste dans une
-    montée en puissance progressive : Défensif → Relatif → Fondamental.
+    ST-3.1: Modes are ordered to guide the analyst through a
+    progressive buildup: Defensive → Relative → Fundamental.
     """
-    
-    # Registre enrichi avec métadonnées de tri (ST-3.1)
+
+    # Registry enriched with sorting metadata (ST-3.1)
     _REGISTRY: Dict[ValuationMode, TerminalMetadata] = {
         # ══════════════════════════════════════════════════════════════════
-        # TIER 1 : DÉFENSIF (Quick Screening)
+        # TIER 1: DEFENSIVE (Quick Screening)
         # ══════════════════════════════════════════════════════════════════
         ValuationMode.GRAHAM: TerminalMetadata(
             terminal_cls=GrahamValueTerminal,
@@ -109,9 +105,9 @@ class ExpertTerminalFactory:
             sort_order=1,
             category_label=SharedTexts.CATEGORY_DEFENSIVE
         ),
-        
+
         # ══════════════════════════════════════════════════════════════════
-        # TIER 2 : RELATIF (Market Comparison)
+        # TIER 2: RELATIVE (Market Comparison)
         # ══════════════════════════════════════════════════════════════════
         ValuationMode.RIM: TerminalMetadata(
             terminal_cls=RIMBankTerminal,
@@ -125,9 +121,9 @@ class ExpertTerminalFactory:
             sort_order=2,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
-        
+
         # ══════════════════════════════════════════════════════════════════
-        # TIER 3 : FONDAMENTAL (Intrinsic Value DCF)
+        # TIER 3: FUNDAMENTAL (Intrinsic Value DCF)
         # ══════════════════════════════════════════════════════════════════
         ValuationMode.FCFF_STANDARD: TerminalMetadata(
             terminal_cls=FCFFStandardTerminal,
@@ -154,117 +150,108 @@ class ExpertTerminalFactory:
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
     }
-    
+
     @classmethod
     def create(cls, mode: ValuationMode, ticker: str) -> ExpertTerminalBase:
         """
-        Crée le terminal approprié pour le mode donné.
-        
+        Creates the appropriate terminal for the given mode.
+
         Parameters
         ----------
         mode : ValuationMode
-            Le mode de valorisation.
+            The valuation mode to instantiate.
         ticker : str
-            Le symbole boursier.
-        
+            Target stock ticker.
+
         Returns
         -------
         ExpertTerminalBase
-            Instance du terminal prête à être rendue.
-        
+            Ready-to-render terminal instance.
+
         Raises
         ------
         ValueError
-            Si le mode n'a pas de terminal associé.
+            If the mode has no associated terminal in the registry.
         """
         metadata = cls._REGISTRY.get(mode)
-        
+
         if metadata is None:
             available = ", ".join(m.value for m in cls._REGISTRY.keys())
             raise ValueError(
-                f"Aucun terminal pour le mode '{mode.value}'. "
-                f"Modes disponibles: {available}"
+                f"No terminal found for mode '{mode.value}'. "
+                f"Available modes: {available}"
             )
-        
+
         return metadata.terminal_cls(ticker)
-    
+
     @classmethod
     def get_available_modes(cls) -> List[ValuationMode]:
         """
-        Liste des modes triés selon la hiérarchie analytique (ST-3.1).
-        
+        Lists available modes sorted by analytical hierarchy (ST-3.1).
+
         Returns
         -------
         List[ValuationMode]
-            Modes ordonnés : Défensif → Relatif → Fondamental.
+            Ordered modes: Defensive → Relative → Fundamental.
         """
         return sorted(
             cls._REGISTRY.keys(),
             key=lambda m: (cls._REGISTRY[m].tier, cls._REGISTRY[m].sort_order)
         )
-    
+
     @classmethod
     def get_mode_display_names(cls) -> Dict[ValuationMode, str]:
-        """Mapping mode -> nom d'affichage."""
+        """Mapping from mode to UI display name."""
         return {
             mode: meta.terminal_cls.DISPLAY_NAME
             for mode, meta in cls._REGISTRY.items()
         }
-    
+
     @classmethod
     def get_mode_descriptions(cls) -> Dict[ValuationMode, str]:
-        """Mapping mode → description."""
+        """Mapping from mode to UI description."""
         return {
             mode: meta.terminal_cls.DESCRIPTION
             for mode, meta in cls._REGISTRY.items()
         }
-    
+
     @classmethod
     def get_modes_by_tier(cls) -> Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]]:
         """
-        Retourne les modes groupés par tier analytique (ST-3.1).
-        
+        Returns modes grouped by analytical tier (ST-3.1).
+
         Returns
         -------
         Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]]
-            Modes groupés et triés par niveau de complexité.
-        
-        Examples
-        --------
-        >> tiers = ExpertTerminalFactory.get_modes_by_tier()
-        >> for tier, modes in tiers.items():
-            print(f"{tier.name}: {[m.value for m, _ in modes]}")
-        DEFENSIVE: ['Graham Intrinsic Value']
-        RELATIVE: ['Residual Income Model', 'Dividend Discount Model']
-        FUNDAMENTAL: ['DCF - Free Cash Flow to Firm', ...]
+            Modes grouped and sorted by complexity tier.
         """
         result: Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]] = {}
-        
+
         for mode, meta in cls._REGISTRY.items():
             if meta.tier not in result:
                 result[meta.tier] = []
             result[meta.tier].append((mode, meta))
-        
-        # Tri par sort_order au sein de chaque tier
+
+        # Internal sorting by sort_order
         for tier in result:
             result[tier].sort(key=lambda x: x[1].sort_order)
-        
+
         return result
-    
+
     @classmethod
     def get_tier_label(cls, mode: ValuationMode) -> str:
         """
-        Retourne le label de catégorie pour un mode donné.
-        
+        Returns the category label for a given mode.
+
         Parameters
         ----------
         mode : ValuationMode
-            Le mode de valorisation.
-            
+            Target valuation mode.
+
         Returns
         -------
         str
-            Label de catégorie (ex: "Défensif", "Fondamental (DCF)").
+            I18n category label (e.g., "Defensive", "Fundamental").
         """
         meta = cls._REGISTRY.get(mode)
         return meta.category_label if meta else SharedTexts.CATEGORY_OTHER
@@ -272,23 +259,18 @@ class ExpertTerminalFactory:
 
 def create_expert_terminal(mode: ValuationMode, ticker: str) -> ExpertTerminalBase:
     """
-    Raccourci pour créer un terminal expert.
-    
+    Factory helper to instantiate an expert terminal.
+
     Parameters
     ----------
     mode : ValuationMode
-        Le mode de valorisation.
+        Target valuation mode.
     ticker : str
-        Le symbole boursier.
-    
+        Stock ticker symbol.
+
     Returns
     -------
     ExpertTerminalBase
-        Terminal prêt à être rendu.
-    
-    Example
-    -------
-    >> terminal = create_expert_terminal(ValuationMode.DDM, "AAPL")
-    >> request = terminal.render()  # Affiche l'UI
+        Ready-to-render terminal.
     """
     return ExpertTerminalFactory.create(mode, ticker)

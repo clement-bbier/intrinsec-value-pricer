@@ -1,41 +1,63 @@
 """
-Stratégie de valorisation abstraite.
+src/valuation/strategies/abstract.py
 
-Référence Académique : Pattern Strategy (Gang of Four)
-Domaine Économique : Valorisation financière institutionnelle
-Invariants du Modèle : Validation systématique des contrats de sortie
+ABSTRACT VALUATION STRATEGY BASE
+================================
+Role: Foundation for all valuation methodologies.
+Pattern: Strategy Pattern (Gang of Four).
+Invariants: Mandatory Glass Box traceability and output contract validation.
+
+Standard: SOLID / Institutional Grade.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from src.exceptions import CalculationError
-from src.models import (
-    CalculationStep, CompanyFinancials, DCFParameters,
-    TraceHypothesis, ValuationResult
-)
-# Import depuis core.i18n
+from src.models.valuation import ValuationResult
+from src.models.glass_box import CalculationStep, TraceHypothesis
+from src.models.company import CompanyFinancials
+from src.models.dcf_parameters import DCFParameters
+
+# Centralized i18n Mapping
 from src.i18n import CalculationErrors
+
+if TYPE_CHECKING:
+    from infra.auditing.audit_engine import AuditEngine, AuditorFactory
 
 logger = logging.getLogger(__name__)
 
+
 class ValuationStrategy(ABC):
     """
-    Classe de base pour toutes les stratégies de valorisation.
-    Gère la validation du contrat de sortie et la traçabilité Glass Box.
+    Base class for all financial valuation strategies.
+
+    Manages the lifecycle of a valuation run, including the capture of
+    intermediate calculation steps and the final audit trigger.
     """
 
     def __init__(self, glass_box_enabled: bool = True):
+        """
+        Initializes the strategy with telemetry configuration.
+
+        Parameters
+        ----------
+        glass_box_enabled : bool, default=True
+            If True, intermediate calculation steps are recorded for the Audit Report.
+        """
         self.glass_box_enabled = glass_box_enabled
         self.calculation_trace: List[CalculationStep] = []
 
     @abstractmethod
     def execute(self, financials: CompanyFinancials, params: DCFParameters) -> ValuationResult:
         """
-        Point d'entrée de la stratégie.
-        Doit instancier un pipeline ou exécuter sa logique propre.
+        Primary entry point for the valuation methodology.
+
+        Concrete implementations must execute their specific logic (e.g., RIM, DCF)
+        and return a validated result object.
         """
         pass
 
@@ -51,34 +73,26 @@ class ValuationStrategy(ABC):
             hypotheses: Optional[List[TraceHypothesis]] = None
     ) -> None:
         """
-        Enregistre une étape de calcul dans la trace Glass Box pour l'auditabilité.
-
-        Cette méthode permet aux stratégies de capturer les étapes intermédiaires,
-        assurant une transparence totale pour le rapport d'audit final.
+        Records a calculation step in the Glass Box trace for auditability.
 
         Parameters
         ----------
         step_key : str
-            Identifiant unique de l'étape (lié au registre Glass Box).
+            Unique identifier for the step (linking to the Glass Box registry).
         result : float
-            Résultat numérique brut du calcul.
+            The raw numeric output of the calculation.
         numerical_substitution : str
-            Détail du calcul avec les valeurs réelles injectées (ex: "100 * 1.05").
+            Details of the calculation with real values (e.g., "100 * 1.05").
         label : str, optional
-            Libellé d'affichage. Si vide, `step_key` est utilisé par défaut.
+            Display name. Defaults to `step_key` if empty.
         theoretical_formula : str, optional
-            Expression LaTeX de la formule (StrategyFormulas).
+            LaTeX expression of the financial formula.
         interpretation : str, optional
-            Note pédagogique expliquant la logique (StrategyInterpretations).
+            Pedagogical note explaining the logic.
         source : str, optional
-            Origine de la donnée ou de la méthode (StrategySources).
+            Origin of the data (e.g., "Yahoo Finance", "Analyst Override").
         hypotheses : List[TraceHypothesis], optional
-            Liste des hypothèses critiques associées à cette étape.
-
-        Notes
-        -----
-        - Ne s'exécute que si `self.glass_box_enabled` est True.
-        - L'identifiant séquentiel `step_id` est auto-généré.
+            Critical assumptions associated with this specific step.
         """
         if not self.glass_box_enabled:
             return
@@ -100,31 +114,21 @@ class ValuationStrategy(ABC):
     @staticmethod
     def generate_audit_report(result: ValuationResult) -> None:
         """
-        Génère le rapport d'audit institutionnel pour un résultat de valorisation.
+        Triggers the institutional audit report generation.
 
-        Cette méthode identifie l'auditeur approprié en fonction du mode de
-        valorisation et délègue le calcul du score de fiabilité à l'AuditEngine.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            L'objet résultat à auditer (DCF, RIM, Graham, Multiples).
-
-        Notes
-        -----
-        Si la requête originale est absente du résultat, une requête de
-        secours (fallback) est générée pour permettre l'exécution de l'audit.
-        Les imports sont effectués localement pour éviter les dépendances circulaires.
+        Identifies the appropriate auditor based on the valuation mode and
+        delegates the reliability scoring to the AuditEngine.
         """
+        # Local imports to prevent circular dependencies during initialization
         from infra.auditing.audit_engine import AuditEngine, AuditorFactory
-        from src.models import (
-            ValuationRequest, InputSource, ValuationMode,
-            DCFValuationResult, RIMValuationResult,
+        from src.models.valuation import (
+            ValuationRequest, DCFValuationResult, RIMValuationResult,
             GrahamValuationResult, MultiplesValuationResult
         )
+        from src.models.enums import ValuationMode, InputSource
 
         if result.request is None:
-            # Détermination dynamique du mode de valorisation pour la requête de secours
+            # Dynamic mode determination for fallback requests
             if isinstance(result, DCFValuationResult):
                 mode = ValuationMode.FCFF_STANDARD
             elif isinstance(result, RIMValuationResult):
@@ -132,7 +136,7 @@ class ValuationStrategy(ABC):
             elif isinstance(result, GrahamValuationResult):
                 mode = ValuationMode.GRAHAM
             else:
-                mode = ValuationMode.FCFF_STANDARD  # Fallback par défaut
+                mode = ValuationMode.FCFF_STANDARD
 
             result.request = ValuationRequest(
                 ticker=result.financials.ticker,
@@ -142,7 +146,7 @@ class ValuationStrategy(ABC):
                 options={}
             )
 
-        # Sélection de l'auditeur spécialisé selon le type de résultat
+        # Specialized auditor selection
         if isinstance(result, MultiplesValuationResult):
             from infra.auditing.auditors import MultiplesAuditor
             auditor = MultiplesAuditor()
@@ -152,16 +156,25 @@ class ValuationStrategy(ABC):
         result.audit_report = AuditEngine.compute_audit(result, auditor)
 
     def verify_output_contract(self, result: ValuationResult) -> None:
-        """Vérifie que l'objet résultat respecte les invariants du modèle (SOLID)."""
+        """
+        Validates that the result object adheres to model invariants (SOLID).
+
+        Raises
+        ------
+        CalculationError
+            If the output contract is invalid or missing required components.
+        """
         contract = result.build_output_contract()
         if not contract.is_valid():
-            raise CalculationError(CalculationErrors.CONTRACT_VIOLATION.format(cls=self.__class__.__name__))
+            raise CalculationError(
+                CalculationErrors.CONTRACT_VIOLATION.format(cls=self.__class__.__name__)
+            )
 
     def _merge_traces(self, result: ValuationResult) -> None:
         """
-        Fusionne la trace de la stratégie avec celle du résultat (Pipeline).
-        Garantit que les étapes spécifiques (ex: sélection du FCF) apparaissent
-        au début de la preuve de calcul.
+        Merges the strategy-specific trace with the pipeline trace.
+
+        Ensures that setup steps (e.g., FCF selection) appear at the beginning
+        of the mathematical proof.
         """
-        # On insère les étapes de la stratégie au début de la trace globale
         result.calculation_trace = self.calculation_trace + result.calculation_trace

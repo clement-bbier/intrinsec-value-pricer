@@ -3,6 +3,7 @@ core/i18n/fr/ui/common.py
 Textes transverses et métadonnées de base du système.
 Note : Version Institutionnelle - Zéro émoji - Terminologie Finance de Marché.
 """
+from src.models import VariableSource
 
 class CommonTexts:
     """Référentiel des textes génériques et statuts institutionnels."""
@@ -29,15 +30,22 @@ class CommonTexts:
     TABLE_HEADER_VALUE = "Valeur"
 
     # --- Statuts de Calcul (Glass Box) ---
-    STATUS_CALCULATED = "DÉTERMINÉ"
-    STATUS_AUDITED = "AUDITÉ"
-    STATUS_ADJUSTED = "AJUSTÉ"
+    STATUS_CALCULATED = "Calculé"
+    STATUS_AUDITED = "Audité"
+    STATUS_ADJUSTED = "Ajusté"
 
     # --- Labels de Composants Glass Box ---
-    STEP_GENERIC_LABEL = "Séquence de calcul"
-    DATA_ORIGIN_LABEL = "SOURCE DES DONNÉES"
-    AUTO_VALUE_IGNORED = "Surcharge manuelle détectée"
-    INTERPRETATION_LABEL = "COMMENTAIRE ANALYTIQUE"
+    STEP_GENERIC_LABEL = "Calcul spécifique"
+    DATA_ORIGIN_LABEL = "Provenance des données"
+    AUTO_VALUE_IGNORED = "Valeur auto ignorée"
+    INTERPRETATION_LABEL = "Note d'analyse"
+
+    SOURCE_LABELS = {
+        VariableSource.YAHOO_FINANCE: "Yahoo Finance",
+        VariableSource.MACRO_PROVIDER: "Données Macro",
+        VariableSource.CALCULATED: "Moteur Interne",
+        VariableSource.MANUAL_OVERRIDE: "Saisie Manuelle",
+    }
 
 
 class OnboardingTexts:
@@ -117,20 +125,22 @@ class LegalTexts:
 
 class TooltipsTexts:
     """Aide contextuelle pour les concepts financiers (Indispensable pour corriger l'ImportError)."""
-    WACC_HELP = "Weighted Average Cost of Capital : taux d'actualisation global de l'entreprise (Dette + Equity)."
-    KE_HELP = "Cost of Equity : taux de rendement exigé par les actionnaires, calculé via le MEDAF (CAPM)."
+    MARKET_CAP_HELP = "Capitalisation boursière à la date d'analyse."
+    WACC_HELP = "Coût Moyen Pondéré du Capital (WACC) utilisé pour actualiser les flux FCFF."
+    KE_HELP = "Coût des fonds propres (Ke) utilisé pour actualiser les flux FCFE ou DDM."
+    GROWTH_G = "Taux de croissance perpétuelle (g) utilisé pour la valeur terminale."
     SBC_HELP = "Stock-Based Compensation : ajustement de la dilution liée aux attributions d'actions au management."
     TERMINAL_VALUE = "Valeur de l'entreprise au-delà de l'horizon de prévision explicite (Modèle de Gordon-Shapiro)."
-    GROWTH_G = "Taux de croissance à l'infini. Doit être inférieur au taux de croissance de l'économie nominale."
     MARGIN_SAFETY = "Décote appliquée entre la valeur intrinsèque et le cours actuel pour absorber l'incertitude."
 
 
 class UIMessages:
     """Messages d'information et d'erreur de l'interface utilisateur."""
+    BACKTEST_INSUFFICIENT_DATA = "Données historiques insuffisantes pour le backtesting."
     TECHNICAL_DETAILS = "Détails techniques"
     NO_VALID_PERIOD_DATA = "Historique financier insuffisant pour établir une tendance robuste."
     CHART_UNAVAILABLE = "Données insuffisantes pour la génération graphique."
-    NO_CALCULATION_STEPS = "Trace mathématique indisponible pour ce moteur de calcul."
+    NO_CALCULATION_STEPS = "Aucune trace de calcul disponible pour ce modèle."
     NO_DETAILED_TESTS = "Aucun test d'intégrité supplémentaire requis."
     NO_TABS_TO_DISPLAY = "Initialisation de l'orchestrateur..."
 

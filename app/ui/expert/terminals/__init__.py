@@ -1,6 +1,6 @@
 """
 app/ui/expert_terminals/
-Terminaux de saisie expert — 1 fichier par modèle de valorisation.
+Terminaux de saisie expert — un fichier par modèle de valorisation.
 
 Chaque terminal hérite de ExpertTerminalBase et implémente
 uniquement render_model_inputs() avec les widgets spécifiques.

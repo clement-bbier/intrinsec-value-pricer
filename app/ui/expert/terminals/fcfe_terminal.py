@@ -1,13 +1,13 @@
 """
 app/ui/expert_terminals/fcfe_terminal.py
 
-TERMINAL EXPERT — FREE CASH FLOW TO EQUITY (FCFE)
+EXPERT TERMINAL — FREE CASH FLOW TO EQUITY (FCFE)
 =================================================
-Implémentation de l'interface de valorisation directe des fonds propres.
-Ce terminal constitue les étapes 1 et 2 du "Logical Path" pour le modèle FCFE.
+Implementation of the direct equity valuation interface.
+This terminal constitutes steps 1 and 2 of the "Logical Path" for the FCFE model.
 
-Architecture : ST-3.2 (Direct Equity)
-Style : Numpy docstrings
+Architecture: ST-3.2 (Direct Equity)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -25,41 +25,41 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class FCFETerminal(ExpertTerminalBase):
     """
-    Terminal expert pour la valorisation par les flux de trésorerie actionnaires.
+    Expert terminal for shareholder cash flow valuation.
 
-    Le modèle FCFE valorise directement l'action en actualisant les flux
-    résiduels après service de la dette au coût des fonds propres (Ke).
+    The FCFE model values equity directly by discounting residual
+    cash flows after debt service at the cost of equity (Ke).
     """
 
     MODE = ValuationMode.FCFE
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI ---
+    # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Formules LaTeX narratives ---
-    # La classe de base utilisera SharedTexts.FORMULA_BRIDGE_SIMPLE automatiquement
-    # car ValuationMode.FCFE.is_direct_equity est True.
+    # --- Narrative LaTeX Formulas ---
+    # The base class automatically uses SharedTexts.FORMULA_BRIDGE_SIMPLE
+    # because ValuationMode.FCFE.is_direct_equity is True.
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCFE_n(1+g_n)}{k_e - g_n}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu des entrées spécifiques au modèle FCFE (Étapes 1 & 2).
+        Renders specific inputs for the FCFE model (Steps 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Paramètres : manual_fcf_base, manual_net_borrowing,
+            Parameters: manual_fcf_base, manual_net_borrowing,
             projection_years, fcf_growth_rate.
         """
         prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : ANCRAGE ACTIONNAIRE ---
+        # --- STEP 1: SHAREHOLDER ANCHOR ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
@@ -85,7 +85,7 @@ class FCFETerminal(ExpertTerminalBase):
 
         st.divider()
 
-        # --- ÉTAPE 2 : HORIZON DE PROJECTION ---
+        # --- STEP 2: PROJECTION HORIZON ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
@@ -105,17 +105,17 @@ class FCFETerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données FCFE depuis le session_state.
+        Extracts FCFE data from the session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe basé sur le ValuationMode.
+            Prefix based on the ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données opérationnelles pour build_request.
+            Operational data for build_request.
         """
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),

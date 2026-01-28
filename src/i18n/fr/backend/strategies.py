@@ -29,6 +29,7 @@ class StrategyFormulas:
     """Formules LaTeX standardisées pour toutes les méthodes de valorisation."""
 
     # === COÛT DU CAPITAL ===
+    INTERNAL_CALC = r"\text{Internal Calculation}"
     CAPM = r"K_e = R_f + \beta \times ERP"
     WACC = r"WACC = \frac{V_E}{V_E + V_D} \times K_e + \frac{V_D}{V_E + V_D} \times K_d \times (1 - T_c)"
     HAMADA = r"\beta_L = \beta_U \times [1 + (1 - T) \times \frac{D}{E}]"

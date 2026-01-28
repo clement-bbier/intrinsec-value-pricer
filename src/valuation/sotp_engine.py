@@ -1,26 +1,24 @@
 """
 src/valuation/sotp_engine.py
 
-Moteur de sommation par segments (SOTP)
+SUM-OF-THE-PARTS (SOTP) VALUATION ENGINE
+========================================
+Role: Aggregation of segment-level EVs and application of the Global Equity Bridge.
+Architecture: Pipeline Pattern / Glass Box Compliant (ST-2.3).
+Scope: Conglomerates and Multi-divisional entities.
 
-Valorisation des conglomérats.
-Rôle : Consolidation des EV et application de l'Equity Bridge global.
-Standards : SOLID, Glass Box, i18n Secured.
-
-Moteur SOTP - Résolution type-safe
-Pattern : Pipeline
-Style : Numpy Style docstrings
-
-RISQUES FINANCIERS:
-- La valorisation SOTP est critique pour les conglomérats
-- Une erreur de décote peut sous/sur-évaluer significativement
+Standard: SOLID, i18n Secured.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
 from typing import List, Tuple
-from src.models import SOTPParameters, CompanyFinancials, CalculationStep, TraceHypothesis
-# DT-001/002: Import depuis core.i18n
+from src.models.scenarios import SOTPParameters
+from src.models.company import CompanyFinancials
+from src.models.glass_box import CalculationStep, TraceHypothesis
+
+# Centralized i18n imports (Aligned with src/i18n/fr/backend/)
 from src.i18n import SOTPTexts, RegistryTexts, KPITexts
 
 
@@ -29,16 +27,31 @@ def run_sotp_valuation(
     financials: CompanyFinancials
 ) -> Tuple[float, List[CalculationStep]]:
     """
-    Orchestre la valorisation complète SOTP :
-    1. Sommation des segments et décote (EV)
-    2. Passage à la valeur actionnariale (Equity Bridge).
-    """
-    steps = []
+    Orchestrates the complete SOTP valuation lifecycle.
 
-    # --- ÉTAPE 1 : CONSOLIDATION DE L'EV ---
+    1. Consolidation of segment Enterprise Values (EV).
+    2. Application of the Conglomerate (Holding) Discount.
+    3. Execution of the global Equity Bridge to resolve shareholder value.
+
+    Parameters
+    ----------
+    params : SOTPParameters
+        Configuration containing segment data and discount rates.
+    financials : CompanyFinancials
+        Consolidated balance sheet data for the equity bridge.
+
+    Returns
+    -------
+    Tuple[float, List[CalculationStep]]
+        A tuple containing the total Equity Value and the Glass Box trace steps.
+    """
+    steps: List[CalculationStep] = []
+
+    # --- PILLAR 1: EV CONSOLIDATION & DISCOUNTING ---
     if not params.enabled or not params.segments:
         return 0.0, []
 
+    # Summing individual segment Enterprise Values
     raw_ev_sum = sum(seg.enterprise_value for seg in params.segments)
     discount_factor = (1.0 - params.conglomerate_discount)
     consolidated_ev = raw_ev_sum * discount_factor
@@ -60,20 +73,20 @@ def run_sotp_valuation(
     )
     steps.append(ev_step)
 
-    # --- ÉTAPE 2 : EQUITY BRIDGE CONSOLIDÉ (ST 2.3) ---
-    # On récupère les ajustements globaux du bilan consolidé
-    debt = financials.total_debt
-    cash = financials.cash_and_equivalents
-    minorities = financials.minority_interests
-    pensions = financials.pension_provisions
+    # --- PILLAR 2: CONSOLIDATED EQUITY BRIDGE (ST-2.3) ---
+    # Global adjustments from the consolidated balance sheet
+    debt = financials.total_debt or 0.0
+    cash = financials.cash_and_equivalents or 0.0
+    minorities = financials.minority_interests or 0.0
+    pensions = financials.pension_provisions or 0.0
 
-    # Formule : Equity Value = EV - Dette + Cash - Minoritaires - Pensions
+    # Formula: Equity Value = EV - Debt + Cash - Minorities - Pensions
     equity_value = consolidated_ev - debt + cash - minorities - pensions
 
     bridge_step = CalculationStep(
         step_id=2,
         step_key="SOTP_EQUITY_BRIDGE",
-        label=RegistryTexts.DCF_BRIDGE_L, # Réutilisation du label standard pour la cohérence
+        label=RegistryTexts.DCF_BRIDGE_L,  # Reusing standard label for consistency
         theoretical_formula=r"Equity Value = EV - Debt + Cash - Minorities - Pensions",
         hypotheses=[
             TraceHypothesis(name=KPITexts.LABEL_DEBT, value=debt, unit="currency", source="Yahoo"),
@@ -87,7 +100,7 @@ def run_sotp_valuation(
         ),
         result=equity_value,
         unit="currency",
-        interpretation=RegistryTexts.DCF_BRIDGE_D # Note pédagogique sur l'ajustement structurel
+        interpretation=RegistryTexts.DCF_BRIDGE_D
     )
     steps.append(bridge_step)
 

@@ -1,164 +1,173 @@
 """
 src/config/settings.py
 
-PARAMÈTRES DE CONFIGURATION CENTRALISÉS
+CENTRALIZED CONFIGURATION SETTINGS
+==================================
+Role: Type-safe configuration objects (Single Source of Truth).
+Architecture: Aggregates raw constants into high-level functional settings.
+Style: Numpy Style docstrings.
 
-Paramètres de configuration - Type-safe
-Pattern : Configuration Object (Single Source of Truth)
-Style : Numpy Style docstrings
-
-AVANT : Constantes éparpillées dans le code
-APRÈS : Centralisation complète dans ce fichier
-
-Usage :
-    from src.config.settings import SIMULATION_CONFIG, AUDIT_CONFIG
-
-RISQUES FINANCIERS:
-- Ces paramètres contrôlent le comportement des simulations
-- Une modification peut impacter la qualité des résultats
+Financial Risk Note:
+-------------------
+These parameters directly govern simulation behaviors, audit strictness,
+and model convergence. Modifications may significantly impact result quality.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any  # Any requis pour config dictionnaires flexibles
+from typing import Dict, Any
 
 
 # ==============================================================================
-# 1. CONFIGURATION SIMULATION MONTE CARLO
+# 1. MONTE CARLO SIMULATION CONFIGURATION
 # ==============================================================================
 
 @dataclass(frozen=True)
 class MonteCarloSimulationConfig:
-    """Configuration complète des simulations Monte Carlo."""
+    """
+    Comprehensive configuration for probabilistic Monte Carlo simulations.
 
-    # Import depuis constants.py pour éviter la duplication
+    Inherits baseline limits and defaults from the centralized constants
+    repository to ensure system-wide consistency.
+    """
+
+    # Local import to prevent circular dependencies during initialization
     from src.config.constants import MonteCarloDefaults
 
-    # Paramètres de base (migration depuis constants.py)
+    # Baseline Iteration Parameters
     default_simulations: int = MonteCarloDefaults.DEFAULT_SIMULATIONS
     min_simulations: int = MonteCarloDefaults.MIN_SIMULATIONS
     max_simulations: int = MonteCarloDefaults.MAX_SIMULATIONS
 
-    # Paramètres de corrélation
+    # Correlation Parameters for Risk Pairings
     default_rho: float = -0.30
     rho_bounds: tuple[float, float] = (-1.0, 1.0)
 
-    # Paramètres de volatilité par défaut
+    # Standard Deviation Defaults (Volatility)
     default_volatility_beta: float = 0.10
     default_volatility_growth: float = 0.02
     default_volatility_terminal: float = 0.01
 
-    # Seuils de validité
+    # Statistical Validity Thresholds
     min_valid_ratio: float = 0.80
     max_clamping_ratio: float = 0.10
 
-    # Paramètres de sécurité
+    # Safety and Sensitivity Guards
     growth_safety_margin: float = 0.015
     sensitivity_simulations: int = 1000
     max_iv_filter: float = 100_000.0
     default_wacc_fallback: float = 0.08
 
-    # Timeout
+    # Execution Timeout to prevent UI hanging
     timeout_seconds: int = 30
 
 
 # ==============================================================================
-# 2. CONFIGURATION AUDIT ET VALIDATION
+# 2. AUDIT AND VALIDATION CONFIGURATION
 # ==============================================================================
 
 @dataclass(frozen=True)
 class AuditValidationConfig:
-    """Configuration des seuils d'audit et validation."""
+    """
+    Configuration for financial audit thresholds and consistency checks.
+    Used by the AuditEngine to generate institutional ratings.
+    """
 
-    # Seuils financiers
+    # Core Financial Health Thresholds
     icr_minimum: float = 1.5
     beta_minimum: float = 0.4
     beta_maximum: float = 3.0
     liquidity_ratio_minimum: float = 1.0
 
-    # Seuils SOTP
+    # SOTP Reconciliation Thresholds
     sotp_revenue_gap_warning: float = 0.05
     sotp_revenue_gap_error: float = 0.15
     sotp_discount_maximum: float = 0.25
 
-    # Seuils de convergence
+    # Convergence and Spread Thresholds (Gordon Safety)
     wacc_growth_spread_minimum: float = 0.01
     wacc_growth_spread_warning: float = 0.02
 
-    # Seuils FCF
+    # Operational Cash Flow Integrity Thresholds
     fcf_growth_maximum: float = 0.25
     fcf_margin_minimum: float = 0.05
 
-    # Seuils réinvestissement
+    # Investment Efficiency Thresholds
     reinvestment_rate_maximum: float = 1.0
 
 
 # ==============================================================================
-# 3. CONFIGURATION SYSTÈME ET PERFORMANCE
+# 3. SYSTEM AND PERFORMANCE CONFIGURATION
 # ==============================================================================
 
 @dataclass(frozen=True)
 class SystemPerformanceConfig:
-    """Configuration système et paramètres de performance."""
+    """
+    System-level settings governing caching, API resilience, and logging.
+    """
 
-    # Cache
-    cache_ttl_short: int = 3600   # 1 heure
-    cache_ttl_medium: int = 14400 # 4 heures
-    cache_ttl_long: int = 86400   # 24 heures
+    # Cache Time-To-Live (TTL) Settings
+    cache_ttl_short: int = 3600   # 1 Hour
+    cache_ttl_medium: int = 14400 # 4 Hours
+    cache_ttl_long: int = 86400   # 24 Hours
 
-    # API Timeouts
+    # API Resiliency Policy
     yahoo_api_timeout: float = 12.0
     retry_attempts: int = 3
     retry_delay_base: float = 0.5
 
-    # UI
+    # UI Presentation Limits
     max_display_rows: int = 100
     chart_height: int = 400
 
-    # Logs
+    # Logging Infrastructure
     max_log_file_size: int = 10_000_000  # 10MB
     max_log_backup_files: int = 5
 
 
 # ==============================================================================
-# 4. CONFIGURATION VALORISATION
+# 4. VALUATION MODEL CONFIGURATION
 # ==============================================================================
 
 @dataclass(frozen=True)
 class ValuationModelConfig:
-    """Configuration des modèles de valorisation."""
+    """
+    Global defaults and constraints for valuation models (DCF, Graham, RIM).
+    """
 
-    # Horizon par défaut
+    # Projection Horizon Constraints
     default_projection_years: int = 5
     minimum_projection_years: int = 1
     maximum_projection_years: int = 15
 
-    # Taux par défaut (fallback)
+    # Macro-economic Fallbacks
     default_risk_free_rate: float = 0.04
     default_market_risk_premium: float = 0.05
     default_tax_rate: float = 0.25
 
-    # Croissance terminale
+    # Terminal Growth Constraints
     default_terminal_growth: float = 0.02
     maximum_terminal_growth: float = 0.04
 
-    # Limites de convergence
+    # Numerical Solver Limits
     maximum_iterations: int = 1000
     convergence_tolerance: float = 1e-6
 
 
 # ==============================================================================
-# INSTANCES GLOBALES DE CONFIGURATION
+# GLOBAL CONFIGURATION INSTANCES
 # ==============================================================================
 
-# Configurations principales
+
+
+# Primary Configuration Singletons
 SIMULATION_CONFIG = MonteCarloSimulationConfig()
 AUDIT_CONFIG = AuditValidationConfig()
 SYSTEM_CONFIG = SystemPerformanceConfig()
 VALUATION_CONFIG = ValuationModelConfig()
 
-# Dictionnaire pour accès programmatique
+# Registry for programmatic access and dependency injection
 CONFIG_REGISTRY: Dict[str, Any] = {
     "simulation": SIMULATION_CONFIG,
     "audit": AUDIT_CONFIG,
@@ -169,47 +178,52 @@ CONFIG_REGISTRY: Dict[str, Any] = {
 
 def get_config(section: str) -> Any:
     """
-    Récupère une section de configuration.
+    Retrieves a specific configuration section.
 
     Parameters
     ----------
     section : str
-        Nom de la section ('simulation', 'audit', 'system', 'valuation')
+        The name of the configuration section.
+        Supported: 'simulation', 'audit', 'system', 'valuation'.
 
     Returns
     -------
-    Configuration object
+    Any
+        The requested frozen configuration dataclass instance.
 
     Raises
     ------
     KeyError
-        Si la section n'existe pas
+        If the section name is invalid or not registered.
     """
     if section not in CONFIG_REGISTRY:
         available = ", ".join(CONFIG_REGISTRY.keys())
-        raise KeyError(f"Section '{section}' inconnue. Disponible: {available}")
+        raise KeyError(f"Unknown configuration section '{section}'. Available: {available}")
     return CONFIG_REGISTRY[section]
 
 
 # ==============================================================================
-# VALIDATION AU CHARGEMENT
+# INITIALIZATION VALIDATION
 # ==============================================================================
 
 def _validate_configurations():
-    """Valide la cohérence des configurations au chargement."""
+    """
+    Performs integrity checks on configurations at module load time.
+    Ensures that logical bounds are respected to prevent runtime crashes.
+    """
 
-    # Validation Monte Carlo
+    # Monte Carlo Boundaries Validation
     assert SIMULATION_CONFIG.min_simulations < SIMULATION_CONFIG.default_simulations
     assert SIMULATION_CONFIG.default_simulations <= SIMULATION_CONFIG.max_simulations
 
-    # Validation Audit
+    # Audit Sensitivity Validation
     assert AUDIT_CONFIG.beta_minimum < AUDIT_CONFIG.beta_maximum
     assert AUDIT_CONFIG.sotp_revenue_gap_warning < AUDIT_CONFIG.sotp_revenue_gap_error
 
-    # Validation Valorisation
+    # Valuation Horizon Validation
     assert VALUATION_CONFIG.minimum_projection_years <= VALUATION_CONFIG.default_projection_years
     assert VALUATION_CONFIG.default_projection_years <= VALUATION_CONFIG.maximum_projection_years
 
 
-# Validation au chargement du module
+# Execute validation upon module import
 _validate_configurations()

@@ -1,9 +1,13 @@
 """
-Modèles pour le système d'audit.
+src/models/audit_models
 
-Ce module définit les structures de données pour l'audit et
-la validation des valorisations financières, incluant les scores
-par pilier et les rapports détaillés.
+AUDIT SYSTEM MODELS
+===================
+Role: Data structures for financial valuation auditing and validation.
+Scope: Includes pillar-based scoring, detailed audit reports, and output contracts.
+Architecture: Pydantic-based containers for type-safe institutional scoring.
+
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -18,48 +22,50 @@ from src.config.constants import ModelDefaults
 
 
 class AuditPillarScore(BaseModel):
-    """Score d'un pilier d'audit.
+    """
+    Score data for a specific audit pillar.
 
-    Résultat d'évaluation d'un pilier spécifique de l'audit,
-    incluant score, poids et diagnostics détaillés.
+    Represents the evaluation result of an individual audit dimension,
+    including its score, weighting, and detailed diagnostics.
 
     Attributes
     ----------
     pillar : AuditPillar
-        Pilier d'audit évalué.
+        The specific audit dimension being evaluated (e.g., Data Confidence).
     score : float, default=ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
-        Score obtenu pour ce pilier (0.0 par défaut).
+        The raw score achieved for this pillar (0.0 to 100.0).
     weight : float, default=ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
-        Poids du pilier dans le score global (0.0 par défaut).
+        The relative weighting of this pillar in the global score.
     contribution : float, default=ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
-        Contribution pondérée au score global (0.0 par défaut).
+        The weighted contribution to the final audit score.
     diagnostics : List[str], default=[]
-        Liste des problèmes diagnostiqués.
+        List of specific issues or warnings identified for this pillar.
     check_count : int, default=0
-        Nombre de vérifications effectuées.
+        Total number of technical checks performed within this pillar.
     """
     pillar: AuditPillar
-    score: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
-    weight: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
-    contribution: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR  # 0.0
+    score: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
+    weight: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
+    contribution: float = ModelDefaults.DEFAULT_MEAN_ABSOLUTE_ERROR
     diagnostics: List[str] = Field(default_factory=list)
     check_count: int = 0
 
 
 class AuditScoreBreakdown(BaseModel):
-    """Décomposition du score par pilier.
+    """
+    Structural breakdown of the global audit score by pillar.
 
-    Ventilation détaillée du score d'audit global selon
-    les différents piliers d'évaluation.
+    Provides a transparent view of how the final reliability score
+    is mathematically aggregated.
 
     Attributes
     ----------
     pillars : Dict[AuditPillar, AuditPillarScore]
-        Scores détaillés par pilier.
+        Detailed scores indexed by their respective pillars.
     aggregation_formula : str
-        Formule d'agrégation utilisée.
+        The LaTeX or textual representation of the aggregation formula.
     total_score : float, default=0.0
-        Score global agrégé.
+        The final aggregated global audit score.
     """
     pillars: Dict[AuditPillar, AuditPillarScore]
     aggregation_formula: str
@@ -67,21 +73,22 @@ class AuditScoreBreakdown(BaseModel):
 
 
 class AuditLog(BaseModel):
-    """Entrée de log d'audit.
+    """
+    Audit log entry for event tracking.
 
-    Enregistrement détaillé d'un événement d'audit,
-    incluant sévérité et pénalité appliquée.
+    Detailed record of a specific audit event, capturing the severity
+    and the resulting score penalty applied.
 
     Attributes
     ----------
     category : str
-        Catégorie de l'événement.
+        The functional category of the event (e.g., SOLVENCY, BETA).
     severity : str
-        Niveau de sévérité.
+        The severity level of the finding (CRITICAL, WARNING, etc.).
     message : str
-        Message descriptif.
+        Descriptive technical message or localized error key.
     penalty : float
-        Pénalité appliquée au score.
+        The specific numeric penalty subtracted from the audit score.
     """
     category: str
     severity: str
@@ -90,35 +97,36 @@ class AuditLog(BaseModel):
 
 
 class AuditReport(BaseModel):
-    """Rapport d'audit complet.
+    """
+    Comprehensive Institutional Audit Report.
 
-    Rapport d'audit exhaustif incluant score global,
-    ventilation par pilier et logs détaillés.
+    The final synthesis of the valuation audit, including global scoring,
+    pillar breakdowns, and full check logs.
 
     Attributes
     ----------
     global_score : float
-        Score d'audit global (0-100).
+        The final global reliability score (typically 0-100).
     rating : str
-        Notation qualitative (A+, A, B+, etc.).
+        Qualitative institutional rating (e.g., AAA, AA, BBB, C).
     audit_mode : Union[InputSource, str]
-        Mode d'audit utilisé.
+        The data input strategy used for the audit (AUTO vs MANUAL).
     audit_depth : int, default=0
-        Profondeur de l'audit effectué.
+        The total number of unique checks executed.
     audit_coverage : float, default=0.0
-        Couverture des vérifications (%).
+        The ratio of executed checks vs. potential model checks (%).
     audit_steps : List[AuditStep], default=[]
-        Étapes détaillées de l'audit.
+        Detailed technical steps for Glass Box transparency.
     pillar_breakdown : AuditScoreBreakdown, optional
-        Ventilation par pilier d'audit.
+        Categorized score ventilation by evaluation pillar.
     logs : List[AuditLog], default=[]
-        Logs détaillés des vérifications.
+        Detailed chronological logs of all audit findings.
     breakdown : Dict[str, float], default={}
-        Décomposition par catégories.
+        Simplified categorical decomposition for UI charts.
     block_monte_carlo : bool, default=False
-        Bloque l'utilisation de Monte Carlo si True.
+        Flag to prevent stochastic simulation if data quality is too low.
     critical_warning : bool, default=False
-        Présence d'avertissements critiques.
+        Indicates if any CRITICAL severity issues were identified.
     """
     global_score: float
     rating: str
@@ -134,26 +142,27 @@ class AuditReport(BaseModel):
 
 
 class ValuationOutputContract(BaseModel):
-    """Contrat de sortie pour validation.
+    """
+    Validation output contract schema.
 
-    Spécification des éléments disponibles dans un résultat
-    de valorisation, utilisée pour la validation et l'audit.
+    Specifies the availability of essential parts in a valuation
+    result to satisfy audit and UI rendering requirements.
 
     Attributes
     ----------
     has_params : bool
-        Paramètres de calcul disponibles.
+        Indicates if calculation parameters are present.
     has_projection : bool
-        Projections de flux disponibles.
+        Indicates if future cash flow projections are available.
     has_terminal_value : bool
-        Valeur terminale calculée.
+        Indicates if the terminal value has been calculated.
     has_intrinsic_value : bool
-        Valeur intrinsèque disponible.
+        Indicates if the final intrinsic value is available.
     has_audit : bool
-        Rapport d'audit disponible.
+        Indicates if a valid audit report has been generated.
     """
     model_config = ConfigDict(frozen=True)
-    
+
     has_params: bool
     has_projection: bool
     has_terminal_value: bool
@@ -161,11 +170,17 @@ class ValuationOutputContract(BaseModel):
     has_audit: bool
 
     def is_valid(self) -> bool:
-        """Vérifie si le contrat est satisfait.
+        """
+        Validates if the output contract meets the minimum analytical requirements.
+
+        Requirements:
+            - Calculation parameters must be present.
+            - Intrinsic value must be calculated.
+            - Audit report must be generated.
 
         Returns
         -------
         bool
-            True si les éléments minimum sont présents.
+            True if all mandatory components are present.
         """
         return all([self.has_params, self.has_intrinsic_value, self.has_audit])

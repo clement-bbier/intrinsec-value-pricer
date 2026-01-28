@@ -1,11 +1,11 @@
 """
 infra/data_providers/extraction_utils.py
 
-OUTILS D'EXTRACTION & SÉCURITÉ API (DT-022 Resolution)
-Rôle :  Normalisation et extraction robuste des données yfinance.
-Architecture :  Honest Data avec propagation stricte des None.
+EXTRACTION TOOLS & API RESILIENCY (DT-022 Resolution)
+Role: Normalization and robust extraction of financial data from yfinance.
+Architecture: Honest Data with strict None propagation.
 
-DT-022 : Ajout du support timeout sur les appels API.
+DT-022: Implementation of timeout support on API calls to prevent thread blocking.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
-# 1. RÉFÉRENTIEL DES ALIAS COMPTABLES
+# 1. ACCOUNTING ALIAS REFERENCE (ST-2.1)
 # ==============================================================================
 
 OCF_KEYS: List[str] = [
@@ -52,12 +52,12 @@ DA_KEYS: List[str] = [
     "Depletion"
 ]
 
-# Aliases pour le Net Borrowing (Variation de la dette)
+# Aliases for Net Borrowing (Debt variation)
 DEBT_ISSUANCE_KEYS: List[str] = ["Issuance Of Debt", "Long Term Debt Issuance", "Net Issuance Payments Of Debt"]
 DEBT_REPAYMENT_KEYS: List[str] = ["Repayment Of Debt", "Long Term Debt Payments", "Net Long Term Debt"]
 
 # ==============================================================================
-# 2. SÉCURITÉ API (RETRY PATTERN + TIMEOUT) Resolution
+# 2. API RESILIENCY (RETRY PATTERN + TIMEOUT)
 # ==============================================================================
 
 def safe_api_call(
@@ -67,30 +67,36 @@ def safe_api_call(
     timeout_seconds: Optional[float] = None
 ) -> Any:
     """
-    Exécute une fonction API avec backoff exponentiel et timeout optionnel.
+    Executes an API function with exponential backoff and optional timeout.
+
+    Architecture: Prevents hanging threads in Streamlit by enforcing strict
+    execution windows.
     """
     _timeout = timeout_seconds or PeerDefaults.API_TIMEOUT_SECONDS
 
+
+
     for i in range(max_retries):
         try:
-            # Exécution avec timeout via ThreadPoolExecutor
+            # Execution with timeout via ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(func)
                 try:
                     return future.result(timeout=_timeout)
                 except FuturesTimeoutError:
                     logger.warning(
-                        f"[{context}] Timeout après {_timeout}s (tentative {i + 1}/{max_retries})."
+                        f"[{context}] Timeout reached after {_timeout}s (attempt {i + 1}/{max_retries})."
                     )
                     continue
-        # Correction : Capture explicite de l'exception métier pour éviter le catch-all trop large
         except (RuntimeError, ValueError, AttributeError) as e:
+            # Handle non-critical business errors with exponential backoff
             wait = DataExtractionDefaults.RETRY_DELAY_BASE * (2 ** i)
             logger.warning(
                 f"[{context}] API Error | attempt={i + 1}/{max_retries}, error={e}, wait={wait}s"
             )
             time.sleep(wait)
-        except Exception as e: # Catch-all final pour la robustesse du retry API
+        except Exception as e:
+            # Catch-all for API robustness
             logger.error(f"[{context}] Unexpected error during API call: {e}")
             time.sleep(DataExtractionDefaults.RETRY_DELAY_BASE)
 
@@ -99,7 +105,7 @@ def safe_api_call(
 
 
 def safe_api_call_simple(func: Callable, context: str = "API", max_retries: int = 3) -> Any:
-    """Version simplifiée sans timeout."""
+    """Simplified retry wrapper without thread-based timeout enforcement."""
     for i in range(max_retries):
         try:
             return func()
@@ -113,20 +119,23 @@ def safe_api_call_simple(func: Callable, context: str = "API", max_retries: int 
 
 
 # ==============================================================================
-# 3. EXTRACTION ROBUSTE (DEEP FETCH)
+# 3. ROBUST EXTRACTION (DEEP FETCH)
 # ==============================================================================
 
 def extract_most_recent_value(df: pd.DataFrame, keys: List[str]) -> Optional[float]:
     """
-    Cherche la valeur la plus récente dans un DataFrame financier.
+    Retrieves the most recent non-null value for a given list of accounting keys.
+
+    Note: Aligns columns chronologically to prioritize TTM or the latest
+    fiscal year data.
     """
     if df is None or df.empty:
         return None
 
-    # Alignement temporel : colonnes récentes en premier
+    # Temporal alignment: most recent periods first
     try:
         df = df.sort_index(axis=1, ascending=False)
-    except (TypeError, ValueError): # Correction : Cibles d'erreurs de tri spécifiques
+    except (TypeError, ValueError):
         pass
 
     for key in keys:
@@ -143,11 +152,16 @@ def extract_most_recent_value(df: pd.DataFrame, keys: List[str]) -> Optional[flo
 
 
 # ==============================================================================
-# 4. HELPERS MÉTIER (STRICT NONE-PROPAGATION)
+# 4. BUSINESS LOGIC HELPERS (STRICT NONE-PROPAGATION)
 # ==============================================================================
 
 def get_simple_annual_fcf(cashflow_df: pd.DataFrame) -> Optional[float]:
-    """Calcule le FCF = Operating Cash Flow + Capital Expenditure."""
+    """
+    Calculates Free Cash Flow (FCF) as Operating Cash Flow plus Capital Expenditure.
+
+    Standard: Honest Data principle - returns None if either component is missing
+    to prevent biased results.
+    """
     if cashflow_df is None or cashflow_df.empty:
         return None
 
@@ -157,6 +171,7 @@ def get_simple_annual_fcf(cashflow_df: pd.DataFrame) -> Optional[float]:
     if ocf is None or capex is None:
         return None
 
+    # Note: Capex is typically negative in yfinance datasets
     return ocf + capex
 
 
@@ -165,8 +180,9 @@ def calculate_historical_cagr(
     years: int = DataExtractionDefaults.HISTORICAL_CAGR_YEARS
 ) -> Optional[float]:
     """
-    Calcule le CAGR historique des revenus.
-    Note : Le paramètre 'metric' a été supprimé car la fonction cible spécifiquement le Revenue.
+    Calculates the historical Compounded Annual Growth Rate (CAGR) of Revenue.
+
+    Ensures numerical stability by checking for positive start/end values.
     """
     if income_stmt is None or income_stmt.empty:
         return None
@@ -191,12 +207,14 @@ def calculate_historical_cagr(
 
 
 def normalize_currency_and_price(info: dict) -> Tuple[str, float]:
-    """Normalise les devises et ajuste le prix."""
+    """
+    Normalizes currency labels (e.g., GBp to GBP) and adjusts prices accordingly.
+    """
     currency = info.get("currency", "USD")
     price = info.get("currentPrice") or info.get("regularMarketPrice", 0.0)
 
     if currency == "GBp":
         currency = "GBP"
-        price /= DataExtractionDefaults.PRICE_FORMAT_MULTIPLIER
+        price /= DataExtractionDefaults.PRICE_FORMAT_MULTIPLIER # Adjusting for pence to pounds
 
     return currency, float(price)

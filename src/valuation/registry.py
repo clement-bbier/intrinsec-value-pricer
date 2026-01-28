@@ -1,20 +1,25 @@
 """
-core/valuation/registry.py
-REGISTRE CENTRALISÉ DES STRATÉGIES DE VALORISATION
+src/valuation/registry.py
 
-Implémentation du pattern Registry avec Auto-Discovery par décorateur.
-Assure l'alignement entre les moteurs de calcul, les auditeurs institutionnels
-et les composants d'interface utilisateur via le module i18n.
+CENTRALIZED VALUATION STRATEGY REGISTRY
+=======================================
+Role: Singleton registry for mapping analytical modes to strategies and auditors.
+Pattern: Registry with Decorator-based Auto-Discovery.
+Architecture: Decouples strategy execution from UI and Audit layers.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
+# Standard and Framework logging
 import logging
 from dataclasses import dataclass
 from typing import Dict, Type, Optional, Callable, TYPE_CHECKING
 
+# Core models and i18n requirements
 from src.models import ValuationMode
-from src.i18n import RegistryTexts  # Importation du référentiel i18n
+from src.i18n import RegistryTexts
 
 if TYPE_CHECKING:
     from src.valuation.strategies.abstract import ValuationStrategy
@@ -26,20 +31,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class StrategyMetadata:
     """
-    Métadonnées associées à une stratégie de valorisation.
+    Metadata container for valuation strategy mapping.
 
     Attributes
     ----------
     mode : ValuationMode
-        Identifiant unique du mode de valorisation.
+        Unique identifier for the valuation methodology.
     strategy_cls : Type[ValuationStrategy]
-        Classe implémentant l'algorithme de valorisation.
+        The class implementing the specific valuation algorithm.
     auditor_cls_name : str, default "DCFAuditor"
-        Nom de la classe d'auditeur associée pour import différé.
-    ui_renderer_name : Optional[str], default None
-        Nom de la fonction de rendu UI pour le Terminal Expert.
-    display_name : Optional[str], default None
-        Libellé localisé (i18n) affiché dans l'application.
+        The string name of the associated auditor class for lazy resolution.
+    ui_renderer_name : str, optional
+        The identifier for the specialized UI renderer in the Expert Terminal.
+    display_name : str, optional
+        The localized (i18n) label displayed in the application.
     """
     mode: ValuationMode
     strategy_cls: Type[ValuationStrategy]
@@ -49,12 +54,15 @@ class StrategyMetadata:
 
     def get_auditor_cls(self) -> Type[IValuationAuditor]:
         """
-        Importe et résout dynamiquement la classe d'auditeur.
+        Dynamically resolves and imports the auditor class.
+
+        This lazy-loading mechanism prevents circular dependencies between
+        the engine and the auditing infrastructure.
 
         Returns
         -------
         Type[IValuationAuditor]
-            La classe d'auditeur spécialisée ou l'auditeur standard par défaut.
+            The resolved auditor class.
         """
         from infra.auditing.auditors import (
             DCFAuditor, RIMAuditor, GrahamAuditor,
@@ -75,10 +83,10 @@ class StrategyMetadata:
 
 class StrategyRegistry:
     """
-    Registre global des algorithmes de valorisation (Singleton).
+    Global Singleton Registry for valuation methodologies.
 
-    Gère le cycle de vie et l'accès centralisé aux stratégies et à leurs
-    métadonnées d'audit et d'interface.
+    Manages the lifecycle and centralized access to financial strategies,
+    audit pillars, and UI components.
     """
 
     _instance: Optional[StrategyRegistry] = None
@@ -100,7 +108,7 @@ class StrategyRegistry:
         display_name: Optional[str] = None
     ) -> None:
         """
-        Enregistre officiellement une stratégie dans le moteur de calcul.
+        Formally registers a strategy into the calculation core.
         """
         metadata = StrategyMetadata(
             mode=mode,
@@ -114,13 +122,13 @@ class StrategyRegistry:
 
     @classmethod
     def get_strategy_cls(cls, mode: ValuationMode) -> Optional[Type[ValuationStrategy]]:
-        """Retourne la classe de calcul pour un mode spécifique."""
+        """Retrieves the calculation class for a specific mode."""
         metadata = cls._strategies.get(mode)
         return metadata.strategy_cls if metadata else None
 
     @classmethod
     def get_auditor_cls(cls, mode: ValuationMode) -> Type[IValuationAuditor]:
-        """Retourne la classe d'audit associée au mode."""
+        """Retrieves the audit class associated with the mode."""
         from infra.auditing.auditors import StandardValuationAuditor
 
         metadata = cls._strategies.get(mode)
@@ -128,25 +136,29 @@ class StrategyRegistry:
 
     @classmethod
     def get_ui_renderer_name(cls, mode: ValuationMode) -> Optional[str]:
-        """Identifie le renderer Expert UI pour le mode donné."""
+        """Identifies the specialized UI renderer for the given mode."""
         metadata = cls._strategies.get(mode)
         return metadata.ui_renderer_name if metadata else None
 
     @classmethod
     def get_display_name(cls, mode: ValuationMode) -> str:
-        """Récupère le nom localisé (i18n) du modèle."""
+        """Retrieves the localized (i18n) label for the model."""
         metadata = cls._strategies.get(mode)
         return metadata.display_name if metadata else mode.value
 
     @classmethod
     def get_all_modes(cls) -> Dict[ValuationMode, StrategyMetadata]:
-        """Fournit une copie du catalogue intégral des stratégies."""
+        """Provides a copy of the full strategy catalog."""
         return cls._strategies.copy()
 
     @classmethod
     def get_display_names_map(cls) -> Dict[ValuationMode, str]:
-        """Génère le mapping mode -> label pour les composants UI."""
-        return {mode: meta.display_name for mode, meta in cls._strategies.items() if meta.display_name}
+        """Generates a mapping of modes to localized labels for UI components."""
+        return {
+            mode: meta.display_name
+            for mode, meta in cls._strategies.items()
+            if meta.display_name
+        }
 
 
 def register_strategy(
@@ -156,7 +168,9 @@ def register_strategy(
     display_name: Optional[str] = None
 ) -> Callable[[Type[ValuationStrategy]], Type[ValuationStrategy]]:
     """
-    Décorateur pour l'auto-enregistrement des stratégies de valorisation.
+    Decorator for automated registration of valuation strategies.
+
+    Injects the class into the StrategyRegistry and tags the class for introspection.
     """
     def decorator(cls: Type[ValuationStrategy]) -> Type[ValuationStrategy]:
         StrategyRegistry.register(
@@ -166,7 +180,7 @@ def register_strategy(
             ui_renderer_name=ui_renderer,
             display_name=display_name
         )
-        # Injection du mode pour introspection ultérieure
+        # Tagging for runtime introspection
         setattr(cls, "_registered_mode", mode)
         return cls
 
@@ -174,38 +188,32 @@ def register_strategy(
 
 
 def get_strategy(mode: ValuationMode) -> Optional[Type[ValuationStrategy]]:
-    """Facade simplifiée pour l'accès aux classes de stratégie."""
+    """Simplified facade for accessing strategy classes."""
     return StrategyRegistry.get_strategy_cls(mode)
 
 
 def get_auditor(mode: ValuationMode) -> IValuationAuditor:
-    """
-    Instancie l'auditeur institutionnel associé au mode.
-
-    Note : Résout l'erreur 'Unresolved reference' en nommant explicitement
-    le type résolu.
-    """
+    """Instantiates the institutional auditor associated with the mode."""
     target_auditor_cls = StrategyRegistry.get_auditor_cls(mode)
     return target_auditor_cls()
 
 
 def get_all_strategies() -> Dict[ValuationMode, StrategyMetadata]:
-    """Accès global au catalogue des métadonnées."""
+    """Global access to the metadata catalog."""
     return StrategyRegistry.get_all_modes()
 
 
 def get_display_names() -> Dict[ValuationMode, str]:
-    """Accès simplifié au mapping des labels localisés (i18n)."""
+    """Simplified access to localized i18n label mapping."""
     return StrategyRegistry.get_display_names_map()
-
 
 def _register_all_strategies() -> None:
     """
-    Initialisation du socle de stratégies standards via i18n.
+    Bootstrap function using the CORRECT physical filenames from the filesystem.
 
-    Utilise exclusivement RegistryTexts pour garantir l'internationalisation
-    des noms d'affichage dans l'interface utilisateur.
+    This alignment resolves the 'ImportError' by matching the 'ls -R' structure.
     """
+    # 1. Corrected Imports based on the actual ./src/valuation/strategies/ directory
     from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
     from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
     from src.valuation.strategies.dcf_growth import RevenueBasedStrategy
@@ -214,35 +222,35 @@ def _register_all_strategies() -> None:
     from src.valuation.strategies.rim_banks import RIMBankingStrategy
     from src.valuation.strategies.graham_value import GrahamNumberStrategy
 
-    # --- Approches Entité (WACC) ---
+    # --- Firm Value Approaches (WACC-Based) ---
     StrategyRegistry.register(
         mode=ValuationMode.FCFF_STANDARD,
         strategy_cls=StandardFCFFStrategy,
         ui_renderer_name="render_expert_fcff_standard",
-        display_name=RegistryTexts.FCFF_STANDARD_L  # Utilisation i18n
+        display_name=RegistryTexts.FCFF_STANDARD_L
     )
 
     StrategyRegistry.register(
         mode=ValuationMode.FCFF_NORMALIZED,
         strategy_cls=FundamentalFCFFStrategy,
         ui_renderer_name="render_expert_fcff_fundamental",
-        display_name=RegistryTexts.FCFF_NORM_L  # Utilisation i18n
+        display_name=RegistryTexts.FCFF_NORM_L
     )
 
     StrategyRegistry.register(
         mode=ValuationMode.FCFF_GROWTH,
         strategy_cls=RevenueBasedStrategy,
         ui_renderer_name="render_expert_fcff_growth",
-        display_name=RegistryTexts.FCFF_GROWTH_L  # Utilisation i18n
+        display_name=RegistryTexts.FCFF_GROWTH_L
     )
 
-    # --- Approches Actionnaire (Ke) ---
+    # --- Shareholder Value Approaches (Ke-Based) ---
     StrategyRegistry.register(
         mode=ValuationMode.FCFE,
         strategy_cls=FCFEStrategy,
         auditor_cls_name="FCFEAuditor",
         ui_renderer_name="render_expert_fcfe",
-        display_name=RegistryTexts.FCFE_L  # Utilisation i18n
+        display_name=RegistryTexts.FCFE_L
     )
 
     StrategyRegistry.register(
@@ -250,16 +258,16 @@ def _register_all_strategies() -> None:
         strategy_cls=DividendDiscountStrategy,
         auditor_cls_name="DDMAuditor",
         ui_renderer_name="render_expert_ddm",
-        display_name=RegistryTexts.DDM_L  # Utilisation i18n
+        display_name=RegistryTexts.DDM_L
     )
 
-    # --- Modèles Alternatifs ---
+    # --- Alternative Models ---
     StrategyRegistry.register(
         mode=ValuationMode.RIM,
         strategy_cls=RIMBankingStrategy,
         auditor_cls_name="RIMAuditor",
         ui_renderer_name="render_expert_rim",
-        display_name=RegistryTexts.RIM_IV_L  # Utilisation i18n
+        display_name=RegistryTexts.RIM_IV_L
     )
 
     StrategyRegistry.register(
@@ -267,13 +275,12 @@ def _register_all_strategies() -> None:
         strategy_cls=GrahamNumberStrategy,
         auditor_cls_name="GrahamAuditor",
         ui_renderer_name="render_expert_graham",
-        display_name=RegistryTexts.GRAHAM_IV_L  # Utilisation i18n
+        display_name=RegistryTexts.GRAHAM_IV_L
     )
 
-    # Résolution de l'accès protégé via méthode publique
     count = len(StrategyRegistry.get_all_modes())
     logger.info("[Registry] %d Strategies loaded successfully.", count)
 
 
-# Amorçage initial du registre
+# Initialization on module load
 _register_all_strategies()

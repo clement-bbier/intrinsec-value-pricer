@@ -1,6 +1,9 @@
 """
 app/ui/results/components/step_renderer.py
-RENDU DES ÉTAPES DE CALCUL (Glass Box) — Standard Institutionnel.
+
+CALCULATION STEP RENDERER (Glass Box) — Institutional Standard.
+Role: Displays detailed mathematical steps, numerical substitutions, and data provenance.
+Architecture: Senior Grade with full i18n compliance.
 """
 
 from __future__ import annotations
@@ -14,20 +17,20 @@ from src.utilities.formatting import format_smart_number
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 
 # ============================================================================
-# CONFIGURATION DES THÈMES DE COULEURS (PROVENANCE INSTITUTIONNELLE)
+# COLOR THEME CONFIGURATION (INSTITUTIONAL GRADE)
 # ============================================================================
 
-# Mapping des couleurs hexadécimales pour les badges HTML
+# Hex color mapping for HTML status badges
 SOURCE_COLORS: Dict[VariableSource, str] = {
-    VariableSource.YAHOO_FINANCE: "#10b981",  # Vert (Audité)
-    VariableSource.MACRO_PROVIDER: "#3b82f6", # Bleu (Macro)
-    VariableSource.CALCULATED: "#64748b",     # Gris (Déterminé)
-    VariableSource.MANUAL_OVERRIDE: "#f59e0b",# Orange (Ajusté)
+    VariableSource.YAHOO_FINANCE: "#10b981",  # Green (Audited)
+    VariableSource.MACRO_PROVIDER: "#3b82f6", # Blue (Macro)
+    VariableSource.CALCULATED: "#64748b",     # Slate (Determined)
+    VariableSource.MANUAL_OVERRIDE: "#f59e0b",# Amber (Adjusted)
     VariableSource.DEFAULT: "#64748b",
 }
 
 def _render_status_badge(label: str, source: VariableSource) -> str:
-    """Génère le composant HTML pour un badge de statut professionnel."""
+    """Generates the HTML component for a professional status badge."""
     color = SOURCE_COLORS.get(source, "#64748b")
     return f"""
     <div style='text-align: right;'>
@@ -47,7 +50,7 @@ def _render_status_badge(label: str, source: VariableSource) -> str:
     """
 
 def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
-    """Affiche le référentiel des variables avec couleurs institutionnelles."""
+    """Displays the variable reference table with institutional styling."""
     if not variables_map:
         return
 
@@ -55,13 +58,15 @@ def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
         color_hex = SOURCE_COLORS.get(var.source, "#64748b")
 
         col_sym, col_val, col_src = st.columns([1, 2, 3])
+        # Styled symbol and value
         col_sym.markdown(f"<b style='color:{color_hex}'>{symbol}</b>", unsafe_allow_html=True)
         col_val.markdown(f"`{var.formatted_value}`")
 
-        # Source stylisée avec le label i18n
+        # Localized source label (avoiding raw enum access)
+        source_label = CommonTexts.SOURCE_LABELS.get(var.source, str(var.source.value))
         col_src.markdown(
             f"<span style='color:{color_hex}; font-size:0.8rem; font-weight:600;'>"
-            f"{CommonTexts.DATA_ORIGIN_LABEL} : {var.source.value.upper()}"
+            f"{CommonTexts.DATA_ORIGIN_LABEL} : {source_label.upper()}"
             f"</span>",
             unsafe_allow_html=True
         )
@@ -72,14 +77,14 @@ def _render_variable_details(variables_map: Dict[str, VariableInfo]) -> None:
 
 @st.fragment
 def render_calculation_step(index: int, step: CalculationStep) -> None:
-    """Rendu d'une étape de calcul Glass Box avec badges stylisés."""
+    """Renders a single Glass Box calculation step with styled badges and LaTeX."""
 
-    # 1. Extraction des métadonnées centralisées (Label et Formule)
+    # 1. Fetch centralized metadata (Label and Formula)
     meta = get_step_metadata(step.step_key)
     label = meta.get("label", step.label) or CommonTexts.STEP_GENERIC_LABEL
     formula = meta.get("formula", step.theoretical_formula)
 
-    # 2. Logique de détermination du statut et de la couleur
+    # 2. Logic for status determination and color coding
     if step.has_overrides():
         status_label = CommonTexts.STATUS_ADJUSTED
         status_src = VariableSource.MANUAL_OVERRIDE
@@ -90,17 +95,17 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
         status_label = CommonTexts.STATUS_CALCULATED
         status_src = VariableSource.CALCULATED
 
-    # 3. Rendu du Container principal
+    # 3. Main Container Rendering
     with st.container(border=True):
-        # Header : Index | LABEL | BADGE
+        # Header: Index | LABEL | STATUS BADGE
         h_left, h_right = st.columns([4, 1.5])
-        h_left.markdown(f"**{KPITexts.STEP_LABEL.format(index=index)} : {label.upper()}**")
-        # Correction du bug d'affichage : Utilisation du badge HTML
+        step_header = KPITexts.STEP_LABEL.format(index=index)
+        h_left.markdown(f"**{step_header} : {label.upper()}**")
         h_right.markdown(_render_status_badge(status_label, status_src), unsafe_allow_html=True)
 
         st.divider()
 
-        # Corps Mathématique : Théorie | Substitution | Résultat
+        # Mathematical Body: Theory | Substitution | Result
         c_theory, c_subst, c_result = st.columns([3, 4, 2])
 
         with c_theory:
@@ -112,7 +117,7 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
 
         with c_subst:
             st.caption(KPITexts.APP_NUMERIC)
-            # Priorité au calcul réel effectué si disponible
+            # Priority to actual executed calculation if available
             display_val = step.actual_calculation or step.numerical_substitution
             if display_val:
                 st.code(display_val, language="text", wrap_lines=True)
@@ -124,10 +129,10 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
                 formatted_res = format_smart_number(step.result, decimals=2)
                 st.subheader(formatted_res)
 
-        # 4. Footer : Transparence des données (Source & Commentaire)
+        # 4. Footer: Data Transparency (Source & Interpretation)
         if step.variables_map or step.interpretation:
             st.divider()
-            # Expand par défaut si l'étape a été modifiée par l'analyste
+            # Expand by default if the analyst has overridden data
             is_expanded = step.has_overrides()
 
             with st.expander(CommonTexts.DATA_ORIGIN_LABEL, expanded=is_expanded):
@@ -137,5 +142,4 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
                 if step.interpretation:
                     if step.variables_map: st.divider()
                     st.caption(CommonTexts.INTERPRETATION_LABEL)
-                    # Utilisation du composant Info sans icône pour un style épuré
                     st.info(step.interpretation, icon=None)

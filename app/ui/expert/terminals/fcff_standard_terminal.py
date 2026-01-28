@@ -1,13 +1,13 @@
 """
 app/ui/expert_terminals/fcff_standard_terminal.py
 
-TERMINAL EXPERT — FCFF TWO-STAGE STANDARD (FLUX CONTINU)
+EXPERT TERMINAL — FCFF TWO-STAGE STANDARD (CONTINUOUS FLOW)
 ==========================================================
-Implémentation de l'interface DCF Entité (FCFF).
-Ce terminal constitue les étapes 1 et 2 du "Logical Path" analytique.
+Implementation of the Entity DCF (FCFF) interface.
+This terminal constitutes steps 1 and 2 of the analytical "Logical Path".
 
-Architecture : ST-3.1 (Fondamental - DCF)
-Style : Numpy docstrings
+Architecture: ST-3.1 (Fundamental - DCF)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -24,39 +24,39 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class FCFFStandardTerminal(ExpertTerminalBase):
     """
-    Terminal expert pour la valorisation par les flux de trésorerie à la firme.
+    Expert terminal for Free Cash Flow to the Firm (FCFF) valuation.
 
-    Ce module guide l'analyste dans la définition de son ancrage (Y0)
-    et de sa trajectoire de croissance avant de passer aux étapes de
-    risque et de structure gérées par la classe de base.
+    This module guides the analyst in defining the cash flow anchor (Y0)
+    and the growth trajectory before proceeding to risk and capital
+    structure steps managed by the base class.
     """
 
     MODE = ValuationMode.FCFF_STANDARD
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI (9 Étapes) ---
+    # --- UI Pipeline Configuration (9 Steps) ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = True  # Activé : devient l'Étape 9 du tunnel expert
+    SHOW_SOTP = True  # Enabled: becomes Step 9 of the expert tunnel
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Formules LaTeX narratives ---
+    # --- Narrative LaTeX Formulas ---
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu des entrées opérationnelles (Étapes 1 & 2).
+        Renders operational inputs (Steps 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Paramètres capturés : manual_fcf_base, projection_years, fcf_growth_rate.
+            Captured parameters: manual_fcf_base, projection_years, fcf_growth_rate.
         """
         prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : ANCRAGE DU FLUX ---
+        # --- STEP 1: CASH FLOW ANCHOR ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
@@ -69,7 +69,7 @@ class FCFFStandardTerminal(ExpertTerminalBase):
         )
         st.divider()
 
-        # --- ÉTAPE 2 : PROJECTION DE LA CROISSANCE ---
+        # --- STEP 2: GROWTH PROJECTION ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
@@ -88,17 +88,17 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données spécifiques au FCFF depuis le session_state.
+        Extracts FCFF-specific data from the session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe basé sur le ValuationMode.
+            Prefix based on the ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données opérationnelles pour build_request.
+            Operational data for build_request.
         """
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),

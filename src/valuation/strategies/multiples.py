@@ -1,15 +1,24 @@
 """
-Stratégie de valorisation par multiples comparables.
+src/valuation/strategies/multiples.py
 
-Référence Académique : Damodaran (Investment Valuation)
-Domaine Économique : Valorisation relative par secteur d'activité
-Invariants du Modèle : Triangulation de signaux P/E, EV/EBITDA, EV/Revenue
+MARKET MULTIPLES STRATEGY (RELATIVE VALUATION)
+==============================================
+Academic Reference: Damodaran (Investment Valuation).
+Economic Domain: Sector-based relative valuation.
+Invariants: Triangulation of P/E, EV/EBITDA, and EV/Revenue signals.
+
+Role:
+-----
+Estimates company value by applying median sector multiples to focus on
+fundamentals (TTM). Acts as a market-based anchor for DCF results.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
+from typing import Dict
 
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.utilities.formatting import format_smart_number
@@ -22,7 +31,7 @@ from src.computation.financial_math import (
     calculate_price_from_ev_multiple,
     calculate_triangulated_price
 )
-# Import centralisé i18n
+# Centralized i18n mapping
 from src.i18n import (
     StrategyInterpretations,
     RegistryTexts,
@@ -36,52 +45,59 @@ logger = logging.getLogger(__name__)
 
 class MarketMultiplesStrategy(ValuationStrategy):
     """
-    Implémente la triangulation par multiples comparables.
+    Implements Relative Valuation via peer-group triangulation.
 
-    Cette stratégie estime la valeur d'une entreprise en appliquant les multiples
-    médians d'un panel de pairs à ses propres métriques financières.
+    This strategy calculates three independent price signals based on sector
+    multiples and aggregates them into a final intrinsic value.
     """
 
     def __init__(self, multiples_data: MultiplesData, glass_box_enabled: bool = True):
         super().__init__(glass_box_enabled)
         self.multiples_data = multiples_data
 
-    def execute(self, financials: CompanyFinancials, params: DCFParameters) -> MultiplesValuationResult:
+    def execute(
+        self,
+        financials: CompanyFinancials,
+        params: DCFParameters
+    ) -> MultiplesValuationResult:
         """
-        Exécute la séquence de valorisation par multiples.
+        Executes the multiples-based valuation sequence.
 
         Parameters
         ----------
         financials : CompanyFinancials
-            Données financières de la société cible.
+            Target company financials (TTM).
         params : DCFParameters
-            Paramètres globaux (utilisés pour le reporting).
+            Global parameters (used for reporting and audit context).
 
         Returns
         -------
         MultiplesValuationResult
-            Résultat incluant les trois signaux de prix et la moyenne finale.
+            A result object containing the three signals and the final median/average.
         """
         m = self.multiples_data
         f = financials
 
-        # 1. Calcul des signaux de prix individuels
+        # 1. INDIVIDUAL PRICE SIGNAL COMPUTATION
+        # Signal A: Equity-based (P/E)
         price_pe = calculate_price_from_pe_multiple(
             f.net_income_ttm or 0.0,
             m.median_pe,
             f.shares_outstanding
         )
 
-        # CORRECTION BUG : Utilisation de median_ev_ebitda au lieu de median_pe
+        # Signal B: Enterprise-based (EV/EBITDA)
+        # Accounts for Net Debt and minority interests.
         price_ebitda = calculate_price_from_ev_multiple(
             f.ebitda_ttm or 0.0,
-            m.median_ev_ebitda, # Bug corrigé ici
+            m.median_ev_ebitda,
             f.net_debt,
             f.shares_outstanding,
             f.minority_interests,
             f.pension_provisions
         )
 
+        # Signal C: Enterprise-based (EV/Revenue)
         price_rev = calculate_price_from_ev_multiple(
             f.revenue_ttm or 0.0,
             m.median_ev_rev,
@@ -89,11 +105,11 @@ class MarketMultiplesStrategy(ValuationStrategy):
             f.shares_outstanding
         )
 
-        # 2. Triangulation finale
+        # 2. FINAL TRIANGULATION
         signals = {"P/E": price_pe, "EV/EBITDA": price_ebitda, "EV/Revenue": price_rev}
         final_iv = calculate_triangulated_price(signals)
 
-        # 3. Traçabilité Glass Box (Enrichie avec source et i18n)
+        # 3. GLASS BOX RECORDING (Audit Trail)
         self._record_steps(f, m, signals, final_iv)
 
         result = MultiplesValuationResult(
@@ -108,6 +124,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
             calculation_trace=self.calculation_trace
         )
 
+        # Institutional Finalization
         self.generate_audit_report(result)
         self.verify_output_contract(result)
         return result
@@ -115,9 +132,9 @@ class MarketMultiplesStrategy(ValuationStrategy):
     def _record_steps(self, f: CompanyFinancials, m: MultiplesData,
                       signals: Dict[str, float], final_iv: float) -> None:
         """
-        Enregistre les étapes de calcul avec traçabilité institutionnelle.
+        Records the mathematical steps with institutional traceability.
         """
-        # Étape P/E
+        # --- P/E STEP ---
         sub_pe = KPITexts.SUB_PE_MULT.format(
             ni=format_smart_number(f.net_income_ttm),
             mult=m.median_pe,
@@ -134,7 +151,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
             source=StrategySources.YAHOO_TTM_SIMPLE
         )
 
-        # Étape EBITDA
+        # --- EBITDA STEP ---
         sub_ebitda = KPITexts.SUB_EBITDA_MULT.format(
             ebitda=format_smart_number(f.ebitda_ttm),
             mult=m.median_ev_ebitda,
@@ -151,7 +168,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
             source=StrategySources.YAHOO_TTM_SIMPLE
         )
 
-        # Étape de Synthèse (Triangulation)
+        # --- TRIANGULATION SYNTHESIS ---
         valid_signals = [s for s in signals.values() if s > 0]
         sub_triangulation = StrategyInterpretations.TRIANGULATION_SUB.format(count=len(valid_signals))
 

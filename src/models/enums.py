@@ -1,9 +1,13 @@
 """
-Énumérations et alias de types du domaine de valorisation.
+src/models/enums.py
 
-Ce module définit les types énumérés et alias utilisés dans
-le domaine de la valorisation financière, assurant la
-consistance des valeurs acceptées.
+DOMAIN ENUMERATIONS AND TYPE ALIASES
+====================================
+Role: Centralized type definitions and constants for the valuation domain.
+Scope: Ensures consistent naming conventions across the engine and UI handlers.
+Architecture: Static type aliases and String-based Enums.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -13,72 +17,77 @@ from typing import TypeAlias
 
 
 # ==============================================================================
-# 1. ALIAS FINANCIERS (TYPE-SAFE)
+# 1. FINANCIAL TYPE ALIASES (TYPE-SAFE)
 # ==============================================================================
-# Ces alias améliorent la lisibilité et permettent une validation future
-# sans impact sur les performances runtime.
 
 Rate: TypeAlias = float
-"""Taux financier (WACC, croissance, actualisation). Exemple: 0.08 pour 8%."""
+"""Financial rate (WACC, growth, discount). Example: 0.08 for 8%."""
 
 Currency: TypeAlias = float
-"""Montant monétaire en devise de base. Exemple: 1_500_000.00 pour 1.5M."""
+"""Monetary amount in base currency. Example: 1_500_000.00 for 1.5M."""
 
 Percentage: TypeAlias = float
-"""Pourcentage normalisé entre 0.0 et 1.0. Exemple: 0.15 pour 15%."""
+"""Normalized percentage between 0.0 and 1.0. Example: 0.15 for 15%."""
 
 Multiple: TypeAlias = float
-"""Multiple de valorisation (P/E, EV/EBITDA). Exemple: 15.5 pour un P/E de 15.5x."""
+"""Valuation multiple (P/E, EV/EBITDA). Example: 15.5 for a 15.5x P/E ratio."""
 
 ShareCount: TypeAlias = int
-"""Nombre d'actions en circulation. Exemple: 1_000_000_000."""
+"""Number of shares outstanding. Example: 1_000_000_000."""
 
 Years: TypeAlias = int
-"""Durée en années. Exemple: 5 pour une projection sur 5 ans."""
+"""Duration in years for projection horizons. Example: 5."""
 
 Ratio: TypeAlias = float
-"""Ratio financier générique. Exemple: 0.35 pour un ratio dette/equity de 35%."""
+"""Generic financial ratio. Example: 0.35 for a 35% Debt-to-Equity ratio."""
 
+
+# ==============================================================================
+# 2. VALUATION & STRATEGY ENUMS
+# ==============================================================================
 
 class ValuationMode(str, Enum):
-    """Modes de valorisation disponibles.
+    """
+    Supported valuation methodologies.
 
-    Énumération des différentes méthodes de valorisation
-    implémentées dans le système.
+    Defines the specific analytical engine to be invoked by the orchestrator.
     """
 
-    # Approche Entité (Firm Value)
+    # Firm Value Approaches (Entity-Level)
     FCFF_STANDARD = "DCF - Free Cash Flow to Firm"
     FCFF_NORMALIZED = "DCF - Normalized Free Cash Flow"
     FCFF_GROWTH = "DCF - Revenue-Driven Growth"
 
-    # Approche Actionnaire (Equity Value)
+    # Equity Value Approaches (Shareholder-Level)
     FCFE = "DCF - Free Cash Flow to Equity"
     DDM = "Dividend Discount Model"
 
-    # Autres Modèles
+    # Hybrid and Fundamental Models
     RIM = "Residual Income Model"
     GRAHAM = "Graham Intrinsic Value"
 
     @property
     def supports_monte_carlo(self) -> bool:
-        """Indique si le mode supporte les simulations Monte Carlo.
+        """
+        Determines if the mode is compatible with stochastic Monte Carlo analysis.
 
         Returns
         -------
         bool
-            True si les simulations Monte Carlo sont disponibles.
+            True if probabilistic sensitivity can be applied. (Disabled for Graham).
         """
         return self != ValuationMode.GRAHAM
 
     @property
     def is_direct_equity(self) -> bool:
-        """Détermine si le modèle calcule directement la valeur actionnariale.
+        """
+        Indicates if the model calculates Equity Value directly.
 
         Returns
         -------
         bool
-            True si le modèle produit directement la valeur par action.
+            True if the output bypasses the Net Debt bridge and produces
+            intrinsic price per share directly.
         """
         return self in [
             ValuationMode.FCFE,
@@ -89,59 +98,46 @@ class ValuationMode(str, Enum):
 
 
 class InputSource(str, Enum):
-    """Source des paramètres d'entrée.
-
-    Définit l'origine des paramètres utilisés dans
-    le calcul de valorisation.
     """
+    Source of the calculation parameters.
 
-    AUTO = "AUTO"
-    MANUAL = "MANUAL"
-    SYSTEM = "SYSTEM"
+    Used to drive audit weighting and data lineage tracking.
+    """
+    AUTO = "AUTO"      # Automated acquisition via providers
+    MANUAL = "MANUAL"  # Expert overrides provided by the user
+    SYSTEM = "SYSTEM"  # Internal fallback or calculated constants
 
 
 class TerminalValueMethod(str, Enum):
-    """Méthode de calcul de la valeur terminale.
-
-    Approches disponibles pour estimer la valeur
-    résiduelle au-delà de la période de projection.
     """
-
+    Calculation logic for the residual value beyond the forecast horizon.
+    """
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
 
 
 class AuditSeverity(str, Enum):
-    """Niveau de sévérité des alertes d'audit.
-
-    Classification des problèmes détectés pendant
-    l'audit des valorisations.
     """
-
+    Classification levels for audit check findings.
+    """
     CRITICAL = "CRITICAL"
     WARNING = "WARNING"
     INFO = "INFO"
 
 
 class SOTPMethod(str, Enum):
-    """Méthodes de valorisation par segment (SOTP).
-
-    Approches disponibles pour valoriser chaque
-    segment d'activité dans l'analyse SOTP.
     """
-
+    Valuation techniques for segment-based analysis (Sum-of-the-Parts).
+    """
     DCF = "DCF"
     MULTIPLES = "MULTIPLES"
     ASSET_VALUE = "ASSET_VALUE"
 
 
 class AuditPillar(str, Enum):
-    """Piliers d'évaluation de l'audit.
-
-    Dimensions fondamentales évaluées lors de
-    l'audit d'une valorisation.
     """
-
+    Core dimensions evaluated during the valuation reliability audit.
+    """
     DATA_CONFIDENCE = "Data Confidence"
     ASSUMPTION_RISK = "Assumption Risk"
     MODEL_RISK = "Model Risk"

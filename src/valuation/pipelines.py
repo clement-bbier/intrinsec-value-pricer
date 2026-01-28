@@ -1,10 +1,13 @@
 """
-core/valuation/pipelines.py
-PIPELINE DE CALCUL UNIFIÉ (DRY ARCHITECTURE)
+src/valuation/pipelines.py
 
-Moteur universel pour les modèles de flux actualisés (FCFF, FCFE, DDM).
-Gère l'orchestration bifurquée Firm-Level (EV) vs Equity-Level (IV)
-en intégrant systématiquement l'ajustement de dilution SBC.
+UNIFIED CALCULATION PIPELINE (DRY ARCHITECTURE)
+==============================================
+Role: Universal engine for discounted flow models (FCFF, FCFE, DDM).
+Architecture: Firm-Level (EV) vs Equity-Level (IV) bifurcated orchestration.
+Standards: Systematic SBC dilution adjustment and Glass Box traceability.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -38,16 +41,16 @@ logger = logging.getLogger(__name__)
 
 class DCFCalculationPipeline:
     """
-    Moteur d'exécution universel pour les valorisations par flux.
+    Universal execution engine for flow-based valuations.
 
     Attributes
     ----------
     projector : FlowProjector
-        Moteur de projection des flux (Simple, Convergence, etc.).
+        The flow projection engine (Simple, Convergence, etc.).
     mode : ValuationMode
-        Mode de valorisation déterminant la branche logique (Entité vs Equity).
+        Valuation mode determining the logical branch (Entity vs Equity).
     glass_box_enabled : bool
-        Active ou désactive la génération de la trace mathématique détaillée.
+        Enables or disables detailed mathematical trace generation.
     """
 
     def __init__(self, projector: FlowProjector, mode: ValuationMode, glass_box_enabled: bool = True):
@@ -64,49 +67,49 @@ class DCFCalculationPipeline:
             wacc_override: Optional[float] = None
     ) -> ValuationResult:
         """
-        Exécute la chaîne complète de valorisation.
+        Executes the full valuation chain.
 
         Parameters
         ----------
         base_value : float
-            Valeur d'ancrage du flux (FCF, Dividende, Revenu).
+            Anchor flow value (FCF, Dividend, or Revenue).
         financials : CompanyFinancials
-            Données financières de l'entreprise.
+            Target company financial data.
         params : DCFParameters
-            Hypothèses de calcul (taux, croissance, dilution).
+            Calculation hypotheses (rates, growth, dilution).
         wacc_override : float, optional
-            Force l'usage d'un WACC spécifique si fourni.
+            Forces the use of a specific WACC if provided.
 
         Returns
         -------
         ValuationResult
-            Résultat riche (DCF ou Equity) incluant la trace Glass Box.
+            Enriched result (DCF or Equity) including the Glass Box trace.
         """
-        # 1. Détermination du taux d'actualisation (r)
+        # 1. Determine Discount Rate (r)
         is_equity_level = self.mode.is_direct_equity
         discount_rate, wacc_ctx = self._resolve_discount_rate(financials, params, is_equity_level, wacc_override)
 
-        # 2. Phase de Projection des flux futurs (FCF_PROJ)
+        # 2. Cash Flow Projection Phase (FCF_PROJ)
         proj_output = self.projector.project(base_value, financials, params)
         self._add_projection_step(proj_output)
         flows = proj_output.flows
 
-        # 3. Calcul de la Valeur Terminale (TV_GORDON / TV_MULTIPLE)
+        # 3. Terminal Value Calculation (TV_GORDON / TV_MULTIPLE)
         tv, _ = self._compute_terminal_value(flows, discount_rate, params)
 
-        # 4. Actualisation et Valeur Totale (NPV_CALC)
+        # 4. Discounting and NPV Logic (NPV_CALC)
         factors, sum_pv, pv_tv, final_value = self._compute_npv_logic(flows, tv, discount_rate, params)
 
-        # 5. Pont vers les fonds propres (EQUITY_BRIDGE / EQUITY_DIRECT)
+        # 5. Equity Bridge (EQUITY_BRIDGE / EQUITY_DIRECT)
         equity_val, bridge_shares = self._compute_bridge_by_level(final_value, financials, params, is_equity_level)
 
-        # 6. Calcul final par action avec ajustement Dilution SBC (VALUE_PER_SHARE)
+        # 6. Final IV per share with SBC Dilution Adjustment (VALUE_PER_SHARE)
         iv_share = self._compute_value_per_share(equity_val, bridge_shares, financials, params)
 
-        # 7. Collecte des métriques d'audit
+        # 7. Audit Metrics Collection
         audit_metrics = self._extract_audit_metrics(financials, pv_tv, final_value)
 
-        # 8. Dispatch du contrat de résultat final
+        # 8. Dispatch final result contract
         if is_equity_level:
             return EquityDCFValuationResult(
                 financials=financials, params=params, intrinsic_value_per_share=iv_share,
@@ -115,7 +118,7 @@ class DCFCalculationPipeline:
                 discounted_terminal_value=pv_tv, calculation_trace=self.calculation_trace
             )
 
-        # Résolution sécurisée des attributs du contexte WACC
+        # Securely resolve WACC context attributes
         cost_of_equity = getattr(wacc_ctx, 'cost_of_equity', discount_rate)
         cost_of_debt = getattr(wacc_ctx, 'cost_of_debt_after_tax', 0.0)
 
@@ -133,7 +136,7 @@ class DCFCalculationPipeline:
         )
 
     # ==========================================================================
-    # MÉTHODES DE CALCUL ATOMIQUES (SOLID)
+    # ATOMIC CALCULATION METHODS (SOLID Principles)
     # ==========================================================================
 
     def _resolve_discount_rate(
@@ -143,9 +146,7 @@ class DCFCalculationPipeline:
             is_equity: bool,
             override: Optional[float]
     ) -> Tuple[float, Any]:
-        """
-        Détermine le taux d'actualisation et enregistre les étapes de trace.
-        """
+        """Determines the discount rate and records trace steps."""
         if is_equity:
             rate = calculate_cost_of_equity(financials, params)
             r = params.rates
@@ -159,7 +160,6 @@ class DCFCalculationPipeline:
         sub = StrategySources.MANUAL_OVERRIDE.format(wacc=rate) if override else \
               f"{wacc_ctx.weight_equity:.1%} × {wacc_ctx.cost_of_equity:.1%} + {wacc_ctx.weight_debt:.1%} × {wacc_ctx.cost_of_debt_after_tax:.1%}"
 
-        # Étape 2 : Ajout de la source WACC
         self._add_step(
             "WACC_CALC", rate, sub,
             label=RegistryTexts.DCF_WACC_L,
@@ -183,7 +183,7 @@ class DCFCalculationPipeline:
             financials: CompanyFinancials,
             params: DCFParameters
     ) -> float:
-        """Calcule l'IV par action en intégrant l'ajustement de dilution SBC."""
+        """Calculates IV per share by integrating the SBC dilution adjustment."""
         if shares <= 0:
             raise CalculationError(CalculationErrors.INVALID_SHARES)
 
@@ -195,9 +195,9 @@ class DCFCalculationPipeline:
         if self.glass_box_enabled and dilution_factor > 1.0:
             sub = f"{base_iv:.2f} / (1 + {rate:.2%})^{years}"
             self._add_step(
-                "SBC_DILUTION_ADJUSTMENT", final_iv, sub, label="Ajustement Dilution (SBC)",
+                "SBC_DILUTION_ADJUSTMENT", final_iv, sub, label="Dilution Adjustment (SBC)",
                 theoretical_formula=StrategyFormulas.SBC_DILUTION,
-                interpretation=f"La rémunération en actions (SBC) de {rate:.1%} par an réduit la part des actionnaires actuels de {(1 - 1/dilution_factor):.1%} sur l'horizon."
+                interpretation=StrategyInterpretations.SBC_DILUTION_INTERP.format(pct=f"{(1 - 1/dilution_factor):.1%}")
             )
         else:
             sub = f"{format_smart_number(equity_val)} / {shares:,.0f}"
@@ -207,7 +207,7 @@ class DCFCalculationPipeline:
         return final_iv
 
     # ==========================================================================
-    # HELPERS DE TRACE ET MAPPING
+    # TRACE HELPERS AND MAPPING
     # ==========================================================================
 
     def _add_step(
@@ -221,7 +221,7 @@ class DCFCalculationPipeline:
             source: str = "",
             hypotheses: Optional[List[TraceHypothesis]] = None
     ) -> None:
-        """Enregistre une étape dans la trace Glass Box."""
+        """Records a step in the Glass Box calculation trace."""
         if not self.glass_box_enabled:
             return
 
@@ -238,13 +238,13 @@ class DCFCalculationPipeline:
         ))
 
     def _add_projection_step(self, output: ProjectionOutput) -> None:
-        """Trace spécifique pour la phase de projection des flux (FCF_PROJ)."""
+        """Specialized trace for the flow projection phase (FCF_PROJ)."""
         self._add_step("FCF_PROJ", sum(output.flows), output.numerical_substitution,
                        label=output.method_label, theoretical_formula=output.theoretical_formula,
                        interpretation=output.interpretation, source=StrategySources.YAHOO_TTM)
 
     def _compute_terminal_value(self, flows: List[float], discount_rate: float, params: DCFParameters) -> Tuple[float, str]:
-        """Gère la TV par Gordon Growth ou Exit Multiple."""
+        """Handles TV via Gordon Growth or Exit Multiple."""
         g = params.growth
         if g.terminal_method == TerminalValueMethod.GORDON_GROWTH:
             p_growth = g.perpetual_growth_rate or 0.0
@@ -263,13 +263,12 @@ class DCFCalculationPipeline:
         return tv, key
 
     def _compute_npv_logic(self, flows: List[float], tv: float, rate: float, params: DCFParameters) -> Tuple:
-        """Calcule la NPV des flux et de la TV (NPV_CALC)."""
+        """Calculates NPV of flows and Terminal Value (NPV_CALC)."""
         factors = calculate_discount_factors(rate, params.growth.projection_years)
         sum_pv, pv_tv = sum(f * d for f, d in zip(flows, factors)), (tv * factors[-1])
         final_value = sum_pv + pv_tv
         label = RegistryTexts.DCF_EV_L if not self.mode.is_direct_equity else "Total Equity Value"
 
-        # Étape 6 : Ajout de la source EV
         self._add_step(
             "NPV_CALC", final_value, f"{format_smart_number(sum_pv)} + {format_smart_number(pv_tv)}",
             label=label, theoretical_formula=StrategyFormulas.NPV,
@@ -285,20 +284,19 @@ class DCFCalculationPipeline:
             params: DCFParameters,
             is_equity: bool
     ) -> Tuple[float, float]:
-        """Bascule entre calcul EV-Bridge ou passage direct Equity."""
+        """Toggles between EV-Bridge calculation or direct Equity pass-through."""
         shares = params.growth.manual_shares_outstanding or financials.shares_outstanding
         if is_equity:
-            self._add_step("EQUITY_DIRECT", val, f"NPV Directe = {format_smart_number(val)}",
+            self._add_step("EQUITY_DIRECT", val, f"Direct NPV = {format_smart_number(val)}",
                            label=RegistryTexts.DCF_BRIDGE_L)
             return val, shares
 
         g = params.growth
         debt, cash = (g.manual_total_debt or financials.total_debt), (g.manual_cash or financials.cash_and_equivalents)
         min_int, pens = (g.manual_minority_interests or financials.minority_interests), (g.manual_pension_provisions or financials.pension_provisions)
-        equity_val = val - debt + cash - min_int - pens
+        equity_val = val - (debt or 0.0) + (cash or 0.0) - (min_int or 0.0) - (pens or 0.0)
         sub = f"{format_smart_number(val)} - {format_smart_number(debt)} + {format_smart_number(cash)}..."
 
-        # Étape 7 : Ajout de la source Equity Bridge
         self._add_step("EQUITY_BRIDGE", equity_val, sub, label=RegistryTexts.DCF_BRIDGE_L,
                        theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
                        interpretation=StrategyInterpretations.BRIDGE,
@@ -307,6 +305,7 @@ class DCFCalculationPipeline:
 
     @staticmethod
     def _extract_audit_metrics(financials: CompanyFinancials, pv_tv: float, ev: float) -> Dict[str, Optional[float]]:
+        """Extracts key ratios for Pillar 3 reliability assessment."""
         ebit = financials.ebit_ttm or 0.0
         interest = financials.interest_expense or 0.0
 

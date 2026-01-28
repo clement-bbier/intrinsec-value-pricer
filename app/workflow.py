@@ -1,9 +1,9 @@
 """
 app/workflow.py
-ORCHESTRATEUR LOGIQUE (DT-016 Resolution)
-=========================================
-Rôle : Pilotage du cycle de vie de l'analyse, orchestration multi-temporelle et scénarios.
-Architecture : Smart Merge segmenté, Isolation Point-in-Time et Validation Historique.
+
+LOGICAL ORCHESTRATOR — Valuation Lifecycle Management.
+Role: Pilots the analysis lifecycle, multi-temporal orchestration, and risk scenarios.
+Architecture: Segmented Smart Merge, Point-in-Time Isolation, and Historical Validation.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Any, List, Optional, Tuple
 import streamlit as st
 import numpy as np
 
-# Import de l'interface et i18n
+# Interface and i18n imports
 from src.interfaces import IResultRenderer, NullResultRenderer
 from src.i18n import WorkflowTexts, DiagnosticTexts
 from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
@@ -39,7 +39,7 @@ from infra.macro.yahoo_macro_provider import YahooMacroProvider
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# 1. POINT D'ENTRÉE PRINCIPAL
+# 1. MAIN ENTRY POINT
 # ==============================================================================
 
 def run_workflow(
@@ -47,24 +47,26 @@ def run_workflow(
     renderer: Optional[IResultRenderer] = None
 ) -> Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]:
     """
-    Exécute le workflow complet de valorisation.
-    DT-016 Resolution : Séparation calcul/affichage via injection de renderer.
+    Executes the complete valuation workflow.
+
+    Architecture: Decouples computation from rendering via renderer injection.
     """
+    # UI-facing status initialization
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
     _renderer = renderer or NullResultRenderer()
 
     try:
-        # --- ÉTAPE 1 : ACQUISITION & INFRASTRUCTURE ---
+        # --- STEP 1: INFRASTRUCTURE & DATA ACQUISITION ---
         status.write(WorkflowTexts.STATUS_DATA_ACQUISITION)
         provider = YahooFinanceProvider(YahooMacroProvider())
 
-        # Deep Fetch pour supporter l'analyse et le backtesting
+        # Deep Fetch for structural analysis and backtesting support
         financials, auto_params = provider.get_company_financials_and_parameters(
             request.ticker,
             request.projection_years
         )
 
-        # Triangulation sectorielle
+        # Sectoral triangulation
         status.write(WorkflowTexts.STATUS_PEER_DISCOVERY)
         multiples_data = provider.get_peer_multiples(
             ticker=request.ticker,
@@ -72,30 +74,30 @@ def run_workflow(
         )
         request.options["multiples_data"] = multiples_data
 
-        # --- ÉTAPE 2 : CONCILIATION (SMART MERGE) ---
+        # --- STEP 2: CONCILIATION (SMART MERGE) ---
         status.write(WorkflowTexts.STATUS_SMART_MERGE)
         final_params = map_request_to_params(request, auto_params)
 
-        # --- ÉTAPE 3 : ANALYSE DU PRÉSENT (BASE CASE) ---
+        # --- STEP 3: PRESENT ANALYSIS (BASE CASE) ---
         status.write(WorkflowTexts.STATUS_ENGINE_RUN.format(mode=request.mode.value))
         if final_params.monte_carlo.enable_monte_carlo:
             status.write(WorkflowTexts.STATUS_MC_RUN)
 
-        # Exécution du moteur (IV + Triangulation + Audit)
+        # Core engine execution (IV + Triangulation + Audit)
         result = run_valuation(request, financials, final_params)
 
-        # --- ÉTAPE 4 : ANALYSE DE SCÉNARIOS DÉTERMINISTES ---
+        # --- STEP 4: DETERMINISTIC SCENARIO ANALYSIS ---
         if final_params.scenarios.enabled:
             status.write(WorkflowTexts.STATUS_SCENARIOS_RUN)
             result.scenario_synthesis = compute_scenario_impact(
                 request, financials, final_params, result
             )
 
-        # --- ÉTAPE 5 : VALIDATION HISTORIQUE (BACKTESTING RÉEL) ---
+        # --- STEP 5: HISTORICAL VALIDATION (POINT-IN-TIME BACKTESTING) ---
         if request.options.get("enable_backtest", False):
             status.write(WorkflowTexts.STATUS_BACKTEST_RUN)
 
-            # Orchestration du backtest sur les données brutes
+            # Orchestrate backtest on raw fiscal data
             result.backtest_report = _orchestrate_backtesting(
                 request=request,
                 raw_data=provider.last_raw_data,
@@ -105,10 +107,10 @@ def run_workflow(
             )
             status.write(WorkflowTexts.STATUS_BACKTEST_COMPLETE)
 
-        # --- ÉTAPE 6 : FINALISATION ---
+        # --- STEP 6: FINALIZATION ---
         status.update(label=WorkflowTexts.STATUS_COMPLETE, state="complete", expanded=False)
 
-        # Log Monte Carlo (ST-4.2)
+        # Quantitative logging for stochastic performance
         if result.simulation_results:
             _log_monte_carlo_performance(request.ticker, result, final_params)
 
@@ -127,7 +129,7 @@ def run_workflow(
 
 
 def run_workflow_and_display(request: ValuationRequest) -> None:
-    """Facade de compatibilité Streamlit pour le workflow."""
+    """Streamlit-specific facade for workflow orchestration."""
     from app.adapters import StreamlitResultRenderer
 
     renderer = StreamlitResultRenderer()
@@ -138,7 +140,7 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
 
 
 # ==============================================================================
-# 2. LOGIQUE DU BACKTESTING (ISOLATION TEMPORELLE)
+# 2. BACKTESTING LOGIC (TEMPORAL ISOLATION)
 # ==============================================================================
 
 def _orchestrate_backtesting(
@@ -148,26 +150,30 @@ def _orchestrate_backtesting(
     price_history: Any,
     provider: YahooFinanceProvider
 ) -> BacktestResult:
-    """Simule la valorisation sur les trois dernières années avec isolation Point-in-Time."""
+    """
+    Simulates valuation over the last 3 fiscal years with Point-in-Time isolation.
+
+    Ensures that historical calculations only use data available at that specific time.
+    """
     points: List[HistoricalPoint] = []
     current_year = datetime.now().year
     years_to_test = [current_year - 1, current_year - 2, current_year - 3]
 
     for yr in years_to_test:
         try:
-            # 1. Congélation des données à l'année N
+            # 1. Freeze raw data at fiscal year N
             frozen_raw = BacktestEngine.freeze_data_at_fiscal_year(raw_data, yr)
             if not frozen_raw: continue
 
-            # 2. Mapping financier rétrograde
+            # 2. Retrograde financial mapping
             hist_financials = provider.map_raw_to_financials(frozen_raw)
 
-            # 3. Calcul IV (MC désactivé pour performance backtest)
+            # 3. IV Calculation (Monte Carlo disabled for backtest throughput)
             v_params = params.model_copy(deep=True)
             v_params.monte_carlo.enable_monte_carlo = False
             hist_res = run_valuation(request, hist_financials, v_params)
 
-            # 4. Récupération du prix de clôture réel
+            # 4. Fetch actual historical closing price
             market_price = BacktestEngine.get_historical_price_at(price_history, yr)
 
             if market_price > 0:
@@ -193,7 +199,7 @@ def _orchestrate_backtesting(
 
 
 # ==============================================================================
-# 3. ANALYSE DE SCÉNARIOS
+# 3. SCENARIO ANALYSIS
 # ==============================================================================
 
 def compute_scenario_impact(
@@ -202,13 +208,17 @@ def compute_scenario_impact(
     params: DCFParameters,
     base_result: ValuationResult
 ) -> ScenarioSynthesis:
-    """Calcule l'impact Bull/Base/Bear avec optimisation des ressources."""
+    """
+    Computes Bull/Base/Bear impacts with resource optimization.
+
+    Reuses base calculation if the 'Base' scenario variant is unchanged.
+    """
     sc = params.scenarios
     results = []
     variants = [(sc.bull, "Bull"), (sc.base, "Base"), (sc.bear, "Bear")]
 
     for variant, label in variants:
-        # Optimisation : réutilisation si Base est inchangé
+        # Optimization: Reuse base result if variant metrics are null
         if label == "Base" and variant.growth_rate is None and variant.target_fcf_margin is None:
             val = base_result.intrinsic_value_per_share
             g_used, m_used = params.growth.fcf_growth_rate, params.growth.target_fcf_margin
@@ -217,7 +227,7 @@ def compute_scenario_impact(
             if variant.growth_rate is not None: v_params.growth.fcf_growth_rate = variant.growth_rate
             if variant.target_fcf_margin is not None: v_params.growth.target_fcf_margin = variant.target_fcf_margin
 
-            # Allègement du moteur pour les variantes
+            # Engine lightweighting for variants
             v_params.monte_carlo.enable_monte_carlo = False
             v_res = run_valuation(request, financials, v_params)
             val, g_used, m_used = v_res.intrinsic_value_per_share, v_params.growth.fcf_growth_rate, v_params.growth.target_fcf_margin
@@ -227,6 +237,7 @@ def compute_scenario_impact(
             growth_used=g_used or 0.0, margin_used=m_used or 0.0
         ))
 
+    # Calculate mathematical expectation (Expected Value)
     expected_val = sum(r.intrinsic_value * r.probability for r in results)
     return ScenarioSynthesis(
         variants=results, expected_value=expected_val,
@@ -236,33 +247,35 @@ def compute_scenario_impact(
 
 
 # ==============================================================================
-# 4. HELPERS ET DIAGNOSTICS
+# 4. HELPERS & DIAGNOSTICS
 # ==============================================================================
 
 def map_request_to_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """Fusionne les données automatiques avec les surcharges manuelles (Expert)."""
+    """
+    Merges automated data with manual overrides (Expert mode).
+    """
     if request.input_source == InputSource.MANUAL:
         final_params = auto_params.model_copy(deep=True)
-        # Surcharges taux et croissance
+        # Rates and growth overrides
         for section in ['rates', 'growth']:
             manual_data = getattr(request.manual_params, section).model_dump(exclude_unset=True)
             for k, v in manual_data.items():
                 if v is not None: setattr(getattr(final_params, section), k, v)
 
-        # Injection des configurations avancées
+        # Advanced configuration injection
         final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
         final_params.scenarios = request.manual_params.scenarios.model_copy()
         final_params.sotp = request.manual_params.sotp.model_copy()
         return final_params
 
-    # Mode Standard : MC piloté par les options de requête
+    # Standard mode: Monte Carlo controlled by UI options
     auto_params.monte_carlo.enable_monte_carlo = request.options.get("enable_mc", False)
     auto_params.monte_carlo.num_simulations = request.options.get("mc_sims", 5000)
     return auto_params
 
 
 def _log_monte_carlo_performance(ticker: str, result: ValuationResult, params: DCFParameters) -> None:
-    """Enregistre les métriques stochastiques dans les logs quantitatifs."""
+    """Logs stochastic metrics to quantitative logs."""
     vals = result.simulation_results
     QuantLogger.log_monte_carlo(
         ticker=ticker,
@@ -275,7 +288,7 @@ def _log_monte_carlo_performance(ticker: str, result: ValuationResult, params: D
 
 
 def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
-    """Affiche une alerte UI stylisée pour les erreurs métier."""
+    """Displays a stylized UI alert for business errors."""
     level_fn = st.error if diag.severity in [SeverityLevel.CRITICAL, SeverityLevel.ERROR] else st.warning
     level_fn(f"**{diag.code}** : {diag.message}")
     with st.expander(WorkflowTexts.DIAG_EXPANDER_TITLE):
@@ -284,6 +297,7 @@ def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
 
 
 def _create_crash_diagnostic(error: Exception) -> DiagnosticEvent:
+    """Generates a critical system crash diagnostic event."""
     return DiagnosticEvent(
         code="SYSTEM_CRASH", severity=SeverityLevel.CRITICAL, domain=DiagnosticDomain.SYSTEM,
         message=DiagnosticTexts.SYSTEM_CRASH_MSG,

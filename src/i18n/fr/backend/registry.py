@@ -8,6 +8,13 @@ class RegistryTexts:
     """Labels et descriptions pedagogiques du registre Glass Box."""
 
     # DCF (Approche Entite - FCFF)
+    AUDIT_TECH_DETAIL_D = "Détail technique du calcul spécifique au modèle."
+    VALUE_PER_SHARE_L = "Valeur par action"
+    DATE_LABEL = "Date"
+    REAL_PRICE_L = "Prix réel"
+    HISTORICAL_IV_L = "IV historique"
+    DCF_EV_LA = "Valeur d'entreprise"
+    DCF_IV_LA = "Valeur intrinsèque"
     FCFF_STANDARD_L = "DCF Standard (FCFF)"
     FCFF_GROWTH_L = "DCF Growth (Revenue-Driven)"
     FCFF_NORM_L = "DCF Fondamental (Normalisé)"

@@ -1,9 +1,13 @@
 """
-Projection des flux de trésorerie avec trajectoires de croissance.
+src/computation/flow_projector.py
 
-Ce module gère les projections de flux selon différentes stratégies :
-croissance simple, convergence de marges, avec support complet
-de traçabilité Glass Box.
+CASH FLOW PROJECTION ENGINE — GROWTH TRAJECTORIES
+=================================================
+Role: Manages multi-period flow projections using varied strategies.
+Supported Modes: Simple Growth, Margin Convergence, and Fade-down logic.
+Architecture: Strategy Pattern (SOLID) with Glass Box traceability support.
+
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, TYPE_CHECKING
 from pydantic import BaseModel
 
-# Import depuis core.i18n
+# i18n Imports for UI-facing elements
 from src.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts
 from src.utilities.formatting import format_smart_number
 from src.config.constants import GrowthCalculationDefaults
@@ -23,11 +27,26 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# 1. MODÈLES DE SORTIE (CONTRACTS)
+# 1. OUTPUT MODELS (CONTRACTS)
 # ==============================================================================
 
 class ProjectionOutput(BaseModel):
-    """Contrat de données pour les résultats de projection (Glass Box Ready)."""
+    """
+    Data contract for projection results, ready for Glass Box rendering.
+
+    Attributes
+    ----------
+    flows : List[float]
+        The series of projected cash flows.
+    method_label : str
+        Localized name of the projection method.
+    theoretical_formula : str
+        LaTeX representation of the applied formula.
+    numerical_substitution : str
+        Numerical application for transparency (Year-n substitution).
+    interpretation : str
+        Analytical note describing the projection logic.
+    """
     flows: List[float]
     method_label: str = ""
     theoretical_formula: str = ""
@@ -35,11 +54,14 @@ class ProjectionOutput(BaseModel):
     interpretation: str = ""
 
 # ==============================================================================
-# 2. INTERFACE ABSTRAITE (SOLID)
+# 2. ABSTRACT INTERFACE (SOLID)
 # ==============================================================================
 
 class FlowProjector(ABC):
-    """Interface pour les stratégies de projection de flux (Pattern Strategy)."""
+    """
+    Interface for flow projection strategies (Strategy Pattern).
+    Ensures decoupled logic between different growth models.
+    """
 
     @abstractmethod
     def project(
@@ -48,18 +70,29 @@ class FlowProjector(ABC):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> ProjectionOutput:
-        """Exécute la projection et retourne les flux ainsi que la trace de calcul."""
+        """
+        Executes the projection and returns the flows with calculation trace.
+
+        Parameters
+        ----------
+        base_value : float
+            The anchor value (FCF0 or Revenue0).
+        financials : CompanyFinancials
+            Current company financial data.
+        params : DCFParameters
+            User-defined or automated projection parameters.
+        """
         pass
 
 # ==============================================================================
-# 3. IMPLÉMENTATIONS CONCRÈTES
+# 3. CONCRETE IMPLEMENTATIONS
 # ==============================================================================
 
 class SimpleFlowProjector(FlowProjector):
     """
-    Projection standard FCF x (1+g)^t.
-    Gère le fade-down linéaire vers gn (croissance terminale).
-    Adapté aux modèles Standard et Fundamental.
+    Standard projection: $FCF \times (1+g)^t$.
+    Handles linear fade-down towards the perpetual growth rate (gn).
+    Recommended for 'Standard' and 'Fundamental' models.
     """
 
     def project(
@@ -68,9 +101,12 @@ class SimpleFlowProjector(FlowProjector):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> ProjectionOutput:
+        """
+        Projects flows using the atomic fade-down logic.
+        """
         g = params.growth
 
-        # Utilisation de la logique atomique de project_flows
+        # Atomic logic execution for growth trajectories
         flows = project_flows(
             base_flow=base_value,
             years=g.projection_years,
@@ -79,12 +115,15 @@ class SimpleFlowProjector(FlowProjector):
             high_growth_years=g.high_growth_years
         )
 
-        # Génération de la trace Glass Box
-        # Utilisation des clés i18n centralisées
+        # Glass Box Trace Generation
         formula = StrategyFormulas.FCF_PROJECTION
         base_formatted = format_smart_number(base_value)
         growth_rate = g.fcf_growth_rate or 0.0
+
+        # Substitution template for UI transparency
         sub = f"{base_formatted} × (1 + {growth_rate:.1%})^{g.projection_years}"
+
+        # Localized analytical interpretation
         interp = StrategyInterpretations.PROJ.format(
             years=g.projection_years,
             g=g.fcf_growth_rate or 0
@@ -101,8 +140,8 @@ class SimpleFlowProjector(FlowProjector):
 
 class MarginConvergenceProjector(FlowProjector):
     """
-    Projection Revenue-Driven avec convergence linéaire des marges.
-    Utilisé pour les entreprises à forte croissance (Tech / Growth).
+    Revenue-Driven projection with linear margin convergence.
+    Designed for high-growth or volatile margin profiles (Tech / Growth).
     """
 
     def project(
@@ -111,26 +150,30 @@ class MarginConvergenceProjector(FlowProjector):
         financials: CompanyFinancials,
         params: DCFParameters
     ) -> ProjectionOutput:
+        """
+        Projects FCF by forecasting Revenue and converging current margins to a target profile.
+        """
         g = params.growth
         rev_base = base_value
 
-        # Calcul des marges courante et cible
+        # Determine current and target margins for the convergence bridge
         curr_margin = 0.0
         if financials.fcf_last and rev_base > 0:
             curr_margin = financials.fcf_last / rev_base
 
-        # Marge cible (segment growth)
+        # Target margin resolution (Expert override or sector default)
         target_margin = g.target_fcf_margin if g.target_fcf_margin is not None else GrowthCalculationDefaults.DEFAULT_FCF_MARGIN_TARGET
 
-        # Projection du Chiffre d'Affaires et des FCF (Convergence)
+        # Revenue and FCF projection loop (Linear Bridge)
         projected_fcfs = []
         curr_rev = rev_base
         for y in range(1, g.projection_years + 1):
             curr_rev *= (1.0 + (g.fcf_growth_rate or 0.0))
+            # Linear interpolation of margins over the projection horizon
             applied_margin = curr_margin + (target_margin - curr_margin) * (y / g.projection_years)
             projected_fcfs.append(curr_rev * applied_margin)
 
-        # Trace Glass Box spécifique
+        # Specific Glass Box trace for margin logic
         formula = r"FCF_t = Rev_t \times [Margin_0 + (Margin_n - Margin_0) \times \frac{t}{n}]"
         sub = KPITexts.SUB_MARGIN_CONV.format(
             curr=curr_margin,
@@ -148,7 +191,7 @@ class MarginConvergenceProjector(FlowProjector):
         )
 
 # ==============================================================================
-# 4. LOGIQUE DE CALCUL ATOMIQUE (RÉSILIENTE)
+# 4. ATOMIC CALCULATION LOGIC (RESILIENT)
 # ==============================================================================
 
 def project_flows(
@@ -159,8 +202,21 @@ def project_flows(
         high_growth_years: Optional[int] = 0
 ) -> List[float]:
     """
-    Logiciel de base pour projeter des flux financiers.
-    Gère le Plateau (High Growth) puis le Fade-Down linéaire.
+    Atomic engine for financial flow projection.
+    Supports a 'High Growth' plateau followed by a linear 'Fade-Down' towards g_perpetual.
+
+    Parameters
+    ----------
+    base_flow : float
+        Starting flow (Year 0).
+    years : int
+        Total projection horizon.
+    g_start : float
+        Initial growth rate (Phase 1).
+    g_term : float
+        Target terminal growth rate (Phase 2).
+    high_growth_years : int, optional
+        Duration of the growth plateau before fade-down begins.
     """
     if years <= 0:
         return []
@@ -168,6 +224,7 @@ def project_flows(
     flows: List[float] = []
     current_flow = base_flow
 
+    # Safety clamping for plateau duration
     safe_high_growth = high_growth_years if high_growth_years is not None else 0
     n_high = max(0, min(safe_high_growth, years))
 
@@ -178,6 +235,7 @@ def project_flows(
         if t <= n_high:
             current_g = gs
         else:
+            # Linear transition (Fade-down) from start growth to terminal growth
             years_remaining = years - n_high
             if years_remaining > 0:
                 step_in_fade = t - n_high

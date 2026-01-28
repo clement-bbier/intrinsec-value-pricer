@@ -1,9 +1,13 @@
 """
-Stratégie Dividend Discount Model (DDM).
+src/valuation/strategies/ddm.py
 
-Référence Académique : Gordon & Shapiro
-Domaine Économique : Entreprises distributives matures et utilities
-Invariants du Modèle : Valorisation par valeur actuelle des dividendes futurs
+DIVIDEND DISCOUNT MODEL (DDM) STRATEGY
+======================================
+Academic Reference: Gordon & Shapiro.
+Economic Domain: Mature, dividend-paying firms (Utilities, Financials).
+Logic: Intrinsic value based on the present value of future dividends.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector
 
-# Import centralisé i18n
+# Centralized i18n imports
 from src.i18n import (
     RegistryTexts,
     StrategyInterpretations,
@@ -37,10 +41,10 @@ logger = logging.getLogger(__name__)
 
 class DividendDiscountStrategy(ValuationStrategy):
     """
-    Stratégie DDM (Dividend Discount Model).
+    DDM Strategy (Gordon & Shapiro).
 
-    Estime la valeur intrinsèque comme la valeur actuelle des dividendes futurs.
-    Standard rigoureux pour les banques, assurances et utilities matures.
+    Estimates intrinsic value as the sum of discounted future dividends
+    using the Cost of Equity ($K_e$) as the discount rate.
     """
 
     academic_reference = "Gordon / Shapiro"
@@ -52,12 +56,12 @@ class DividendDiscountStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> EquityDCFValuationResult:
         """
-        Exécute la valorisation DDM via le Pipeline Unifié avec typage sécurisé.
+        Executes DDM valuation via the Unified Pipeline with type-safe downcasting.
         """
-        # 1. DÉTERMINATION DU DIVIDENDE DE DÉPART (D_0)
+        # 1. RESOLVE DIVIDEND BASE (D_0)
         d0_per_share, source_div = self._resolve_dividend_base(financials, params)
 
-        # Sécurité financière : Dividendes négatifs ou nuls en mode Auto bloqués
+        # Safety Check: Block negative or null dividends in Auto mode
         if params.growth.manual_dividend_base is None and d0_per_share <= 0:
             raise CalculationError(
                 CalculationErrors.NEGATIVE_FLUX_AUTO.format(
@@ -66,7 +70,7 @@ class DividendDiscountStrategy(ValuationStrategy):
                 )
             )
 
-        # Conversion en masse totale pour assurer la cohérence du Pipeline (ST-7)
+        # Convert to total mass for Pipeline consistency ($Mass = D_0 \times Shares$)
         total_dividend_mass = d0_per_share * financials.shares_outstanding
 
         self.add_step(
@@ -77,13 +81,13 @@ class DividendDiscountStrategy(ValuationStrategy):
             numerical_substitution=KPITexts.SUB_DDM_BASE.format(
                 d0=d0_per_share,
                 shares=financials.shares_outstanding,
-                total=total_dividend_mass
+                val=total_dividend_mass
             ),
             interpretation=StrategyInterpretations.DDM_LOGIC,
             source=source_div
         )
 
-        # 2. CONFIGURATION ET EXÉCUTION DU PIPELINE (MODE DIRECT EQUITY)
+        # 2. PIPELINE CONFIGURATION (DIRECT EQUITY MODE)
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
             mode=ValuationMode.DDM,
@@ -96,7 +100,7 @@ class DividendDiscountStrategy(ValuationStrategy):
             params=params
         )
 
-        # --- RÉSOLUTION DE L'ERREUR DE TYPAGE (DOWNCASTING) ---
+        # Type Safety: Ensure the pipeline returned an Equity-specific result
         if not isinstance(raw_result, EquityDCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -107,7 +111,7 @@ class DividendDiscountStrategy(ValuationStrategy):
 
         result: EquityDCFValuationResult = raw_result
 
-        # 3. FINALISATION ET AUDIT
+        # 3. FINALIZATION AND AUDIT
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
@@ -120,17 +124,17 @@ class DividendDiscountStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> Tuple[float, str]:
         """
-        Détermine le dividende par action de référence (D0).
+        Resolves the reference dividend per share ($D_0$).
         """
         g = params.growth
 
-        # A. Surcharge Expert
+        # A. Expert Override
         if g.manual_dividend_base is not None:
             return g.manual_dividend_base, StrategySources.MANUAL_OVERRIDE
 
-        # B. Donnée extraite de Yahoo (TTM)
+        # B. TTM Market Data
         if financials.dividend_share is not None and financials.dividend_share > 0:
             return financials.dividend_share, StrategySources.YAHOO_TTM_SIMPLE
 
-        # C. Fallback i18n
+        # C. Default Fallback
         return 0.0, StrategySources.CALCULATED

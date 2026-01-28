@@ -1,9 +1,11 @@
 """
-Calculs mathématiques financiers atomiques.
+src/computation/financial_math.py
 
-Ce module implémente les formules financières fondamentales utilisées
-dans les valorisations : WACC, coûts du capital, valeurs terminales,
-actualisation et ajustements de dilution.
+ATOMIC FINANCIAL MATHEMATICAL CALCULATIONS
+===========================================
+Role: Core implementation of fundamental financial formulas used in valuations.
+Scope: WACC, Cost of Capital, Terminal Values, Discounting, and Dilution Adjustments.
+Standards: McKinsey/Damodaran institutional frameworks.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ import logging
 from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
 
-# DT-001/002: Import depuis core.i18n
+# DT-001/002: Internal i18n imports for UI-facing error messages
 from src.i18n import CalculationErrors, StrategySources
 from src.exceptions import CalculationError
 from src.models import CompanyFinancials, DCFParameters
@@ -21,7 +23,7 @@ from src.config.constants import ValuationEngineDefaults, TechnicalDefaults, Mac
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# TABLES DE RÉFÉRENCE (DAMODARAN SYNTHETIC RATINGS)
+# REFERENCE TABLES (DAMODARAN SYNTHETIC RATINGS)
 # ==============================================================================
 
 SPREADS_LARGE_CAP = ValuationEngineDefaults.SPREADS_LARGE_CAP
@@ -29,6 +31,30 @@ SPREADS_SMALL_MID_CAP = ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
 
 @dataclass
 class WACCBreakdown:
+    r"""
+    Detailed decomposition of the Weighted Average Cost of Capital.
+
+    Attributes
+    ----------
+    cost_of_equity : float
+        Calculated Ke (Cost of Equity).
+    cost_of_debt_pre_tax : float
+        Gross cost of debt (Kd).
+    cost_of_debt_after_tax : float
+        Net cost of debt after tax shield: $K_d \times (1 - T)$.
+    weight_equity : float
+        Proportion of Equity in the capital structure ($w_e$).
+    weight_debt : float
+        Proportion of Debt in the capital structure ($w_d$).
+    wacc : float
+        Final Weighted Average Cost of Capital.
+    method : str
+        Source or method description for audit traceability.
+    beta_used : float, default 1.0
+        The specific Beta coefficient applied to the Ke calculation.
+    beta_adjusted : bool, default False
+        Indicates if Hamada re-levering was applied to the Beta.
+    """
     cost_of_equity: float
     cost_of_debt_pre_tax: float
     cost_of_debt_after_tax: float
@@ -36,138 +62,163 @@ class WACCBreakdown:
     weight_debt: float
     wacc: float
     method: str
-    beta_used: float = 1.0  # Bêta utilisé pour le calcul du Ke
-    beta_adjusted: bool = False  # Indique si le bêta a été réendetté
+    beta_used: float = 1.0
+    beta_adjusted: bool = False
 
 # ==============================================================================
 # 1. TIME VALUE OF MONEY & TERMINAL VALUES
 # ==============================================================================
 
 def calculate_discount_factors(rate: float, years: int) -> List[float]:
-    """Génère les facteurs d'actualisation $1/(1+r)^t$."""
+    r"""
+    Generates discount factors for a specific horizon.
+
+    $$DF = \frac{1}{(1 + r)^t}$$
+
+    Parameters
+    ----------
+    rate : float
+        The discount rate (r).
+    years : int
+        The number of years (n) to project.
+
+    Returns
+    -------
+    List[float]
+        A list of discount factors from year 1 to n.
+
+    Raises
+    ------
+    CalculationError
+        If the discount rate is $\leq -100\%$.
+    """
     if rate <= -1.0:
         raise CalculationError(CalculationErrors.INVALID_DISCOUNT_RATE.format(rate=rate))
     return [1.0 / ((1.0 + rate) ** t) for t in range(1, years + 1)]
 
 def calculate_npv(flows: List[float], rate: float) -> float:
-    r"""Valeur Actuelle Nette (NPV) d'une série de flux.
+    r"""
+    Calculates the Net Present Value (NPV) of a series of cash flows.
 
-    Formule : $NPV = \sum_{t=1}^{n} \frac{CF_t}{(1 + r)^t}$
+    $$NPV = \sum_{t=1}^{n} \frac{CF_t}{(1 + r)^t}$$
 
     Parameters
     ----------
     flows : List[float]
-        Flux de trésorerie à actualiser (CF₁, CF₂, ..., CFₙ).
+        Projected cash flows (CF1, CF2, ..., CFn).
     rate : float
-        Taux d'actualisation r.
+        The discount rate (r).
 
     Returns
     -------
     float
-        Valeur actuelle nette des flux.
+        The sum of discounted cash flows.
     """
     factors = calculate_discount_factors(rate, len(flows))
     return sum(f * d for f, d in zip(flows, factors))
 
 def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
-    """Modèle de croissance perpétuelle (Gordon Growth).
+    r"""
+    Estimates Terminal Value using the Gordon Growth Model (Perpetuity).
 
-    Formule : $TV = \frac{CF_n \times (1 + g)}{r - g}$
-
-    Où :
-    - $CF_n$ : dernier flux de trésorerie projeté
-    - $g$ : taux de croissance perpétuelle
-    - $r$ : taux d'actualisation
+    $$TV = \frac{CF_n \times (1 + g)}{r - g}$$
 
     Parameters
     ----------
     final_flow : float
-        Dernier flux de trésorerie projeté.
+        The last projected cash flow ($CF_n$).
     rate : float
-        Taux d'actualisation.
+        The discount rate (r), usually WACC or Ke.
     g_perp : float
-        Taux de croissance perpétuelle.
+        The perpetual growth rate (g).
 
     Returns
     -------
     float
-        Valeur terminale actualisée.
+        The estimated terminal value at year n.
+
+    Raises
+    ------
+    CalculationError
+        If the rate is $\leq$ growth rate, preventing model convergence.
     """
     if rate <= g_perp:
         raise CalculationError(CalculationErrors.CONVERGENCE_IMPOSSIBLE.format(rate=rate, g=g_perp))
     return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
 
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
-    """Modèle de sortie par multiple (EBITDA ou Revenus).
+    r"""
+    Estimates Terminal Value based on an exit multiple approach.
 
-    Formule : $TV = Metric_n \times Multiple$
-
-    Où :
-    - $Metric_n$ : dernière valeur de la métrique (EBITDA, revenus, etc.)
-    - $Multiple$ : multiple de sortie appliqué
+    $$TV = Metric_n \times Multiple$$
 
     Parameters
     ----------
     final_metric : float
-        Dernière valeur de la métrique.
+        The terminal value of the metric (e.g., EBITDA or Revenue).
     multiple : float
-        Multiple de valorisation appliqué.
+        The valuation multiple to apply.
 
     Returns
     -------
     float
-        Valeur terminale basée sur le multiple.
+        The estimated terminal value.
+
+    Raises
+    ------
+    CalculationError
+        If the multiple is negative.
     """
     if multiple < 0:
         raise CalculationError(CalculationErrors.NEGATIVE_EXIT_MULTIPLE)
     return final_metric * multiple
 
 def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> float:
-    """Valeur terminale Equity : Applique un multiple P/E au résultat net terminal.
+    r"""
+    Estimates Equity Terminal Value using a target P/E ratio.
 
-    Formule : $TV = NI_n \times P/E$
-
-    Où :
-    - $NI_n$ : dernier résultat net projeté
-    - $P/E$ : ratio cours/bénéfice appliqué
+    $$TV = NI_n \times P/E$$
 
     Parameters
     ----------
     final_net_income : float
-        Dernier résultat net projeté.
+        The projected net income for the final year.
     pe_multiple : float
-        Multiple P/E appliqué.
+        The Price-to-Earnings multiple applied.
 
     Returns
     -------
     float
-        Valeur terminale basée sur le ratio P/E.
+        The estimated terminal value for equity.
+
+    Raises
+    ------
+    CalculationError
+        If the P/E ratio is not strictly positive.
     """
     if pe_multiple <= 0:
         raise CalculationError(CalculationErrors.NEGATIVE_PE_RATIO)
     return final_net_income * pe_multiple
 
 # ==============================================================================
-# 2. AJUSTEMENTS DE STRUCTURE & DILUTION
+# 2. STRUCTURE ADJUSTMENTS & DILUTION
 # ==============================================================================
 
 def calculate_historical_share_growth(shares_series: List[float]) -> float:
-    r"""Calcule le taux de croissance annuel moyen (CAGR) du nombre d'actions.
+    r"""
+    Calculates the historical CAGR of shares outstanding to estimate dilution.
 
-    Formule : $CAGR = \left( \frac{Shares_{final}}{Shares_{initial}} \right)^{\frac{1}{n}} - 1$
-
-    Cette métrique est cruciale en mode 'Auto' pour estimer la dilution future
-    basée sur le comportement historique de l'entreprise (Stock-Based Compensation).
+    $$CAGR = \left( \frac{Shares_{final}}{Shares_{initial}} \right)^{\frac{1}{n}} - 1$$
 
     Parameters
     ----------
     shares_series : List[float]
-        Série chronologique du nombre d'actions (de la plus ancienne à la plus récente).
+        Historical share counts (ordered from oldest to newest).
 
     Returns
     -------
     float
-        Taux de croissance annuel moyen plafonné à 10% par mesure de prudence.
+        The average annual share growth rate, capped at 10% for prudence.
     """
     if len(shares_series) < 2:
         return 0.0
@@ -179,35 +230,29 @@ def calculate_historical_share_growth(shares_series: List[float]) -> float:
         return 0.0
 
     n_periods = len(shares_series) - 1
-
-    # Formule du CAGR : (End / Start)^(1/n) - 1
     cagr = (end_val / start_val) ** (1.0 / n_periods) - 1.0
 
-    # Sanity Clamping : On ignore les croissances négatives (rachats d'actions)
-    # pour la dilution et on plafonne à 10% pour éviter les anomalies de données.
+    # Prudence logic: Ignore buybacks (negative growth) for dilution risk assessment.
     return max(0.0, min(TechnicalDefaults.MAX_DILUTION_CLAMPING, cagr))
 
 
 def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float:
-    """Calcule le facteur de dilution cumulé (effet composé) sur l'horizon.
+    r"""
+    Calculates the cumulative dilution factor over the projection horizon.
 
-    Formule : $Factor = (1 + d)^t$
-
-    Où :
-    - $d$ : taux de dilution annuel
-    - $t$ : nombre d'années
+    $$Factor = (1 + d)^t$$
 
     Parameters
     ----------
     annual_rate : float, optional
-        Taux de dilution annuel moyen (ex: 0.02 pour 2%).
+        The expected annual dilution rate (e.g., 0.02 for 2%).
     years : int
-        Nombre d'années de projection.
+        The number of projection years.
 
     Returns
     -------
     float
-        Le multiplicateur de shares (ex: 1.104 pour 2% sur 5 ans).
+        The cumulative multiplier (e.g., 1.104 for 2% over 5 years).
     """
     if annual_rate is None or annual_rate <= 0:
         return 1.0
@@ -215,80 +260,139 @@ def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float
 
 
 def compute_diluted_shares(current_shares: float, annual_rate: Optional[float], years: int) -> float:
-    """
-    Calcule le nombre d'actions projeté après n années de dilution.
+    r"""
+    Computes the projected total share count after n years of dilution.
 
     Parameters
     ----------
     current_shares : float
-        Nombre d'actions actuel en circulation.
+        The current number of shares outstanding.
     annual_rate : float, optional
-        Taux de dilution annuel moyen.
+        The annual expected dilution rate.
     years : int
-        Horizon de projection.
+        The projection horizon.
 
     Returns
     -------
     float
-        Nombre d'actions total à l'issue de la période.
+        The total projected shares.
     """
     factor = calculate_dilution_factor(annual_rate, years)
     return current_shares * factor
 
 
-def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
-    """Applique le facteur de dilution au prix par action final.
+def apply_dilution_adjustment(price : float, dilution_factor: float) -> float:
+    r"""
+    Adjusts the final intrinsic price per share for expected dilution.
 
-    Formule : $Price_{diluted} = \frac{Price_{initial}}{Factor}$
-
-    Où :
-    - $Price_{initial}$ : valeur intrinsèque non diluée
-    - $Factor$ : facteur de dilution cumulé
+    $$Price_{diluted} = \frac{Price_{initial}}{Factor}$$
 
     Parameters
     ----------
     price : float
-        Prix intrinsèque initial (non dilué).
+        The initial non-diluted intrinsic value per share.
     dilution_factor : float
-        Facteur cumulé calculé via calculate_dilution_factor.
+        The cumulative factor obtained via calculate_dilution_factor.
 
     Returns
     -------
     float
-        Prix par action ajusté pour la dilution.
+        The dilution-adjusted price per share.
     """
     if dilution_factor <= 1.0:
         return price
     return price / dilution_factor
 
 # ==============================================================================
-# 3. COÛT DU CAPITAL (WACC / Ke / SYNTETHIC DEBT)
+# 3. COST OF CAPITAL (WACC / Ke / SYNTHETIC DEBT)
 # ==============================================================================
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
-    """Modèle CAPM standard : $k_e = R_f + \beta \times MRP$."""
+    r"""
+    Standard Capital Asset Pricing Model (CAPM).
+
+    $$k_e = R_f + \beta \times MRP$$
+
+    Parameters
+    ----------
+    rf : float
+        Risk-free rate.
+    beta : float
+        Systemic risk coefficient.
+    mrp : float
+        Market Risk Premium (Equity Risk Premium).
+
+    Returns
+    -------
+    float
+        The calculated cost of equity.
+    """
     return rf + (beta * mrp)
 
 def unlever_beta(beta_levered: float, tax_rate: float, debt_equity_ratio: float) -> float:
-    """
-    Désendettement du bêta selon la formule de Hamada.
-    βU = βL / [1 + (1 - T) × (D/E)]
+    r"""
+    Unlevers a beta coefficient using the Hamada formula.
+
+    $$\beta_U = \frac{\beta_L}{1 + (1 - T) \times \frac{D}{E}}$$
+
+    Parameters
+    ----------
+    beta_levered : float
+        The observed market beta.
+    tax_rate : float
+        Effective corporate tax rate.
+    debt_equity_ratio : float
+        The current Debt-to-Equity ratio.
+
+    Returns
+    -------
+    float
+        The unlevered (asset) beta.
     """
     if debt_equity_ratio <= 0:
-        return beta_levered  # Si pas d'endettement, bêta inchangé
+        return beta_levered
     return beta_levered / (1.0 + (1.0 - tax_rate) * debt_equity_ratio)
 
 def relever_beta(beta_unlevered: float, tax_rate: float, target_debt_equity_ratio: float) -> float:
-    """
-    Réendettement du bêta selon la formule de Hamada.
-    βL = βU × [1 + (1 - T) × (D/E)]
+    r"""
+    Relevers a beta coefficient to a target capital structure.
+
+    $$\beta_L = \beta_U \times [1 + (1 - T) \times \frac{D}{E}]$$
+
+    Parameters
+    ----------
+    beta_unlevered : float
+        The unlevered asset beta.
+    tax_rate : float
+        Target effective corporate tax rate.
+    target_debt_equity_ratio : float
+        The target Debt-to-Equity ratio.
+
+    Returns
+    -------
+    float
+        The levered beta reflecting the target structure.
     """
     if target_debt_equity_ratio <= 0:
-        return beta_unlevered  # Si pas d'endettement cible, bêta inchangé
+        return beta_unlevered
     return beta_unlevered * (1.0 + (1.0 - tax_rate) * target_debt_equity_ratio)
 
 def calculate_cost_of_equity(financials: CompanyFinancials, params: DCFParameters) -> float:
-    """Isole le calcul du Ke pour les modèles Direct Equity."""
+    r"""
+    Calculates Ke for Direct Equity approaches, prioritizing manual overrides.
+
+    Parameters
+    ----------
+    financials : CompanyFinancials
+        Company historical data.
+    params : DCFParameters
+        User-defined or automated parameters.
+
+    Returns
+    -------
+    float
+        The resolved cost of equity.
+    """
     r = params.rates
     rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
     mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
@@ -299,12 +403,31 @@ def calculate_cost_of_equity(financials: CompanyFinancials, params: DCFParameter
 
     return calculate_cost_of_equity_capm(rf, beta, mrp)
 
-def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float], interest_expense: Optional[float], market_cap: float) -> float:
-    """Estime le coût de la dette basé sur l'ICR (Synthetic Rating)."""
+def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float],
+                                     interest_expense: Optional[float], market_cap: float) -> float:
+    r"""
+    Estimates pre-tax cost of debt using the Interest Coverage Ratio (ICR).
+
+    Parameters
+    ----------
+    rf : float
+        Risk-free rate.
+    ebit : float, optional
+        Operating profit (TTM).
+    interest_expense : float, optional
+        Annual interest charges.
+    market_cap : float
+        Current market capitalization for cap-size weighting.
+
+    Returns
+    -------
+    float
+        Estimated pre-tax Kd (Risk-Free + Spread).
+    """
     safe_ebit, safe_int = ebit or 0.0, interest_expense or 0.0
 
     if safe_int <= 0 or safe_ebit <= 0:
-        return rf + 0.0107  # Proxy spread A-rated
+        return rf + 0.0107  # Proxy A-rated spread
 
     icr = safe_ebit / safe_int
     table = SPREADS_LARGE_CAP if market_cap >= MacroDefaults.LARGE_CAP_THRESHOLD else SPREADS_SMALL_MID_CAP
@@ -315,35 +438,31 @@ def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float], interest_
     return rf + 0.1900
 
 def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACCBreakdown:
-    """Calcul centralisé du WACC (Firm Value Approach).
+    r"""
+    Computes the Weighted Average Cost of Capital (WACC).
 
-    Formule : $WACC = w_e \times k_e + w_d \times k_d \times (1 - T)$
-
-    Où :
-    - $w_e$ : poids des fonds propres dans le capital
-    - $k_e$ : coût des fonds propres (CAPM)
-    - $w_d$ : poids de la dette dans le capital
-    - $k_d$ : coût de la dette après impôts
-    - $T$ : taux d'imposition effectif
+    $$WACC = w_e \times k_e + w_d \times k_d \times (1 - T)$$
 
     Parameters
     ----------
     financials : CompanyFinancials
-        Données financières de l'entreprise.
+        Financial snapshots.
     params : DCFParameters
-        Paramètres de calcul DCF.
+        Projection parameters.
 
     Returns
     -------
     WACCBreakdown
-        Décomposition détaillée du WACC avec tous les composants.
+        Full technical decomposition for audit and rendering.
     """
     r, g = params.rates, params.growth
     ke = calculate_cost_of_equity(financials, params)
 
     tax = r.tax_rate if r.tax_rate is not None else 0.25
     rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
-    kd_gross = r.cost_of_debt if r.cost_of_debt is not None else calculate_synthetic_cost_of_debt(rf, financials.ebit_ttm, financials.interest_expense, financials.market_cap)
+    kd_gross = r.cost_of_debt if r.cost_of_debt is not None else calculate_synthetic_cost_of_debt(
+        rf, financials.ebit_ttm, financials.interest_expense, financials.market_cap
+    )
     kd_net = kd_gross * (1.0 - tax)
 
     debt = g.manual_total_debt if g.manual_total_debt is not None else financials.total_debt
@@ -353,23 +472,23 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     total_cap = market_equity + debt
     we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
 
-    # Bêta utilisé pour le calcul (avant ajustement potentiel)
+    # Initial Beta
     beta_original = r.manual_beta if r.manual_beta is not None else (financials.beta or 1.0)
     beta_used = beta_original
     beta_adjusted = False
 
-    # Logique de réendettement du bêta (formule de Hamada)
+    # Hamada re-levering logic for target capital structures
     if g.target_equity_weight is not None and g.target_debt_weight is not None and g.target_equity_weight > 0:
         target_debt_equity_ratio = g.target_debt_weight / g.target_equity_weight
 
-        # Désendetter le bêta observé vers un bêta sans dette
+        # Unlever observed beta
         beta_unlevered = unlever_beta(beta_original, tax, debt / market_equity if market_equity > 0 else 0.0)
 
-        # Réendetter vers la structure cible
+        # Relever to target structure
         beta_used = relever_beta(beta_unlevered, tax, target_debt_equity_ratio)
         beta_adjusted = True
 
-        # Recalculer le Ke avec le bêta ajusté
+        # Recalculate Ke with adjusted beta
         mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
         ke = calculate_cost_of_equity_capm(rf, beta_used, mrp)
 
@@ -380,34 +499,33 @@ def calculate_wacc(financials: CompanyFinancials, params: DCFParameters) -> WACC
     )
 
 # ==============================================================================
-# 4. MODÈLES ACTIONNAIRES (FCFE & DDM)
+# 4. SHAREHOLDER MODELS (FCFE & DDM)
 # ==============================================================================
 
 def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: float) -> float:
-    """Reconstruction du FCFE (Clean Walk) : NI + Adj + Net Borrowing."""
+    r"""
+    Reconstructs Free Cash Flow to Equity (FCFE) via the NI walk.
+
+    $$FCFE = Net Income + NonCashAdj - Capex - \Delta WCR + \Delta Net Borrowing$$
+    """
     return ni + adjustments + net_borrowing
 
 def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borrowing: float) -> float:
-    """Formule classique du FCFE dérivée du FCFF.
+    r"""
+    Derives FCFE from the calculated FCFF.
 
-    Formule : $FCFE = FCFF - Interest \times (1 - T) + Net Borrowing$
-
-    Où :
-    - $FCFF$ : Free Cash Flow to Firm
-    - $Interest$ : charges d'intérêts
-    - $T$ : taux d'imposition
-    - $Net Borrowing$ : variation nette de l'endettement
+    $$FCFE = FCFF - Interest \times (1 - T) + Net Borrowing$$
 
     Parameters
     ----------
     fcff : float
-        Free Cash Flow to Firm.
+        Free Cash Flow to the Firm.
     interest : float
-        Charges d'intérêts.
+        Interest expense.
     tax_rate : float
-        Taux d'imposition effectif.
+        Effective tax rate.
     net_borrowing : float
-        Variation nette de l'endettement.
+        Net change in debt principal.
 
     Returns
     -------
@@ -417,72 +535,101 @@ def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borro
     return fcff - (interest * (1.0 - tax_rate)) + net_borrowing
 
 def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
-    """Calcule le taux de croissance soutenable selon la formule de Gordon.
+    r"""
+    Calculates the Sustainable Growth Rate (SGR) based on Gordon's retention.
 
-    Formule : $g = ROE \times (1 - Payout Ratio)$
-
-    Où :
-    - $ROE$ : Return on Equity
-    - $Payout Ratio$ : ratio de distribution des dividendes
+    $$g = ROE \times (1 - Payout Ratio)$$
 
     Parameters
     ----------
     roe : float
         Return on Equity.
     payout_ratio : float
-        Ratio de distribution des dividendes.
+        Dividend payout ratio.
 
     Returns
     -------
     float
-        Taux de croissance soutenable.
+        The sustainable growth rate.
     """
     return roe * (1.0 - (payout_ratio or 0.0))
 
 # ==============================================================================
-# 5. MODÈLES SPÉCIFIQUES (RIM & GRAHAM)
+# 5. SPECIFIC MODELS (RIM & GRAHAM)
 # ==============================================================================
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
-    """Formule Révisée de Graham (1974).
+    r"""
+    Applies the Revised Graham Formula (1974).
 
-    Formule : $Value = EPS \times (8.5 + 2 \times g) \times 4.4 / y$
-
-    Où :
-    - $EPS$ : bénéfice par action
-    - $g$ : taux de croissance annuel (%)
-    - $y$ : rendement des obligations AAA (%)
+    $$V = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}$$
 
     Parameters
     ----------
     eps : float
-        Bénéfice par action.
+        Earnings Per Share (normalized).
     growth_rate : float
-        Taux de croissance annuel (décimal).
+        Expected annual growth rate (decimal).
     aaa_yield : float
-        Rendement des obligations AAA (décimal).
+        Current yield on AAA-rated corporate bonds (decimal).
 
     Returns
     -------
     float
-        Valeur intrinsèque selon Graham.
+        Graham's intrinsic value.
     """
     y = aaa_yield if (aaa_yield and aaa_yield > 0) else TechnicalDefaults.DEFAULT_AAA_YIELD
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
-def calculate_rim_vectors(current_bv: float, ke: float, earnings: List[float], payout: float) -> Tuple[List[float], List[float]]:
-    """Génère les vecteurs de Profit Résiduel et de Book Value."""
+def calculate_rim_vectors(current_bv: float, ke: float,
+                          earnings: List[float], payout: float) -> Tuple[List[float], List[float]]:
+    r"""
+    Generates Residual Income (RI) and Book Value (BV) time series.
+
+    $$RI_t = Net Income_t - (BV_{t-1} \times k_e)$$
+
+    Parameters
+    ----------
+    current_bv : float
+        Opening Book Value (Equity).
+    ke : float
+        Cost of equity.
+    earnings : List[float]
+        Projected net income series.
+    payout : float
+        Dividend payout ratio.
+
+    Returns
+    -------
+    Tuple[List[float], List[float]]
+        Vectored residual incomes and book values.
+    """
     book_values, residual_incomes = [], []
     prev_bv = current_bv
     for ni in earnings:
         ri = ni - (prev_bv * ke)
         new_bv = prev_bv + ni - (ni * payout)
-        residual_incomes.append(ri); book_values.append(new_bv)
+        residual_incomes.append(ri)
+        book_values.append(new_bv)
         prev_bv = new_bv
     return residual_incomes, book_values
 
 def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> List[float]:
-    """Helper pour normaliser des poids de structure financière."""
+    r"""
+    Normalizes a list of values into weights that sum to 100%.
+
+    Parameters
+    ----------
+    *values : Optional[float]
+        Arbitrary sequence of financial amounts.
+    fallback_index : int, default 0
+        Index to assign 100% weight if all values are zero.
+
+    Returns
+    -------
+    List[float]
+        Weight proportions.
+    """
     clean_values = [v or 0.0 for v in values]
     total = sum(clean_values)
     if total <= 0:
@@ -494,7 +641,25 @@ def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> Li
 # ==============================================================================
 
 def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares: float) -> float:
-    """Calcule le prix théorique via le multiple P/E : $P = (NI \times P/E) / Shares$."""
+    r"""
+    Derives Equity Price from a P/E multiple.
+
+    $$P = \frac{NI \times P/E}{Shares}$$
+
+    Parameters
+    ----------
+    net_income : float
+        Total Net Income.
+    median_pe : float
+        Peer group median P/E ratio.
+    shares : float
+        Total shares outstanding.
+
+    Returns
+    -------
+    float
+        Implied price per share.
+    """
     if shares <= 0 or median_pe <= 0:
         return 0.0
     return (net_income * median_pe) / shares
@@ -507,9 +672,30 @@ def calculate_price_from_ev_multiple(
     minorities: float = 0.0,
     pensions: float = 0.0
 ) -> float:
-    """
-    Conversion d'un multiple d'Enterprise Value en Prix par Action (Equity Bridge).
-    Standard McKinsey : (EV - DetteNette - Minoritaires - Pensions) / Actions
+    r"""
+    Derives Price per Share from an Enterprise Value multiple (Equity Bridge).
+
+    $$Price = \frac{EV - NetDebt - Minorities - Pensions}{Shares}$$
+
+    Parameters
+    ----------
+    metric_value : float
+        The base metric (EBITDA or Revenue).
+    median_ev_multiple : float
+        The median EV/Metric from the peers.
+    net_debt : float
+        Total gross debt minus cash.
+    shares : float
+        Total shares outstanding.
+    minorities : float, default 0.0
+        Non-controlling interests.
+    pensions : float, default 0.0
+        Pension liability provisions.
+
+    Returns
+    -------
+    float
+        Implied price per share.
     """
     if shares <= 0 or median_ev_multiple <= 0:
         return 0.0
@@ -522,20 +708,33 @@ def calculate_triangulated_price(
     valuation_signals: Dict[str, float],
     weights: Optional[Dict[str, float]] = None
 ) -> float:
+    r"""
+    Performs weighted synthesis of multiple valuation price signals.
+
+    Filters out invalid (non-positive) results to maintain model integrity.
+
+    Parameters
+    ----------
+    valuation_signals : Dict[str, float]
+        Dictionary of method names and their calculated share prices.
+    weights : Dict[str, float], optional
+        Relative weighting for each method. Defaults to simple average.
+
+    Returns
+    -------
+    float
+        The triangulated consensus price.
     """
-    Réalise la synthèse de plusieurs signaux de prix (Triangulation).
-    Filtre les signaux invalides et applique une pondération.
-    """
-    # 1. Extraction des signaux valides (Honest Data)
+    # 1. Honest Data extraction: Filter valid positive signals
     valid_signals = {k: v for k, v in valuation_signals.items() if v > 0}
     if not valid_signals:
         return 0.0
 
-    # 2. Cas sans poids explicites : Moyenne simple
+    # 2. Simple average if no specific weights provided
     if not weights:
         return sum(valid_signals.values()) / len(valid_signals)
 
-    # 3. Moyenne pondérée sur les signaux disponibles
+    # 3. Weighted average calculation
     active_weights = {k: weights[k] for k in valid_signals if k in weights}
     total_weight = sum(active_weights.values())
 

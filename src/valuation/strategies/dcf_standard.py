@@ -1,9 +1,13 @@
 """
-Stratégie DCF Standard (Free Cash Flow to Firm).
+src/valuation/strategies/standard_fcff.py
 
-Référence Académique : Damodaran (Investment Valuation)
-Domaine Économique : Entreprises matures avec flux stables
-Invariants du Modèle : Projection two-stage avec terminal value
+STANDARD FCFF STRATEGY
+======================
+Academic Reference: Damodaran (Investment Valuation).
+Economic Domain: Mature entities with stable, predictable cash flows.
+Logic: Two-stage projection followed by terminal value discounting.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -16,13 +20,14 @@ from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector
 
-# Import centralisé i18n (Zéro texte brut autorisé)
+# Centralized i18n imports (Strict zero-raw-text policy)
 from src.i18n import (
     RegistryTexts,
     StrategyFormulas,
     CalculationErrors,
     StrategySources,
-    KPITexts, DiagnosticTexts
+    KPITexts,
+    DiagnosticTexts
 )
 
 logger = logging.getLogger(__name__)
@@ -30,10 +35,10 @@ logger = logging.getLogger(__name__)
 
 class StandardFCFFStrategy(ValuationStrategy):
     """
-    FCFF Standard (Damodaran).
+    Standard FCFF (Damodaran).
 
-    Cette stratégie délègue le calcul lourd au pipeline unifié après avoir
-    ancré le flux de trésorerie disponible (FCF) de départ.
+    Delegates heavy-lifting math to the unified DCF pipeline after anchoring
+    on the current TTM Free Cash Flow.
     """
 
     academic_reference = "Damodaran"
@@ -45,9 +50,9 @@ class StandardFCFFStrategy(ValuationStrategy):
             params: DCFParameters
     ) -> DCFValuationResult:
         """
-        Exécute la stratégie DCF Standard avec validation stricte du contrat de type.
+        Executes Standard DCF Strategy with strict output contract verification.
         """
-        # 1. Sélection du flux de base
+        # 1. SELECT BASE FLOW ANCHOR
         fcf_base, source = self._select_base_fcf(financials, params)
 
         if params.growth.manual_fcf_base is None and fcf_base <= 0:
@@ -68,17 +73,16 @@ class StandardFCFFStrategy(ValuationStrategy):
             source=source
         )
 
-        # 2. Orchestration via le Pipeline
+        # 2. PIPELINE EXECUTION
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
             mode=ValuationMode.FCFF_STANDARD,
             glass_box_enabled=self.glass_box_enabled
         )
 
-        # Le pipeline retourne un ValuationResult (base)
         raw_result = pipeline.run(base_value=fcf_base, financials=financials, params=params)
 
-        # --- RÉSOLUTION DE L'ERREUR DE TYPAGE ---
+        # TYPE SAFETY: Resolve into DCF container
         if not isinstance(raw_result, DCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -87,10 +91,9 @@ class StandardFCFFStrategy(ValuationStrategy):
                 )
             )
 
-        # Ici, l'IDE sait que 'result' est un DCFValuationResult
         result: DCFValuationResult = raw_result
 
-        # 3. Finalisation et Audit
+        # 3. FINALIZATION AND AUDIT
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
@@ -103,27 +106,15 @@ class StandardFCFFStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> Tuple[float, str]:
         """
-        Identifie le point d'ancrage FCF selon la hiérarchie de souveraineté.
-
-        Parameters
-        ----------
-        financials : CompanyFinancials
-            Données TTM.
-        params : DCFParameters
-            Surcharges analystes éventuelles.
-
-        Returns
-        -------
-        Tuple[float, str]
-            Valeur du flux et libellé i18n de la source.
+        Identifies the FCF anchor based on sovereignty hierarchy.
         """
-        # Priorité 1 : Surcharge Manuelle (Analyste)
+        # Priority 1: Expert Manual Override
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
-        # Priorité 2 : Flux TTM reporté (Deep Fetch)
+        # Priority 2: Deep Fetch TTM FCF
         if financials.fcf_last is not None:
             return financials.fcf_last, StrategySources.YAHOO_TTM
 
-        # Cas critique : Absence de données
+        # Critical failure: No valid flow data
         raise CalculationError(CalculationErrors.MISSING_FCF_STD)

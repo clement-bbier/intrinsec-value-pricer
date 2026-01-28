@@ -19,7 +19,10 @@ from src.models import (
     SOTPParameters,
     ScenarioParameters,
 )
+import streamlit as st
 
+st.cache_data = lambda **kwargs: lambda f: f
+st.cache_resource = lambda **kwargs: lambda f: f
 
 # =============================================================================
 # FIXTURES DE DONNÉES FINANCIÈRES
@@ -29,7 +32,7 @@ from src.models import (
 def sample_financials():
     """
     Fixture de données financières complètes pour les tests.
-    
+
     Représente une entreprise Tech typique avec :
     - Prix actuel : 100 USD
     - Market Cap : 100M USD
@@ -99,7 +102,7 @@ def sample_financials_bank():
 def sample_params():
     """
     Fixture de paramètres DCF standard.
-    
+
     Architecture segmentée V9.0+ avec :
     - Rf = 4%, MRP = 5% → Ke ≈ 10%
     - Croissance FCF = 5%, g terminal = 2%
@@ -116,8 +119,7 @@ def sample_params():
             fcf_growth_rate=0.05,
             perpetual_growth_rate=0.02,
             projection_years=5,
-            target_equity_weight=0.8,
-            target_debt_weight=0.2
+            annual_dilution_rate=0.02
         ),
         monte_carlo=MonteCarloConfig(
             enable_monte_carlo=False

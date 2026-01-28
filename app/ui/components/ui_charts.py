@@ -1,9 +1,9 @@
 """
 app/ui/components/ui_charts.py
-MOTEUR DE VISUALISATION — TERMINAL DE VALORISATION
-==================================================
-Rôle : Rendu graphique haute précision (Altair/Plotly).
-Note : Version 2026 corrigée (Duplicate IDs & Layout stretch).
+VISUALIZATION ENGINE — VALUATION TERMINAL
+=========================================
+Role: High-precision graphical rendering (Altair/Plotly).
+Note: 2026 Revised Version (Duplicate IDs & Layout stretch fixes).
 """
 
 from __future__ import annotations
@@ -19,19 +19,19 @@ import plotly.graph_objects as go
 from src.i18n import (
     KPITexts,
     QuantTexts,
-    UIMessages
+    UIMessages, RegistryTexts, SOTPTexts
 )
 from src.models import ValuationResult, BacktestResult
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# 1. ANALYSE TECHNIQUE : HISTORIQUE DE PRIX
+# 1. TECHNICAL ANALYSIS: PRICE HISTORY
 # ============================================================================
 
 @st.fragment
 def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> None:
-    """Rendu épuré de l'historique de cours (Style Bloomberg)."""
+    """Streamlined price history rendering (Bloomberg Style)."""
     if price_history is None or price_history.empty:
         st.info(UIMessages.CHART_UNAVAILABLE)
         return
@@ -54,7 +54,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
         x=alt.X('date:T', title=None, axis=alt.Axis(format='%Y-%m', labelColor='#64748b')),
         y=alt.Y('price:Q', scale=alt.Scale(zero=False), title=None, axis=alt.Axis(labelColor='#64748b')),
         tooltip=[
-            alt.Tooltip('date:T', format='%Y-%m-%d', title="Date"),
+            alt.Tooltip('date:T', format='%Y-%m-%d', title=RegistryTexts.DATE_LABEL),
             alt.Tooltip('price:Q', format=',.2f', title=KPITexts.LABEL_PRICE)
         ]
     ).properties(height=300).interactive()
@@ -63,12 +63,12 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 
 
 # ============================================================================
-# 2. ANALYSE QUANTITATIVE : MONTE CARLO (KDE & VAR)
+# 2. QUANTITATIVE ANALYSIS: MONTE CARLO (KDE & VAR)
 # ============================================================================
 
 @st.fragment
 def display_simulation_chart(ticker: str, simulation_results: List[float], market_price: float, currency: str) -> None:
-    """Distribution stochastique avec visualisation de la VaR et des quantiles."""
+    """Stochastic distribution with VaR and quantile visualization."""
     if not simulation_results:
         st.warning(QuantTexts.MC_FAILED)
         return
@@ -81,7 +81,7 @@ def display_simulation_chart(ticker: str, simulation_results: List[float], marke
 
     # Histogramme de densité
     hist = alt.Chart(df_sim).mark_bar(color="#94a3b8", opacity=0.6).encode(
-        x=alt.X("value:Q", bin=alt.Bin(maxbins=50), title=f"Valeur par action ({currency})"),
+        x=alt.X("value:Q", bin=alt.Bin(maxbins=50), title=f"{RegistryTexts.VALUE_PER_SHARE_L} ({currency})"),
         y=alt.Y("count()", title=None)
     )
 
@@ -96,20 +96,20 @@ def display_simulation_chart(ticker: str, simulation_results: List[float], marke
     # Synthèse probabiliste
     st.markdown(f"""
     <div style="font-size: 0.85rem; color: #64748b; padding: 10px; border-left: 3px solid #1e293b; background: #f8fafc; border-radius: 4px; margin-top: 10px;">
-        {len(values):,} itérations | 
+        {len(values):,} {QuantTexts.MC_ITERATIONS_L} | 
         {QuantTexts.MC_MEDIAN} : <b>{p50:,.2f} {currency}</b> | 
-        Intervalle de confiance 80% : {p10:,.2f} — {p90:,.2f}
+        {QuantTexts.CONFIDENCE_INTERVAL} 80% : {p10:,.2f} — {p90:,.2f}
     </div>
     """, unsafe_allow_html=True)
 
 
 # ============================================================================
-# 3. STRATÉGIE : FOOTBALL FIELD (TRIANGULATION)
+# 3. STRATEGY: FOOTBALL FIELD (TRIANGULATION)
 # ============================================================================
 
 @st.fragment
 def display_football_field(result: ValuationResult) -> None:
-    """Triangulation visuelle entre modèles intrinsèques et relatifs."""
+    """Visual triangulation between intrinsic and relative models."""
     data = []
     ticker = result.ticker
     currency = result.financials.currency
@@ -119,7 +119,7 @@ def display_football_field(result: ValuationResult) -> None:
     iv_high = result.quantiles.get("P90", iv_mid * 1.1) if result.quantiles else iv_mid * 1.1
 
     data.append({
-        "method": "Valeur intrinsèque",
+        "method": RegistryTexts.DCF_IV_LA,
         "low": iv_low, "high": iv_high, "mid": iv_mid, "color": "#1e293b"
     })
 
@@ -139,7 +139,7 @@ def display_football_field(result: ValuationResult) -> None:
     df = pd.DataFrame(data)
     base = alt.Chart(df).encode(
         y=alt.Y("method:N", title=None, sort=None),
-        x=alt.X("low:Q", scale=alt.Scale(zero=False), title=f"Prix estimé ({currency})")
+        x=alt.X("low:Q", scale=alt.Scale(zero=False), title=f"{KPITexts.ESTIMATED_PRICE_L} ({currency})")
     )
 
     bars = base.mark_bar(height=18, cornerRadius=2).encode(
@@ -155,7 +155,7 @@ def display_football_field(result: ValuationResult) -> None:
 
 
 # ============================================================================
-# 4. SENSIBILITÉ : HEATMAP WACC/G
+# 4. SENSITIVITY: HEATMAP WACC/G
 # ============================================================================
 
 @st.fragment
@@ -167,7 +167,7 @@ def display_sensitivity_heatmap(
     currency: str = "EUR",
     is_direct_equity: bool = False
 ) -> None:
-    """Matrice de sensibilité bidimensionnelle (Stress Test)."""
+    """Two-dimensional sensitivity matrix (Stress Test)."""
     label_y = KPITexts.LABEL_KE if is_direct_equity else KPITexts.LABEL_WACC
 
     rate_range = np.linspace(base_rate - 0.01, base_rate + 0.01, 5)
@@ -185,7 +185,7 @@ def display_sensitivity_heatmap(
     median_val = float(df['val'].median())
 
     base = alt.Chart(df).encode(
-        x=alt.X('growth:O', title="Croissance perpétuelle (g)", axis=alt.Axis(format='.2%')),
+        x=alt.X('growth:O', title=KPITexts.LABEL_GA, axis=alt.Axis(format='.2%')),
         y=alt.Y('rate:O', title=label_y, axis=alt.Axis(format='.2%'))
     )
 
@@ -193,7 +193,7 @@ def display_sensitivity_heatmap(
         color=alt.Color('val:Q', scale=alt.Scale(scheme='blues'), legend=None),
         tooltip=[
             alt.Tooltip('rate:O', format='.2%', title=label_y),
-            alt.Tooltip('growth:O', format='.2%', title="Croissance (g)"),
+            alt.Tooltip('growth:O', format='.2%', title=KPITexts.LABEL_GA),
             alt.Tooltip('val:Q', format=',.2f', title=f"IV ({currency})")
         ]
     )
@@ -208,12 +208,12 @@ def display_sensitivity_heatmap(
 
 
 # ============================================================================
-# 5. SEGMENTATION & BACKTESTING : WATERFALL & CONVERGENCE
+# 5. SEGMENTATION & BACKTESTING: WATERFALL & CONVERGENCE
 # ============================================================================
 
 @st.fragment
 def display_sotp_waterfall(result: ValuationResult) -> None:
-    """Cascade de valorisation par segments avec bridge de dette."""
+    """Valuation waterfall by segments with debt bridge."""
     if not result.params.sotp or not result.params.sotp.enabled:
         return
 
@@ -224,27 +224,27 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
         labels.append(seg.name); values.append(seg.enterprise_value); measures.append("relative")
 
     if params.conglomerate_discount > 0:
-        labels.append("Décote holding")
+        labels.append(SOTPTexts.LABEL_HOLDING_DISCOUNT)
         values.append(-(sum(values) * params.conglomerate_discount))
         measures.append("relative")
 
-    labels.append("Valeur d'entreprise")
+    labels.append(RegistryTexts.DCF_EV_LA)
     values.append(0); measures.append("total")
 
-    bridge = [("Dette nette", -f.net_debt), ("Intérêts minoritaires", -f.minority_interests)]
+    bridge = [(KPITexts.LABEL_NET_DEBT, -f.net_debt), (KPITexts.LABEL_MINORITIES, -f.minority_interests)]
     for lbl, val in bridge:
         if val != 0:
             labels.append(lbl); values.append(val); measures.append("relative")
 
-    labels.append("Valeur des fonds propres")
+    labels.append(KPITexts.EQUITY_VALUE_LABEL)
     values.append(0); measures.append("total")
 
     fig = go.Figure(go.Waterfall(
         orientation="v", measure=measures, x=labels, y=values,
         text=[f"{v:,.0f}" if v != 0 else "" for v in values],
         textposition="outside",
-        decreasing={"marker": {"color": "#ef4444"}}, # Rouge soft
-        increasing={"marker": {"color": "#10b981"}}, # Vert soft
+        decreasing={"marker": {"color": "#ef4444"}},
+        increasing={"marker": {"color": "#10b981"}},
         totals={"marker": {"color": "#1e293b"}}
     ))
 
@@ -257,15 +257,16 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
 
 @st.fragment
 def display_backtest_convergence_chart(ticker: str, backtest_report: Optional[BacktestResult], currency: str) -> None:
-    """Graphique de convergence historique (Prédit vs Réel)."""
+    """Historical convergence chart (Predicted vs Actual)."""
     if not backtest_report or not backtest_report.points:
-        st.info("Données historiques insuffisantes pour le backtesting.")
+        st.info(UIMessages.BACKTEST_INSUFFICIENT_DATA)
+        logger.info("Insufficient historical data for backtesting.")
         return
 
     data = []
     for p in backtest_report.points:
-        data.append({"date": p.valuation_date, "type": "IV historique", "val": p.intrinsic_value})
-        data.append({"date": p.valuation_date, "type": "Prix réel", "val": p.market_price})
+        data.append({"date": p.valuation_date, "type": RegistryTexts.HISTORICAL_IV_L, "val": p.intrinsic_value})
+        data.append({"date": p.valuation_date, "type": RegistryTexts.REAL_PRICE_L, "val": p.market_price})
 
     df = pd.DataFrame(data)
     chart = alt.Chart(df).mark_line(point=True).encode(

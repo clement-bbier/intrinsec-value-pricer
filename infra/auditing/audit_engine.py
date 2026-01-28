@@ -1,8 +1,13 @@
 """
 infra/auditing/audit_engine.py
 
-Institutional Audit Engine.
-Orchestrates dynamic routing, SOTP integrity audits, and SBC consistency checks.
+INSTITUTIONAL AUDIT ENGINE
+==========================
+Role: Orchestrates multi-pillar reliability audits, SOTP reconciliation,
+and sector-specific consistency checks (e.g., SBC dilution).
+
+Architecture: Centralized Risk Hub.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ from src.config import AuditThresholds, AuditWeights
 logger = logging.getLogger(__name__)
 
 class AuditorFactory:
-    """Factory for routing auditors based on valuation mode."""
+    """Factory for routing specialized auditors based on valuation mode."""
 
     @staticmethod
     def get_auditor(mode: ValuationMode) -> Any:
@@ -36,8 +41,8 @@ class AuditEngine:
     """
     Central Audit Engine.
 
-    Transforms technical validation steps into an institutional confidence score
-    by aggregating pillar-based results and applying sector-specific penalties.
+    Aggregates technical validation steps into a standardized institutional
+    confidence score by applying weighted pillar analysis and sector penalties.
     """
 
     @staticmethod
@@ -45,45 +50,47 @@ class AuditEngine:
         """
         Computes the global audit report for a given valuation result.
 
+        The scoring logic follows the institutional standard:
+        $$Score_{final} = (\sum_{p=1}^{n} Score_{p} \times Weight_{p}) \times Coverage$$
+
         Parameters
         ----------
         result : ValuationResult
             The complete valuation result to be audited.
         auditor : Optional[Any], default=None
-            Specific auditor instance. If None, it is fetched via AuditorFactory.
+            Specific auditor instance. Fetched via AuditorFactory if None.
 
         Returns
         -------
         AuditReport
-            An exhaustive audit report with global score, rating, and pillar breakdown.
+            Exhaustive audit report including rating, coverage, and pillar breakdown.
         """
         try:
             if result.request is None:
                 logger.warning(AuditEngineTexts.NO_REQUEST_WARNING)
                 return AuditEngine._fallback_report("ValuationResult.request is None")
 
-            # 1. Initialization & Base Auditing
+            # 1. Base Audit Initialization
             auditor = auditor or AuditorFactory.get_auditor(result.request.mode)
             raw_pillars = auditor.audit_pillars(cast(Any, result))
             all_steps: List[AuditStep] = getattr(auditor, "_audit_steps", [])
 
-            # 2. Sequential Enrichment (SBC & SOTP)
+            # 2. Sequential Enrichment (SBC & SOTP integrity)
             all_steps.extend(AuditEngine._process_sbc_audit(result, raw_pillars))
 
             if result.params.sotp.enabled:
                 all_steps.extend(AuditEngine._process_sotp_audit(result, raw_pillars))
 
-            # 3. Aggregation & Weighting
+            # 3. Weighted Aggregation
             source_mode = result.request.input_source
             max_checks = AuditEngine._get_max_checks(result, auditor)
-
             pillar_data = AuditEngine._aggregate_pillars(raw_pillars, source_mode)
 
-            # 4. Final Scoring Logic
+            # 4. Final Scoring & Coverage Adjustment
             coverage = AuditEngine._calculate_coverage(pillar_data['total_checks'], max_checks)
             final_score = pillar_data['weighted_score'] * coverage
 
-            # 5. Report Generation
+            # 5. Report Synthesis
             return AuditReport(
                 global_score=final_score,
                 rating=AuditEngine._compute_rating(final_score),
@@ -105,12 +112,13 @@ class AuditEngine:
             logger.error(f"AuditEngine Crash: {str(e)}", exc_info=True)
             return AuditEngine._fallback_report(str(e))
 
-    # --- PRIVATE METHODS (DECOMPOSITION) ---
+    # --- PRIVATE LOGIC ---
 
     @staticmethod
     def _process_sbc_audit(result: ValuationResult, pillars: Dict[AuditPillar, AuditPillarScore]) -> List[AuditStep]:
-        """Handles SBC integrity and applies penalties to ASSUMPTION_RISK."""
+        """Audits SBC consistency and applies penalties to Assumption Risk pillar."""
         steps = AuditEngine._audit_sbc_integrity(result)
+        # Apply 15% penalty if SBC check fails for Tech companies
         if any(s.step_key == "SBC_DILUTION_CHECK" and not s.verdict for s in steps):
             if AuditPillar.ASSUMPTION_RISK in pillars:
                 pillars[AuditPillar.ASSUMPTION_RISK].score *= 0.85
@@ -118,8 +126,9 @@ class AuditEngine:
 
     @staticmethod
     def _process_sotp_audit(result: ValuationResult, pillars: Dict[AuditPillar, AuditPillarScore]) -> List[AuditStep]:
-        """Handles SOTP integrity and applies penalties to DATA_CONFIDENCE."""
+        """Audits SOTP reconciliation and applies penalties to Data Confidence pillar."""
         steps = AuditEngine._audit_sotp_integrity(result)
+        # Apply 30% penalty if revenue reconciliation fails
         if any(s.step_key == "SOTP_REVENUE_CHECK" and not s.verdict for s in steps):
             if AuditPillar.DATA_CONFIDENCE in pillars:
                 pillars[AuditPillar.DATA_CONFIDENCE].score *= 0.70
@@ -127,7 +136,7 @@ class AuditEngine:
 
     @staticmethod
     def _aggregate_pillars(raw_pillars: Dict[AuditPillar, AuditPillarScore], source: InputSource) -> Dict[str, Any]:
-        """Calculates weighted scores and aggregates pillar data."""
+        """Calculates weighted contributions per pillar."""
         weights = MODE_WEIGHTS.get(source, MODE_WEIGHTS[InputSource.AUTO])
         weighted_pillars = {}
         total_score, total_checks = 0.0, 0
@@ -147,19 +156,16 @@ class AuditEngine:
 
     @staticmethod
     def _audit_sbc_integrity(result: ValuationResult) -> List[AuditStep]:
-        """Vérifie la cohérence des hypothèses de dilution SBC."""
+        """Checks for missing SBC dilution in Technology sectors."""
         steps = []
         sector = result.financials.sector
         dilution = result.params.growth.annual_dilution_rate or 0.0
 
-        # Seuil technique : Tech Sector exige une dilution > 0.1%
         if sector == "Technology" and dilution <= 0.001:
-            # Récupération sécurisée du message
-            raw_msg = AuditMessages.SBC_DILUTION_MISSING or "Dilution SBC inhabituelle pour le secteur {sector}"
-
+            raw_msg = AuditMessages.SBC_DILUTION_MISSING
             steps.append(AuditStep(
                 step_key="SBC_DILUTION_CHECK",
-                label=getattr(AuditTexts, "LBL_SBC_DILUTION_CHECK", "Cohérence Dilution (SBC)"),
+                label=AuditTexts.LBL_SOTP_DISCOUNT_CHECK, # Reusing SOTP label logic if specific SBC label missing
                 verdict=False,
                 severity=AuditSeverity.WARNING,
                 indicator_value=f"{dilution:.2%}",
@@ -169,7 +175,7 @@ class AuditEngine:
 
     @staticmethod
     def _audit_sotp_integrity(result: ValuationResult) -> List[AuditStep]:
-        """Verifies revenue reconciliation and discount prudence for conglomerates."""
+        """Verifies segment revenue reconciliation."""
         steps = []
         p, f = result.params.sotp, result.financials
         if not p.segments: return steps
@@ -189,12 +195,12 @@ class AuditEngine:
 
     @staticmethod
     def _calculate_coverage(executed: int, max_potential: int) -> float:
-        """Calculates audit completion ratio."""
+        """Calculates completion ratio."""
         return min(1.0, (executed / max_potential)) if max_potential > 0 else 0.0
 
     @staticmethod
     def _compute_rating(score: float) -> str:
-        """Maps numeric score to institutional rating."""
+        """Maps numeric score to institutional letter rating."""
         if score >= 90: return "AAA"
         if score >= 75: return "AA"
         if score >= 60: return "BBB"
@@ -203,19 +209,19 @@ class AuditEngine:
 
     @staticmethod
     def _should_block_mc(score: float, steps: List[AuditStep]) -> bool:
-        """Security check to disable Monte Carlo on unreliable valuations."""
+        """Determines if Monte Carlo should be disabled due to low data quality."""
         return score <= 0 or any(s.severity == AuditSeverity.CRITICAL and not s.verdict for s in steps)
 
     @staticmethod
     def _get_max_checks(result: ValuationResult, auditor: Any) -> int:
-        """Helper to compute expected number of tests."""
+        """Computes expected test count based on active modules."""
         base = auditor.get_max_potential_checks()
         sotp = 2 if result.params.sotp.enabled else 0
         return base + sotp + 1
 
     @staticmethod
     def _sync_legacy_logs(steps: List[AuditStep]) -> List[AuditLog]:
-        """Converts modern steps to legacy logs for backward compatibility."""
+        """Utility for legacy log compatibility."""
         return [
             AuditLog(
                 category=s.step_key.split('_')[0] if '_' in s.step_key else "GENERAL",
@@ -225,7 +231,7 @@ class AuditEngine:
 
     @staticmethod
     def _fallback_report(error: str) -> AuditReport:
-        """Failsafe report generator."""
+        """Generates a critical failure report."""
         return AuditReport(
             global_score=0.0, rating="C", audit_depth=0,
             audit_mode=InputSource.SYSTEM, audit_coverage=0.0,
@@ -236,7 +242,7 @@ class AuditEngine:
 # --- CONFIGURATION INITIALIZATION ---
 
 def _build_mode_weights() -> Dict[InputSource, Dict[AuditPillar, float]]:
-    """Loads weights from constants."""
+    """Initializes weight maps from constants."""
     return {
         src: {getattr(AuditPillar, k): v for k, v in getattr(AuditWeights, src.name).items()}
         for src in [InputSource.AUTO, InputSource.MANUAL]

@@ -1,9 +1,13 @@
 """
-Stratégie DCF Fundamental (Normalized Cash Flows).
+src/valuation/strategies/fundamental_fcff.py
 
-Référence Académique : CFA Institute / Damodaran
-Domaine Économique : Entreprises cycliques avec normalisation des flux
-Invariants du Modèle : Utilisation de flux normalisés pour l'ancrage
+FUNDAMENTAL DCF STRATEGY (NORMALIZED)
+=====================================
+Academic Reference: CFA Institute / Damodaran.
+Economic Domain: Cyclical or Industrial firms requiring cash flow smoothing.
+Logic: Anchored on normalized/smoothed fundamental flows to reduce volatility.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector
 
-# Import centralisé i18n
+# Centralized i18n imports
 from src.i18n import (
     RegistryTexts,
     StrategyInterpretations,
@@ -35,10 +39,10 @@ logger = logging.getLogger(__name__)
 
 class FundamentalFCFFStrategy(ValuationStrategy):
     """
-    FCFF Normalisé.
+    Normalized FCFF Strategy.
 
-    Cette stratégie utilise des flux lissés sur le cycle économique pour
-    valoriser des entreprises industrielles ou cycliques.
+    Uses economic cycle-smoothed flows to value industrial or cyclical
+    entities where TTM data may be unrepresentative of long-term earnings.
     """
 
     academic_reference = "CFA Institute / Damodaran"
@@ -50,9 +54,9 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> DCFValuationResult:
         """
-        Exécute la valorisation fondamentale avec flux normalisés.
+        Executes fundamental valuation using normalized cash flows.
         """
-        # 1. Sélection et validation du flux normalisé
+        # 1. SELECT AND VALIDATE NORMALIZED FCF ANCHOR
         fcf_base, source = self._select_normalized_fcf(financials, params)
 
         if fcf_base <= 0:
@@ -76,7 +80,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
             ]
         )
 
-        # 2. Orchestration via le Pipeline Unifié
+        # 2. PIPELINE ORCHESTRATION
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
             mode=ValuationMode.FCFF_NORMALIZED,
@@ -85,7 +89,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
         raw_result = pipeline.run(base_value=fcf_base, financials=financials, params=params)
 
-        # --- RÉSOLUTION DE L'ERREUR DE TYPAGE ---
+        # TYPE SAFETY: Resolve generic result into specific DCF container
         if not isinstance(raw_result, DCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -96,7 +100,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
         result: DCFValuationResult = raw_result
 
-        # 3. Finalisation et Audit
+        # 3. FINALIZATION AND INSTITUTIONAL AUDIT
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
@@ -109,13 +113,13 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> Tuple[float, str]:
         """
-        Sélectionne le flux normalisé (lissé) pour l'ancrage.
+        Determines the smoothed FCF anchor based on data hierarchy.
         """
-        # Priorité 1 : Surcharge Manuelle
+        # Priority 1: Expert Manual Override
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
-        # Priorité 2 : Flux normalisé calculé (fcf_fundamental_smoothed)
+        # Priority 2: Calculated smoothed fundamental FCF
         if financials.fcf_fundamental_smoothed is None:
             raise CalculationError(CalculationErrors.MISSING_FCF_NORM)
 

@@ -6,6 +6,7 @@ Textes des extensions (SOTP, Backtest).
 
 class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""
+    LABEL_HOLDING_DISCOUNT = "Décote holding"
     TITLE = "Analyse Sum-Of-The-Parts (SOTP)"
     SEC_SEGMENTS = "#### 1. Definition des Business Units (Segments)"
     SEC_ADJUSTMENTS = "#### 2. Ajustements de Conglomérat"
@@ -29,25 +30,21 @@ class SOTPTexts:
     DESC_WATERFALL = "Decomposition de la valeur par Business Unit"
     INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments apres décote."
     STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
-    DESC_SOTP_VALUATION = "Analyse granulaire de la contribution de chaque Business Unit à la Valeur d'Entreprise (EV) totale, incluant la décote de holding appliquée."
-
+    DESC_SOTP_VALUATION = "Segmentation de la valeur d'entreprise par divisions opérationnelles."
 
 class BacktestTexts:
-    """Labels pour le module de validation historique."""
-    TITLE = "Backtesting & Validation Historique"
-    SEC_CONFIG = "#### Configuration de la simulation temporelle"
-    SEC_RESULTS = "#### Analyse de la Performance du Modele"
-
-    LBL_PERIODS = "Nombre d'annees a remonter"
-    LBL_HIST_IV = "Valeur Intrinseque Historique"
-    LBL_REAL_PRICE = "Prix de Marche Reel"
-    LBL_ERROR_GAP = "Ecart (Erreur %)"
-
-    METRIC_ALPHA = "Alpha genere (vs Marche)"
-    METRIC_ACCURACY = "Precision directionnelle"
-    METRIC_MAE = "Erreur Moyenne Absolue (MAE)"
-
-    HELP_BACKTEST = "Compare l'IV calculee sur les bilans passes avec les cours reels de l'epoque."
+    LABEL = "Backtest"
+    TITLE = "Validation Historique (Backtest)"
+    HELP_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) calculée par le modèle aux cours de clôture historiques."
+    LBL_PERIODS = "Périodes testées"
+    METRIC_ACCURACY = "Précision"
+    SEC_RESULTS = "Détail des séquences historiques"
+    LBL_DATE = "Période"
+    LBL_HIST_IV = "IV Historique"
+    LBL_REAL_PRICE = "Prix Réel"
+    LBL_ERROR_GAP = "Écart (Gap)"
+    GRADE_A = "Grade A"
+    GRADE_B = "Grade B"
 
 
 class SOTPResultTexts:

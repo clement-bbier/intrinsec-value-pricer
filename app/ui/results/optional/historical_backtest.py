@@ -1,9 +1,10 @@
 """
 app/ui/results/optional/historical_backtest.py
-PILLIER 4 — SOUS-COMPOSANT : VALIDATION HISTORIQUE (BACKTEST)
-============================================================
-Rôle : Preuve visuelle de la capacité prédictive du modèle sur le passé.
-Architecture : Composant injectable Grade-A.
+
+PILLAR 4 — SUB-COMPONENT: HISTORICAL VALIDATION (BACKTEST)
+==========================================================
+Role: Visual evidence of the model's predictive capacity over past periods.
+Architecture: Injectable Grade-A Component.
 """
 
 from __future__ import annotations
@@ -19,34 +20,34 @@ from app.ui.components.ui_charts import display_backtest_convergence_chart
 
 class HistoricalBacktestTab(ResultTabBase):
     """
-    Composant de rendu pour le backtesting historique.
-    Intégré verticalement dans l'onglet RiskEngineering.
+    Rendering component for historical backtesting.
+    Integrated vertically within the RiskEngineering or specific Backtest tab.
     """
 
     TAB_ID = "historical_backtest"
-    LABEL = "Backtest"
-    ORDER = 4 # Aligné sur le Pilier 4
+    LABEL = BacktestTexts.LABEL
+    ORDER = 4
     IS_CORE = False
 
     def is_visible(self, result: ValuationResult) -> bool:
-        """Visible si le moteur a généré au moins un point de comparaison historique."""
+        """Visible only if the engine generated at least one historical comparison point."""
         return bool(result.backtest_report and len(result.backtest_report.points) > 0)
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Rendu institutionnel du Backtest avec métriques de précision."""
+        """Institutional Backtest rendering with accuracy metrics and convergence chart."""
         bt = result.backtest_report
         currency = result.financials.currency
 
-        # --- EN-TÊTE DE SECTION (Standardisé ####) ---
+        # --- SECTION HEADER (Standardized ####) ---
         st.markdown(f"#### {BacktestTexts.TITLE}")
         st.caption(BacktestTexts.HELP_BACKTEST)
         st.write("")
 
-        # --- 1. PERFORMANCE HUB (KPIs de Précision) ---
+        # --- 1. PERFORMANCE HUB (Precision KPIs) ---
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
 
-            # Hit Rate : % de fois où l'IV a correctement prédit une sous-évaluation
+            # Hit Rate: percentage of times IV correctly predicted undervaluation
             hit_rate = sum(1 for p in bt.points if p.was_undervalued) / len(bt.points) if bt.points else 0
 
             with c1:
@@ -59,18 +60,21 @@ class HistoricalBacktestTab(ResultTabBase):
                 atom_kpi_metric(label=QuantTexts.LABEL_MAE, value=f"{bt.mean_absolute_error:.1%}")
 
             with c4:
-                # Suppression du texte en dur : Utilisation des statuts d'audit i18n
-                # Un MAE < 15% est considéré comme "Conforme" aux standards financiers
+                # Accuracy Status: MAE < 15% is considered 'Compliant' by financial standards
                 is_optimal = bt.mean_absolute_error < 0.15
                 status_label = AuditTexts.STATUS_OK if is_optimal else AuditTexts.STATUS_ALERT
+
+                # Dynamic grade labels from i18n
+                grade_label = BacktestTexts.GRADE_A if is_optimal else BacktestTexts.GRADE_B
+
                 atom_kpi_metric(
                     label=BacktestTexts.METRIC_ACCURACY,
                     value=status_label.upper(),
-                    delta="Grade A" if is_optimal else "Grade B",
+                    delta=grade_label,
                     delta_color="normal" if is_optimal else "off"
                 )
 
-        # --- 2. GRAPHIQUE DE CONVERGENCE (Visualisation IV vs Prix) ---
+        # --- 2. CONVERGENCE CHART (IV vs Price Visualization) ---
         st.write("")
         display_backtest_convergence_chart(
             ticker=result.ticker,
@@ -78,13 +82,14 @@ class HistoricalBacktestTab(ResultTabBase):
             currency=currency
         )
 
-        # --- 3. DÉTAIL DES SÉQUENCES (Tableau de transparence) ---
+        # --- 3. SEQUENCE DETAILS (Transparency Dataframe) ---
+
         st.write("")
         with st.expander(BacktestTexts.SEC_RESULTS):
             periods_data = []
             for point in bt.points:
                 periods_data.append({
-                    "DATE": point.valuation_date.strftime("%Y-%m"),
+                    BacktestTexts.LBL_DATE: point.valuation_date.strftime("%Y-%m"),
                     BacktestTexts.LBL_HIST_IV: point.intrinsic_value,
                     BacktestTexts.LBL_REAL_PRICE: point.market_price,
                     BacktestTexts.LBL_ERROR_GAP: point.error_pct
@@ -92,6 +97,7 @@ class HistoricalBacktestTab(ResultTabBase):
 
             df = pd.DataFrame(periods_data)
 
+            # Institutional column configuration
             column_config = {
                 BacktestTexts.LBL_HIST_IV: st.column_config.NumberColumn(format=f"%.2f {currency}"),
                 BacktestTexts.LBL_REAL_PRICE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
@@ -107,6 +113,3 @@ class HistoricalBacktestTab(ResultTabBase):
             )
 
             st.caption(f"**{CommonTexts.INTERPRETATION_LABEL}** : {QuantTexts.BACKTEST_INTERPRETATION}")
-
-    def get_display_label(self) -> str:
-        return self.LABEL

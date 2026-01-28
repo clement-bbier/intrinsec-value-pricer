@@ -1,21 +1,27 @@
 """
-Système de types pour le diagnostic et la gestion d'erreurs structurée.
+src/diagnostics.py
 
-Ce module définit les événements de diagnostic avec contexte financier
-pédagogique pour faciliter la compréhension des erreurs par les analystes.
+DIAGNOSTIC TYPE SYSTEM AND STRUCTURED ERROR MANAGEMENT
+======================================================
+Role: Defines diagnostic events with pedagogical financial context.
+Facilitates analyst understanding of model risks and technical failures.
+
+Architecture: Type-Safe Registry Pattern.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Any, List, Dict  # Any requis pour DiagnosticEvent.context
-# DT-001/002: Import depuis core.i18n
+from typing import Optional, Any, Dict
+
+# i18n Imports for UI-facing localized strings
 from src.i18n import DiagnosticTexts, AuditMessages
 
 
 class SeverityLevel(Enum):
-    """Niveau de gravité du diagnostic."""
+    """Classification of diagnostic impact on the valuation lifecycle."""
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -23,7 +29,9 @@ class SeverityLevel(Enum):
 
 
 class DiagnosticDomain(Enum):
-    """Domaine d'origine du problème."""
+    """Categorization of the problem origin for audit routing."""
+    CONFIG = "CONFIG"
+    ENGINE = "ENGINE"
     DATA = "DATA"
     MODEL = "MODEL"
     PROVIDER = "PROVIDER"
@@ -34,29 +42,29 @@ class DiagnosticDomain(Enum):
 @dataclass(frozen=True)
 class FinancialContext:
     """
-    Contexte financier expliquant pourquoi un paramètre est risqué (ST-4.2).
-    
+    Pedagogical financial context explaining parameter risk (ST-4.2).
+
     Attributes
     ----------
     parameter_name : str
-        Nom du paramètre concerné (ex: "Beta", "Growth Rate").
+        The localized name of the financial parameter (e.g., "Market Beta").
     current_value : float
-        Valeur actuelle du paramètre.
+        The calculated or input value being diagnosed.
     typical_range : tuple[float, float]
-        Plage typique du paramètre (min, max).
+        The normative bounds for this parameter (min, max).
     statistical_risk : str
-        Explication du risque statistique.
+        Explanation of why the current value is statistically or economically risky.
     recommendation : str
-        Recommandation pour l'analyste.
+        Localized guidance for the analyst to remediate the risk.
     """
     parameter_name: str
     current_value: float
-    typical_range: tuple
+    typical_range: tuple[float, float]
     statistical_risk: str
     recommendation: str
-    
+
     def to_human_readable(self) -> str:
-        """Convertit le contexte en texte lisible."""
+        """Converts the context into a localized human-readable paragraph."""
         range_str = f"{self.typical_range[0]:.2f} - {self.typical_range[1]:.2f}"
         return (
             f"Le paramètre {self.parameter_name} ({self.current_value:.2f}) "
@@ -69,24 +77,24 @@ class FinancialContext:
 @dataclass(frozen=True)
 class DiagnosticEvent:
     """
-    Représente un événement de diagnostic unique avec contexte financier.
+    Encapsulates a unique diagnostic event with full institutional lineage.
 
     Attributes
     ----------
     code : str
-        Code unique de l'événement (ex: "MODEL_G_DIVERGENCE").
+        Unique alphanumeric event code (e.g., "MODEL_G_DIVERGENCE").
     severity : SeverityLevel
-        Niveau de gravité.
+        Visual and logical severity of the event.
     domain : DiagnosticDomain
-        Domaine d'origine du problème.
+        The architecture layer where the event occurred.
     message : str
-        Message principal compréhensible par un analyste.
-    technical_detail : Optional[str]
-        Détail technique pour le debugging.
-    remediation_hint : Optional[str]
-        Conseil de remédiation.
-    financial_context : Optional[FinancialContext]
-        Contexte financier expliquant le risque.
+        The primary analyst-facing message (localized).
+    technical_detail : str, optional
+        Raw error string or stack trace for development/debugging.
+    remediation_hint : str, optional
+        Actionable localized advice to solve the issue.
+    financial_context : FinancialContext, optional
+        Extended financial rationale for institutional auditing.
     """
     code: str
     severity: SeverityLevel
@@ -98,22 +106,31 @@ class DiagnosticEvent:
 
     @property
     def is_blocking(self) -> bool:
-        """Retourne Vrai si ce diagnostic empêche le calcul de continuer."""
+        """Determines if this event prevents the valuation from completing."""
         return self.severity in [SeverityLevel.ERROR, SeverityLevel.CRITICAL]
-    
+
     @property
     def has_financial_context(self) -> bool:
-        """Vérifie si un contexte financier est disponible."""
+        """Indicates if analytical context is attached."""
         return self.financial_context is not None
 
-    def to_dict(self) -> dict:
-        result = {
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the event for JSON/API transmission.
+
+        Explicitly typed to handle nested dictionary structures for
+        financial context metadata.
+        """
+        # Explicitly hint 'result' to prevent the IDE from narrowing
+        # the type to 'Dict[str, str | bool]'
+        result: Dict[str, Any] = {
             "code": self.code,
             "severity": self.severity.value,
             "domain": self.domain.value,
             "message": self.message,
             "is_blocking": self.is_blocking
         }
+
         if self.financial_context:
             result["financial_context"] = {
                 "parameter": self.financial_context.parameter_name,
@@ -121,16 +138,14 @@ class DiagnosticEvent:
                 "typical_range": list(self.financial_context.typical_range),
                 "risk": self.financial_context.statistical_risk,
             }
+
         return result
-    
+
     def get_pedagogical_message(self) -> str:
         """
-        Retourne un message pédagogique complet pour l'UI.
+        Synthesizes a complete pedagogical message for the UI.
 
-        Returns
-        -------
-        str
-            Message combinant le diagnostic et le contexte financier.
+        Combines the root diagnostic, financial context, and remediation hint.
         """
         parts = [self.message]
         if self.financial_context:
@@ -139,25 +154,21 @@ class DiagnosticEvent:
             parts.append(f"Action suggérée : {self.remediation_hint}")
         return " ".join(parts)
 
+
 # ==============================================================================
-# REGISTRE NORMATIF DES ÉVÉNEMENTS (ST-4.2 Enhanced)
+# NORMATIVE EVENT REGISTRY (ST-4.2 Enhanced)
 # ==============================================================================
 
 class DiagnosticRegistry:
     """
-    Catalogue centralisé des événements utilisant DiagnosticTexts.
+    Centralized catalog of standardized diagnostic events.
 
-    Chaque événement fournit un contexte financier explicatif.
+    Maps technical mathematical errors into localized institutional insights.
     """
 
     @staticmethod
     def model_g_divergence(g: float, wacc: float) -> DiagnosticEvent:
-        """
-        Erreur de convergence Gordon Shapiro.
-
-        Traduit "Math Error" en explication compréhensible :
-        "La croissance g est supérieure au WACC, le modèle ne peut converger."
-        """
+        """Gordon Shapiro convergence error (g >= WACC)."""
         return DiagnosticEvent(
             code="MODEL_G_DIVERGENCE",
             severity=SeverityLevel.CRITICAL,
@@ -178,7 +189,7 @@ class DiagnosticRegistry:
 
     @staticmethod
     def model_mc_instability(valid_ratio: float, threshold: float) -> DiagnosticEvent:
-        """Instabilité statistique lors des simulations Monte Carlo."""
+        """Statistical instability during Monte Carlo draws."""
         return DiagnosticEvent(
             code="MODEL_MC_INSTABILITY",
             severity=SeverityLevel.ERROR,
@@ -191,26 +202,15 @@ class DiagnosticRegistry:
                 typical_range=(0.90, 1.00),
                 statistical_risk=(
                     f"Seulement {valid_ratio:.0%} des simulations ont convergé. "
-                    "Les résultats Monte Carlo ne sont pas statistiquement fiables"
+                    "Les résultats ne sont pas statistiquement fiables"
                 ),
                 recommendation="Réduire les volatilités ou ajuster les bornes de paramètres"
             )
         )
 
     @staticmethod
-    def data_missing_core_metric(metric_name: str) -> DiagnosticEvent:
-        """Donnée critique manquante empêchant la valorisation."""
-        return DiagnosticEvent(
-            code="DATA_MISSING_CORE_METRIC",
-            severity=SeverityLevel.ERROR,
-            domain=DiagnosticDomain.DATA,
-            message=DiagnosticTexts.DATA_MISSING_CORE_MSG.format(metric_name=metric_name),
-            remediation_hint=DiagnosticTexts.DATA_MISSING_CORE_HINT
-        )
-
-    @staticmethod
     def risk_excessive_growth(g: float) -> DiagnosticEvent:
-        """Alerte sur une hypothèse de croissance irréaliste."""
+        """Alert for unrealistic high-growth phase assumptions."""
         return DiagnosticEvent(
             code="RISK_EXCESSIVE_GROWTH",
             severity=SeverityLevel.WARNING,
@@ -223,57 +223,15 @@ class DiagnosticRegistry:
                 typical_range=(0.02, 0.08),
                 statistical_risk=(
                     f"Un taux de croissance de {g:.1%} est rarement soutenable à long terme. "
-                    "Seules les entreprises en hypercroissance maintiennent >10% sur 5 ans"
+                    "Seules les hypergrowth-tech maintiennent >10% sur 5 ans"
                 ),
-                recommendation="Vérifier avec les guidances du management et les consensus analystes"
-            )
-        )
-
-    @staticmethod
-    def data_negative_beta(beta: float) -> DiagnosticEvent:
-        """Détection d'un Beta inhabituel."""
-        return DiagnosticEvent(
-            code="DATA_NEGATIVE_BETA",
-            severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.DATA,
-            message=DiagnosticTexts.DATA_NEGATIVE_BETA_MSG.format(beta=beta),
-            remediation_hint=DiagnosticTexts.DATA_NEGATIVE_BETA_HINT,
-            financial_context=FinancialContext(
-                parameter_name="Beta",
-                current_value=beta,
-                typical_range=(0.5, 2.0),
-                statistical_risk=(
-                    f"Un Beta de {beta:.2f} est statistiquement inhabituel. "
-                    "Les Betas < 0 ou > 3 indiquent souvent des données de marché peu fiables"
-                ),
-                recommendation="Utiliser le Beta sectoriel moyen ou vérifier la période de calcul"
-            )
-        )
-
-    @staticmethod
-    def risk_extreme_beta(beta: float) -> DiagnosticEvent:
-        """Alerte sur un Beta statistiquement extrême."""
-        return DiagnosticEvent(
-            code="RISK_EXTREME_BETA",
-            severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.DATA,
-            message=AuditMessages.RISK_EXTREME_BETA_MSG.format(beta=beta),
-            remediation_hint=AuditMessages.RISK_EXTREME_BETA_HINT,
-            financial_context=FinancialContext(
-                parameter_name="Beta",
-                current_value=beta,
-                typical_range=(0.5, 2.0),
-                statistical_risk=(
-                    f"Un Beta > 3.0 implique une volatilité 3x supérieure au marché. "
-                    "Cela impacte drastiquement le coût des fonds propres (Ke)"
-                ),
-                recommendation="Vérifier la liquidité du titre et considérer un ajustement Blume"
+                recommendation="Vérifier les guidances management et les consensus"
             )
         )
 
     @staticmethod
     def fcfe_negative_flow(val: float) -> DiagnosticEvent:
-        """Erreur : Le flux FCFE calculé est négatif."""
+        """FCFE model error: cash burn detected."""
         return DiagnosticEvent(
             code="FCFE_NEGATIVE_FLOW",
             severity=SeverityLevel.CRITICAL,
@@ -285,58 +243,16 @@ class DiagnosticRegistry:
                 current_value=val,
                 typical_range=(0.0, float('inf')),
                 statistical_risk=(
-                    f"Un FCFE négatif ({val:,.0f}) signifie que l'entreprise consomme "
-                    "plus de cash qu'elle n'en génère pour les actionnaires"
+                    f"Un FCFE négatif ({val:,.0f}) signifie que l'entreprise brûle "
+                    "du cash actionnaire structurellement"
                 ),
-                recommendation="Utiliser le modèle FCFF ou ajuster l'horizon de projection"
+                recommendation="Utiliser le modèle FCFF ou augmenter l'horizon de projection"
             )
         )
 
-    @staticmethod
-    def ddm_payout_excessive(payout: float) -> DiagnosticEvent:
-        """Avertissement : Le Payout Ratio dépasse les bénéfices."""
-        return DiagnosticEvent(
-            code="DDM_PAYOUT_EXCESSIVE",
-            severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.MODEL,
-            message=DiagnosticTexts.DDM_PAYOUT_MSG.format(payout=payout),
-            remediation_hint=DiagnosticTexts.DDM_PAYOUT_HINT,
-            financial_context=FinancialContext(
-                parameter_name="Payout Ratio",
-                current_value=payout,
-                typical_range=(0.20, 0.80),
-                statistical_risk=(
-                    f"Un payout de {payout:.0%} est insoutenable à long terme. "
-                    "L'entreprise puise dans ses réserves pour maintenir le dividende"
-                ),
-                recommendation="Normaliser le payout sur la moyenne historique ou sectorielle"
-            )
-        )
-
-    @staticmethod
-    def model_sgr_divergence(g: float, sgr: float) -> DiagnosticEvent:
-        """Avertissement : Croissance > Sustainable Growth Rate."""
-        return DiagnosticEvent(
-            code="MODEL_SGR_DIVERGENCE",
-            severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.MODEL,
-            message=DiagnosticTexts.MODEL_SGR_DIV_MSG.format(g=g, sgr=sgr),
-            remediation_hint=DiagnosticTexts.MODEL_SGR_DIV_HINT,
-            financial_context=FinancialContext(
-                parameter_name="Sustainable Growth Rate",
-                current_value=g,
-                typical_range=(0.0, sgr),
-                statistical_risk=(
-                    f"La croissance projetée ({g:.1%}) dépasse le SGR ({sgr:.1%}). "
-                    "Cela implique une augmentation de capital ou de dette"
-                ),
-                recommendation="Aligner g sur le SGR ou modéliser explicitement le financement"
-            )
-        )
-    
     @staticmethod
     def provider_api_failure(provider: str, error: str) -> DiagnosticEvent:
-        """Erreur de communication avec un fournisseur externe."""
+        """External service communication failure."""
         return DiagnosticEvent(
             code="PROVIDER_API_FAILURE",
             severity=SeverityLevel.WARNING,
@@ -347,19 +263,38 @@ class DiagnosticRegistry:
         )
 
     @staticmethod
-    def risk_missing_sbc_dilution(sector: str, current_dilution: float) -> DiagnosticEvent:
-        """Détecte une absence d'hypothèse de dilution pour un secteur à risque."""
+    def risk_missing_sbc_dilution(sector: str, rate: float) -> DiagnosticEvent:
+        """
+        Generates a warning when Stock-Based Compensation (SBC) dilution is ignored.
+
+        SBC dilution is a critical factor for Tech and Growth sectors. Failing to
+        account for annual share count increases leads to significant intrinsic
+        value overestimation.
+
+        Parameters
+        ----------
+        sector : str
+            The industry sector of the company (e.g., 'Technology', 'Software').
+        rate : float
+            The current annual dilution rate being evaluated (typically 0.0 here).
+
+        Returns
+        -------
+        DiagnosticEvent
+            A structured event containing pedagogical context and remediation hints.
+        """
         return DiagnosticEvent(
             code="RISK_MISSING_SBC_DILUTION",
             severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.USER_INPUT,
+            domain=DiagnosticDomain.MODEL,
+            # Use of i18n keys with dynamic formatting
             message=DiagnosticTexts.RISK_MISSING_SBC_MSG.format(sector=sector),
             remediation_hint=DiagnosticTexts.RISK_MISSING_SBC_HINT,
             financial_context=FinancialContext(
-                parameter_name=DiagnosticTexts.LBL_ANNUAL_DILUTION,
-                current_value=current_dilution,
-                typical_range=(0.015, 0.04),
-                statistical_risk=DiagnosticTexts.RISK_MISSING_SBC_RISK,
-                recommendation=DiagnosticTexts.RISK_MISSING_SBC_RECO.format(sector=sector)
+                parameter_name=DiagnosticTexts.PARAM_SBC_LABEL.format(sector=sector),
+                current_value=rate,
+                typical_range=(0.01, 0.05),
+                statistical_risk=DiagnosticTexts.RISK_SBC_STAT_RISK.format(sector=sector),
+                recommendation=DiagnosticTexts.RISK_SBC_RECOMMENDATION
             )
         )

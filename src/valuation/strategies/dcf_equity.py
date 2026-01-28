@@ -1,9 +1,13 @@
 """
-Stratégie FCFE (Free Cash Flow to Equity).
+src/valuation/strategies/fcfe.py
 
-Référence Académique : Damodaran (Investment Valuation)
-Domaine Économique : Entreprises endettées avec valorisation actionnariale directe
-Invariants du Modèle : Reconstruction rigoureuse du flux actionnaire (Clean Walk)
+FREE CASH FLOW TO EQUITY (FCFE) STRATEGY
+========================================
+Academic Reference: Damodaran (Investment Valuation).
+Economic Domain: Leveraged firms / Financial Services.
+Logic: Direct Equity valuation via a Clean Walk of shareholder flows.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.growth import SimpleFlowProjector
 from src.computation.financial_math import calculate_fcfe_reconstruction
 
-# Import centralisé i18n
+# Centralized i18n imports
 from src.i18n import (
     RegistryTexts,
     StrategyInterpretations,
@@ -36,10 +40,10 @@ logger = logging.getLogger(__name__)
 
 class FCFEStrategy(ValuationStrategy):
     """
-    Stratégie FCFE (Direct Equity).
+    FCFE Strategy (Direct Equity).
 
-    Calcule la valeur intrinsèque via la reconstruction rigoureuse des flux actionnaires
-    en tenant compte du coût des fonds propres (Ke) et de l'endettement net.
+    Reconstructs the cash flow available to shareholders ($FCFE$) after
+    operating expenses, reinvestment, and net debt servicing.
     """
 
     academic_reference = "Damodaran"
@@ -51,12 +55,12 @@ class FCFEStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> EquityDCFValuationResult:
         """
-        Exécute la valorisation FCFE via le Pipeline Unifié avec validation de type.
+        Executes FCFE valuation via the Unified Pipeline with logical walk tracking.
         """
-        # 1. RECONSTRUCTION DU FLUX ACTIONNAIRE (CLEAN WALK)
+        # 1. SHAREHOLDER FLOW RECONSTRUCTION (CLEAN WALK)
         ni, adj, nb, fcfe_base, source = self._resolve_fcfe_components(financials, params)
 
-        # Sécurité financière : FCFE négatif en mode Auto bloqué (ST-1.4)
+        # Financial Guard: Block negative FCFE in Auto mode (ST-1.4)
         if params.growth.manual_fcf_base is None and fcfe_base <= 0:
             raise CalculationError(
                 CalculationErrors.NEGATIVE_FLUX_AUTO.format(
@@ -74,24 +78,24 @@ class FCFEStrategy(ValuationStrategy):
                 ni=ni, adj=adj, nb=nb, total=fcfe_base
             ),
             interpretation=StrategyInterpretations.FCFE_LOGIC,
-            source=source  # Injection de la source pour la Glass Box
+            source=source
         )
 
-        # 2. CONFIGURATION DU PIPELINE (MODE DIRECT EQUITY)
+        # 2. PIPELINE EXECUTION (DIRECT EQUITY MODE)
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
             mode=ValuationMode.FCFE,
             glass_box_enabled=self.glass_box_enabled
         )
 
-        # Exécution (Le pipeline gère l'actualisation par le Ke)
+        # Pipeline handles discounting via Cost of Equity ($K_e$)
         raw_result = pipeline.run(
             base_value=fcfe_base,
             financials=financials,
             params=params
         )
 
-        # --- RÉSOLUTION DE L'ERREUR DE TYPAGE (DOWNCASTING) ---
+        # Type Safety: Ensure the result container is correct for Direct Equity
         if not isinstance(raw_result, EquityDCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -102,7 +106,7 @@ class FCFEStrategy(ValuationStrategy):
 
         result: EquityDCFValuationResult = raw_result
 
-        # 3. FINALISATION ET AUDIT
+        # 3. FINALIZATION AND AUDIT
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
@@ -115,20 +119,20 @@ class FCFEStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> Tuple[float, float, float, float, str]:
         """
-        Résout les composants du FCFE pour assurer une reconstruction propre.
-        Retourne : (Net Income, Adjustments, Net Borrowing, Total FCFE, Source)
+        Resolves FCFE components for a transparent walk.
+        Returns: (Net Income, Adjustments, Net Borrowing, Total FCFE, Source)
         """
         g = params.growth
 
-        # Cas A : Surcharge Expert Directe
+        # Case A: Direct Analyst Override
         if g.manual_fcf_base is not None:
             return 0.0, 0.0, 0.0, g.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
 
-        # Cas B : Reconstruction
+        # Case B: Standard Reconstruction Walk
         ni = financials.net_income_ttm or 0.0
         nb = g.manual_net_borrowing if g.manual_net_borrowing is not None else (financials.net_borrowing_ttm or 0.0)
 
-        # Ajustements (Amortissements - CapEx - ΔBFR) déduits du FCF reporté
+        # Adjustments: FCF (Operating) - Net Income (yields non-cash + capex delta)
         if financials.fcf_last is not None:
             adj = financials.fcf_last - ni
         else:

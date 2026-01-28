@@ -1,35 +1,66 @@
 """
 infra/ref_data/country_matrix.py
-Base de données macro-économiques et sources officielles par pays.
-Matrice pays - Mise à jour Janvier 2026
+
+MACRO-ECONOMIC COUNTRY MATRIX — JANUARY 2026 UPDATE
+===================================================
+Role: Provides foundational macro-economic data and official sources per country.
+Used as the primary anchor for Risk-Free rates, Tax rates, and ERP resolution.
+
+Architecture: Reference Data Layer.
+Style: Numpy docstrings.
 """
 
-from typing import TypedDict, Dict
+from typing import TypedDict, Dict, Optional
 
 class CountryData(TypedDict):
+    """
+    Schema for country-specific macroeconomic parameters.
+
+    Attributes
+    ----------
+    tax_rate : float
+        Standard corporate tax rate (decimal).
+    risk_free_rate : float
+        10Y Sovereign Bond yield as of Jan 2026.
+    market_risk_premium : float
+        Equity Risk Premium (ERP) based on Damodaran/Buy-side standards.
+    inflation_rate : float
+        Long-term inflation target (used for g floor).
+    rf_ticker : str
+        Yahoo Finance ticker for live risk-free rate tracking.
+    url_central_bank : str
+        Official Central Bank data link for audit verification.
+    url_tax_source : str
+        Official tax authority or advisory source.
+    url_risk_premium : str
+        Source for the specific ERP calculation.
+    """
     tax_rate: float
-    risk_free_rate: float      # Taux 10Y (Souverain au 01/2026)
-    market_risk_premium: float # Prime de risque marché (ERP)
-    inflation_rate: float      # Cible inflation long-terme
+    risk_free_rate: float
+    market_risk_premium: float
+    inflation_rate: float
     rf_ticker: str
     url_central_bank: str
     url_tax_source: str
     url_risk_premium: str
 
-# Sources de référence pour l'audit buy-side
+# Reference sources for buy-side audit traceability
 GLOBAL_URLS = {
     "risk_premium": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html",
     "trading_economics": "https://tradingeconomics.com/bonds"
 }
 
 # ==============================================================================
-# BASE DE CONNAISSANCE MACRO (MISE À JOUR JANVIER 2026)
+# MACRO KNOWLEDGE BASE (UPDATED JANUARY 2026)
 # ==============================================================================
+
+
+
 COUNTRY_CONTEXT: Dict[str, CountryData] = {
     "United States": {
         "tax_rate": 0.21,
-        "risk_free_rate": 0.038,     # Stabilisation T-Bond 10Y
-        "market_risk_premium": 0.045, # Normalisation prime US
+        "risk_free_rate": 0.038,     # T-Bond 10Y Stabilization
+        "market_risk_premium": 0.045, # Normalized US ERP
         "inflation_rate": 0.024,
         "rf_ticker": "^TNX",
         "url_central_bank": "https://fred.stlouisfed.org/series/DGS10",
@@ -37,8 +68,8 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
     },
     "France": {
-        "tax_rate": 0.250,           # Trajectoire loi de finances
-        "risk_free_rate": 0.029,     # OAT 10Y Janvier 2026
+        "tax_rate": 0.250,           # Finance law trajectory
+        "risk_free_rate": 0.029,     # OAT 10Y Jan 2026
         "market_risk_premium": 0.053,
         "inflation_rate": 0.020,
         "rf_ticker": "FR10YT=RR",
@@ -68,8 +99,8 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
     },
     "China": {
         "tax_rate": 0.25,
-        "risk_free_rate": 0.021,     # Poursuite baisse des taux PBOC
-        "market_risk_premium": 0.068, # Prime ajustée risque systémique
+        "risk_free_rate": 0.021,     # PBOC Rate cuts trend
+        "market_risk_premium": 0.068, # Adjusted systemic risk premium
         "inflation_rate": 0.025,
         "rf_ticker": "^CN10Y",
         "url_central_bank": "http://www.pbc.gov.cn/",
@@ -78,7 +109,7 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
     },
     "Japan": {
         "tax_rate": 0.306,
-        "risk_free_rate": 0.012,     # Sortie confirmée des taux proches de zéro
+        "risk_free_rate": 0.012,     # Exit from near-zero rate environment
         "market_risk_premium": 0.059,
         "inflation_rate": 0.015,
         "rf_ticker": "^JGBS10",
@@ -88,30 +119,41 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
     }
 }
 
-# Configuration par défaut
+# Institutional Default fallback
 DEFAULT_COUNTRY = COUNTRY_CONTEXT["United States"]
 
 # ==============================================================================
-# LOGIQUE D'EXTRACTION RÉSILIENTE
+# RESILIENT EXTRACTION LOGIC
 # ==============================================================================
 
-def get_country_context(country_name: str) -> CountryData:
+def get_country_context(country_name: Optional[str]) -> CountryData:
     """
-    Récupère le contexte macro. Résistant aux None ou strings vides.
-    Supporte le matching partiel pour la compatibilité Yahoo (ex: 'France (Republic of)').
+    Retrieves the macro context for a given country.
+
+    Implements fuzzy matching to handle API variations (e.g., 'France (Republic of)').
+
+    Parameters
+    ----------
+    country_name : Optional[str]
+        The raw country name string from the data provider.
+
+    Returns
+    -------
+    CountryData
+        The most relevant macro-economic dataset. Defaults to US context if not found.
     """
     if not country_name or not isinstance(country_name, str):
         return DEFAULT_COUNTRY
 
-    # 1. Correspondance exacte
+    # 1. Exact match attempt
     if country_name in COUNTRY_CONTEXT:
         return COUNTRY_CONTEXT[country_name]
 
-    # 2. Correspondance partielle (Insensible à la casse)
+    # 2. Case-insensitive fuzzy/partial matching
     clean_name = country_name.lower()
     for key, val in COUNTRY_CONTEXT.items():
         if key.lower() in clean_name:
             return val
 
-    # 3. Fallback institutionnel
+    # 3. Institutional fallback to USD/US context
     return DEFAULT_COUNTRY

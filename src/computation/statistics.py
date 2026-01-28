@@ -1,8 +1,13 @@
 """
-Outils statistiques pour les simulations Monte Carlo.
+src/computation/statistics.py
 
-Ce module fournit les fonctions de génération de tirages aléatoires
-utilisées dans les analyses de sensibilité probabilistes.
+STATISTICAL UTILITIES FOR MONTE CARLO SIMULATIONS
+=================================================
+Role: Provides random sampling generators for probabilistic sensitivity analysis.
+Capabilities: Correlated multivariate sampling (Beta/Growth) and bounded independent draws.
+Architecture: Modern NumPy default_rng protocols (2026 standards).
+
+Style: Numpy docstrings
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ import numpy as np
 
 
 # ============================================================================
-# GÉNÉRATION DE TIRAGES CORRÉLÉS
+# CORRELATED SAMPLING GENERATION
 # ============================================================================
 
 def generate_multivariate_samples(
@@ -26,29 +31,56 @@ def generate_multivariate_samples(
     seed: Optional[int] = 42
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Génère des tirages corrélés pour deux variables continues
-    (ex : Beta et Croissance).
+    Generates correlated random samples for two continuous variables (e.g., Beta and Growth).
 
-    Supporte les volatilités à 0.0 (scénario déterministe).
+    Supports zero volatility for deterministic fallback scenarios.
+    Ensures economic consistency by applying a correlation coefficient (rho).
+
+    Parameters
+    ----------
+    mu_beta : float
+        Mean value for the Beta distribution.
+    sigma_beta : float
+        Standard deviation for the Beta distribution.
+    mu_growth : float
+        Mean value for the Growth distribution.
+    sigma_growth : float
+        Standard deviation for the Growth distribution.
+    rho : float
+        Correlation coefficient between the two variables, must be in [-1, 1].
+    num_simulations : int
+        Number of iterations to generate.
+    seed : int, optional
+        Random seed for reproducibility, default is 42.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A tuple containing (beta_samples, growth_samples).
+
+    Raises
+    ------
+    ValueError
+        If num_simulations is not positive or rho is outside the [-1, 1] range.
     """
 
     if num_simulations <= 0:
-        raise ValueError("num_simulations doit être strictement positif.")
+        raise ValueError("num_simulations must be strictly positive.")
 
     if not (-1.0 <= rho <= 1.0):
-        raise ValueError("Le coefficient de corrélation rho doit être dans [-1, 1].")
+        raise ValueError("The correlation coefficient rho must be within [-1, 1].")
 
     if sigma_beta < 0 or sigma_growth < 0:
-        raise ValueError("Les volatilités doivent être positives ou nulles.")
+        raise ValueError("Volatilities must be positive or zero.")
 
-    # INITIALISATION DU GÉNÉRATEUR (MODERN NUMPY 2026)
-    # L'utilisation de default_rng évite de polluer l'état global np.random
+    # GENERATOR INITIALIZATION (MODERN NUMPY 2026)
+    # Using default_rng prevents pollution of the global np.random state
     rng = np.random.default_rng(seed)
 
     # ------------------------------------------------------------------
-    # MATRICE DE COVARIANCE
+    # COVARIANCE MATRIX CALCULATION
     # ------------------------------------------------------------------
-    # Cov(X, Y) = rho × σ_X × σ_Y
+    # Formula: Cov(X, Y) = rho × σ_X × σ_Y
     covariance = rho * sigma_beta * sigma_growth
 
     cov_matrix = np.array([
@@ -59,10 +91,10 @@ def generate_multivariate_samples(
     mean_vector = np.array([mu_beta, mu_growth])
 
     # ------------------------------------------------------------------
-    # TIRAGE MULTIVARIÉ
+    # MULTIVARIATE DRAW
     # ------------------------------------------------------------------
-    # method='svd' est plus robuste pour les matrices semi-définies positives
-    # (cas où sigma_beta ou sigma_growth valent 0.0)
+    # The 'svd' method is highly robust for semi-definite positive matrices
+    # (e.g., when sigma_beta or sigma_growth are 0.0)
     draws = rng.multivariate_normal(
         mean=mean_vector,
         cov=cov_matrix,
@@ -77,7 +109,7 @@ def generate_multivariate_samples(
 
 
 # ============================================================================
-# GÉNÉRATION DE TIRAGES INDÉPENDANTS
+# INDEPENDENT SAMPLING GENERATION
 # ============================================================================
 
 def generate_independent_samples(
@@ -90,21 +122,42 @@ def generate_independent_samples(
     seed: Optional[int] = None
 ) -> np.ndarray:
     """
-    Génère des tirages indépendants suivant une loi normale,
-    avec bornes optionnelles.
+    Generates independent normal distribution samples with optional economic clipping.
+
+    Useful for variables with no known correlation to the core risk pair (e.g., SBC Dilution).
+
+    Parameters
+    ----------
+    mean : float
+        Mean value of the distribution.
+    sigma : float
+        Standard deviation (uncertainty).
+    num_simulations : int
+        Number of iterations.
+    clip_min : float, optional
+        Lower bound for values (clipping).
+    clip_max : float, optional
+        Upper bound for values (clipping).
+    seed : int, optional
+        Random seed.
+
+    Returns
+    -------
+    np.ndarray
+        Array of generated samples.
     """
 
     if num_simulations <= 0:
-        raise ValueError("num_simulations doit être strictement positif.")
+        raise ValueError("num_simulations must be strictly positive.")
 
     if sigma < 0:
-        raise ValueError("sigma doit être positif ou nul.")
+        raise ValueError("sigma must be positive or zero.")
 
-    # INITIALISATION DU GÉNÉRATEUR LOCAL
+    # LOCAL GENERATOR INITIALIZATION
     rng = np.random.default_rng(seed)
 
     # ------------------------------------------------------------------
-    # TIRAGE NORMAL
+    # NORMAL DRAW
     # ------------------------------------------------------------------
     draws = rng.normal(
         loc=mean,
@@ -113,14 +166,15 @@ def generate_independent_samples(
     )
 
     # ------------------------------------------------------------------
-    # CLIPPING ÉCONOMIQUE (OPTIONNEL)
+    # ECONOMIC CLIPPING (OPTIONAL)
     # ------------------------------------------------------------------
+    # Ensures that simulated values remain within realistic bounds (e.g., no negative growth)
     if clip_min is not None or clip_max is not None:
         c_min = clip_min if clip_min is not None else -np.inf
         c_max = clip_max if clip_max is not None else np.inf
 
         if c_min > c_max:
-            raise ValueError("clip_min ne peut pas être supérieur à clip_max.")
+            raise ValueError("clip_min cannot be greater than clip_max.")
 
         draws = np.clip(draws, c_min, c_max)
 

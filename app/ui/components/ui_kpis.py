@@ -1,7 +1,9 @@
 """
 app/ui/components/ui_kpis.py
-Composants atomiques — Zéro émoji, style épuré.
+ATOMIC COMPONENTS — Minimalist style, zero emojis.
+Role: Standardized KPI and Audit cards for institutional rendering.
 """
+
 from __future__ import annotations
 from typing import Optional, Literal
 import streamlit as st
@@ -17,27 +19,27 @@ def atom_kpi_metric(
     delta_color: Literal["normal", "inverse", "off", "red", "orange", "yellow", "green", "blue", "violet", "gray", "grey", "primary"] = "normal",
     help_text: str = ""
 ) -> None:
-    """Composant de base pour les métriques financières."""
+    """Base component for financial metrics display."""
     st.metric(label=label, value=value, delta=delta, delta_color=delta_color, help=help_text)
 
 def render_audit_reliability_gauge(score: float, rating: str) -> None:
-    """Jauge institutionnelle pour le score de fiabilité."""
+    """Institutional gauge for the global reliability score."""
     if score >= 80:
-        color, label = "green", "FIABILITÉ ÉLEVÉE"
+        color, label = "green", AuditTexts.RELIABILITY_HIGH
     elif score >= 60:
-        color, label = "orange", "FIABILITÉ MODÉRÉE"
+        color, label = "orange", AuditTexts.RELIABILITY_MODERATE
     else:
-        color, label = "red", "FIABILITÉ FAIBLE"
+        color, label = "red", AuditTexts.RELIABILITY_LOW
 
     with st.container(border=True):
         st.markdown(f"**{AuditTexts.RATING_SCORE.upper()} : {rating}**")
         st.progress(score / 100)
         c1, c2 = st.columns(2)
-        c1.markdown(f":{color}[**{label}**]")
+        c1.markdown(f":{color}[**{label.upper()}**]")
         c2.markdown(f"<div style='text-align:right; color:gray;'>{score:.1f}%</div>", unsafe_allow_html=True)
 
 def atom_audit_card(step: AuditStep) -> None:
-    """Carte d'audit pour le pilier Audit Report."""
+    """Audit card component for the Reliability Audit pillar."""
     meta = get_step_metadata(step.step_key)
     if step.verdict:
         color, status = "green", AuditTexts.STATUS_OK

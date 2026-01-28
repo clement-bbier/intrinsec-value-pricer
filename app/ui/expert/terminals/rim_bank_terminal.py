@@ -1,13 +1,13 @@
 """
 app/ui/expert_terminals/rim_bank_terminal.py
 
-TERMINAL EXPERT — RESIDUAL INCOME MODEL (RIM)
+EXPERT TERMINAL — RESIDUAL INCOME MODEL (RIM)
 ==============================================
-Interface dédiée à la valorisation des institutions financières et banques.
-Le modèle repose sur la valeur comptable (Book Value) et la persistance des RI.
+Dedicated interface for valuing financial institutions and banks.
+The model relies on Book Value and the persistence of Residual Income.
 
-Architecture : ST-3.2 (Direct Equity)
-Style : Numpy docstrings
+Architecture: ST-3.2 (Direct Equity)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -26,39 +26,39 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class RIMBankTerminal(ExpertTerminalBase):
     """
-    Terminal expert pour le Residual Income Model.
+    Expert terminal for the Residual Income Model (Ohlson Model).
 
-    Ce modèle valorise l'entreprise par sa valeur comptable actuelle augmentée
-    de la valeur présente des profits anormaux (Residual Income) futurs.
+    This model values a firm as the sum of its current book value
+    and the present value of future abnormal profits (Residual Income).
     """
 
     MODE = ValuationMode.RIM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI ---
+    # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # Le RIM intègre sa propre logique de sortie dans l'étape 2 (Hook opérationnel)
+    # RIM integrates its own exit logic within Step 2
     SHOW_TERMINAL_SECTION = False
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu des entrées spécifiques au RIM (Étapes 1 & 2).
+        Renders specific inputs for the RIM model (Steps 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Paramètres : manual_book_value, manual_fcf_base (NI),
+            Parameters: manual_book_value, manual_fcf_base (NI),
             projection_years, fcf_growth_rate, exit_multiple_value (omega).
         """
         prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : ANCRAGE BILANCIEL ---
+        # --- STEP 1: BALANCE SHEET ANCHOR ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
@@ -84,7 +84,7 @@ class RIMBankTerminal(ExpertTerminalBase):
 
         st.divider()
 
-        # --- ÉTAPE 2 : PROFITS RÉSIDUELS & PERSISTANCE ---
+        # --- STEP 2: RESIDUAL INCOME & PERSISTENCE ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
@@ -93,7 +93,7 @@ class RIMBankTerminal(ExpertTerminalBase):
         with col2:
             g_rate = widget_growth_rate(label=SharedTexts.INP_GROWTH_G, key_prefix=prefix)
 
-        # Insertion du widget de sortie spécifique (ω) directement dans le flux narratif
+        # Persistence widget (ω) inserted directly into the narrative flow
         st.write("")
         tv_data = widget_terminal_value_rim(
             formula_latex=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
@@ -107,22 +107,22 @@ class RIMBankTerminal(ExpertTerminalBase):
             "manual_fcf_base": ni_base,
             "projection_years": n_years,
             "fcf_growth_rate": g_rate,
-            **tv_data,  # Contient exit_multiple_value (omega)
+            **tv_data,  # Contains exit_multiple_value (omega)
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données RIM depuis le session_state.
+        Extracts RIM data from the session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe basé sur le ValuationMode.
+            Prefix based on the ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données opérationnelles pour build_request.
+            Operational data for build_request.
         """
         return {
             "manual_book_value": st.session_state.get(f"{key_prefix}_bv_initial"),

@@ -7,9 +7,9 @@ Structure :
 - glass_box.py      : Tracabilite (CalculationStep, AuditStep)
 - scenarios.py      : Scenarios et SOTP (ScenarioVariant, BusinessUnit)
 - company.py        : Donnees entreprise (CompanyFinancials)
-- dcf_inputs.py     : Parametres DCF (DCFParameters et segments)
+- dcf_parameters.py     : Parametres DCF (DCFParameters et segments)
 - audit.py          : Audit (AuditReport, AuditPillarScore)
-- request_response.py : Requetes/Resultats (ValuationRequest, ValuationResult)
+- valuation.py : Requetes/Resultats (ValuationRequest, ValuationResult)
 
 Tous les modeles sont re-exportes ici pour la compatibilite.
 """
@@ -58,7 +58,7 @@ from .company import (
 )
 
 # Parametres DCF
-from .dcf_inputs import (
+from .dcf_parameters import (
     CoreRateParameters,
     GrowthParameters,
     MonteCarloConfig,
@@ -75,7 +75,7 @@ from .audit import (
 )
 
 # Requetes et Resultats
-from .request_response import (
+from .valuation import (
     ValuationRequest,
     ValuationResult,
     DCFValuationResult,

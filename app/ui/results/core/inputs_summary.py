@@ -1,7 +1,9 @@
 """
 app/ui/results/core/inputs_summary.py
-ONGLET — CONFIGURATION & HYPOTHÈSES (Pillier 1)
-Rôle : Transparence totale sur les données financières et paramètres modèles.
+
+PILLAR 1 — CONFIGURATION & HYPOTHESES
+Role: Full transparency on financial data and model parameters (Diligence).
+Architecture: Institutional FactSheet reactive to the valuation model.
 """
 
 from typing import Any
@@ -19,8 +21,8 @@ from app.ui.results.base_result import ResultTabBase
 
 class InputsSummaryTab(ResultTabBase):
     """
-    Pillier 1 : Inventaire exhaustif des données.
-    Layout : FactSheet Institutionnelle réactive au modèle.
+    Pillar 1: Comprehensive data inventory.
+    Layout: High-density key-value grid with conditional model rendering.
     """
 
     TAB_ID = "inputs_summary"
@@ -29,7 +31,10 @@ class InputsSummaryTab(ResultTabBase):
     IS_CORE = True
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Rendu de la fiche de diligence financière avec injection i18n intégrale."""
+        """
+        Renders the financial diligence sheet with full i18n injection.
+        Handles specific layout switches for DDM, RIM, and Graham models.
+        """
         f = result.financials
         p = result.params
         mode = result.request.mode if result.request else None
@@ -38,7 +43,7 @@ class InputsSummaryTab(ResultTabBase):
         st.caption(KPITexts.SECTION_INPUTS_CAPTION)
         st.write("")
 
-        # --- 1. IDENTITÉ & STRUCTURE DE MARCHÉ ---
+        # --- 1. IDENTITY & MARKET STRUCTURE ---
         with st.container(border=True):
             st.markdown(f"**{KPITexts.SEC_A_IDENTITY}**")
             c1, c2, c3 = st.columns(3)
@@ -52,7 +57,7 @@ class InputsSummaryTab(ResultTabBase):
                 self._render_kv(KPITexts.LABEL_CURRENCY, f.currency)
                 self._render_kv(KPITexts.LABEL_SHARES, format_smart_number(f.shares_outstanding))
 
-        # --- 2. PERFORMANCE OPÉRATIONNELLE (TTM) ---
+        # --- 2. OPERATIONAL PERFORMANCE (TTM) ---
         st.write("")
         with st.container(border=True):
             st.markdown(f"**{KPITexts.SUB_PERF}**")
@@ -64,7 +69,7 @@ class InputsSummaryTab(ResultTabBase):
 
             st.divider()
 
-            # Réactivité de la section Flux/Distribution (Zéro str)
+            # Responsive logic for Cash/Distribution section (Zero hardcoded strings)
             if mode == ValuationMode.DDM:
                 st.caption(RegistryTexts.DDM_GROWTH_L)
                 c1, c2, c3 = st.columns(3)
@@ -78,7 +83,7 @@ class InputsSummaryTab(ResultTabBase):
                 with c2: self._render_kv(KPITexts.LABEL_CAPEX, format_smart_number(f.capex, currency=f.currency))
                 with c3: self._render_kv(KPITexts.LABEL_DA, format_smart_number(f.depreciation_and_amortization, currency=f.currency))
 
-        # --- 3. STRUCTURE DU CAPITAL (DETTE, CASH & BOOK VALUE) ---
+        # --- 3. CAPITAL STRUCTURE (DEBT, CASH & BOOK VALUE) ---
         st.write("")
         with st.container(border=True):
             st.markdown(f"**{KPITexts.SUB_CAPITAL}**")
@@ -87,17 +92,17 @@ class InputsSummaryTab(ResultTabBase):
                 self._render_kv(KPITexts.LABEL_CASH, format_smart_number(f.cash_and_equivalents, currency=f.currency))
                 self._render_kv(KPITexts.LABEL_DEBT, format_smart_number(f.total_debt, currency=f.currency))
             with c2:
-                # Mise en avant de la Book Value pour modèles bilanciels
-                bv_prefix = ":blue" if mode in [ValuationMode.RIM, ValuationMode.GRAHAM] else ""
-                self._render_kv(f"{bv_prefix}[{KPITexts.LABEL_BVPS}]", f"{f.book_value_per_share:.2f} {f.currency}")
+                # Highlight Book Value for balance-sheet based models
+                bv_color = ":blue" if mode in [ValuationMode.RIM, ValuationMode.GRAHAM] else ""
+                self._render_kv(f"{bv_color}[{KPITexts.LABEL_BVPS}]", f"{f.book_value_per_share:.2f} {f.currency}")
                 self._render_kv(KPITexts.LABEL_MINORITIES, format_smart_number(f.minority_interests, currency=f.currency))
             with c3:
-                # Utilisation des constantes de couleur d'audit
+                # Standardized audit color usage
                 net_debt_color = AuditTexts.COLOR_WARNING if f.net_debt > 0 else AuditTexts.COLOR_SUCCESS
                 self._render_kv(f"{net_debt_color}[{KPITexts.LABEL_NET_DEBT}]", format_smart_number(f.net_debt, currency=f.currency))
                 self._render_kv(KPITexts.LABEL_PENSIONS, format_smart_number(f.pension_provisions, currency=f.currency))
 
-        # --- 4. PARAMÈTRES DU MODÈLE (RATES & GROWTH) ---
+        # --- 4. MODEL PARAMETERS (RATES & GROWTH) ---
         st.write("")
         with st.container(border=True):
             st.markdown(f"**{KPITexts.SEC_C_MODEL}**")
@@ -120,14 +125,14 @@ class InputsSummaryTab(ResultTabBase):
                 if mode == ValuationMode.RIM:
                     self._render_kv(f"{AuditTexts.COLOR_WARNING}[{KPITexts.LABEL_OMEGA}]", f"{p.growth.exit_multiple_value:.2f}")
 
-                # Dilution SBC (Utilisation systématique du label i18n)
+                # SBC Dilution (Institutional highlighting)
                 sbc_val = p.growth.annual_dilution_rate
                 sbc_color = AuditTexts.COLOR_WARNING if sbc_val > 0 else ""
                 self._render_kv(f"{sbc_color}[{KPITexts.LABEL_SBC_RATE}]", f"{sbc_val:.2%}")
 
     @staticmethod
     def _render_kv(label: str, value: Any) -> None:
-        """Rendu d'une ligne Clé-Valeur épurée (Méthode statique)."""
+        """Renders a clean Key-Value row for institutional fact sheets."""
         col_l, col_v = st.columns([0.65, 0.35])
         col_l.markdown(f"<span style='color: #64748b; font-size: 0.85rem;'>{label}</span>", unsafe_allow_html=True)
-        col_v.markdown(f"<div style='text-align: right; font-weight: 600; font-size: 0.9rem;'>{value if value is not None else '—'}</div>", unsafe_allow_html=True)
+        col_v.markdown(f"<div style='text-align: right; font-weight: 600; font-size: 0.9rem;'>{value if value is not None else '—'}div>", unsafe_allow_html=True)

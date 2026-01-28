@@ -1,9 +1,10 @@
 """
 app/ui/results/optional/scenario_analysis.py
-PILLIER 4 — SOUS-COMPOSANT : ANALYSE DE SCÉNARIOS DÉTERMINISTES
-==============================================================
-Rôle : Comparaison Bull/Base/Bear et calcul de l'espérance mathématique.
-Architecture : Composant injectable Grade-A.
+
+PILLAR 4 — SUB-COMPONENT: DETERMINISTIC SCENARIO ANALYSIS
+=========================================================
+Role: Bull/Base/Bear comparison and mathematical expectation calculation.
+Architecture: Injectable Grade-A component.
 """
 
 from typing import Any
@@ -18,38 +19,41 @@ from app.ui.components.ui_kpis import atom_kpi_metric
 
 class ScenarioAnalysisTab(ResultTabBase):
     """
-    Composant de rendu pour l'analyse multi-scénarios.
-    Intégré verticalement dans l'onglet RiskEngineering.
+    Rendering component for multi-scenario analysis.
+    Typically integrated vertically within the RiskEngineering tab.
     """
 
     TAB_ID = "scenario_analysis"
     LABEL = KPITexts.TAB_SCENARIOS
-    ORDER = 4 # Aligné sur le Pilier 4
+    ORDER = 4
     IS_CORE = False
 
     def is_visible(self, result: ValuationResult) -> bool:
-        """L'onglet est visible si le moteur de scénarios a généré des variantes."""
+        """Visible only if the scenario engine generated variants."""
         return (
             result.scenario_synthesis is not None
             and len(result.scenario_synthesis.variants) > 0
         )
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Rendu de la synthèse des scénarios avec triangulation visuelle."""
+        """
+        Renders the scenario synthesis with comparative table and weighted expectation.
+        """
         synthesis = result.scenario_synthesis
         currency = result.financials.currency
         market_price = result.market_price
 
-        # --- EN-TÊTE DE SECTION (Standardisé ####) ---
+        # --- SECTION HEADER (Standardized ####) ---
         st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
         st.write("")
 
-        # --- 1. TABLEAU COMPARATIF (DETAILED VIEW) ---
+        # --- 1. COMPARATIVE TABLE (DETAILED VIEW) ---
+
         with st.container(border=True):
             data = []
             for variant in synthesis.variants:
-                # Calcul de l'upside spécifique au scénario
+                # Calculate scenario-specific upside/downside
                 upside = (variant.intrinsic_value / market_price - 1) if market_price > 0 else 0
 
                 data.append({
@@ -63,7 +67,7 @@ class ScenarioAnalysisTab(ResultTabBase):
 
             df = pd.DataFrame(data)
 
-            # Configuration des colonnes (Standard Institutionnel)
+            # Institutional Column Configuration
             column_config = {
                 QuantTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
                 QuantTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.2f%%"),
@@ -74,7 +78,7 @@ class ScenarioAnalysisTab(ResultTabBase):
                     format="%.1%+",
                     min_value=-1.0,
                     max_value=1.0,
-                    color="blue" # Couleur neutre institutionnelle
+                    color="blue"
                 )
             }
 
@@ -86,7 +90,7 @@ class ScenarioAnalysisTab(ResultTabBase):
                 use_container_width=True
             )
 
-        # --- 2. SYNTHÈSE PONDÉRÉE (EXPECTED VALUE HUB) ---
+        # --- 2. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
         expected_val = synthesis.expected_value
         if expected_val > 0:
             st.write("")
@@ -94,6 +98,7 @@ class ScenarioAnalysisTab(ResultTabBase):
                 col_val, col_upside = st.columns(2)
 
                 with col_val:
+                    # Mathematical expectation of the intrinsic value
                     atom_kpi_metric(
                         label=QuantTexts.METRIC_WEIGHTED_VALUE,
                         value=format_smart_number(expected_val, currency=currency),
@@ -101,8 +106,8 @@ class ScenarioAnalysisTab(ResultTabBase):
                     )
 
                 with col_upside:
+                    # Weighted Potential (Expected Upside)
                     weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
-                    # Utilisation des deltas i18n
                     atom_kpi_metric(
                         label=QuantTexts.METRIC_WEIGHTED_UPSIDE,
                         value=f"{weighted_upside:+.1%}",
@@ -112,4 +117,5 @@ class ScenarioAnalysisTab(ResultTabBase):
                     )
 
     def get_display_label(self) -> str:
+        """Returns the localized tab label from i18n."""
         return self.LABEL

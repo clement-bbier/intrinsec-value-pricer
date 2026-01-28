@@ -1,9 +1,13 @@
 """
 infra/data_providers/yahoo_provider.py
 
-Yahoo Finance Data Provider.
+YAHOO FINANCE DATA PROVIDER
+===========================
 Orchestrates financial data acquisition with automated fallback systems.
 Role: Bridges raw API data with validated domain models (ST-4.1).
+
+Architecture: Provider Pattern with Degraded Mode support.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Any
 
 import pandas as pd
 import streamlit as st
@@ -47,17 +51,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DataProviderStatus:
-    """Provider state tracker for degraded mode and data lineage."""
+    """Provider state tracker for monitoring data lineage and fallback triggers."""
     is_degraded_mode: bool = False
     degraded_reason: str = ""
     fallback_sources: List[str] = field(default_factory=list)
     confidence_score: float = 1.0
 
     def add_fallback(self, source: str) -> None:
-        """Appends a fallback source and adjusts the global confidence score."""
+        """Logs a fallback event and adjusts the reliability confidence score."""
         self.is_degraded_mode = True
         self.fallback_sources.append(source)
-        # Reduced confidence for each fallback layer used
+        # Reduction penalty per fallback layer used
         self.confidence_score = max(0.5, self.confidence_score - 0.15)
 
 
@@ -65,14 +69,15 @@ class YahooFinanceProvider(DataProvider):
     """
     Yahoo Finance Orchestrator.
 
-    Integrates localized macro context, SGR arbitrage, and peer cohort management.
-    Implements ST-4.1 automatic fallback on sectoral multiples during API failure.
+    Integrates localized macro context, SGR (Sustainable Growth Rate) arbitrage,
+    and peer cohort management. Implements ST-4.1 automatic fallback logic
+    to ensure valuation continuity even during partial API outages.
     """
 
     MARKET_SUFFIXES: List[str] = [".PA", ".L", ".DE", ".AS", ".MI", ".MC", ".BR"]
     MAX_RETRY_ATTEMPTS: int = 1
 
-    # ST-4.1 Validation Thresholds
+    # ST-4.1 Valuation Sanity Thresholds for Peer Discovery
     MIN_PE_RATIO: float = 1.0
     MAX_PE_RATIO: float = 500.0
     MIN_EV_EBITDA: float = 0.5
@@ -86,26 +91,29 @@ class YahooFinanceProvider(DataProvider):
         self.status = DataProviderStatus()
 
     # =========================================================================
-    # PUBLIC INTERFACE
+    # PUBLIC INTERFACE (ST-4.1 Implementation)
     # =========================================================================
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_company_financials(self, ticker: str) -> CompanyFinancials:
-        """Fetches and normalizes target company financials."""
+        """Fetches and normalizes core financial data for the target entity."""
         normalized_ticker = ticker.upper().strip()
         return self._fetch_financials_with_fallback(normalized_ticker)
 
-    @st.cache_data(ttl=3600 * 4)
+    @st.cache_data(ttl=14400) # 4-hour cache for price history
     def get_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
-        """Retrieves market price history for historical validation."""
+        """Retrieves historical market data for technical validation or backtesting."""
         return self.fetcher.fetch_price_history(ticker, period)
 
     @st.cache_data(ttl=3600, show_spinner=False)
     def get_peer_multiples(self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
-        Orchestrates peer cohort discovery with strict limits and sector fallback.
+        Orchestrates peer discovery and relative valuation triangulation.
+        Uses a robust fallback to static sector multiples if discovery fails.
         """
         _max_peers = PeerDefaults.MAX_PEERS_ANALYSIS
+
+
 
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
             raw_peers = []
@@ -113,7 +121,8 @@ class YahooFinanceProvider(DataProvider):
 
             try:
                 if manual_peers:
-                    logger.info(f"[Provider] Using analyst cohort for {ticker}")
+                    # Expert mode: specific analyst-defined cohort
+                    logger.info(f"[Provider] Using manual analyst cohort for {ticker}")
                     selected_tickers = manual_peers[:_max_peers]
                     total_peers = len(selected_tickers)
 
@@ -124,75 +133,28 @@ class YahooFinanceProvider(DataProvider):
                             p_info["symbol"] = p_ticker
                             raw_peers.append(p_info)
                 else:
-                    logger.debug(f"[Provider] Discovering peers for {ticker}")
+                    # Automated discovery via yfinance internals
+                    logger.debug(f"[Provider] Discovering comparable peers for {ticker}")
                     all_discovered = self.fetcher.fetch_peer_multiples(ticker)
                     if all_discovered:
                         raw_peers = all_discovered[:_max_peers]
             except (ValueError, RuntimeError) as e:
-                logger.warning(f"[Provider] Peer API failed for {ticker}: {e}")
+                logger.warning(f"[Provider] Peer discovery failed for {ticker}: {e}")
                 api_failed = True
 
-            # ST-4.1: Switch to sector multiples if API fails or no data found
+            # ST-4.1: Seamless transition to Sector Fallback if live data is missing or corrupted
             if not raw_peers or api_failed:
                 return self._fallback_to_sector_multiples(ticker, status)
 
             multiples_summary = self.normalizer.normalize_peers(raw_peers)
 
-            # Robustness check: filter absurd multiples
+            # Robustness check: filter out statistical outliers before triangulation
             if not self._validate_multiples(multiples_summary):
-                logger.warning(f"[Provider] Outlier multiples detected for {ticker}, falling back to sector.")
+                logger.warning(f"[Provider] Extreme multiples detected for {ticker}, reverting to sector medians.")
                 return self._fallback_to_sector_multiples(ticker, status)
 
             status.update(label=WorkflowTexts.PEER_SUCCESS, state="complete")
             return multiples_summary
-
-    def _validate_multiples(self, multiples: MultiplesData) -> bool:
-        """Validates median multiples against sector sanity bounds."""
-        if multiples.median_pe > 0:
-            if not (self.MIN_PE_RATIO <= multiples.median_pe <= self.MAX_PE_RATIO):
-                return False
-
-        if multiples.median_ev_ebitda > 0:
-            if not (self.MIN_EV_EBITDA <= multiples.median_ev_ebitda <= self.MAX_EV_EBITDA):
-                return False
-
-        return True
-
-    def _fallback_to_sector_multiples(self, ticker: str, status: Any) -> MultiplesData:
-        """Initiates degraded mode using hardcoded sectoral fallback data."""
-        sector = "default"
-        try:
-            ticker_info = safe_api_call(lambda: yf.Ticker(ticker).info, f"SectorInfo/{ticker}", 1)
-            if ticker_info:
-                sector = ticker_info.get("sector", "default")
-        except (ValueError, AttributeError):
-            pass
-
-        fallback_result = get_sector_fallback_with_metadata(sector)
-        self.status.add_fallback(fallback_result.source_description)
-        self.status.degraded_reason = f"API cohort unavailable for {ticker}"
-
-        # Display formatted status in UI using technical sector name
-        status.update(
-            label=f"{WorkflowTexts.STATUS_DEGRADED_LABEL} ({sector})",
-            state="complete"
-        )
-        logger.info(f"[Provider] Sector fallback triggered for {ticker} | sector={sector}")
-
-        return fallback_result.multiples
-
-    def is_degraded_mode(self) -> bool:
-        """Checks if the provider is currently operating in degraded mode."""
-        return self.status.is_degraded_mode
-
-    def get_degraded_mode_info(self) -> Dict[str, Any]:
-        """Provides technical lineage data for the UI's Audit Pillar."""
-        return {
-            "is_degraded": self.status.is_degraded_mode,
-            "reason": self.status.degraded_reason,
-            "fallback_sources": self.status.fallback_sources,
-            "confidence_score": self.status.confidence_score,
-        }
 
     def get_company_financials_and_parameters(
             self,
@@ -200,27 +162,28 @@ class YahooFinanceProvider(DataProvider):
             projection_years: int
     ) -> Tuple[CompanyFinancials, DCFParameters]:
         """
-        Auto-Mode Workflow: Builds parameters with dynamic growth arbitrage
-        and localized macro metrics.
+        Automated Workflow: High-level orchestration for Pillar 1 (Configuration).
+        Combines fundamental financials with dynamic macro-economic rate resolution.
         """
+        # 1. Core Data Acquisition
         financials = self.get_company_financials(ticker)
         macro = self._fetch_macro_context(financials)
 
-        # 1. Growth Estimation
+        # 2. Growth & Dilution Arbitrage
         growth_hist = self._estimate_dynamic_growth(ticker)
 
-        # 2. SBC Dilution Estimation
+        # Historical Share Count analysis for SBC Dilution (Stock-Based Comp)
         shares_history = self.normalizer.extract_shares_history(
             self.last_raw_data.balance_sheet if self.last_raw_data else None
         )
         dilution_auto = calculate_historical_share_growth(shares_history)
 
-        # Smart sector fallback for SBC
+        # Sectoral SBC heuristic for Tech/Healthcare if historical data is flat
         if dilution_auto < 0.001:
             sector_map = {"Technology": 0.02, "Healthcare": 0.01}
             dilution_auto = sector_map.get(financials.sector, 0.0)
 
-        # 3. Sustainable Growth Rate (SGR) Arbitrage
+        # 3. Sustainable Growth Rate (SGR) calculation
         payout = (financials.dividend_share * financials.shares_outstanding) / financials.net_income_ttm \
             if financials.net_income_ttm and financials.net_income_ttm > 0 else 0.0
 
@@ -228,9 +191,11 @@ class YahooFinanceProvider(DataProvider):
             if financials.book_value and financials.book_value > 0 else 0.0
 
         growth_sgr = calculate_sustainable_growth(roe, payout)
+
+        # Final growth cap (Prudence principle: min of Historical vs SGR vs 8% ceiling)
         growth_final = max(0.01, min(growth_hist, growth_sgr or 0.05, 0.08))
 
-        # 4. Final Parameter Set Construction
+        # 4. Regional Macro Parameterization (Tax, Rf, MRP)
         country_data = get_country_context(financials.country)
 
         params = DCFParameters(
@@ -261,21 +226,54 @@ class YahooFinanceProvider(DataProvider):
         return financials, params
 
     # =========================================================================
-    # INTERNAL LOGIC (PROTECTED)
+    # INTERNAL LOGIC & FALLBACKS (PROTECTED)
     # =========================================================================
 
+    def _validate_multiples(self, multiples: MultiplesData) -> bool:
+        """Validates median multiples against institutional sector sanity bounds."""
+        if multiples.median_pe > 0:
+            if not (self.MIN_PE_RATIO <= multiples.median_pe <= self.MAX_PE_RATIO):
+                return False
+
+        if multiples.median_ev_ebitda > 0:
+            if not (self.MIN_EV_EBITDA <= multiples.median_ev_ebitda <= self.MAX_EV_EBITDA):
+                return False
+
+        return True
+
+    def _fallback_to_sector_multiples(self, ticker: str, status: Any) -> MultiplesData:
+        """Switches to Degraded Mode using curated sectoral fallback data (ST-4.1)."""
+        sector = "default"
+        try:
+            ticker_info = safe_api_call(lambda: yf.Ticker(ticker).info, f"SectorInfo/{ticker}", 1)
+            if ticker_info:
+                sector = ticker_info.get("sector", "default")
+        except (ValueError, AttributeError):
+            pass
+
+        fallback_result = get_sector_fallback_with_metadata(sector)
+        self.status.add_fallback(fallback_result.source_description)
+        self.status.degraded_reason = f"API cohort unavailable for {ticker}"
+
+        status.update(
+            label=f"{WorkflowTexts.STATUS_DEGRADED_LABEL} ({sector})",
+            state="complete"
+        )
+        logger.info(f"[Provider] Sector fallback activated for {ticker} | sector={sector}")
+
+        return fallback_result.multiples
+
     def _estimate_dynamic_growth(self, ticker: str) -> float:
-        """Estimates CAGR with institutional fallback logic."""
+        """Estimates Revenue/FCF CAGR with fallback heuristics."""
         try:
             df = safe_api_call(lambda: self.fetcher.fetch_all(ticker).cash_flow, "Hist FCF Growth")
-            # Fixed IDE warning: Removed unused str argument
             cagr = calculate_historical_cagr(df)
             return max(0.01, min(cagr or 0.03, 0.10))
         except (ValueError, AttributeError):
             return 0.03
 
     def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> CompanyFinancials:
-        """Executes fetching with automatic market suffix retry logic."""
+        """Executes fetching with automatic market-suffix retry (.PA, .L, etc.)."""
         try:
             result = self._fetch_and_normalize(ticker)
             if result is not None:
@@ -289,16 +287,16 @@ class YahooFinanceProvider(DataProvider):
             raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e)) from e
 
     def _fetch_and_normalize(self, ticker: str) -> Optional[CompanyFinancials]:
-        """Acquires raw data and converts it to normalized domain models."""
+        """Core execution pipeline: Acquisition -> Normalization."""
         self.last_raw_data = self.fetcher.fetch_historical_deep(ticker)
         return self.normalizer.normalize(self.last_raw_data)
 
     def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> CompanyFinancials:
-        """Retries fetching with a .PA suffix for European market compatibility."""
+        """Handles European stock symbols by attempting automatic suffix injection."""
         if current_attempt >= self.MAX_RETRY_ATTEMPTS or any(original_ticker.upper().endswith(s) for s in self.MARKET_SUFFIXES):
             raise TickerNotFoundError(ticker=original_ticker)
 
-        ticker_with_suffix = f"{original_ticker}.PA"
+        ticker_with_suffix = f"{original_ticker}.PA" # Priority to Euronext Paris
         try:
             logger.debug(f"[Provider] Retrying with suffix: {ticker_with_suffix}")
             result = self._fetch_and_normalize(ticker_with_suffix)
@@ -309,7 +307,7 @@ class YahooFinanceProvider(DataProvider):
         raise TickerNotFoundError(ticker=original_ticker)
 
     def _fetch_macro_context(self, financials: CompanyFinancials) -> MacroContext:
-        """Retrieves country-specific macro rates (Rf, MRP, Inflation)."""
+        """Retrieves country-specific macro parameters (Rf, MRP, Inflation)."""
         try:
             return self.macro_provider.get_macro_context(
                 date=datetime.now(),
@@ -317,7 +315,7 @@ class YahooFinanceProvider(DataProvider):
                 country_name=financials.country
             )
         except (ValueError, RuntimeError) as e:
-            logger.error(f"MacroContext retrieval failed for {financials.country}: {e}")
+            logger.error(f"MacroContext failed for {financials.country}: {e}. Using static fallback.")
             country_data = get_country_context(financials.country)
             return MacroContext(
                 date=datetime.now(),
@@ -330,5 +328,5 @@ class YahooFinanceProvider(DataProvider):
             )
 
     def map_raw_to_financials(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
-        """Converts frozen raw data to normalized financials (Backtesting loop)."""
+        """Facade for normalization, used primarily in Backtesting temporal loops."""
         return self.normalizer.normalize(raw)

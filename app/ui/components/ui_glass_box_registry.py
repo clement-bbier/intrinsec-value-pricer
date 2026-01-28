@@ -1,8 +1,8 @@
 """
 app/ui_components/ui_glass_box_registry.py
-REGISTRE UNIFIÉ DES MÉTADONNÉES GLASS BOX (Audit-Grade)
-Rôle : Source unique de vérité pour les labels, formules et descriptions.
-Architecture : Alignement strict sur le Pipeline V1.1 et les Stratégies.
+UNIFIED GLASS BOX METADATA REGISTRY (Audit-Grade)
+Role: Single source of truth for labels, formulas, and descriptions.
+Architecture: Strict alignment with Pipeline V1.1 and Strategy logic.
 """
 
 from __future__ import annotations
@@ -10,16 +10,16 @@ from typing import Any, Dict
 from src.i18n import RegistryTexts, StrategyFormulas
 
 # ==============================================================================
-# REGISTRE UNIFIÉ DES MÉTADONNÉES
+# UNIFIED METADATA REGISTRY
 # ==============================================================================
 
 STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
     # ==========================================================================
-    # 1. CORE PIPELINE — CALCULS UNIFIÉS (Source: pipelines.py)
+    # 1. CORE PIPELINE — UNIFIED CALCULATIONS (Source: pipelines.py)
     # ==========================================================================
 
-    # --- Taux d'actualisation ---
+    # --- Discount Rates ---
     "WACC_CALC": {
         "label": RegistryTexts.DCF_WACC_L,
         "formula": StrategyFormulas.WACC,
@@ -33,7 +33,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.DCF_KE_D
     },
 
-    # --- Flux de base (Ancrages) ---
+    # --- Base Flows (Anchors) ---
     "FCF_BASE": {
         "label": RegistryTexts.DCF_FCF_BASE_L,
         "formula": StrategyFormulas.FCF_BASE,
@@ -53,7 +53,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.DDM_BASE_D
     },
 
-    # --- Projection et Terminal Value ---
+    # --- Projection & Terminal Value ---
     "FCF_PROJ": {
         "label": RegistryTexts.DCF_PROJ_L,
         "formula": StrategyFormulas.FCF_PROJECTION,
@@ -73,7 +73,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.DCF_TV_MULT_D
     },
 
-    # --- Synthèse de Valeur ---
+    # --- Value Synthesis ---
     "NPV_CALC": {
         "label": RegistryTexts.DCF_EV_L,
         "formula": StrategyFormulas.NPV,
@@ -100,7 +100,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
-    # 2. AUTRES MODÈLES (RIM, GRAHAM)
+    # 2. ALTERNATIVE MODELS (RIM, GRAHAM)
     # ==========================================================================
 
     # --- RIM Banking ---
@@ -197,7 +197,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
-    # 4. AJUSTEMENTS TECHNIQUES & PONTS
+    # 4. TECHNICAL ADJUSTMENTS & BRIDGES
     # ==========================================================================
     "BETA_HAMADA_ADJUSTMENT": {
         "label": RegistryTexts.HAMADA_L,
@@ -215,18 +215,18 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
 def get_step_metadata(key: str) -> Dict[str, Any]:
     """
-    Récupère les métadonnées d'une étape de calcul.
-    Sécurité : Empêche le crash de l'app si une clé est manquante.
+    Retrieves metadata for a specific calculation step.
+    Safety: Prevents app crashes if a registry key is missing by providing default values.
     """
-    # 1. Tentative de récupération directe
+    # 1. Primary lookup
     meta = STEP_METADATA.get(key)
     if meta:
         return meta
 
-    # 2. Fallback sécurisé : On génère un objet minimal pour l'UI
+    # 2. Secure fallback: generate a minimal localized object for the UI
     return {
         "label": str(key).replace("_", " ").title(),
-        "formula": r"\text{Calcul Interne}",
+        "formula": StrategyFormulas.INTERNAL_CALC,
         "unit": "",
-        "description": "Détail technique du calcul spécifique au modèle."
+        "description": RegistryTexts.AUDIT_TECH_DETAIL_D
     }

@@ -8,6 +8,16 @@ class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions."""
 
     # Divergence Gordon
+    RISK_SBC_RECOMMENDATION = (
+        "Appliquer le CAGR historique des actions en circulation sur les 3-5 dernières "
+        "années ou utiliser une estimation normative sectorielle (typiquement 1% à 3%)."
+    )
+    RISK_SBC_STAT_RISK = (
+        "L'omission de la croissance structurelle du nombre d'actions dans le secteur "
+        r"{sector} (SBC) ignore la dilution future des actionnaires actuels. Cela conduit "
+        "systématiquement à une surestimation de la valeur intrinsèque par action."
+    )
+    PARAM_SBC_LABEL = r"Facteur de Dilution SBC ({sector})"
     MODEL_G_DIV_MSG = r"ERREUR DE CONVERGENCE : Le taux de croissance g ({g:.2%}) est >= au Ke/WACC ({wacc:.2%})."
     MODEL_G_DIV_HINT = "Une entreprise ne peut croitre plus vite que son cout du capital a l'infini."
 

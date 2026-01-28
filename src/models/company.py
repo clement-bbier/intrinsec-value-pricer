@@ -1,99 +1,103 @@
 """
-Données financières de l'entreprise.
+src/models/financials.py
 
-Ce module définit les structures de données pour les informations
-financières de base d'une entreprise, utilisées par tous les moteurs
-de valorisation.
+UNIFIED COMPANY FINANCIALS MODEL
+================================
+Role: Central data container for company-specific financial information.
+Scope: Aggregates identity, market prices, balance sheets, and cash flow metrics.
+Architecture: Pydantic-based for type safety and automated validation.
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from src.config.constants import ModelDefaults
 
 
 class CompanyFinancials(BaseModel):
-    """Données financières unifiées d'une entreprise.
+    """
+    Unified container for company financial data.
 
-    Conteneur principal pour toutes les données financières nécessaires
-    aux calculs de valorisation. Centralise les informations de marché,
-    bilan, compte de résultat et flux de trésorerie.
+    This model centralizes all variables required for DCF, Graham, and RIM
+    valuation engines, as well as sectoral peer triangulation.
 
     Attributes
     ----------
     ticker : str
-        Symbole boursier de l'entreprise.
+        The stock market ticker symbol.
     name : str, default="Unknown"
-        Nom de l'entreprise.
+        Legal name of the entity.
     currency : str
-        Devise des données financières.
+        Reporting currency for all numeric values.
     sector : str, default="Unknown"
-        Secteur d'activité.
+        Broad economic sector (e.g., Technology).
     industry : str, default="Unknown"
-        Industrie spécifique.
+        Specific industry classification.
     country : str, default="Unknown"
-        Pays d'origine.
+        Country of headquarters or primary exchange.
     current_price : float
-        Prix actuel de l'action.
+        Latest available market price per share.
     shares_outstanding : float
-        Nombre d'actions en circulation.
-    beta : float, default=ModelDefaults.DEFAULT_BETA
-        Coefficient bêta (risque systématique).
-    total_debt : float, default=ModelDefaults.DEFAULT_TOTAL_DEBT
-        Dettes totales.
-    cash_and_equivalents : float, default=ModelDefaults.DEFAULT_CASH_EQUIVALENTS
-        Trésorerie et équivalents.
-    minority_interests : float, default=ModelDefaults.DEFAULT_MINORITY_INTERESTS
-        Intérêts minoritaires.
-    pension_provisions : float, default=ModelDefaults.DEFAULT_PENSION_PROVISIONS
-        Provisions pour pensions.
-    book_value : float, default=ModelDefaults.DEFAULT_BOOK_VALUE
-        Valeur comptable totale.
+        Total count of shares currently in circulation.
+    beta : float
+        Systemic risk coefficient (Market Beta).
+    total_debt : float
+        Gross interest-bearing liabilities.
+    cash_and_equivalents : float
+        Total liquid assets and near-cash instruments.
+    minority_interests : float
+        Portion of subsidiaries not owned by the parent.
+    pension_provisions : float
+        Liabilities for employee post-retirement benefits.
+    book_value : float
+        Total shareholder equity (Accounting value).
     book_value_per_share : float, optional
-        Valeur comptable par action.
+        Book value divided by shares outstanding.
     revenue_ttm : float, optional
-        Chiffre d'affaires des 12 derniers mois.
+        Trailing Twelve Months total revenue.
     ebitda_ttm : float, optional
-        EBITDA des 12 derniers mois.
+        Trailing Twelve Months EBITDA.
     ebit_ttm : float, optional
-        EBIT des 12 derniers mois.
+        Trailing Twelve Months EBIT (Operating Income).
     net_income_ttm : float, optional
-        Bénéfice net des 12 derniers mois.
-    interest_expense : float, default=ModelDefaults.DEFAULT_INTEREST_EXPENSE
-        Charges d'intérêts.
+        Trailing Twelve Months Net Profit.
+    interest_expense : float
+        Annual interest charges on debt.
     eps_ttm : float, optional
-        Bénéfice par action des 12 derniers mois.
+        Trailing Twelve Months Earnings Per Share.
     dividend_share : float, optional
-        Dividende par action.
+        Latest annual dividend paid per share.
     fcf_last : float, optional
-        Free Cash Flow de la dernière période.
+        Most recent Free Cash Flow value.
     fcf_fundamental_smoothed : float, optional
-        FCF fondamental lissé.
+        Averaged or normalized fundamental FCF.
     net_borrowing_ttm : float, optional
-        Variation nette de l'endettement sur 12 mois.
+        Net change in debt principal over the last 12 months.
     capex : float, optional
-        Dépenses d'investissement (CAPEX).
+        Capital expenditures for the period.
     depreciation_and_amortization : float, optional
-        Dotations aux amortissements.
+        Non-cash D&A charges.
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Identite
+    # --- Identity & Classification ---
     ticker: str
     name: str = "Unknown"
     currency: str
     sector: str = "Unknown"
     industry: str = "Unknown"
     country: str = "Unknown"
-    
-    # Marche
+
+    # --- Market Context ---
     current_price: float
     shares_outstanding: float
     beta: float = ModelDefaults.DEFAULT_BETA
 
-    # Bilan
+    # --- Balance Sheet (Equity Bridge Components) ---
     total_debt: float = ModelDefaults.DEFAULT_TOTAL_DEBT
     cash_and_equivalents: float = ModelDefaults.DEFAULT_CASH_EQUIVALENTS
     minority_interests: float = ModelDefaults.DEFAULT_MINORITY_INTERESTS
@@ -101,7 +105,7 @@ class CompanyFinancials(BaseModel):
     book_value: float = ModelDefaults.DEFAULT_BOOK_VALUE
     book_value_per_share: Optional[float] = None
 
-    # Compte de resultat
+    # --- Income Statement (Performance) ---
     revenue_ttm: Optional[float] = None
     ebitda_ttm: Optional[float] = None
     ebit_ttm: Optional[float] = None
@@ -109,7 +113,7 @@ class CompanyFinancials(BaseModel):
     interest_expense: float = ModelDefaults.DEFAULT_INTEREST_EXPENSE
     eps_ttm: Optional[float] = None
 
-    # Flux
+    # --- Cash Flow & Reconciliation ---
     dividend_share: Optional[float] = None
     fcf_last: Optional[float] = None
     fcf_fundamental_smoothed: Optional[float] = None
@@ -119,58 +123,38 @@ class CompanyFinancials(BaseModel):
 
     @property
     def market_cap(self) -> float:
-        """Capitalisation boursière.
-
-        Returns
-        -------
-        float
-            Produit du prix actuel par le nombre d'actions en circulation.
+        """
+        Calculates the total Market Capitalization.
+        $$MarketCap = Price \times Shares_{outstanding}$$
         """
         return self.current_price * self.shares_outstanding
 
     @property
     def net_debt(self) -> float:
-        """Dette nette.
-
-        Returns
-        -------
-        float
-            Dettes totales moins trésorerie et équivalents.
+        """
+        Calculates the Net Debt position.
+        $$NetDebt = TotalDebt - Cash$$
         """
         return self.total_debt - self.cash_and_equivalents
 
     @property
     def dividends_total_calculated(self) -> float:
-        """Dividendes totaux calculés.
-
-        Returns
-        -------
-        float
-            Dividende par action multiplié par le nombre d'actions en circulation.
+        """
+        Calculates total dividends paid to all shares.
+        $$Dividends_{total} = DPS \times Shares_{outstanding}$$
         """
         return (self.dividend_share or 0.0) * self.shares_outstanding
 
-    # Alias pour compatibilite
     @property
     def fcf(self) -> Optional[float]:
-        """Alias pour fcf_last.
-
-        Returns
-        -------
-        Optional[float]
-            Valeur du dernier Free Cash Flow disponible.
-        """
+        """Alias for fcf_last to support legacy engine calls."""
         return self.fcf_last
 
     @property
     def pe_ratio(self) -> Optional[float]:
-        """Ratio cours/bénéfice (P/E).
-
-        Returns
-        -------
-        Optional[float]
-            Rapport entre le prix actuel et le bénéfice par action.
-            None si les données ne sont pas disponibles ou négatives.
+        """
+        Calculates the Price-to-Earnings (P/E) Ratio.
+        Returns None if data is missing or if earnings are negative.
         """
         if (self.eps_ttm is not None and self.eps_ttm > 0 and
             self.current_price is not None and self.current_price > 0):
@@ -179,13 +163,8 @@ class CompanyFinancials(BaseModel):
 
     @property
     def pb_ratio(self) -> Optional[float]:
-        """Ratio cours/valeur comptable (P/B).
-
-        Returns
-        -------
-        Optional[float]
-            Rapport entre le prix actuel et la valeur comptable par action.
-            None si les données ne sont pas disponibles ou négatives.
+        """
+        Calculates the Price-to-Book (P/B) Ratio.
         """
         if (self.book_value_per_share is not None and self.book_value_per_share > 0 and
             self.current_price is not None and self.current_price > 0):
@@ -194,17 +173,11 @@ class CompanyFinancials(BaseModel):
 
     @property
     def ev_ebitda_ratio(self) -> Optional[float]:
-        """Ratio valeur entreprise/EBITDA (EV/EBITDA).
-
-        Returns
-        -------
-        Optional[float]
-            Rapport entre la valeur d'entreprise et l'EBITDA.
-            None si les données ne sont pas disponibles ou négatives.
+        """
+        Calculates the EV/EBITDA Ratio.
+        Note: Per legacy logic, this uses Market Cap as the numerator proxy.
         """
         if (self.ebitda_ttm is not None and self.ebitda_ttm > 0 and
             self.market_cap is not None and self.market_cap > 0):
             return self.market_cap / self.ebitda_ttm
         return None
-
-

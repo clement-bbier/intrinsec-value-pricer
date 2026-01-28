@@ -1,25 +1,14 @@
 """
 infra/ref_data/sector_fallback.py
 
-FALLBACK MULTIPLES SECTORIELS Resilience Mode
+SECTORIAL FALLBACK MULTIPLES — Resiliency Mode (ST-4.1)
+======================================================
+Role: Provides curated valuation multiples by sector when live peer data fails.
+Pattern: Value Object + Provider Factory.
+Data Source: Damodaran (NYU Stern) & Institutional Historical Averages.
 
-Fallback multiples sectoriels - Enhanced
-Rôle : Fournir des multiples de valorisation par défaut si Yahoo échoue.
-Pattern : Value Object + Factory
-Style : Numpy docstrings
-
-Source des données : Damodaran (NYU Stern) - Moyennes historiques.
-
-ST-4.1 : MODE DÉGRADÉ
-=====================
-Lorsque Yahoo Finance échoue ou renvoie des données aberrantes,
-ce module bascule automatiquement sur les médianes sectorielles
-avec traçabilité complète pour l'utilisateur.
-
-Financial Impact:
-    Les multiples sectoriels sont des approximations. Ils ne remplacent
-    pas une vraie analyse peer-to-peer mais permettent une valorisation
-    indicative en cas de panne API.
+Architecture: Fallback Infrastructure Layer.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -35,35 +24,30 @@ from src.models import MultiplesData
 
 logger = logging.getLogger(__name__)
 
-# Chemin vers le fichier de configuration
+# Path to the sectoral configuration repository
 _CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "sector_multiples.yaml"
 
-# Cache des multiples sectoriels
+# Internal cache for performance optimization
 _SECTOR_MULTIPLES_CACHE: Optional[Dict[str, Any]] = None
 
 
 @dataclass(frozen=True)
 class SectorFallbackResult:
     """
-    Résultat d'une requête de fallback sectoriel avec traçabilité.
-    
+    Encapsulates a sectoral fallback result with full audit traceability.
+
     Attributes
     ----------
     multiples : MultiplesData
-        Les multiples de valorisation.
+        The standardized valuation multiples (P/E, EV/EBITDA, etc.).
     is_fallback : bool
-        True si les données proviennent du fallback (pas de peers réels).
+        Flag indicating the data comes from the fallback repository (Degraded Mode).
     sector_key : str
-        Clé du secteur utilisé.
+        The normalized sector identifier used for lookup.
     confidence_score : float
-        Score de confiance (0-1) des données de fallback.
+        A score (0.0 to 1.0) representing the reliability of the fallback data.
     source_description : str
-        Description textuelle de la source pour l'UI.
-    
-    Financial Impact
-    ----------------
-    Le champ is_fallback permet à l'UI d'afficher un bandeau d'avertissement
-    pour informer l'utilisateur que les données ne sont pas en temps réel.
+        Human-readable source description for the UI audit trail.
     """
     multiples: MultiplesData
     is_fallback: bool
@@ -73,45 +57,42 @@ class SectorFallbackResult:
 
 
 def _load_sector_multiples() -> Dict[str, Any]:
-    """Charge les multiples sectoriels depuis le fichier YAML."""
+    """
+    Loads the sectoral multiples from the YAML configuration file.
+    Implements a fail-safe mechanism with hardcoded baseline constants.
+    """
     global _SECTOR_MULTIPLES_CACHE
-    
+
     if _SECTOR_MULTIPLES_CACHE is not None:
         return _SECTOR_MULTIPLES_CACHE
-    
+
     try:
+        if not _CONFIG_PATH.exists():
+            raise FileNotFoundError(f"Config file missing at {_CONFIG_PATH}")
+
         with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
             _SECTOR_MULTIPLES_CACHE = yaml.safe_load(f)
-            # Exclure les métadonnées du compte
+            # Exclude metadata keys for logging accuracy
             sector_count = len([k for k in _SECTOR_MULTIPLES_CACHE.keys() if not k.startswith("_")])
-            logger.info(f"[SectorFallback] Sectors loaded | count={sector_count}")
+            logger.info(f"[SectorFallback] Repository loaded | count={sector_count}")
             return _SECTOR_MULTIPLES_CACHE
+
     except Exception as e:
-        logger.error(f"[SectorFallback] Loading failed | error={e}")
+        logger.error(f"[SectorFallback] Loading failed, using critical defaults | error={e}")
+        # Global market averages as a last-resort safety net
         return {"default": {
             "pe_ratio": 18.0,
             "ev_ebitda": 12.0,
             "pb_ratio": 3.0,
             "ev_revenue": 2.5,
-            "source": "Hardcoded fallback"
+            "source": "Critical hardcoded fallback"
         }}
 
 
 def _normalize_sector_key(sector: str) -> str:
     """
-    Normalise le nom du secteur pour correspondre aux clés YAML.
-    
-    Parameters
-    ----------
-    sector : str
-        Nom du secteur depuis Yahoo Finance.
-    
-    Returns
-    -------
-    str
-        Clé normalisée pour le fichier YAML.
+    Maps Yahoo Finance sector nomenclature to internal canonical keys.
     """
-    # Mapping Yahoo Finance -> nos clés
     mapping = {
         "technology": "technology",
         "financial services": "financial_services",
@@ -125,28 +106,14 @@ def _normalize_sector_key(sector: str) -> str:
         "utilities": "utilities",
         "communication services": "communication_services",
     }
-    
+
     normalized = sector.lower().strip()
     return mapping.get(normalized, "default")
 
 
 def get_sector_multiples(sector: str) -> MultiplesData:
     """
-    Retourne les multiples de valorisation pour un secteur donné.
-    
-    Parameters
-    ----------
-    sector : str
-        Le nom du secteur (ex: "Technology", "Financial Services").
-    
-    Returns
-    -------
-    MultiplesData
-        Les multiples de valorisation du secteur.
-    
-    Notes
-    -----
-    Si le secteur n'est pas trouvé, retourne les multiples par défaut.
+    Standard accessor for sectoral multiples.
     """
     result = get_sector_fallback_with_metadata(sector)
     return result.multiples
@@ -154,65 +121,47 @@ def get_sector_multiples(sector: str) -> MultiplesData:
 
 def get_sector_fallback_with_metadata(sector: str) -> SectorFallbackResult:
     """
-    Retourne les multiples sectoriels avec métadonnées de traçabilité (ST-4.1).
-    
-    Parameters
-    ----------
-    sector : str
-        Le nom du secteur (ex: "Technology", "Financial Services").
-    
-    Returns
-    -------
-    SectorFallbackResult
-        Résultat enrichi avec is_fallback, confidence_score, etc.
-    
-    Examples
-    --------
-    >> result = get_sector_fallback_with_metadata("Technology")
-    >> if result.is_fallback:
-    ..     display_degraded_mode_banner()
-    >> multiples = result.multiples
+    Retrieves sectoral multiples enriched with audit metadata for Pillar 3/5.
+
+    Architecture: ST-4.1 Degraded Mode Orchestration.
     """
     all_multiples = _load_sector_multiples()
     key = _normalize_sector_key(sector)
-    
+
     data = all_multiples.get(key, all_multiples.get("default", {}))
     source = data.get("source", f"Sector fallback: {sector}")
-    
-    # Récupérer les métadonnées si disponibles
+
+    # Extract metadata for confidence level reporting
     metadata = all_multiples.get("_metadata", {})
     confidence = metadata.get("confidence_score", 0.70)
-    
+
+
+
     multiples = MultiplesData(
-        peers=[],  # Pas de peers réels pour le fallback
-        median_pe=data.get("pe_ratio", 0.0) or 0.0,
-        median_ev_ebitda=data.get("ev_ebitda", 0.0) or 0.0,
-        median_ev_rev=data.get("ev_revenue", 0.0) or 0.0,
+        peers=[],  # Fallback mode does not contain individual peer metrics
+        median_pe=float(data.get("pe_ratio", 0.0) or 0.0),
+        median_ev_ebitda=float(data.get("ev_ebitda", 0.0) or 0.0),
+        median_ev_rev=float(data.get("ev_revenue", 0.0) or 0.0),
         source=source
     )
-    
+
     return SectorFallbackResult(
         multiples=multiples,
         is_fallback=True,
         sector_key=key,
         confidence_score=confidence,
-        source_description=f"Mode Dégradé : Données sectorielles moyennes ({source})"
+        source_description=f"Mode Dégradé : Multiples sectoriels moyens ({source})"
     )
 
 
 def is_fallback_available() -> bool:
-    """Vérifie si le fichier de fallback est disponible."""
+    """Verifies the availability of the external configuration file."""
     return _CONFIG_PATH.exists()
 
 
 def get_fallback_metadata() -> Dict[str, Any]:
     """
-    Retourne les métadonnées du fichier de fallback.
-    
-    Returns
-    -------
-    Dict[str, Any]
-        Métadonnées incluant version, source, disclaimer.
+    Retrieves metadata including versioning and data sources for audit purposes.
     """
     all_multiples = _load_sector_multiples()
     return all_multiples.get("_metadata", {})

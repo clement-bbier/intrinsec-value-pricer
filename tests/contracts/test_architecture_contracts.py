@@ -22,7 +22,7 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import List, Tuple
 
 import pytest
 

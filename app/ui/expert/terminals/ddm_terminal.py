@@ -1,13 +1,13 @@
 """
 app/ui/expert_terminals/ddm_terminal.py
 
-TERMINAL EXPERT — DIVIDEND DISCOUNT MODEL (DDM)
+EXPERT TERMINAL — DIVIDEND DISCOUNT MODEL (DDM)
 ==============================================
-Interface de valorisation par l'actualisation des dividendes futurs.
-Ce terminal implémente les étapes 1 et 2 pour les entreprises matures.
+Valuation interface based on discounted future dividends.
+Implements steps 1 and 2 for mature dividend-paying firms.
 
-Architecture : ST-3.2 (Direct Equity)
-Style : Numpy docstrings
+Architecture: ST-3.2 (Direct Equity)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -25,39 +25,38 @@ from app.ui.expert.terminals.shared_widgets import (
 
 class DDMTerminal(ExpertTerminalBase):
     """
-    Terminal expert pour le modèle d'actualisation des dividendes.
+    Expert terminal for the Dividend Discount Model.
 
-    Le DDM valorise l'action comme la valeur présente des flux de dividendes
-    attendus, actualisés au coût des fonds propres (Ke).
+    The DDM values a share as the present value of all expected
+    future dividends, discounted at the cost of equity (Ke).
     """
 
     MODE = ValuationMode.DDM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- Configuration du Pipeline UI ---
+    # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Formules LaTeX narratives ---
-    # Note : Le bridge utilisera SharedTexts.FORMULA_BRIDGE_SIMPLE car is_direct_equity est True.
+    # --- Narrative LaTeX Formulas ---
     TERMINAL_VALUE_FORMULA = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Rendu des entrées spécifiques au modèle DDM (Étapes 1 & 2).
+        Renders specific inputs for the DDM model (Steps 1 & 2).
 
         Returns
         -------
         Dict[str, Any]
-            Paramètres : manual_dividend_base, projection_years, fcf_growth_rate.
+            Parameters: manual_dividend_base, projection_years, fcf_growth_rate.
         """
         prefix = self.MODE.name
 
-        # --- ÉTAPE 1 : FLUX DE DIVIDENDES ---
+        # --- STEP 1: DIVIDEND CASH FLOWS ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
@@ -72,7 +71,7 @@ class DDMTerminal(ExpertTerminalBase):
 
         st.divider()
 
-        # --- ÉTAPE 2 : DYNAMIQUE DES DIVIDENDES ---
+        # --- STEP 2: DIVIDEND DYNAMICS ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
@@ -97,17 +96,17 @@ class DDMTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extrait les données DDM depuis le session_state.
+        Extracts DDM data from streamlit session_state.
 
         Parameters
         ----------
         key_prefix : str
-            Préfixe basé sur le ValuationMode.
+            Prefix based on the ValuationMode.
 
         Returns
         -------
         Dict[str, Any]
-            Données opérationnelles pour build_request.
+            Operational data for build_request.
         """
         return {
             "manual_dividend_base": st.session_state.get(f"{key_prefix}_dividend_base"),

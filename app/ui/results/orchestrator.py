@@ -1,9 +1,13 @@
 """
 app/ui/results/orchestrator.py
-ORCHESTRATEUR — GESTION DES 5 PILIERS DE RÉSULTATS (Version Versatile)
-======================================================================
-Rôle : Coordonne le Golden Header et la distribution des données vers
-les onglets thématiques. Fusion ST-4.2 : Analyse de marché & SOTP.
+
+ORCHESTRATOR — 5 PILLARS RESULTS MANAGEMENT
+===========================================
+Role: Coordinates the Golden Header and distributes data across thematic tabs.
+Fusion ST-4.2: Integrated Market Analysis & SOTP.
+
+Architecture: Senior Grade Orchestration.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -19,12 +23,12 @@ from src.i18n import UIMessages, KPITexts, AuditTexts
 from src.utilities.formatting import format_smart_number
 from .base_result import ResultTabBase
 
-# --- PILLIERS CORE ---
+# --- CORE PILLARS ---
 from app.ui.results.core.inputs_summary import InputsSummaryTab
 from app.ui.results.core.calculation_proof import CalculationProofTab
 from app.ui.results.core.audit_report import AuditReportTab
 
-# --- PILLIERS OPTIONNELS & VERSATILES ---
+# --- OPTIONAL & VERSATILE PILLARS ---
 from app.ui.results.optional.risk_engineering import RiskEngineeringTab
 from app.ui.results.optional.peer_multiples import MarketAnalysisTab
 
@@ -35,25 +39,29 @@ SESSION_KEY_MC_DATA = "stats_monte_carlo_cache"
 
 class ResultTabOrchestrator:
     """
-    Chef d'orchestre de l'interface de résultats.
-    Gère la hiérarchie institutionnelle des 5 Piliers restructurés.
+    Orchestrator for the valuation results interface.
+    Manages the institutional hierarchy of the restructured 5 Pillars.
     """
 
-    # L'ordre définit la séquence de lecture de l'analyste (Fusion SOTP incluse)
+    # Reading sequence follows professional analyst logic
     _THEMATIC_TABS_CLASSES: List[Type[ResultTabBase]] = [
-        InputsSummaryTab,        # Pilier 1 : Données d'entrée
-        CalculationProofTab,     # Pilier 2 : Preuve de calcul
-        AuditReportTab,          # Pilier 3 : Audit de fiabilité
-        RiskEngineeringTab,      # Pilier 4 : Ingénierie du risque
-        MarketAnalysisTab        # Pilier 5 : Analyse de marché & SOTP
+        InputsSummaryTab,        # Pillar 1: Input Data & Hypotheses
+        CalculationProofTab,     # Pillar 2: Calculation Proof (Glass Box)
+        AuditReportTab,          # Pillar 3: Reliability Audit
+        RiskEngineeringTab,      # Pillar 4: Risk Engineering
+        MarketAnalysisTab        # Pillar 5: Market Analysis & SOTP
     ]
 
     def __init__(self):
+        """Initializes tab instances for rendering."""
         self._tabs = [TabClass() for TabClass in self._THEMATIC_TABS_CLASSES]
 
     @staticmethod
     def _render_global_header(result: ValuationResult) -> None:
-        """Rendu du bandeau d'identité fixe (Golden Header)."""
+        """
+        Renders the fixed identity band (Golden Header).
+        Displays critical metrics: Ticker, Name, Sector, IV vs Price, and Confidence.
+        """
         f = result.financials
         currency = f.currency
 
@@ -61,13 +69,18 @@ class ResultTabOrchestrator:
             col_id, col_val, col_audit = st.columns([2, 2.5, 1.5])
 
             with col_id:
+                # Identity Block
                 st.markdown(f"### {f.ticker}")
                 st.caption(f"{f.name} | {f.sector}")
 
             with col_val:
-                upside = result.upside_pct or 0.0
-                # Correction syntaxique i18n pour les couleurs
-                color = "green" if upside > 0 else "red"
+                # Valuation Synthesis Block
+                try:
+                    upside = float(result.upside_pct) if result.upside_pct is not None else 0.0
+                except (TypeError, ValueError):
+                    upside = 0.0
+
+                color = "green" if upside >= 0 else "red"
 
                 st.markdown(f"**{KPITexts.LABEL_IV}**")
                 val_str = format_smart_number(result.intrinsic_value_per_share, currency=currency)
@@ -77,8 +90,10 @@ class ResultTabOrchestrator:
                 st.caption(f"{KPITexts.LABEL_PRICE} : {result.market_price:,.2f} {currency}")
 
             with col_audit:
+                # Confidence/Reliability Block
                 if result.audit_report:
                     rating = result.audit_report.rating
+                    # Institutional color mapping
                     badge_color = "#10b981" if rating.startswith("A") else "#f59e0b" if rating.startswith("B") else "#ef4444"
 
                     st.markdown(f"<div style='text-align:right;'>{KPITexts.EXEC_CONFIDENCE}</div>", unsafe_allow_html=True)
@@ -91,25 +106,28 @@ class ResultTabOrchestrator:
                     st.markdown(f"<div style='text-align:right;'>{AuditTexts.DEFAULT_FORMULA}</div>", unsafe_allow_html=True)
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """Coordonne le rendu dynamique des onglets avec gestion du cache technique."""
+        """
+        Coordinates the dynamic rendering of tabs with technical cache management.
+        """
         self._render_global_header(result)
         st.write("")
 
-        # 1. Gestion du Cache (Statique)
+        # 1. Technical Cache Management
         self._handle_cache_invalidation(result)
         self._cache_technical_data(result)
 
+        # Inject cached stats into tab context
         mc_stats = st.session_state.get(SESSION_KEY_MC_DATA)
         if mc_stats:
             kwargs["mc_stats"] = mc_stats
 
-        # 2. Filtrage & Rendu des Onglets
+        # 2. Filtering & Rendering
         visible_tabs = self._filter_relevant_tabs(result)
         if not visible_tabs:
             st.warning(UIMessages.NO_TABS_TO_DISPLAY)
             return
 
-        # Normalisation : Les labels sont extraits et affichés en Sentence case par les onglets eux-mêmes
+        # Render labels via i18n
         tab_labels = [tab.get_display_label() for tab in visible_tabs]
         st_tabs = st.tabs(tab_labels)
 
@@ -122,7 +140,10 @@ class ResultTabOrchestrator:
                     st.error(f"{UIMessages.CHART_UNAVAILABLE}")
 
     def _filter_relevant_tabs(self, result: ValuationResult) -> List[ResultTabBase]:
-        """Filtre les onglets selon le mode de valorisation (ex: Graham vs DCF)."""
+        """
+        Filters tabs based on valuation mode and visibility constraints.
+        E. g., Graham excludes relative market analysis (Pillar 5).
+        """
         filtered = []
         is_graham = (result.mode == ValuationMode.GRAHAM)
 
@@ -130,7 +151,7 @@ class ResultTabOrchestrator:
             if not tab.is_visible(result):
                 continue
 
-            # Graham exclut l'analyse de marché relative (Pilier 5)
+            # Specific exclusion for Graham screening model
             if is_graham and isinstance(tab, MarketAnalysisTab):
                 continue
 
@@ -140,11 +161,17 @@ class ResultTabOrchestrator:
 
     @staticmethod
     def _handle_cache_invalidation(result: ValuationResult) -> None:
-        """Invalide le cache si le contexte de valorisation change."""
-        ctx_payload = (result.ticker, result.intrinsic_value_per_share,
-                       result.mode.value if result.mode else "NONE",
-                       len(result.simulation_results) if result.simulation_results else 0)
+        """
+        Invalidates the internal statistics cache if the valuation context changes.
+        """
+        ctx_payload = (
+            str(result.ticker),
+            str(result.intrinsic_value_per_share),
+            str(result.mode.value if result.mode else "NONE"),
+            int(len(result.simulation_results) if result.simulation_results else 0)
+        )
 
+        # Generate lightweight context hash
         current_hash = hashlib.md5(str(ctx_payload).encode()).hexdigest()[:12]
 
         if st.session_state.get(SESSION_KEY_RESULT_HASH) != current_hash:
@@ -153,7 +180,9 @@ class ResultTabOrchestrator:
 
     @staticmethod
     def _cache_technical_data(result: ValuationResult) -> None:
-        """Calcule et met en cache les statistiques Monte Carlo pour optimiser l'UI."""
+        """
+        Calculates and caches Monte Carlo statistics to optimize UI performance.
+        """
         if result.simulation_results and not st.session_state.get(SESSION_KEY_MC_DATA):
             data = np.array([r for r in result.simulation_results if r is not None])
             if data.size > 0:
@@ -162,5 +191,5 @@ class ResultTabOrchestrator:
                     "p10": np.percentile(data, 10),
                     "p90": np.percentile(data, 90),
                     "std": np.std(data),
-                    "var_95": np.percentile(data, 5)
+                    "var_95": np.percentile(data, 5) # Value at Risk (5th percentile)
                 }
