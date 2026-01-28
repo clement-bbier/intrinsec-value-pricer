@@ -121,7 +121,8 @@ def widget_growth_rate(
         min_value=min_val,
         max_value=max_val,
         value=default,
-        format="%.3f",
+        step=0.1,
+        format="%.2f",
         key=f"{key_prefix}_growth_rate",
         help=SharedTexts.HELP_GROWTH_RATE
     )
@@ -140,28 +141,30 @@ def widget_cost_of_capital(mode: ValuationMode, key_prefix: Optional[str] = None
     """
     prefix = key_prefix or mode.name
 
-    # Dynamic theoretical formula
-    st.latex(
-        SharedTexts.FORMULA_CAPITAL_KE if mode.is_direct_equity
-        else SharedTexts.FORMULA_CAPITAL_WACC
-    )
+    # Dynamic theoretical formula based on methodology
+    st.latex(SharedTexts.FORMULA_CAPITAL_KE if mode.is_direct_equity else SharedTexts.FORMULA_CAPITAL_WACC)
 
-    # Reference price input
+    # Reference price for weight calculation
     manual_price = st.number_input(
-        SharedTexts.INP_PRICE_WEIGHTS, 0.0, 100000.0, None, 0.01, "%.2f",
+        SharedTexts.INP_PRICE_WEIGHTS, 0.0, UIWidgetDefaults.MAX_MANUAL_PRICE, None, 0.01, "%.2f",
         help=SharedTexts.HELP_PRICE_WEIGHTS, key=f"{prefix}_price"
     )
 
     col_a, col_b = st.columns(2)
-    rf = col_a.number_input(SharedTexts.INP_RF, 0.0, 0.2, None, 0.001, "%.3f", SharedTexts.HELP_RF, f"{prefix}_rf")
-    beta = col_b.number_input(SharedTexts.INP_BETA, 0.0, 5.0, None, 0.01, "%.2f", SharedTexts.HELP_BETA, f"{prefix}_beta")
-    mrp = col_a.number_input(SharedTexts.INP_MRP, 0.0, 0.2, None, 0.001, "%.3f", SharedTexts.HELP_MRP, f"{prefix}_mrp")
+    rf = col_a.number_input(SharedTexts.INP_RF, 0.0, UIWidgetDefaults.MAX_DISCOUNT_RATE, None, 0.1, "%.2f",
+                            SharedTexts.HELP_RF, f"{prefix}_rf")
+    beta = col_b.number_input(SharedTexts.INP_BETA, 0.0, UIWidgetDefaults.MAX_BETA, None, 0.01, "%.2f",
+                              SharedTexts.HELP_BETA, f"{prefix}_beta")
+    mrp = col_a.number_input(SharedTexts.INP_MRP, 0.0, UIWidgetDefaults.MAX_DISCOUNT_RATE, None, 0.1, "%.2f",
+                             SharedTexts.HELP_MRP, f"{prefix}_mrp")
 
     data = {"risk_free_rate": rf, "manual_beta": beta, "market_risk_premium": mrp, "manual_stock_price": manual_price}
 
     if not mode.is_direct_equity:
-        kd = col_b.number_input(SharedTexts.INP_KD, 0.0, 0.2, None, 0.001, "%.3f", SharedTexts.HELP_KD, f"{prefix}_kd")
-        tau = col_a.number_input(SharedTexts.INP_TAX, 0.0, 0.6, None, 0.01, "%.2f", SharedTexts.HELP_TAX, f"{prefix}_tax")
+        kd = col_b.number_input(SharedTexts.INP_KD, 0.0, UIWidgetDefaults.MAX_COST_OF_DEBT, None, 0.1, "%.2f",
+                                SharedTexts.HELP_KD, f"{prefix}_kd")
+        tau = col_a.number_input(SharedTexts.INP_TAX, 0.0, UIWidgetDefaults.MAX_TAX_RATE, None, 0.1, "%.2f",
+                                 SharedTexts.HELP_TAX, f"{prefix}_tax")
         data.update({"cost_of_debt": kd, "tax_rate": tau})
 
     st.divider()
@@ -219,8 +222,8 @@ def widget_terminal_value_dcf(key_prefix: Optional[str] = None) -> Dict[str, Any
     if method == TerminalValueMethod.GORDON_GROWTH:
         gn = col_inp.number_input(
             SharedTexts.INP_PERP_G,
-            min_value=0.0, max_value=0.05,
-            value=None, format="%.3f",
+            min_value=0.0, max_value=UIWidgetDefaults.MAX_TERMINAL_GROWTH,
+            value=None, step=0.1, format="%.2f",
             help=SharedTexts.HELP_PERP_G,
             key=f"{prefix}_gn"
         )
@@ -289,55 +292,38 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: Optional[str] = No
 
 @st.fragment
 def widget_equity_bridge(
-    formula_latex: str,  # Kept to maintain argument order during calls
-    mode: ValuationMode,
-    key_prefix: Optional[str] = None
+        formula_latex: str,
+        mode: ValuationMode,
+        key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Widget Step 5: Unified Equity Bridge and SBC Dilution interface.
-    Fixes AttributeError by respecting argument order (formula, mode).
+    Unified Equity Bridge with normalized percentage inputs for SBC.
     """
     prefix = key_prefix or f"bridge_{mode.value}"
-    is_direct_equity = mode.is_direct_equity
 
-    # --- UNIQUE NARRATIVE HEADER ---
     st.markdown(SharedTexts.SEC_5_BRIDGE)
     st.info(SharedTexts.SEC_5_DESC)
     st.latex(formula_latex)
 
-    if is_direct_equity:
-        shares = st.number_input(
-            SharedTexts.INP_SHARES,
-            value=None, format="%.0f", help=SharedTexts.HELP_SHARES,
-            key=f"{prefix}_shares_direct"
-        )
-        st.markdown(SharedTexts.BRIDGE_DILUTION)
-        sbc_rate = st.number_input(
-            SharedTexts.INP_SBC_DILUTION, 0.0, 0.10, None, 0.005, format="%.3f",
-            key=f"{prefix}_sbc_rate"
-        )
+    if mode.is_direct_equity:
+        shares = st.number_input(SharedTexts.INP_SHARES, value=None, format="%.0f", help=SharedTexts.HELP_SHARES,
+                                 key=f"{prefix}_shares_direct")
+        sbc_rate = st.number_input(SharedTexts.INP_SBC_DILUTION, 0.0, 100.0, None, 0.1, format="%.2f",
+                                   key=f"{prefix}_sbc_rate")
         return {"manual_shares_outstanding": shares, "stock_based_compensation_rate": sbc_rate}
 
-    # PART 1: Structure
-    st.markdown(SharedTexts.BRIDGE_COMPONENTS)
+    # Enterprise Value Layout (FCFF)
     c_d, c_c = st.columns(2)
     debt = c_d.number_input(SharedTexts.INP_DEBT, value=None, format="%.0f", key=f"{prefix}_debt")
     cash = c_c.number_input(SharedTexts.INP_CASH, value=None, format="%.0f", key=f"{prefix}_cash")
 
-    # PART 2: Adjustments
-    st.markdown(SharedTexts.BRIDGE_ADJUSTMENTS)
     c_m, c_p, c_s = st.columns(3)
     minorities = c_m.number_input(SharedTexts.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_min")
     pensions = c_p.number_input(SharedTexts.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_pen")
     shares = c_s.number_input(SharedTexts.INP_SHARES, value=None, format="%.0f", key=f"{prefix}_shares")
 
-    # PART 3: Dilution (SBC)
-    st.markdown(SharedTexts.BRIDGE_DILUTION)
-    sbc_rate = st.number_input(
-        SharedTexts.INP_SBC_DILUTION, 0.0, 0.10, None, 0.005, format="%.3f",
-        key=f"{prefix}_sbc_rate"
-    )
-    st.divider()
+    sbc_rate = st.number_input(SharedTexts.INP_SBC_DILUTION, 0.0, 100.0, None, 0.1, format="%.2f",
+                               key=f"{prefix}_sbc_rate")
 
     return {
         "manual_total_debt": debt, "manual_cash": cash,
@@ -499,13 +485,14 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
 # ==============================================================================
 
 def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> ScenarioParameters:
-    """Multi-deterministic scenario analysis."""
+    """
+    Multi-variant operational scenarios (Bull/Base/Bear).
+    """
     prefix = key_prefix or "scenario"
     st.markdown(SharedTexts.SEC_8_SCENARIOS)
     st.info(SharedTexts.SEC_8_DESC_SCENARIOS)
 
-    enabled = st.toggle(SharedTexts.INP_SCENARIO_ENABLE, False, key=f"{prefix}_enable")
-    if not enabled:
+    if not st.toggle(SharedTexts.INP_SCENARIO_ENABLE, False, key=f"{prefix}_enable"):
         return ScenarioParameters(enabled=False)
 
     show_margin = (mode == ValuationMode.FCFF_GROWTH)
@@ -513,9 +500,9 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
     def _render_variant(label: str, case_id: str, default_p: float):
         st.markdown(f"**{label}**")
         c1, c2, c3 = st.columns(3)
-        p = c1.number_input(SharedTexts.INP_SCENARIO_PROBA, 0.0, 100.0, default_p, 5.0, key=f"{prefix}_p_{case_id}") / 100
-        g = c2.number_input(SharedTexts.INP_SCENARIO_GROWTH, value=None, format="%.3f", key=f"{prefix}_g_{case_id}")
-        m = c3.number_input(SharedTexts.INP_SCENARIO_MARGIN, value=None, format="%.2f", key=f"{prefix}_m_{case_id}") if show_margin else None
+        p = c1.number_input(SharedTexts.INP_SCENARIO_PROBA, 0.0, 100.0, default_p, 5.0, key=f"{prefix}_p_{case_id}") / 100.0
+        g = c2.number_input(SharedTexts.INP_SCENARIO_GROWTH, -100.0, 500.0, value=None, format="%.2f", key=f"{prefix}_g_{case_id}")
+        m = c3.number_input(SharedTexts.INP_SCENARIO_MARGIN, 0.0, 100.0, value=None, format="%.2f", key=f"{prefix}_m_{case_id}") if show_margin else None
         return p, g, m
 
     p_bull, g_bull, m_bull = _render_variant(SharedTexts.LABEL_SCENARIO_BULL, "bull", 25.0)
@@ -526,7 +513,6 @@ def widget_scenarios(mode: ValuationMode, key_prefix: Optional[str] = None) -> S
         st.error(SharedTexts.ERR_SCENARIO_PROBA_SUM.format(sum=int((p_bull+p_base+p_bear)*100)))
         return ScenarioParameters(enabled=False)
 
-    # IMPERATIVE: Use Keyword Arguments for Pydantic compatibility
     return ScenarioParameters(
         enabled=True,
         bull=ScenarioVariant(label=SharedTexts.LBL_BULL, probability=p_bull, growth_rate=g_bull, target_fcf_margin=m_bull),

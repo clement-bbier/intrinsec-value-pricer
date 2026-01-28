@@ -95,25 +95,23 @@ class YahooFinanceProvider(DataProvider):
     # =========================================================================
 
     @st.cache_data(ttl=3600, show_spinner=False)
-    def get_company_financials(self, ticker: str) -> CompanyFinancials:
+    def get_company_financials(_self, ticker: str) -> CompanyFinancials:
         """Fetches and normalizes core financial data for the target entity."""
         normalized_ticker = ticker.upper().strip()
-        return self._fetch_financials_with_fallback(normalized_ticker)
+        return _self._fetch_financials_with_fallback(normalized_ticker)
 
     @st.cache_data(ttl=14400) # 4-hour cache for price history
-    def get_price_history(self, ticker: str, period: str = "5y") -> pd.DataFrame:
+    def get_price_history(_self, ticker: str, period: str = "5y") -> pd.DataFrame:
         """Retrieves historical market data for technical validation or backtesting."""
-        return self.fetcher.fetch_price_history(ticker, period)
+        return _self.fetcher.fetch_price_history(ticker, period)
 
     @st.cache_data(ttl=3600, show_spinner=False)
-    def get_peer_multiples(self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
+    def get_peer_multiples(_self, ticker: str, manual_peers: Optional[List[str]] = None) -> MultiplesData:
         """
         Orchestrates peer discovery and relative valuation triangulation.
         Uses a robust fallback to static sector multiples if discovery fails.
         """
         _max_peers = PeerDefaults.MAX_PEERS_ANALYSIS
-
-
 
         with st.status(WorkflowTexts.STATUS_PEER_DISCOVERY) as status:
             raw_peers = []
@@ -135,7 +133,7 @@ class YahooFinanceProvider(DataProvider):
                 else:
                     # Automated discovery via yfinance internals
                     logger.debug(f"[Provider] Discovering comparable peers for {ticker}")
-                    all_discovered = self.fetcher.fetch_peer_multiples(ticker)
+                    all_discovered = _self.fetcher.fetch_peer_multiples(ticker)
                     if all_discovered:
                         raw_peers = all_discovered[:_max_peers]
             except (ValueError, RuntimeError) as e:
@@ -144,14 +142,14 @@ class YahooFinanceProvider(DataProvider):
 
             # ST-4.1: Seamless transition to Sector Fallback if live data is missing or corrupted
             if not raw_peers or api_failed:
-                return self._fallback_to_sector_multiples(ticker, status)
+                return _self._fallback_to_sector_multiples(ticker, status)
 
-            multiples_summary = self.normalizer.normalize_peers(raw_peers)
+            multiples_summary = _self.normalizer.normalize_peers(raw_peers)
 
             # Robustness check: filter out statistical outliers before triangulation
-            if not self._validate_multiples(multiples_summary):
+            if not _self._validate_multiples(multiples_summary):
                 logger.warning(f"[Provider] Extreme multiples detected for {ticker}, reverting to sector medians.")
-                return self._fallback_to_sector_multiples(ticker, status)
+                return _self._fallback_to_sector_multiples(ticker, status)
 
             status.update(label=WorkflowTexts.PEER_SUCCESS, state="complete")
             return multiples_summary

@@ -12,7 +12,6 @@ Règles de maintenance :
 - Les titres (TITLE) doivent correspondre exactement aux labels de la sidebar.
 """
 
-
 class SharedTexts:
     """
     SOCLE COMMUN - Centralise l'intégralité des labels, messages et formules
@@ -63,11 +62,11 @@ class SharedTexts:
     BRIDGE_ADJUSTMENTS = "**2. Ajustements de Valeur (M$)**"
     BRIDGE_DILUTION = "**3. Ajustements Dilutifs (SBC)**"
 
-    INP_DEBT = "Dette Financière Totale"
-    INP_CASH = "Trésorerie et Équivalents"
-    INP_SHARES = "Actions en circulation (Diluées)"
-    INP_MINORITIES = "Intérêts Minoritaires"
-    INP_PENSIONS = "Provisions / Engagements Sociaux"
+    INP_DEBT = "Dette Financière Totale (M$)"
+    INP_CASH = "Trésorerie et Équivalents (M$)"
+    INP_SHARES = "Actions en circulation (Millions)"
+    INP_MINORITIES = "Intérêts Minoritaires (M$)"
+    INP_PENSIONS = "Provisions / Engagements Sociaux (M$)"
 
 
     # ==========================================================================
@@ -109,7 +108,7 @@ class SharedTexts:
     # ==========================================================================
     LBL_SOTP_ENABLE = "Activer la décomposition SOTP"
     HELP_SOTP_ENABLE = "Permet de ventiler la valeur d'entreprise globale entre différentes Business Units."
-    WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la pour isoler les actifs non-opérationnels."
+    WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la uniquement pour decomposer la valeur calculée."
 
     SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (M$)**"
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding / conglomérat**"
@@ -127,15 +126,15 @@ class SharedTexts:
     INP_PROJ_YEARS = "Années de projection"
     SLIDER_PROJ_YEARS = "Horizon explicite (t années)"
 
-    INP_RF = "Taux Sans Risque (Rf)"
+    INP_RF = "Taux Sans Risque (Rf) (%)"
     INP_BETA = "Coefficient Bêta (β)"
-    INP_MRP = "Prime de Risque Marché (MRP)"
-    INP_KD = "Coût de la Dette Brut (kd)"
-    INP_TAX = "Taux d'Imposition Effectif (τ)"
-    INP_PERP_G = "Croissance Perpétuelle (gn)"
-    INP_EXIT_MULT = "Multiple de Sortie (Terminal)"
-    INP_GROWTH_G = "Taux de croissance moyen (g)"
-    INP_PRICE_WEIGHTS = "Cours de l'action (Calcul des poids)"
+    INP_MRP = "Prime de Risque Marché (MRP) (%)"
+    INP_KD = "Coût de la Dette Brut (kd) (%)"
+    INP_TAX = "Taux d'Imposition Effectif (τ) (%)"
+    INP_PERP_G = "Croissance Perpétuelle (gn) (%)"
+    INP_EXIT_MULT = "Multiple de Sortie (Terminal) (x)"
+    INP_GROWTH_G = "Taux de croissance moyen (g) (%)"
+    INP_PRICE_WEIGHTS = "Cours de l'action ($/action)"
     INP_OMEGA = "Facteur de persistance (ω)"
 
 

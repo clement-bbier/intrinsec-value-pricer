@@ -1,5 +1,5 @@
 """
-app/ui/expert_terminals/rim_bank_terminal.py
+app/ui/expert/terminals/rim_bank_terminal.py
 
 EXPERT TERMINAL — RESIDUAL INCOME MODEL (RIM)
 ==============================================
@@ -19,9 +19,15 @@ from src.i18n import SharedTexts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
-    widget_growth_rate,
-    widget_terminal_value_rim,
+    widget_growth_rate
 )
+
+# ==============================================================================
+# NORMALIZATION CONSTANT
+# ==============================================================================
+
+_PERCENTAGE_DIVISOR = 100.0
+"""Divisor for converting percentage inputs to decimals."""
 
 
 class RIMBankTerminal(ExpertTerminalBase):
@@ -115,11 +121,27 @@ class RIMBankTerminal(ExpertTerminalBase):
         -------
         Dict[str, Any]
             Operational data for build_request.
+
+        Note
+        ----
+        Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
+        Book value, Net Income, and Omega (persistence factor) remain unchanged:
+        - Book value and NI are absolute currency values
+        - Omega is already a persistence coefficient between 0 and 1
         """
+        # Extract raw values
+        raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
+
+        # Normalize growth rate from percentage to decimal
+        normalized_growth_rate = None
+        if raw_growth_rate is not None:
+            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
+
         return {
             "manual_book_value": st.session_state.get(f"{key_prefix}_bv_initial"),
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_ni_ttm"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "fcf_growth_rate": normalized_growth_rate,
             "projection_years": st.session_state.get(f"{key_prefix}_years"),
+            # Omega is NOT normalized - it's already a coefficient [0, 1]
             "exit_multiple_value": st.session_state.get(f"{key_prefix}_omega")
         }

@@ -1,5 +1,5 @@
 """
-app/ui/expert_terminals/fcfe_terminal.py
+app/ui/expert/terminals/fcfe_terminal.py
 
 EXPERT TERMINAL — FREE CASH FLOW TO EQUITY (FCFE)
 =================================================
@@ -21,6 +21,13 @@ from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
 )
+
+# ==============================================================================
+# NORMALIZATION CONSTANT
+# ==============================================================================
+
+_PERCENTAGE_DIVISOR = 100.0
+"""Divisor for converting percentage inputs to decimals."""
 
 
 class FCFETerminal(ExpertTerminalBase):
@@ -116,10 +123,22 @@ class FCFETerminal(ExpertTerminalBase):
         -------
         Dict[str, Any]
             Operational data for build_request.
+
+        Note
+        ----
+        Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
         """
+        # Extract raw values
+        raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
+
+        # Normalize growth rate from percentage to decimal
+        normalized_growth_rate = None
+        if raw_growth_rate is not None:
+            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
+
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
             "manual_net_borrowing": st.session_state.get(f"{key_prefix}_net_borrowing"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "fcf_growth_rate": normalized_growth_rate,
             "projection_years": st.session_state.get(f"{key_prefix}_years")
         }

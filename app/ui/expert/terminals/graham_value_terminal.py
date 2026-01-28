@@ -1,5 +1,5 @@
 """
-app/ui/expert_terminals/graham_value_terminal.py
+app/ui/expert/terminals/graham_value_terminal.py
 
 EXPERT TERMINAL — GRAHAM INTRINSIC VALUE (QUANT REVISED)
 ========================================================
@@ -16,6 +16,13 @@ import streamlit as st
 from src.models import ValuationMode
 from src.i18n.fr.ui.expert import GrahamTexts as Texts
 from ..base_terminal import ExpertTerminalBase
+
+# ==============================================================================
+# NORMALIZATION CONSTANT
+# ==============================================================================
+
+_PERCENTAGE_DIVISOR = 100.0
+"""Divisor for converting percentage inputs to decimals."""
 
 
 class GrahamValueTerminal(ExpertTerminalBase):
@@ -123,11 +130,31 @@ class GrahamValueTerminal(ExpertTerminalBase):
         -------
         Dict[str, Any]
             Operational data for build_request.
+
+        Note
+        ----
+        Three rate parameters require normalization:
+        - fcf_growth_rate (g): Long-term growth expectation
+        - corporate_aaa_yield (Y): Current AAA corporate bond yield
+        - tax_rate (tau): Effective corporate tax rate
+
+        EPS remains unchanged (absolute currency value per share).
         """
+        # Helper function for percentage normalization
+        def normalize(value):
+            if value is None:
+                return None
+            return value / _PERCENTAGE_DIVISOR
+
+        # Extract raw values
+        raw_growth = st.session_state.get(f"{key_prefix}_growth_lt")
+        raw_yield = st.session_state.get(f"{key_prefix}_yield_aaa")
+        raw_tax = st.session_state.get(f"{key_prefix}_tax_rate")
+
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_lt"),
-            "corporate_aaa_yield": st.session_state.get(f"{key_prefix}_yield_aaa"),
-            "tax_rate": st.session_state.get(f"{key_prefix}_tax_rate"),
+            "fcf_growth_rate": normalize(raw_growth),
+            "corporate_aaa_yield": normalize(raw_yield),
+            "tax_rate": normalize(raw_tax),
             "projection_years": 1
         }

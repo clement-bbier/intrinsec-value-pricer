@@ -31,6 +31,13 @@ from src.i18n import SharedTexts
 
 logger = logging.getLogger(__name__)
 
+# ==============================================================================
+# NORMALIZATION CONSTANTS
+# ==============================================================================
+
+_PERCENTAGE_DIVISOR = 100.0
+"""Divisor for converting percentage inputs (e.g., 5% entered as 5) to decimals (0.05)."""
+
 
 class ExpertTerminalBase(ABC):
     """
@@ -263,53 +270,144 @@ class ExpertTerminalBase(ABC):
         return self._collected_data.get("sotp")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PRIVATE EXTRACTION HELPERS
+    # PRIVATE EXTRACTION HELPERS — WITH PERCENTAGE NORMALIZATION
     # ══════════════════════════════════════════════════════════════════════════
 
     @staticmethod
+    def _normalize_percentage(value: Optional[float]) -> Optional[float]:
+        """
+        Converts a percentage value (e.g., 5 for 5%) to decimal (0.05).
+
+        Parameters
+        ----------
+        value : Optional[float]
+            Raw percentage value from UI input (e.g., 5 for 5%).
+
+        Returns
+        -------
+        Optional[float]
+            Normalized decimal value (e.g., 0.05), or None if input is None.
+        """
+        if value is None:
+            return None
+        return value / _PERCENTAGE_DIVISOR
+
+    @staticmethod
     def _extract_discount_data(key_prefix: str) -> Dict[str, Any]:
-        """Maps Rf, Beta, MRP, Price, Kd, and Tax from session state."""
+        """
+        Maps Rf, Beta, MRP, Price, Kd, and Tax from session state.
+
+        Note: Rates are normalized from percentage to decimal.
+        Beta and Price remain unchanged (not percentages).
+        """
         data = {}
-        mapping = {
-            f"{key_prefix}_rf": "risk_free_rate", f"{key_prefix}_beta": "manual_beta",
-            f"{key_prefix}_mrp": "market_risk_premium", f"{key_prefix}_price": "manual_stock_price",
-            f"{key_prefix}_kd": "cost_of_debt", f"{key_prefix}_tax": "tax_rate"
+
+        # Fields requiring percentage normalization
+        rate_fields = {
+            f"{key_prefix}_rf": "risk_free_rate",
+            f"{key_prefix}_mrp": "market_risk_premium",
+            f"{key_prefix}_kd": "cost_of_debt",
+            f"{key_prefix}_tax": "tax_rate"
         }
-        for key, field in mapping.items():
+
+        # Fields NOT requiring normalization (absolute values)
+        absolute_fields = {
+            f"{key_prefix}_beta": "manual_beta",
+            f"{key_prefix}_price": "manual_stock_price"
+        }
+
+        # Extract and normalize rate fields
+        for key, field in rate_fields.items():
+            if key in st.session_state:
+                raw_value = st.session_state[key]
+                data[field] = ExpertTerminalBase._normalize_percentage(raw_value)
+
+        # Extract absolute fields without normalization
+        for key, field in absolute_fields.items():
             if key in st.session_state:
                 data[field] = st.session_state[key]
+
         return data
 
     @staticmethod
     def _extract_bridge_data(key_prefix: str) -> Dict[str, Any]:
-        """Maps Balance Sheet structure and SBC dilution from session state."""
+        """
+        Maps Balance Sheet structure and SBC dilution from session state.
+
+        Note: SBC dilution rate is normalized from percentage to decimal.
+        """
         data = {}
         p = f"bridge_{key_prefix}"
-        mapping = {
-            f"{p}_debt": "manual_total_debt", f"{p}_cash": "manual_cash",
-            f"{p}_min": "manual_minority_interests", f"{p}_pen": "manual_pension_provisions",
-            f"{p}_shares": "manual_shares_outstanding", f"{p}_shares_direct": "manual_shares_outstanding",
-            f"{p}_sbc_rate": "stock_based_compensation_rate"
+
+        # Fields NOT requiring normalization (absolute values in currency)
+        absolute_fields = {
+            f"{p}_debt": "manual_total_debt",
+            f"{p}_cash": "manual_cash",
+            f"{p}_min": "manual_minority_interests",
+            f"{p}_pen": "manual_pension_provisions",
+            f"{p}_shares": "manual_shares_outstanding",
+            f"{p}_shares_direct": "manual_shares_outstanding"
         }
-        for k, f in mapping.items():
+
+        # Field requiring percentage normalization
+        rate_field_key = f"{p}_sbc_rate"
+        rate_field_name = "stock_based_compensation_rate"
+
+        # Extract absolute fields
+        for k, f in absolute_fields.items():
             if k in st.session_state:
                 data[f] = st.session_state[k]
+
+        # Extract and normalize SBC rate
+        if rate_field_key in st.session_state:
+            raw_value = st.session_state[rate_field_key]
+            data[rate_field_name] = ExpertTerminalBase._normalize_percentage(raw_value)
+
+        return data
+
+    @staticmethod
+    def _extract_terminal_data(key_prefix: str) -> Dict[str, Any]:
+        """
+        Extracts Terminal Value parameters (Gordon or Exit Multiples).
+
+        Note: If Gordon Growth method, perpetual_growth_rate is normalized.
+        """
+        data = {}
+        method_key = f"{key_prefix}_method"
+
+        if method_key in st.session_state:
+            method = st.session_state[method_key]
+            data["terminal_method"] = method
+            if method == TerminalValueMethod.GORDON_GROWTH:
+                val = st.session_state.get(f"{key_prefix}_gn")
+                data["perpetual_growth_rate"] = val / 100.0 if val is not None else None
+            else:
+                data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
         return data
 
     @staticmethod
     def _extract_monte_carlo_data() -> Dict[str, Any]:
-        """Extracts Monte Carlo configuration with safety checks."""
+        """
+        Extracts Monte Carlo configuration with safety checks.
+
+        Note: All volatility parameters are normalized from percentage to decimal.
+        """
         p = "mc"
         if not st.session_state.get(f"{p}_enable", False):
             return {"enable_monte_carlo": False}
 
+        # Helper for volatility normalization
+        def normalize_vol(key: str) -> Optional[float]:
+            raw = st.session_state.get(key)
+            return ExpertTerminalBase._normalize_percentage(raw)
+
         return {
             "enable_monte_carlo": True,
             "num_simulations": st.session_state.get(f"{p}_sims", 5000),
-            "base_flow_volatility": st.session_state.get(f"{p}_vol_flow"),
-            "beta_volatility": st.session_state.get(f"{p}_vol_beta"),
-            "growth_volatility": st.session_state.get(f"{p}_vol_growth"),
-            "exit_multiple_volatility": st.session_state.get(f"{p}_vol_exit_m")
+            "base_flow_volatility": normalize_vol(f"{p}_vol_flow"),
+            "beta_volatility": normalize_vol(f"{p}_vol_beta"),
+            "growth_volatility": normalize_vol(f"{p}_vol_growth"),
+            "exit_multiple_volatility": normalize_vol(f"{p}_vol_exit_m")
         }
 
     @staticmethod
@@ -325,17 +423,43 @@ class ExpertTerminalBase(ABC):
 
     @staticmethod
     def _extract_scenarios_data() -> Optional[ScenarioParameters]:
-        """Extracts Bull/Base/Bear scenario variants."""
+        """
+        Extracts Bull/Base/Bear scenario variants.
+
+        Note: Growth rates and FCF margins are normalized from percentage to decimal.
+        """
         from src.models import ScenarioVariant
         p = "scenario"
+
         if not st.session_state.get(f"{p}_scenario_enable"):
             return ScenarioParameters(enabled=False)
+
+        # Helper for percentage normalization
+        def normalize(key: str) -> Optional[float]:
+            raw = st.session_state.get(key)
+            return ExpertTerminalBase._normalize_percentage(raw)
+
         try:
             return ScenarioParameters(
                 enabled=True,
-                bull=ScenarioVariant(label=SharedTexts.LBL_BULL, probability=st.session_state[f"{p}_p_bull"], growth_rate=st.session_state.get(f"{p}_g_bull"), target_fcf_margin=st.session_state.get(f"{p}_m_bull")),
-                base=ScenarioVariant(label=SharedTexts.LBL_BASE, probability=st.session_state[f"{p}_p_base"], growth_rate=st.session_state.get(f"{p}_g_base"), target_fcf_margin=st.session_state.get(f"{p}_m_base")),
-                bear=ScenarioVariant(label=SharedTexts.LBL_BEAR, probability=st.session_state[f"{p}_p_bear"], growth_rate=st.session_state.get(f"{p}_g_bear"), target_fcf_margin=st.session_state.get(f"{p}_m_bear"))
+                bull=ScenarioVariant(
+                    label=SharedTexts.LBL_BULL,
+                    probability=st.session_state[f"{p}_p_bull"],
+                    growth_rate=normalize(f"{p}_g_bull"),
+                    target_fcf_margin=normalize(f"{p}_m_bull")
+                ),
+                base=ScenarioVariant(
+                    label=SharedTexts.LBL_BASE,
+                    probability=st.session_state[f"{p}_p_base"],
+                    growth_rate=normalize(f"{p}_g_base"),
+                    target_fcf_margin=normalize(f"{p}_m_base")
+                ),
+                bear=ScenarioVariant(
+                    label=SharedTexts.LBL_BEAR,
+                    probability=st.session_state[f"{p}_p_bear"],
+                    growth_rate=normalize(f"{p}_g_bear"),
+                    target_fcf_margin=normalize(f"{p}_m_bear")
+                )
             )
         except (KeyError, RuntimeError, ValueError):
             return ScenarioParameters(enabled=False)
@@ -355,18 +479,3 @@ class ExpertTerminalBase(ABC):
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """Default hook for model-specific data extraction."""
         return {}
-
-    @staticmethod
-    def _extract_terminal_data(key_prefix: str) -> Dict[str, Any]:
-        """Extracts Terminal Value parameters (Gordon or Exit Multiples)."""
-        data = {}
-        method_key = f"{key_prefix}_method"
-
-        if method_key in st.session_state:
-            method = st.session_state[method_key]
-            data["terminal_method"] = method
-            if method == TerminalValueMethod.GORDON_GROWTH:
-                data["perpetual_growth_rate"] = st.session_state.get(f"{key_prefix}_gn")
-            else:
-                data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
-        return data

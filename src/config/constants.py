@@ -297,16 +297,22 @@ class UIWidgetDefaults:
     DEFAULT_PROJECTION_YEARS: int = 5
     MIN_PROJECTION_YEARS: int = 3
     MAX_PROJECTION_YEARS: int = 15
-    MIN_GROWTH_RATE: float = -0.50
-    MAX_GROWTH_RATE: float = 1.0
-    MAX_TERMINAL_GROWTH: float = 0.05
-    MAX_DISCOUNT_RATE: float = 0.20
-    MAX_BETA: float = 5.0
-    MAX_TAX_RATE: float = 0.60
-    MAX_COST_OF_DEBT: float = 0.20
-    MAX_EXIT_MULTIPLE: float = 100.0
-    MAX_MANUAL_PRICE: float = 10000.0
-    DEFAULT_BASE_FLOW_VOLATILITY: float = 0.05
+
+    # --- Saisie en Unités Humaines (%) ---
+    MIN_GROWTH_RATE: float = -100.0
+    MAX_GROWTH_RATE: float = 500.0
+    MAX_TERMINAL_GROWTH: float = 50.0
+    MAX_DISCOUNT_RATE: float = 100.0
+    MAX_TAX_RATE: float = 100.0
+    MAX_COST_OF_DEBT: float = 100.0
+
+    # --- Autres Paramètres ---
+    MAX_BETA: float = 10.0
+    MAX_EXIT_MULTIPLE: float = 250.0
+    MAX_MANUAL_PRICE: float = 1000000.0
+
+    # --- Monte Carlo (%) ---
+    DEFAULT_BASE_FLOW_VOLATILITY: float = 15.0
 
 
 # ==============================================================================

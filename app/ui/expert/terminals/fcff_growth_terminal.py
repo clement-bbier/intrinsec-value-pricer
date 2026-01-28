@@ -1,5 +1,5 @@
 """
-app/ui/expert_terminals/fcff_growth_terminal.py
+app/ui/expert/terminals/fcff_growth_terminal.py
 
 EXPERT TERMINAL — FCFF REVENUE-DRIVEN (GROWTH & MARGIN)
 ======================================================
@@ -12,10 +12,19 @@ Style: Numpy docstrings
 
 from typing import Dict, Any
 import streamlit as st
+
 from src.models import ValuationMode
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import widget_projection_years
+
+# ==============================================================================
+# NORMALIZATION CONSTANT
+# ==============================================================================
+
+_PERCENTAGE_DIVISOR = 100.0
+"""Divisor for converting percentage inputs to decimals."""
+
 
 class FCFFGrowthTerminal(ExpertTerminalBase):
     """
@@ -85,10 +94,29 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
         -------
         Dict[str, Any]
             Operational data for build_request.
+
+        Note
+        ----
+        Both growth rate (revenue growth) AND target FCF margin are normalized
+        from percentage (e.g., 15) to decimal (0.15).
         """
+        # Extract raw values
+        raw_growth_rate = st.session_state.get(f"{key_prefix}_rev_growth")
+        raw_margin = st.session_state.get(f"{key_prefix}_margin_target")
+
+        # Normalize growth rate from percentage to decimal
+        normalized_growth_rate = None
+        if raw_growth_rate is not None:
+            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
+
+        # Normalize target FCF margin from percentage to decimal
+        normalized_margin = None
+        if raw_margin is not None:
+            normalized_margin = raw_margin / _PERCENTAGE_DIVISOR
+
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_rev_base"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_rev_growth"),
-            "target_fcf_margin": st.session_state.get(f"{key_prefix}_margin_target"),
+            "fcf_growth_rate": normalized_growth_rate,
+            "target_fcf_margin": normalized_margin,
             "projection_years": st.session_state.get(f"{key_prefix}_years")
         }
