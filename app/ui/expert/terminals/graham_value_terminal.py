@@ -101,7 +101,6 @@ class GrahamValueTerminal(ExpertTerminalBase):
             )
 
         st.caption(Texts.NOTE_GRAHAM)
-        st.divider()
 
         return {
             "manual_fcf_base": eps,

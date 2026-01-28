@@ -93,13 +93,6 @@ class RIMBankTerminal(ExpertTerminalBase):
         with col2:
             g_rate = widget_growth_rate(label=SharedTexts.INP_GROWTH_G, key_prefix=prefix)
 
-        # Persistence widget (ω) inserted directly into the narrative flow
-        st.write("")
-        tv_data = widget_terminal_value_rim(
-            formula_latex=r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}",
-            key_prefix=prefix
-        )
-
         st.divider()
 
         return {
@@ -107,7 +100,6 @@ class RIMBankTerminal(ExpertTerminalBase):
             "manual_fcf_base": ni_base,
             "projection_years": n_years,
             "fcf_growth_rate": g_rate,
-            **tv_data,  # Contains exit_multiple_value (omega)
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:

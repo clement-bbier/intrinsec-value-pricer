@@ -88,13 +88,20 @@ class ExpertTerminalBase(ABC):
 
         # 4. EXIT VALUE STEP (Terminal Value / Horizon)
         if self.SHOW_TERMINAL_SECTION:
-            from app.ui.expert.terminals.shared_widgets import widget_terminal_value_dcf
-            # Pass mode name as prefix to prevent session_state collisions
-            self._collected_data.update(widget_terminal_value_dcf(key_prefix=self.MODE.name) or {})
+            if self.MODE == ValuationMode.RIM:
+                from app.ui.expert.terminals.shared_widgets import widget_terminal_value_rim
+                self._collected_data.update(widget_terminal_value_rim(
+                    formula_latex=SharedTexts.FORMULA_TV_RIM,
+                    key_prefix=self.MODE.name
+                ) or {})
+            else:
+                from app.ui.expert.terminals.shared_widgets import widget_terminal_value_dcf
+                self._collected_data.update(widget_terminal_value_dcf(key_prefix=self.MODE.name) or {})
 
         # 5. STRUCTURE & ADJUSTMENTS STEP (Equity Bridge / SBC / Debt)
         if self.SHOW_BRIDGE_SECTION:
             self._collected_data.update(self._render_equity_bridge() or {})
+            st.divider()
 
         # 6 to 9. ENGINEERING STEPS (Optional Extensions)
         self._render_optional_features()

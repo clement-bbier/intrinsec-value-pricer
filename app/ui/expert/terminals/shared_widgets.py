@@ -311,7 +311,12 @@ def widget_equity_bridge(
             value=None, format="%.0f", help=SharedTexts.HELP_SHARES,
             key=f"{prefix}_shares_direct"
         )
-        return {"manual_shares_outstanding": shares}
+        st.markdown(SharedTexts.BRIDGE_DILUTION)
+        sbc_rate = st.number_input(
+            SharedTexts.INP_SBC_DILUTION, 0.0, 0.10, None, 0.005, format="%.3f",
+            key=f"{prefix}_sbc_rate"
+        )
+        return {"manual_shares_outstanding": shares, "stock_based_compensation_rate": sbc_rate}
 
     # PART 1: Structure
     st.markdown(SharedTexts.BRIDGE_COMPONENTS)

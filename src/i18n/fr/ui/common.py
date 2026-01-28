@@ -13,7 +13,7 @@ class CommonTexts:
     APP_TITLE = "Terminal de Valorisation Intrinsèque"
     APP_SUBTITLE = "Ingénierie Financière & Analyse de Risque"
     AUTHOR_NAME = "Clément Barbier"
-    DEVELOPED_BY = "Propulsé par"
+    DEVELOPED_BY = "Developpé par"
 
     # --- Boutons et Actions ---
     RUN_BUTTON = "Exécuter l'analyse"
@@ -94,16 +94,16 @@ class OnboardingTexts:
     TAB_2_DESC = "Décomposition des étapes mathématiques et affichage des formules LaTeX."
     # Pilier 3 - Audit
     TAB_3_TITLE = "Audit des Données & Cohérence"
-    TAB_3_DESC = "Évaluation de la fiabilité du modèle et détection d'anomalies financières."
-    # Pilier 4 - Marché
-    TAB_4_TITLE = "Valorisation Relative"
-    TAB_4_DESC = "Analyse comparative par multiples boursiers des sociétés comparables."
-    # Pilier 5 - Risque (Version enrichie)
-    TAB_5_TITLE = "Incertitudes & Risques"
-    TAB_5_DESC = "Simulations de Monte Carlo, analyse de la dispersion de valeur et tests de sensibilité."
+    TAB_3_DESC = "Évaluation de la fiabilité du modèle et détection d'anomalies."
+    # Pilier 4 - Risque
+    TAB_4_TITLE = "Ingénierie des Risques & Sensibilité"
+    TAB_4_DESC = "Analyse stochastique (Monte Carlo), matrices de sensibilité et backtesting historique pour valider la précision du modèle."
+    # Pilier 5 - Marché
+    TAB_5_TITLE = "Triangulation de Marché & SOTP"
+    TAB_5_DESC = "Étude comparative des multiples boursiers sectoriels et décomposition segmentée (SOTP) pour une validation extrinsèque."
 
     # Section : Diagnostics
-    DIAGNOSTIC_HEADER = "SYSTÈME DE DIAGNOSTIC"
+    DIAGNOSTIC_HEADER = "Système de diagnostics"
     DIAGNOSTIC_BLOQUANT = "ERREUR : Données financières incomplètes ou incohérentes."
     DIAGNOSTIC_WARN = "AVERTISSEMENT : Hypothèses en dehors des normes historiques."
     DIAGNOSTIC_INFO = "INFORMATION : Moteurs de calcul opérationnels."
