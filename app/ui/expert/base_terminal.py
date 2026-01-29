@@ -106,6 +106,12 @@ _MILLION_FIELDS: Set[str] = {
 
 # Fields that are ABSOLUTE VALUES and must NOT be normalized
 _ABSOLUTE_FIELDS: Set[str] = {
+    # Control Fields
+    "terminal_method",
+    "enable_monte_carlo",
+    "enable_peer_multiples",
+    "enable_backtest",
+
     # Discount fields
     "manual_beta",
     "manual_stock_price",
@@ -472,6 +478,10 @@ class ExpertTerminalBase(ABC):
         if value is None:
             return None
 
+        # Security, if not a number, not normalization
+        if not isinstance(value, (int, float)):
+            return value
+
         if field_name in _PERCENTAGE_FIELDS:
             return ExpertTerminalBase._normalize_percentage(value)
         elif field_name in _MILLION_FIELDS:
@@ -633,32 +643,18 @@ class ExpertTerminalBase(ABC):
         data = {}
 
         # Fields requiring percentage normalization (rates)
-        rate_fields = {
+        field_mapping = {
             f"{key_prefix}_rf": "risk_free_rate",
             f"{key_prefix}_mrp": "market_risk_premium",
             f"{key_prefix}_kd": "cost_of_debt",
             f"{key_prefix}_ke": "cost_of_equity",  # For direct equity models
             f"{key_prefix}_tax": "tax_rate",
-        }
-
-        # Fields NOT requiring normalization (absolute values)
-        absolute_fields = {
             f"{key_prefix}_beta": "manual_beta",
-            f"{key_prefix}_price": "manual_stock_price",
+            f"{key_prefix}_price": "manual_stock_price"
         }
-
-        # Extract and normalize rate fields
-        for session_key, field_name in rate_fields.items():
-            if session_key in st.session_state:
-                raw_value = st.session_state[session_key]
-                normalized = ExpertTerminalBase._normalize_percentage(raw_value)
-                data[field_name] = normalized
-                logger.debug(
-                    f"Normalized {field_name}: {raw_value}% -> {normalized}"
-                )
 
         # Extract absolute fields without normalization
-        for session_key, field_name in absolute_fields.items():
+        for session_key, field_name in field_mapping.items():
             if session_key in st.session_state:
                 data[field_name] = st.session_state[session_key]
 
@@ -696,33 +692,20 @@ class ExpertTerminalBase(ABC):
         data = {}
         p = f"bridge_{key_prefix}"
 
-        # Fields NOT requiring normalization (absolute values in currency or counts)
-        absolute_fields = {
+        # Mapping complet des champs du Bridge
+        field_mapping = {
             f"{p}_debt": "manual_total_debt",
             f"{p}_cash": "manual_cash",
             f"{p}_min": "manual_minority_interests",
             f"{p}_pen": "manual_pension_provisions",
             f"{p}_shares": "manual_shares_outstanding",
             f"{p}_shares_direct": "manual_shares_outstanding",
+            f"{p}_sbc_rate": "stock_based_compensation_rate",
         }
 
-        # Field requiring percentage normalization
-        rate_field_key = f"{p}_sbc_rate"
-        rate_field_name = "stock_based_compensation_rate"
-
-        # Extract absolute fields
-        for session_key, field_name in absolute_fields.items():
+        for session_key, field_name in field_mapping.items():
             if session_key in st.session_state:
                 data[field_name] = st.session_state[session_key]
-
-        # Extract and normalize SBC rate
-        if rate_field_key in st.session_state:
-            raw_value = st.session_state[rate_field_key]
-            normalized = ExpertTerminalBase._normalize_percentage(raw_value)
-            data[rate_field_name] = normalized
-            logger.debug(
-                f"Normalized {rate_field_name}: {raw_value}% -> {normalized}"
-            )
 
         return data
 
@@ -769,15 +752,8 @@ class ExpertTerminalBase(ABC):
             data["terminal_method"] = method
 
             if method == TerminalValueMethod.GORDON_GROWTH:
-                # Normalize perpetual growth rate from percentage to decimal
-                raw_gn = st.session_state.get(f"{key_prefix}_gn")
-                normalized = ExpertTerminalBase._normalize_percentage(raw_gn)
-                data["perpetual_growth_rate"] = normalized
-                logger.debug(
-                    f"Normalized perpetual_growth_rate: {raw_gn}% -> {normalized}"
-                )
+                data["perpetual_growth_rate"] = st.session_state.get(f"{key_prefix}_gn")
             else:
-                # Exit multiple is NOT a percentage, no normalization needed
                 data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
 
         return data
@@ -821,24 +797,12 @@ class ExpertTerminalBase(ABC):
         return {
             "enable_monte_carlo": True,
             "num_simulations": st.session_state.get(f"{p}_sims", 5000),
-            "base_flow_volatility": ExpertTerminalBase.apply_field_scaling(
-                "base_flow_volatility", st.session_state.get(f"{p}_vol_flow")
-            ),
-            "beta_volatility": ExpertTerminalBase.apply_field_scaling(
-                "beta_volatility", st.session_state.get(f"{p}_vol_beta")
-            ),
-            "growth_volatility": ExpertTerminalBase.apply_field_scaling(
-                "growth_volatility", st.session_state.get(f"{p}_vol_growth")
-            ),
-            "exit_multiple_volatility": ExpertTerminalBase.apply_field_scaling(
-                "exit_multiple_volatility", st.session_state.get(f"{p}_vol_exit_m")
-            ),
-            "terminal_growth_volatility": ExpertTerminalBase.apply_field_scaling(
-                "terminal_growth_volatility", st.session_state.get(f"{p}_vol_gn")
-            ),
-            "wacc_volatility": ExpertTerminalBase.apply_field_scaling(
-                "wacc_volatility", st.session_state.get(f"{p}_vol_wacc")
-            ),
+            "base_flow_volatility": st.session_state.get(f"{p}_vol_flow"),
+            "beta_volatility": st.session_state.get(f"{p}_vol_beta"),
+            "growth_volatility": st.session_state.get(f"{p}_vol_growth"),
+            "exit_multiple_volatility": st.session_state.get(f"{p}_vol_exit_m"),
+            "terminal_growth_volatility": st.session_state.get(f"{p}_vol_gn"),
+            "wacc_volatility": st.session_state.get(f"{p}_vol_wacc"),
         }
 
     @staticmethod

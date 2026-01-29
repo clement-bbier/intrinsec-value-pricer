@@ -204,6 +204,29 @@ class QuantLogger:
         )
         _logger.error(msg)
 
+    @classmethod
+    def log_monte_carlo(
+            cls,
+            ticker: str,
+            simulations: int,
+            valid_ratio: float,
+            p50: float,
+            p10: float,
+            p90: float
+    ) -> None:
+        """Logs stochastic metrics to quantitative logs."""
+        msg = cls._format_message(
+            LogDomain.MONTE_CARLO,
+            LogLevel.INFO,
+            ticker,
+            total_simulations=simulations,
+            success_rate=valid_ratio,
+            median_iv=p50,
+            percentile_10=p10,
+            percentile_90=p90
+        )
+        _logger.info(msg)
+
 
 def log_valuation(func: F) -> F:
     """

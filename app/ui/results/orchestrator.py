@@ -145,7 +145,8 @@ class ResultTabOrchestrator:
         E. g., Graham excludes relative market analysis (Pillar 5).
         """
         filtered = []
-        is_graham = (result.mode == ValuationMode.GRAHAM)
+        mode = result.request.mode if result.request else None
+        is_graham = (mode == ValuationMode.GRAHAM)
 
         for tab in self._tabs:
             if not tab.is_visible(result):
@@ -165,9 +166,9 @@ class ResultTabOrchestrator:
         Invalidates the internal statistics cache if the valuation context changes.
         """
         ctx_payload = (
-            str(result.ticker),
+            str(result.financials.ticker),
             str(result.intrinsic_value_per_share),
-            str(result.mode.value if result.mode else "NONE"),
+            str(result.request.mode.value if result.request else "NONE"),
             int(len(result.simulation_results) if result.simulation_results else 0)
         )
 
