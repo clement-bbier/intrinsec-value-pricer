@@ -70,10 +70,10 @@ class TestDataExtractionLogic:
         key_prefix = terminal.MODE.name
         mock_st.session_state = {
             f"{key_prefix}_years": 10,
-            f"{key_prefix}_rf": 0.035,
+            f"{key_prefix}_rf": 3.5,
             f"{key_prefix}_beta": 1.1,
             f"{key_prefix}_method": TerminalValueMethod.GORDON_GROWTH,
-            f"{key_prefix}_gn": 0.02,
+            f"{key_prefix}_gn": 2.0,
             f"bridge_{key_prefix}_debt": 1000.0,
             "mc_enable": True,
             "peer_peer_enable": True,
@@ -97,12 +97,12 @@ class TestDataExtractionLogic:
         """
         mock_st.session_state = {
             "scenario_scenario_enable": True,
-            "scenario_p_bull": 0.25, # 👈 On utilise des décimales (25%)
-            "scenario_p_base": 0.50, # 👈 Somme = 1.0
+            "scenario_p_bull": 0.25,
+            "scenario_p_base": 0.50,
             "scenario_p_bear": 0.25,
-            "scenario_g_bull": 0.08,
-            "scenario_g_base": 0.05,
-            "scenario_g_bear": 0.02
+            "scenario_g_bull": 8.0,
+            "scenario_g_base": 5.0,
+            "scenario_g_bear": 2.0
         }
 
         scenarios = terminal._extract_scenarios_data()
