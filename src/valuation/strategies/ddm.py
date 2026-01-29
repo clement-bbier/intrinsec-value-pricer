@@ -11,30 +11,31 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 from typing import Tuple
 
+from src.computation.flow_projector import SimpleFlowProjector
 from src.exceptions import CalculationError
+from src.i18n import (
+    CalculationErrors,
+    DiagnosticTexts,
+    KPITexts,
+    RegistryTexts,
+    StrategyFormulas,
+    StrategyInterpretations,
+    StrategySources,
+    SharedTexts
+)
+from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import (
     CompanyFinancials,
     DCFParameters,
     EquityDCFValuationResult,
     ValuationMode
 )
-from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
-from src.computation.growth import SimpleFlowProjector
-
-# Centralized i18n imports
-from src.i18n import (
-    RegistryTexts,
-    StrategyInterpretations,
-    StrategyFormulas,
-    CalculationErrors,
-    StrategySources,
-    KPITexts,
-    DiagnosticTexts
-)
+from src.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,13 @@ class DividendDiscountStrategy(ValuationStrategy):
 
     Estimates intrinsic value as the sum of discounted future dividends
     using the Cost of Equity ($K_e$) as the discount rate.
+
+    Attributes
+    ----------
+    academic_reference : str
+        Gordon / Shapiro.
+    economic_domain : str
+        Dividend-paying Firms / Mature Utilities.
     """
 
     academic_reference = "Gordon / Shapiro"
@@ -57,8 +65,20 @@ class DividendDiscountStrategy(ValuationStrategy):
     ) -> EquityDCFValuationResult:
         """
         Executes DDM valuation via the Unified Pipeline with type-safe downcasting.
+
+        Parameters
+        ----------
+        financials : CompanyFinancials
+            Target company financial data.
+        params : DCFParameters
+            Calculation hypotheses.
+
+        Returns
+        -------
+        EquityDCFValuationResult
+            The intrinsic value result based on dividend streams.
         """
-        # 1. RESOLVE DIVIDEND BASE (D_0)
+        # 1. RESOLVE DIVIDEND BASE (D_0) - Phase 2 : Traçabilité des variables
         d0_per_share, source_div = self._resolve_dividend_base(financials, params)
 
         # Safety Check: Block negative or null dividends in Auto mode
@@ -73,18 +93,37 @@ class DividendDiscountStrategy(ValuationStrategy):
         # Convert to total mass for Pipeline consistency ($Mass = D_0 \times Shares$)
         total_dividend_mass = d0_per_share * financials.shares_outstanding
 
+        # Construction de la variables_map pour exposer le D0 et les actions
+        variables = {
+            "D_0": self._build_variable_info(
+                symbol="D_0",
+                value=d0_per_share,
+                manual_value=params.growth.manual_dividend_base,
+                provider_value=financials.dividend_share,
+                description=Texts.INP_DIVIDEND_BASE
+            ),
+            "Shares": self._build_variable_info(
+                symbol="Shares",
+                value=financials.shares_outstanding,
+                manual_value=params.growth.manual_shares_outstanding,
+                provider_value=financials.shares_outstanding,
+                description=SharedTexts.INP_SHARES
+            )
+        }
+
         self.add_step(
             step_key="DDM_BASE_SELECTION",
             label=RegistryTexts.DDM_BASE_L,
             theoretical_formula=StrategyFormulas.DIVIDEND_BASE,
             result=total_dividend_mass,
-            numerical_substitution=KPITexts.SUB_DDM_BASE.format(
+            actual_calculation=KPITexts.SUB_DDM_BASE.format(
                 d0=d0_per_share,
                 shares=financials.shares_outstanding,
                 val=total_dividend_mass
             ),
             interpretation=StrategyInterpretations.DDM_LOGIC,
-            source=source_div
+            source=source_div,
+            variables_map=variables
         )
 
         # 2. PIPELINE CONFIGURATION (DIRECT EQUITY MODE)
@@ -100,7 +139,7 @@ class DividendDiscountStrategy(ValuationStrategy):
             params=params
         )
 
-        # Type Safety: Ensure the pipeline returned an Equity-specific result
+        # Type Safety Check
         if not isinstance(raw_result, EquityDCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -125,6 +164,11 @@ class DividendDiscountStrategy(ValuationStrategy):
     ) -> Tuple[float, str]:
         """
         Resolves the reference dividend per share ($D_0$).
+
+        Returns
+        -------
+        Tuple[float, str]
+            (Dividend per share, Source label)
         """
         g = params.growth
 

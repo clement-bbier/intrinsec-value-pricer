@@ -34,7 +34,7 @@ from src.models import (
 )
 from src.valuation.strategies import ValuationStrategy
 from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
-from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 
 # Registry and Telemetry
 from src.valuation.registry import get_strategy

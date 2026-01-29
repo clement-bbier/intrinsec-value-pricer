@@ -11,29 +11,31 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
-import logging
-from typing import Tuple
 
+import logging
+from typing import Tuple, Dict
+
+from src.computation.financial_math import calculate_fcfe_reconstruction
+from src.computation.flow_projector import SimpleFlowProjector
 from src.exceptions import CalculationError
+from src.i18n import (
+    CalculationErrors,
+    DiagnosticTexts,
+    KPITexts,
+    RegistryTexts,
+    StrategyFormulas,
+    StrategyInterpretations,
+    StrategySources
+)
+from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.models import (
-    CompanyFinancials, DCFParameters, EquityDCFValuationResult,
+    CompanyFinancials,
+    DCFParameters,
+    EquityDCFValuationResult,
     ValuationMode
 )
-from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
-from src.computation.growth import SimpleFlowProjector
-from src.computation.financial_math import calculate_fcfe_reconstruction
-
-# Centralized i18n imports
-from src.i18n import (
-    RegistryTexts,
-    StrategyInterpretations,
-    StrategyFormulas,
-    CalculationErrors,
-    StrategySources,
-    KPITexts,
-    DiagnosticTexts
-)
+from src.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,13 @@ class FCFEStrategy(ValuationStrategy):
 
     Reconstructs the cash flow available to shareholders ($FCFE$) after
     operating expenses, reinvestment, and net debt servicing.
+
+    Attributes
+    ----------
+    academic_reference : str
+        Damodaran.
+    economic_domain : str
+        Equity Valuation / Leveraged Firms.
     """
 
     academic_reference = "Damodaran"
@@ -56,11 +65,23 @@ class FCFEStrategy(ValuationStrategy):
     ) -> EquityDCFValuationResult:
         """
         Executes FCFE valuation via the Unified Pipeline with logical walk tracking.
-        """
-        # 1. SHAREHOLDER FLOW RECONSTRUCTION (CLEAN WALK)
-        ni, adj, nb, fcfe_base, source = self._resolve_fcfe_components(financials, params)
 
-        # Financial Guard: Block negative FCFE in Auto mode (ST-1.4)
+        Parameters
+        ----------
+        financials : CompanyFinancials
+            Target company financial data.
+        params : DCFParameters
+            Calculation hypotheses.
+
+        Returns
+        -------
+        EquityDCFValuationResult
+            The intrinsic value result for shareholders.
+        """
+        # 1. SHAREHOLDER FLOW RECONSTRUCTION (Phase 2 - Glass Box Map)
+        ni, adj, nb, fcfe_base, sources_map = self._resolve_fcfe_components(financials, params)
+
+        # Financial Guard: Block negative FCFE in Auto mode
         if params.growth.manual_fcf_base is None and fcfe_base <= 0:
             raise CalculationError(
                 CalculationErrors.NEGATIVE_FLUX_AUTO.format(
@@ -69,16 +90,30 @@ class FCFEStrategy(ValuationStrategy):
                 )
             )
 
+        variables = {
+            "NI": self._build_variable_info(
+                "NI", ni, None, financials.net_income_ttm, "Net Income (TTM)"
+            ),
+            "Adj": self._build_variable_info(
+                "Adj", adj, None, adj, "Non-cash Adjustments & CapEx delta"
+            ),
+            "NB": self._build_variable_info(
+                "NB", nb, params.growth.manual_net_borrowing, financials.net_borrowing_ttm,
+                Texts.INP_NET_BORROWING
+            )
+        }
+
         self.add_step(
             step_key="FCFE_BASE_SELECTION",
             label=RegistryTexts.FCFE_BASE_L,
             theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
             result=fcfe_base,
-            numerical_substitution=KPITexts.SUB_FCFE_WALK.format(
+            actual_calculation=KPITexts.SUB_FCFE_WALK.format(
                 ni=ni, adj=adj, nb=nb, total=fcfe_base
             ),
             interpretation=StrategyInterpretations.FCFE_LOGIC,
-            source=source
+            source=sources_map["total"],
+            variables_map=variables
         )
 
         # 2. PIPELINE EXECUTION (DIRECT EQUITY MODE)
@@ -88,14 +123,12 @@ class FCFEStrategy(ValuationStrategy):
             glass_box_enabled=self.glass_box_enabled
         )
 
-        # Pipeline handles discounting via Cost of Equity ($K_e$)
         raw_result = pipeline.run(
             base_value=fcfe_base,
             financials=financials,
             params=params
         )
 
-        # Type Safety: Ensure the result container is correct for Direct Equity
         if not isinstance(raw_result, EquityDCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -106,7 +139,7 @@ class FCFEStrategy(ValuationStrategy):
 
         result: EquityDCFValuationResult = raw_result
 
-        # 3. FINALIZATION AND AUDIT
+        # 3. FINALIZATION
         self._merge_traces(result)
         self.generate_audit_report(result)
         self.verify_output_contract(result)
@@ -117,30 +150,37 @@ class FCFEStrategy(ValuationStrategy):
     def _resolve_fcfe_components(
         financials: CompanyFinancials,
         params: DCFParameters
-    ) -> Tuple[float, float, float, float, str]:
+    ) -> Tuple[float, float, float, float, Dict[str, str]]:
         """
         Resolves FCFE components for a transparent walk.
-        Returns: (Net Income, Adjustments, Net Borrowing, Total FCFE, Source)
+
+        Returns
+        -------
+        Tuple[float, float, float, float, Dict[str, str]]
+            (Net Income, Adjustments, Net Borrowing, Total FCFE, Sources Map)
         """
         g = params.growth
+        sources = {"total": StrategySources.YAHOO_TTM_SIMPLE}
 
-        # Case A: Direct Analyst Override
+        # Case A: Direct Analyst Override (La source devient orange Manual)
         if g.manual_fcf_base is not None:
-            return 0.0, 0.0, 0.0, g.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
+            sources["total"] = StrategySources.MANUAL_OVERRIDE
+            return 0.0, 0.0, 0.0, g.manual_fcf_base, sources
 
         # Case B: Standard Reconstruction Walk
         ni = financials.net_income_ttm or 0.0
-        nb = g.manual_net_borrowing if g.manual_net_borrowing is not None else (financials.net_borrowing_ttm or 0.0)
+        nb = (
+            g.manual_net_borrowing
+            if g.manual_net_borrowing is not None
+            else (financials.net_borrowing_ttm or 0.0)
+        )
 
-        # Adjustments: FCF (Operating) - Net Income (yields non-cash + capex delta)
-        if financials.fcf_last is not None:
-            adj = financials.fcf_last - ni
-        else:
-            adj = 0.0
+        # Adjustments: FCF (Operating) - Net Income
+        adj = (financials.fcf_last - ni) if financials.fcf_last is not None else 0.0
 
         fcfe_calculated = calculate_fcfe_reconstruction(ni=ni, adjustments=adj, net_borrowing=nb)
 
         if fcfe_calculated <= 0:
-            logger.warning("[Strategy] Negative reconstructed FCFE | ticker=%s", financials.ticker)
+            logger.warning("[FCFE] Negative reconstructed flow for %s", financials.ticker)
 
-        return ni, adj, nb, fcfe_calculated, StrategySources.YAHOO_TTM_SIMPLE
+        return ni, adj, nb, fcfe_calculated, sources

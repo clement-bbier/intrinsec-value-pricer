@@ -18,7 +18,7 @@ from src.exceptions import CalculationError
 from src.models import CompanyFinancials, DCFParameters, DCFValuationResult, ValuationMode
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
-from src.computation.growth import SimpleFlowProjector
+from src.computation.flow_projector import SimpleFlowProjector
 
 # Centralized i18n imports (Strict zero-raw-text policy)
 from src.i18n import (
@@ -68,7 +68,7 @@ class StandardFCFFStrategy(ValuationStrategy):
             label=RegistryTexts.DCF_FCF_BASE_L,
             theoretical_formula=StrategyFormulas.FCF_BASE,
             result=fcf_base,
-            numerical_substitution=KPITexts.SUB_FCF_BASE.format(val=fcf_base, src=source),
+            actual_calculation=KPITexts.SUB_FCF_BASE.format(val=fcf_base, src=source),
             interpretation=RegistryTexts.DCF_FCF_BASE_D,
             source=source
         )

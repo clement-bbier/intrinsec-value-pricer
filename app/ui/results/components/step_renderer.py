@@ -118,7 +118,7 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
         with c_subst:
             st.caption(KPITexts.APP_NUMERIC)
             # Priority to actual executed calculation if available
-            display_val = step.actual_calculation or step.numerical_substitution
+            display_val = step.actual_calculation
             if display_val:
                 st.code(display_val, language="text", wrap_lines=True)
 

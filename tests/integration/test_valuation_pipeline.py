@@ -139,7 +139,7 @@ class TestGlassBoxIntegration:
     
     def test_glass_box_generates_calculation_trace(self, sample_financials, sample_params):
         """Le mode Glass Box génère des étapes de calcul."""
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)
@@ -150,7 +150,7 @@ class TestGlassBoxIntegration:
     
     def test_calculation_trace_has_labels(self, sample_financials, sample_params):
         """Chaque étape de calcul a un label."""
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)

@@ -8,10 +8,10 @@ Localization for the institutional audit engine.
 
 class AuditCategories:
     """Categories de logs d'audit."""
-    DATA = "Donnees"
+    DATA = "Données"
     MACRO = "Macro"
-    SYSTEM = "Systeme"
-    MODEL = "Modele"
+    SYSTEM = "Système"
+    MODEL = "Modèle"
 
 
 class AuditMessages:

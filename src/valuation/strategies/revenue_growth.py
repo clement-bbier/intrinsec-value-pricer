@@ -11,25 +11,30 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 from typing import Tuple
 
+from src.computation.flow_projector import MarginConvergenceProjector
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, DCFParameters, DCFValuationResult, ValuationMode
-from src.valuation.strategies.abstract import ValuationStrategy
-from src.valuation.pipelines import DCFCalculationPipeline
-from src.computation.growth import MarginConvergenceProjector
-
-# Centralized i18n imports
 from src.i18n import (
-    RegistryTexts,
-    StrategyInterpretations,
-    StrategyFormulas,
     CalculationErrors,
+    DiagnosticTexts,
     KPITexts,
-    StrategySources,
-    DiagnosticTexts
+    RegistryTexts,
+    StrategyFormulas,
+    StrategyInterpretations,
+    StrategySources
 )
+from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
+from src.models import (
+    CompanyFinancials,
+    DCFParameters,
+    DCFValuationResult,
+    ValuationMode
+)
+from src.valuation.pipelines import DCFCalculationPipeline
+from src.valuation.strategies.abstract import ValuationStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +44,15 @@ class RevenueBasedStrategy(ValuationStrategy):
     Revenue-Driven DCF (Convergence Model).
 
     Injects the Margin Convergence engine into the calculation pipeline to value
-    entities with non-steady-state current profitability.
+    entities with non-steady-state current profitability by forecasting
+    top-line growth and margin expansion.
+
+    Attributes
+    ----------
+    academic_reference : str
+        Damodaran / McKinsey.
+    economic_domain : str
+        Growth firms / Revenue-driven / Turnarounds.
     """
 
     academic_reference = "Damodaran / McKinsey"
@@ -52,8 +65,20 @@ class RevenueBasedStrategy(ValuationStrategy):
     ) -> DCFValuationResult:
         """
         Executes Revenue-driven valuation with margin convergence logic.
+
+        Parameters
+        ----------
+        financials : CompanyFinancials
+            Target company financial data.
+        params : DCFParameters
+            Calculation hypotheses.
+
+        Returns
+        -------
+        DCFValuationResult
+            The Enterprise Value result based on revenue and margin trajectories.
         """
-        # 1. ANCHOR REVENUE BASE
+        # 1. ANCHOR REVENUE BASE (Phase 2 - Glass Box Provenance)
         rev_base, source_rev = self._select_revenue_base(financials, params)
 
         # Financial Guard: Prevent negative revenue in Auto mode
@@ -65,17 +90,30 @@ class RevenueBasedStrategy(ValuationStrategy):
                 )
             )
 
+        # Tracé de l'ancrage du Chiffre d'Affaires (Rev_0)
+        rev_vars = {
+            "Rev_0": self._build_variable_info(
+                symbol="Rev_0",
+                value=rev_base,
+                manual_value=params.growth.manual_fcf_base, # Champ partagé pour l'override d'ancrage
+                provider_value=financials.revenue_ttm,
+                description=Texts.INP_BASE
+            )
+        }
+
         self.add_step(
             step_key="GROWTH_REV_BASE",
             label=RegistryTexts.GROWTH_REV_BASE_L,
             theoretical_formula=StrategyFormulas.REVENUE_BASE,
             result=rev_base,
-            numerical_substitution=KPITexts.SUB_REV_BASE.format(val=rev_base),
+            actual_calculation=KPITexts.SUB_REV_BASE.format(val=rev_base),
             interpretation=StrategyInterpretations.GROWTH_REV,
-            source=source_rev
+            source=source_rev,
+            variables_map=rev_vars
         )
 
         # 2. PIPELINE ORCHESTRATION (Specialized Convergence Projector)
+        # On utilise le projecteur de convergence de marges
         pipeline = DCFCalculationPipeline(
             projector=MarginConvergenceProjector(),
             mode=ValuationMode.FCFF_GROWTH,
@@ -84,7 +122,7 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         raw_result = pipeline.run(base_value=rev_base, financials=financials, params=params)
 
-        # TYPE SAFETY: Explicit cast for IDE resolution
+        # TYPE SAFETY: Validation du contrat de sortie
         if not isinstance(raw_result, DCFValuationResult):
             raise CalculationError(
                 DiagnosticTexts.MODEL_LOGIC_MSG.format(
@@ -108,7 +146,12 @@ class RevenueBasedStrategy(ValuationStrategy):
         params: DCFParameters
     ) -> Tuple[float, str]:
         """
-        Determines the starting Revenue anchor.
+        Determines the starting Revenue anchor based on hierarchy.
+
+        Returns
+        -------
+        Tuple[float, str]
+            (Revenue value, Source label)
         """
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE

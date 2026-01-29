@@ -9,7 +9,7 @@ de valorisation pour générer le résultat avant de l'auditer.
 
 from infra.auditing.audit_engine import AuditEngine
 from src.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
-from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 
 
 def test_audit_critical_wacc_g_proximity(sample_financials, sample_params):

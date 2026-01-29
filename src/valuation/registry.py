@@ -214,11 +214,11 @@ def _register_all_strategies() -> None:
     This alignment resolves the 'ImportError' by matching the 'ls -R' structure.
     """
     # 1. Corrected Imports based on the actual ./src/valuation/strategies/ directory
-    from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
-    from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
-    from src.valuation.strategies.dcf_growth import RevenueBasedStrategy
-    from src.valuation.strategies.dcf_equity import FCFEStrategy
-    from src.valuation.strategies.dcf_dividend import DividendDiscountStrategy
+    from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
+    from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
+    from src.valuation.strategies.revenue_growth import RevenueBasedStrategy
+    from src.valuation.strategies.fcfe import FCFEStrategy
+    from src.valuation.strategies.ddm import DividendDiscountStrategy
     from src.valuation.strategies.rim_banks import RIMBankingStrategy
     from src.valuation.strategies.graham_value import GrahamNumberStrategy
 

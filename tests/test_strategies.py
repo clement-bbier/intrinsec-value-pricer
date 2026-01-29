@@ -1,6 +1,6 @@
 import pytest
-from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
-from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
+from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
 from src.exceptions import CalculationError
 from src.i18n import CalculationErrors

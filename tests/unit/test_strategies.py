@@ -31,7 +31,7 @@ class TestStandardFCFFStrategy:
     
     def test_execution_returns_valid_result(self, sample_financials, sample_params):
         """L'exécution retourne un DCFValuationResult valide."""
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         from src.models import DCFValuationResult
         
         strategy = StandardFCFFStrategy(glass_box_enabled=False)
@@ -44,7 +44,7 @@ class TestStandardFCFFStrategy:
     
     def test_glass_box_mode_generates_trace(self, sample_financials, sample_params):
         """Mode Glass Box génère des étapes de calcul."""
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=True)
         result = strategy.execute(sample_financials, sample_params)
@@ -55,7 +55,7 @@ class TestStandardFCFFStrategy:
     
     def test_upside_calculation(self, sample_financials, sample_params):
         """L'upside est calculé correctement."""
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         strategy = StandardFCFFStrategy(glass_box_enabled=False)
         result = strategy.execute(sample_financials, sample_params)
@@ -74,7 +74,7 @@ class TestFundamentalFCFFStrategy:
     
     def test_execution_with_smoothed_fcf(self, sample_financials, sample_params):
         """Utilise le FCF lissé si disponible."""
-        from src.valuation.strategies.dcf_fundamental import FundamentalFCFFStrategy
+        from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
         from src.models import ValuationResult
         
         # S'assurer que fcf_fundamental_smoothed est défini
@@ -125,7 +125,7 @@ class TestMonteCarloStrategy:
     def test_wraps_underlying_strategy(self, sample_financials, sample_params):
         """Monte Carlo wrappe une stratégie sous-jacente."""
         from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         from src.models import ValuationResult
         
         sample_params.monte_carlo.enable_monte_carlo = True
@@ -144,7 +144,7 @@ class TestMonteCarloStrategy:
     def test_generates_distribution(self, sample_financials, sample_params):
         """Monte Carlo génère une distribution de résultats."""
         from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         sample_params.monte_carlo.enable_monte_carlo = True
         sample_params.monte_carlo.num_simulations = 100

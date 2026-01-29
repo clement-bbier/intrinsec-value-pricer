@@ -33,7 +33,7 @@ from src.i18n import (
     StrategyFormulas,
     CalculationErrors,
     StrategySources,
-    KPITexts
+    KPITexts, SharedTexts
 )
 
 logger = logging.getLogger(__name__)
@@ -71,27 +71,50 @@ class RIMBankingStrategy(ValuationStrategy):
         # 1. BOOK VALUE ANCHOR (BV₀)
         bv_per_share, src_bv = self._select_book_value(financials, params)
 
+        bv_vars = {
+            "BV_0": self._build_variable_info(
+                symbol="BV_0",
+                value=bv_per_share,
+                manual_value=params.growth.manual_book_value,
+                provider_value=financials.book_value_per_share,
+                description=SharedTexts.INP_BV_INITIAL
+            )
+        }
+
         self.add_step(
             step_key="RIM_BV_INITIAL",
             label=RegistryTexts.RIM_BV_L,
             theoretical_formula=StrategyFormulas.BV_BASE,
             result=bv_per_share,
-            numerical_substitution=KPITexts.SUB_BV_BASE.format(val=bv_per_share, src=src_bv),
+            actual_calculation=KPITexts.SUB_BV_BASE.format(val=bv_per_share, src=src_bv),
             interpretation=RegistryTexts.RIM_BV_D,
-            source=src_bv
+            source=src_bv,
+            variables_map=bv_vars
         )
 
         # 2. COST OF EQUITY (kₑ)
         ke, sub_ke = self._compute_ke(financials, params)
+        r = params.rates
+
+        # On trace les 3 piliers du CAPM
+        ke_vars = {
+            "Rf": self._build_variable_info("Rf", (r.risk_free_rate or 0.04), r.risk_free_rate, 0.04,
+                                            SharedTexts.INP_RF, format_as_pct=True),
+            "beta": self._build_variable_info("beta", (r.manual_beta or financials.beta or 1.0), r.manual_beta,
+                                              financials.beta, SharedTexts.INP_BETA),
+            "MRP": self._build_variable_info("MRP", (r.market_risk_premium or 0.05), r.market_risk_premium, 0.05,
+                                             SharedTexts.INP_MRP, format_as_pct=True)
+        }
 
         self.add_step(
             step_key="RIM_KE_CALC",
             label=RegistryTexts.RIM_KE_L,
             theoretical_formula=StrategyFormulas.CAPM,
             result=ke,
-            numerical_substitution=sub_ke,
-            interpretation=StrategyInterpretations.WACC_CONTEXT,
-            source=StrategySources.WACC_CALC
+            actual_calculation=sub_ke,
+            interpretation=StrategyInterpretations.KE_CONTEXT,
+            source=StrategySources.WACC_CALC,
+            variables_map=ke_vars
         )
 
         # 3. DISTRIBUTION POLICY & EPS BASE

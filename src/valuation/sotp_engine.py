@@ -66,7 +66,7 @@ def run_sotp_valuation(
             TraceHypothesis(name=SOTPTexts.LBL_RAW_EV_SUM, value=raw_ev_sum, unit="currency"),
             TraceHypothesis(name=SOTPTexts.LBL_DISCOUNT, value=params.conglomerate_discount, unit="%")
         ],
-        numerical_substitution=f"{raw_ev_sum:,.2f} × (1 - {params.conglomerate_discount:.2%})",
+        actual_calculation=f"{raw_ev_sum:,.2f} × (1 - {params.conglomerate_discount:.2%})",
         result=consolidated_ev,
         unit="currency",
         interpretation=SOTPTexts.INTERP_CONSOLIDATION.format(count=len(params.segments))
@@ -94,7 +94,7 @@ def run_sotp_valuation(
             TraceHypothesis(name=KPITexts.LABEL_MINORITIES, value=minorities, unit="currency", source="Yahoo"),
             TraceHypothesis(name=KPITexts.LABEL_PENSIONS, value=pensions, unit="currency", source="Yahoo")
         ],
-        numerical_substitution=(
+        actual_calculation=(
             f"{consolidated_ev:,.2f} - {debt:,.2f} + {cash:,.2f} "
             f"- {minorities:,.2f} - {pensions:,.2f}"
         ),

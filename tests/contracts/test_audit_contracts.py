@@ -27,7 +27,7 @@ class TestAuditEngineContract:
         """Vérifie que compute_audit retourne un AuditReport valide."""
         from infra.auditing.audit_engine import AuditEngine
         from src.models import AuditReport, ValuationRequest, ValuationMode, InputSource
-        from src.valuation.strategies.dcf_standard import StandardFCFFStrategy
+        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 
         # SÉCURISATION : On donne des valeurs minimales pour éviter les TypeError dans le pipeline
         sample_financials.ebit_ttm = 100.0

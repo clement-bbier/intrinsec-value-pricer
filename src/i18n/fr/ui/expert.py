@@ -22,6 +22,9 @@ class SharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
+    INP_EPS_NORM = "BPA (EPS) normalisé ($/action)"
+    INP_YIELD_AAA = "Taux de croissance moyen (g) (%)"
+    INP_BV_INITIAL = "Valeur Comptable (Equity) (M$)"
     FORMULA_TV_RIM = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
     DEFAULT_SEGMENT_NAME = "Segment A"
     MC_VOL_EPS = "Incertitude sur le BPA (EPS)"

@@ -132,7 +132,7 @@ class CalculationStep(BaseModel):
         Mapping of symbols to their detailed variable metadata.
     hypotheses : List[TraceHypothesis], default=[]
         List of assumptions specifically linked to this step.
-    numerical_substitution : str, default=""
+    actual_calculation : str, default=""
         Legacy formatted substitution string.
     result : float, default=ModelDefaults.DEFAULT_RESULT_VALUE
         The numeric output of the calculation.
@@ -148,7 +148,6 @@ class CalculationStep(BaseModel):
     actual_calculation: str = ""
     variables_map: Dict[str, VariableInfo] = Field(default_factory=dict)
     hypotheses: List[TraceHypothesis] = Field(default_factory=list)
-    numerical_substitution: str = ""
     result: float = ModelDefaults.DEFAULT_RESULT_VALUE
     unit: str = ""
     interpretation: str = ""

@@ -25,7 +25,7 @@ from src.i18n import (
     StrategyFormulas,
     CalculationErrors,
     StrategySources,
-    KPITexts
+    KPITexts, SharedTexts
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class GrahamNumberStrategy(ValuationStrategy):
             label=RegistryTexts.GRAHAM_EPS_L,
             theoretical_formula=StrategyFormulas.EPS_BASE,
             result=eps,
-            numerical_substitution=KPITexts.SUB_EPS_GRAHAM.format(val=eps, src=source_eps),
+            actual_calculation=KPITexts.SUB_EPS_GRAHAM.format(val=eps, src=source_eps),
             interpretation=StrategyInterpretations.GRAHAM_EPS,
             source=source_eps
         )
@@ -75,26 +75,35 @@ class GrahamNumberStrategy(ValuationStrategy):
             label=RegistryTexts.GRAHAM_MULT_L,
             theoretical_formula=StrategyFormulas.GRAHAM_MULTIPLIER,
             result=growth_multiplier,
-            numerical_substitution=KPITexts.SUB_GRAHAM_MULT.format(g=growth_rate * 100.0),
+            actual_calculation=KPITexts.SUB_GRAHAM_MULT.format(g=growth_rate * 100.0),
             interpretation=StrategyInterpretations.GRAHAM_MULT,
             source=StrategySources.ANALYST_OVERRIDE
         )
 
         # 3. FINAL INTRINSIC VALUE (AAA YIELD ADJUSTMENT)
-        # Defaulting to Graham's 4.4% benchmark if yield is missing
         aaa_yield = r.corporate_aaa_yield or 0.044
         self._validate_aaa_yield(aaa_yield)
-
         intrinsic_value = self._compute_intrinsic_value(eps, growth_multiplier, aaa_yield)
+
+        # On mappe les composants de la formule de Graham
+        graham_vars = {
+            "EPS": self._build_variable_info("EPS", eps, params.growth.manual_fcf_base, financials.eps_ttm,
+                                             SharedTexts.INP_EPS_NORM),
+            "g": self._build_variable_info("g", growth_rate, params.growth.fcf_growth_rate, None,
+                                           SharedTexts.INP_GROWTH_G, format_as_pct=True),
+            "Y": self._build_variable_info("Y", aaa_yield, r.corporate_aaa_yield, 0.044, SharedTexts.INP_YIELD_AAA,
+                                           format_as_pct=True)
+        }
 
         self.add_step(
             step_key="GRAHAM_FINAL",
             label=RegistryTexts.GRAHAM_IV_L,
             theoretical_formula=StrategyFormulas.GRAHAM_VALUE,
             result=intrinsic_value,
-            numerical_substitution=f"({eps:.2f} \times {growth_multiplier:.2f} \times 4.4) / {aaa_yield * 100.0:.2f}",
+            actual_calculation=f"({eps:.2f} * {growth_multiplier:.2f} * 4.4) / ({aaa_yield * 100:.2f})",
             interpretation=StrategyInterpretations.GRAHAM_IV,
-            source=StrategySources.MACRO_MATRIX.format(ticker="AAA Corporate Yield")
+            source=StrategySources.CALCULATED,
+            variables_map=graham_vars
         )
 
         # 4. RESULT GENERATION & AUDIT PILLARS

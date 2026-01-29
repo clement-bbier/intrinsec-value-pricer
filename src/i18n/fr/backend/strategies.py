@@ -26,6 +26,7 @@ class StrategySources:
     MACRO_API_ERROR = "Matrix Fallback (API Error)"
 
 
+
 class StrategyFormulas:
     """Formules LaTeX standardisées pour toutes les méthodes de valorisation."""
 

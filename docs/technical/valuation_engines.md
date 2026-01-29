@@ -137,7 +137,6 @@ class CalculationStep:
     label: str                 # "Calcul du WACC"
     theoretical_formula: str   # LaTeX: "WACC = ..."
     actual_calculation: str    # "8.5% × 70% + 4.2% × 30% × (1 - 25%)"
-    numerical_substitution: str # "= 5.95% + 0.95% = 6.90%"
     result: float              # 0.069
     variables_map: Dict[str, VariableInfo]
     interpretation: Optional[str]

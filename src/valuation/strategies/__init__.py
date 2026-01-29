@@ -12,13 +12,13 @@ Usage recommandé:
 from __future__ import annotations
 
 # Stratégies DCF (Firm-Level)
-from .dcf_standard import StandardFCFFStrategy
-from .dcf_fundamental import FundamentalFCFFStrategy
-from .dcf_growth import RevenueBasedStrategy
+from .standard_fcff import StandardFCFFStrategy
+from .fundamental_fcff import FundamentalFCFFStrategy
+from .revenue_growth import RevenueBasedStrategy
 
 # Stratégies DCF (Equity-Level)
-from .dcf_equity import FCFEStrategy
-from .dcf_dividend import DividendDiscountStrategy
+from .fcfe import FCFEStrategy
+from .ddm import DividendDiscountStrategy
 
 # Autres modèles
 from .rim_banks import RIMBankingStrategy
