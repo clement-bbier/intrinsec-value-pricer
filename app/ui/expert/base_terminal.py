@@ -64,13 +64,14 @@ _PERCENTAGE_FIELDS: Set[str] = {
     "market_risk_premium",
     "cost_of_debt",
     "tax_rate",
-    "cost_of_equity",  # Ke for direct equity models
+    "cost_of_equity",
 
     # Terminal Value fields
     "perpetual_growth_rate",
 
     # Bridge fields
     "stock_based_compensation_rate",
+    "annual_dilution_rate",
 
     # Monte Carlo volatility fields
     "base_flow_volatility",
@@ -421,7 +422,7 @@ class ExpertTerminalBase(ABC):
         Parameters
         ----------
         value : Optional[float]
-            Raw value in millions (e.g., 68000 for 68B).
+            Raw value in millions (e.g., 68_000 for 68B).
 
         Returns
         -------
@@ -690,7 +691,7 @@ class ExpertTerminalBase(ABC):
             bridge_FCFF_STANDARD_debt: 1000000
 
         Returns:
-            {"stock_based_compensation_rate": 0.025, "manual_total_debt": 1000000}
+            {"stock_based_compensation_rate": 0.025, "manual_total_debt": 1_000_000}
         """
         data = {}
         p = f"bridge_{key_prefix}"
@@ -817,24 +818,27 @@ class ExpertTerminalBase(ABC):
         if not st.session_state.get(f"{p}_enable", False):
             return {"enable_monte_carlo": False}
 
-        # Helper for volatility normalization with logging
-        def normalize_vol(key: str, field_name: str) -> Optional[float]:
-            raw = st.session_state.get(key)
-            if raw is None:
-                return None
-            normalized = ExpertTerminalBase._normalize_percentage(raw)
-            logger.debug(f"Normalized {field_name}: {raw}% -> {normalized}")
-            return normalized
-
         return {
             "enable_monte_carlo": True,
             "num_simulations": st.session_state.get(f"{p}_sims", 5000),
-            "base_flow_volatility": normalize_vol(f"{p}_vol_flow", "base_flow_volatility"),
-            "beta_volatility": normalize_vol(f"{p}_vol_beta", "beta_volatility"),
-            "growth_volatility": normalize_vol(f"{p}_vol_growth", "growth_volatility"),
-            "exit_multiple_volatility": normalize_vol(f"{p}_vol_exit_m", "exit_multiple_volatility"),
-            "terminal_growth_volatility": normalize_vol(f"{p}_vol_gn", "terminal_growth_volatility"),
-            "wacc_volatility": normalize_vol(f"{p}_vol_wacc", "wacc_volatility"),
+            "base_flow_volatility": ExpertTerminalBase.apply_field_scaling(
+                "base_flow_volatility", st.session_state.get(f"{p}_vol_flow")
+            ),
+            "beta_volatility": ExpertTerminalBase.apply_field_scaling(
+                "beta_volatility", st.session_state.get(f"{p}_vol_beta")
+            ),
+            "growth_volatility": ExpertTerminalBase.apply_field_scaling(
+                "growth_volatility", st.session_state.get(f"{p}_vol_growth")
+            ),
+            "exit_multiple_volatility": ExpertTerminalBase.apply_field_scaling(
+                "exit_multiple_volatility", st.session_state.get(f"{p}_vol_exit_m")
+            ),
+            "terminal_growth_volatility": ExpertTerminalBase.apply_field_scaling(
+                "terminal_growth_volatility", st.session_state.get(f"{p}_vol_gn")
+            ),
+            "wacc_volatility": ExpertTerminalBase.apply_field_scaling(
+                "wacc_volatility", st.session_state.get(f"{p}_vol_wacc")
+            ),
         }
 
     @staticmethod

@@ -531,7 +531,7 @@ def widget_monte_carlo(
 
     sims = st.select_slider(
         SharedTexts.MC_ITERATIONS,
-        options=[1000, 5000, 10000, 20000],
+        options=[1000, 2500, 5000, 10000, 15000, 20000, 25000],
         value=5000,
         key=f"{prefix}_sims"
     )
@@ -552,13 +552,13 @@ def widget_monte_carlo(
     else:
         label_base = SharedTexts.MC_VOL_BASE_FLOW
 
-    # Volatilities are input as decimals (0.05 for 5%)
+    # Volatilities are input as percentage (5 for 5%)
     v_base = v_col1.number_input(
         label_base,
         min_value=0.0,
-        max_value=0.5,
+        max_value=100.0,
         value=None,
-        format="%.3f",
+        format="%.2f",
         key=f"{prefix}_vol_flow",
         help=SharedTexts.HELP_VOL_BASE
     )
@@ -575,9 +575,9 @@ def widget_monte_carlo(
     v_growth = v_col1.number_input(
         label_growth,
         min_value=0.0,
-        max_value=0.2,
+        max_value=100.0,
         value=None,
-        format="%.3f",
+        format="%.2f",
         key=f"{prefix}_vol_growth"
     )
 
@@ -586,9 +586,9 @@ def widget_monte_carlo(
         v_beta = v_col2.number_input(
             SharedTexts.MC_VOL_BETA,
             min_value=0.0,
-            max_value=1.0,
+            max_value=100.0,
             value=None,
-            format="%.3f",
+            format="%.2f",
             key=f"{prefix}_vol_beta"
         )
 
@@ -597,11 +597,12 @@ def widget_monte_carlo(
         v_exit_m = v_col2.number_input(
             SharedTexts.LBL_VOL_EXIT_M,
             min_value=0.0,
-            max_value=0.4,
+            max_value=100.0,
             value=None,
-            format="%.3f",
+            format="%.2f",
             key=f"{prefix}_vol_exit_m"
         )
+
 
     return {
         "enable_monte_carlo": True,
@@ -865,17 +866,20 @@ def widget_sotp(
 
     st.markdown(SharedTexts.SEC_SOTP_ADJUSTMENTS)
 
-    current_discount = int(params.sotp.conglomerate_discount * 100)
+    val_init = int(params.sotp.conglomerate_discount * 100)
 
     # Discount as percentage, stored as decimal
-    params.sotp.conglomerate_discount = st.slider(
+    discount_pct= st.slider(
         SharedTexts.LBL_DISCOUNT,
         min_value=0,
         max_value=50,
-        value=current_discount,
-        step=5,
-        key=f"{prefix}_discount"
-    ) / 100.0
+        value=val_init,
+        step=1,
+        key=f"{prefix}_discount",
+        help=SharedTexts.HELP_SOTP
+    )
+
+    params.sotp.conglomerate_discount = discount_pct / 100.0
 
 
 # ==============================================================================

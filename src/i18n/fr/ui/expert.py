@@ -163,6 +163,7 @@ class SharedTexts:
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
     HELP_DEBT = "Somme des dettes financières à court et long terme (Dette brute)."
     HELP_CASH = "Trésorerie disponible, équivalents de trésorerie et placements financiers."
+    HELP_SOTP = "Applique une décote de holding sur la somme des parties."
 
     # Tooltips Monte Carlo (Incertitudes)
     HELP_MC_VOL_FLOW = "Écart-type attendu sur le premier flux de trésorerie (Année 0)."
