@@ -47,7 +47,7 @@ class AuditEngine:
 
     @staticmethod
     def compute_audit(result: ValuationResult, auditor: Optional[Any] = None) -> AuditReport:
-        """
+        r"""
         Computes the global audit report for a given valuation result.
 
         The scoring logic follows the institutional standard:

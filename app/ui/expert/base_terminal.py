@@ -306,28 +306,28 @@ class ExpertTerminalBase(ABC):
             )
             self._collected_data.update(mc_data or {})
 
-        # 7. Peer Discovery (Triangulation)
+        # 7. Scenario Analysis (Convictions)
+        if self.SHOW_SCENARIOS:
+            self._scenarios = widget_scenarios(self.MODE)
+
+        # 8. Historical Backtest
+        if self.SHOW_BACKTEST:
+            from app.ui.expert.terminals.shared_widgets import widget_backtest
+            backtest_data = widget_backtest()
+            self._collected_data.update(backtest_data or {})
+
+        # 9. Peer Discovery (Triangulation)
         if self.SHOW_PEER_TRIANGULATION:
             peer_data = widget_peer_triangulation()
             self._collected_data.update(peer_data or {})
             self._manual_peers = peer_data.get("manual_peers")
 
-        # 8. Scenario Analysis (Convictions)
-        if self.SHOW_SCENARIOS:
-            self._scenarios = widget_scenarios(self.MODE)
-
-        # 9. SOTP (Final Segmentation)
+        # 10. SOTP (Final Segmentation)
         if self.SHOW_SOTP:
             from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
             temp_params = build_dcf_parameters(self._collected_data)
             widget_sotp(temp_params, is_conglomerate=False)
             self._collected_data["sotp"] = temp_params.sotp
-
-        # 10. Historical Backtest
-        if self.SHOW_BACKTEST:
-            from app.ui.expert.terminals.shared_widgets import widget_backtest
-            backtest_data = widget_backtest()
-            self._collected_data.update(backtest_data or {})
 
     def get_custom_monte_carlo_vols(self) -> Optional[Dict[str, str]]:
         """
