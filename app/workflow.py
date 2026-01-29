@@ -2,8 +2,10 @@
 app/workflow.py
 
 LOGICAL ORCHESTRATOR — Valuation Lifecycle Management.
+======================================================
 Role: Pilots the analysis lifecycle, multi-temporal orchestration, and risk scenarios.
-Architecture: Segmented Smart Merge, Point-in-Time Isolation, and Historical Validation.
+Architecture: Segmented Smart Merge, Point-in-Time Isolation, and Enrichment Phases.
+ST-4.2 Compliant.
 """
 
 from __future__ import annotations
@@ -47,57 +49,64 @@ def run_workflow(
     renderer: Optional[IResultRenderer] = None
 ) -> Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]:
     """
-    Executes the complete valuation workflow.
+    Executes the complete valuation workflow sequence.
 
-    Architecture: Decouples computation from rendering via renderer injection.
+    Parameters
+    ----------
+    request : ValuationRequest
+        The financial parameters and options for the analysis.
+    renderer : IResultRenderer, optional
+        Abstraction for UI output, defaults to NullResultRenderer.
+
+    Returns
+    -------
+    Tuple[Optional[ValuationResult], Optional[YahooFinanceProvider]]
+        The computed result object and the data provider instance.
     """
-    # UI-facing status initialization
     status = st.status(WorkflowTexts.STATUS_MAIN_LABEL, expanded=True)
     _renderer = renderer or NullResultRenderer()
 
     try:
-        # --- STEP 1: INFRASTRUCTURE & DATA ACQUISITION ---
+        # --- PHASE 1: DATA ACQUISITION (Foundations) ---
         status.write(WorkflowTexts.STATUS_DATA_ACQUISITION)
         provider = YahooFinanceProvider(YahooMacroProvider())
 
-        # Deep Fetch for structural analysis and backtesting support
         financials, auto_params = provider.get_company_financials_and_parameters(
             request.ticker,
             request.projection_years
         )
 
-        # Sectoral triangulation
-        status.write(WorkflowTexts.STATUS_PEER_DISCOVERY)
-        multiples_data = provider.get_peer_multiples(
-            ticker=request.ticker,
-            manual_peers=request.options.get("manual_peers")
-        )
-        request.options["multiples_data"] = multiples_data
-
-        # --- STEP 2: CONCILIATION (SMART MERGE) ---
+        # --- PHASE 2: CONSOLIDATION (Smart Merge) ---
         status.write(WorkflowTexts.STATUS_SMART_MERGE)
         final_params = map_request_to_params(request, auto_params)
 
-        # --- STEP 3: PRESENT ANALYSIS (BASE CASE) ---
+        # --- PHASE 3: CORE EXECUTION (Base Case) ---
         status.write(WorkflowTexts.STATUS_ENGINE_RUN.format(mode=request.mode.value))
         if final_params.monte_carlo.enable_monte_carlo:
             status.write(WorkflowTexts.STATUS_MC_RUN)
 
-        # Core engine execution (IV + Triangulation + Audit)
         result = run_valuation(request, financials, final_params)
 
-        # --- STEP 4: DETERMINISTIC SCENARIO ANALYSIS ---
+        # --- PHASE 4: OPTIONAL ENRICHMENT (Extensions) ---
+
+        # 1. Peer Discovery & Triangulation
+        if request.options.get("enable_peer_multiples", False):
+            status.write(WorkflowTexts.STATUS_PEER_DISCOVERY)
+            result.multiples_triangulation = provider.get_peer_multiples(
+                ticker=request.ticker,
+                manual_peers=request.options.get("manual_peers")
+            )
+
+        # 2. Deterministic Scenario Analysis
         if final_params.scenarios.enabled:
             status.write(WorkflowTexts.STATUS_SCENARIOS_RUN)
             result.scenario_synthesis = compute_scenario_impact(
                 request, financials, final_params, result
             )
 
-        # --- STEP 5: HISTORICAL VALIDATION (POINT-IN-TIME BACKTESTING) ---
+        # 3. Historical Backtesting
         if request.options.get("enable_backtest", False):
             status.write(WorkflowTexts.STATUS_BACKTEST_RUN)
-
-            # Orchestrate backtest on raw fiscal data
             result.backtest_report = _orchestrate_backtesting(
                 request=request,
                 raw_data=provider.last_raw_data,
@@ -107,10 +116,9 @@ def run_workflow(
             )
             status.write(WorkflowTexts.STATUS_BACKTEST_COMPLETE)
 
-        # --- STEP 6: FINALIZATION ---
+        # --- PHASE 5: FINALIZATION ---
         status.update(label=WorkflowTexts.STATUS_COMPLETE, state="complete", expanded=False)
 
-        # Quantitative logging for stochastic performance
         if result.simulation_results:
             _log_monte_carlo_performance(request.ticker, result, final_params)
 
@@ -129,7 +137,14 @@ def run_workflow(
 
 
 def run_workflow_and_display(request: ValuationRequest) -> None:
-    """Streamlit-specific facade for workflow orchestration."""
+    """
+    Streamlit-specific facade to run the workflow and render results.
+
+    Parameters
+    ----------
+    request : ValuationRequest
+        The validated request object from the UI.
+    """
     from app.adapters import StreamlitResultRenderer
 
     renderer = StreamlitResultRenderer()
@@ -140,8 +155,109 @@ def run_workflow_and_display(request: ValuationRequest) -> None:
 
 
 # ==============================================================================
-# 2. BACKTESTING LOGIC (TEMPORAL ISOLATION)
+# 2. ANALYTICAL HELPERS
 # ==============================================================================
+
+def map_request_to_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
+    """
+    Merges automated financial data with manual expert overrides.
+
+    Parameters
+    ----------
+    request : ValuationRequest
+        The incoming request containing manual parameters.
+    auto_params : DCFParameters
+        Default parameters extracted from the data provider.
+
+    Returns
+    -------
+    DCFParameters
+        The final parameter set for engine execution.
+    """
+    if request.input_source == InputSource.MANUAL:
+        final_params = auto_params.model_copy(deep=True)
+
+        # Merge Rates and Growth sections
+        for section in ['rates', 'growth']:
+            manual_data = getattr(request.manual_params, section).model_dump(exclude_unset=True)
+            for k, v in manual_data.items():
+                if v is not None:
+                    setattr(getattr(final_params, section), k, v)
+
+        # Inject advanced analytical configurations
+        final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
+        final_params.scenarios = request.manual_params.scenarios.model_copy()
+        final_params.sotp = request.manual_params.sotp.model_copy()
+        return final_params
+
+    # Standard Mode logic
+    auto_params.monte_carlo.enable_monte_carlo = request.options.get("enable_mc", False)
+    auto_params.monte_carlo.num_simulations = request.options.get("mc_sims", 5000)
+    return auto_params
+
+
+def compute_scenario_impact(
+    request: ValuationRequest,
+    financials: Any,
+    params: DCFParameters,
+    base_result: ValuationResult
+) -> ScenarioSynthesis:
+    """
+    Computes Bull/Base/Bear impacts with deterministic variation.
+
+    Parameters
+    ----------
+    request : ValuationRequest
+        Request context.
+    financials : Any
+        Company financials object.
+    params : DCFParameters
+        The base parameter set.
+    base_result : ValuationResult
+        The result of the base case calculation.
+
+    Returns
+    -------
+    ScenarioSynthesis
+        Synthesis of the deterministic variations.
+    """
+    sc = params.scenarios
+    results = []
+    variants = [(sc.bull, "Bull"), (sc.base, "Base"), (sc.bear, "Bear")]
+
+    for variant, label in variants:
+        # Optimization: Reuse base result if variant metrics are identical
+        if label == "Base" and variant.growth_rate is None and variant.target_fcf_margin is None:
+            val = base_result.intrinsic_value_per_share
+            g_used = params.growth.fcf_growth_rate
+            m_used = params.growth.target_fcf_margin
+        else:
+            v_params = params.model_copy(deep=True)
+            if variant.growth_rate is not None:
+                v_params.growth.fcf_growth_rate = variant.growth_rate
+            if variant.target_fcf_margin is not None:
+                v_params.growth.target_fcf_margin = variant.target_fcf_margin
+
+            # Engine lightweighting (Disable Monte Carlo for scenarios)
+            v_params.monte_carlo.enable_monte_carlo = False
+            v_res = run_valuation(request, financials, v_params)
+
+            val = v_res.intrinsic_value_per_share
+            g_used = v_params.growth.fcf_growth_rate
+            m_used = v_params.growth.target_fcf_margin
+
+        results.append(ScenarioResult(
+            label=label, intrinsic_value=val, probability=variant.probability,
+            growth_used=g_used or 0.0, margin_used=m_used or 0.0
+        ))
+
+    return ScenarioSynthesis(
+        variants=results,
+        expected_value=sum(r.intrinsic_value * r.probability for r in results),
+        max_upside=max(r.intrinsic_value for r in results),
+        max_downside=min(r.intrinsic_value for r in results)
+    )
+
 
 def _orchestrate_backtesting(
     request: ValuationRequest,
@@ -151,9 +267,12 @@ def _orchestrate_backtesting(
     provider: YahooFinanceProvider
 ) -> BacktestResult:
     """
-    Simulates valuation over the last 3 fiscal years with Point-in-Time isolation.
+    Executes historical point-in-time validation.
 
-    Ensures that historical calculations only use data available at that specific time.
+    Returns
+    -------
+    BacktestResult
+        Aggregated historical performance metrics.
     """
     points: List[HistoricalPoint] = []
     current_year = datetime.now().year
@@ -161,19 +280,15 @@ def _orchestrate_backtesting(
 
     for yr in years_to_test:
         try:
-            # 1. Freeze raw data at fiscal year N
             frozen_raw = BacktestEngine.freeze_data_at_fiscal_year(raw_data, yr)
             if not frozen_raw: continue
 
-            # 2. Retrograde financial mapping
             hist_financials = provider.map_raw_to_financials(frozen_raw)
 
-            # 3. IV Calculation (Monte Carlo disabled for backtest throughput)
             v_params = params.model_copy(deep=True)
             v_params.monte_carlo.enable_monte_carlo = False
             hist_res = run_valuation(request, hist_financials, v_params)
 
-            # 4. Fetch actual historical closing price
             market_price = BacktestEngine.get_historical_price_at(price_history, yr)
 
             if market_price > 0:
@@ -199,83 +314,13 @@ def _orchestrate_backtesting(
 
 
 # ==============================================================================
-# 3. SCENARIO ANALYSIS
+# 3. TELEMETRY & DIAGNOSTICS
 # ==============================================================================
-
-def compute_scenario_impact(
-    request: ValuationRequest,
-    financials: Any,
-    params: DCFParameters,
-    base_result: ValuationResult
-) -> ScenarioSynthesis:
-    """
-    Computes Bull/Base/Bear impacts with resource optimization.
-
-    Reuses base calculation if the 'Base' scenario variant is unchanged.
-    """
-    sc = params.scenarios
-    results = []
-    variants = [(sc.bull, "Bull"), (sc.base, "Base"), (sc.bear, "Bear")]
-
-    for variant, label in variants:
-        # Optimization: Reuse base result if variant metrics are null
-        if label == "Base" and variant.growth_rate is None and variant.target_fcf_margin is None:
-            val = base_result.intrinsic_value_per_share
-            g_used, m_used = params.growth.fcf_growth_rate, params.growth.target_fcf_margin
-        else:
-            v_params = params.model_copy(deep=True)
-            if variant.growth_rate is not None: v_params.growth.fcf_growth_rate = variant.growth_rate
-            if variant.target_fcf_margin is not None: v_params.growth.target_fcf_margin = variant.target_fcf_margin
-
-            # Engine lightweighting for variants
-            v_params.monte_carlo.enable_monte_carlo = False
-            v_res = run_valuation(request, financials, v_params)
-            val, g_used, m_used = v_res.intrinsic_value_per_share, v_params.growth.fcf_growth_rate, v_params.growth.target_fcf_margin
-
-        results.append(ScenarioResult(
-            label=label, intrinsic_value=val, probability=variant.probability,
-            growth_used=g_used or 0.0, margin_used=m_used or 0.0
-        ))
-
-    # Calculate mathematical expectation (Expected Value)
-    expected_val = sum(r.intrinsic_value * r.probability for r in results)
-    return ScenarioSynthesis(
-        variants=results, expected_value=expected_val,
-        max_upside=max(r.intrinsic_value for r in results),
-        max_downside=min(r.intrinsic_value for r in results)
-    )
-
-
-# ==============================================================================
-# 4. HELPERS & DIAGNOSTICS
-# ==============================================================================
-
-def map_request_to_params(request: ValuationRequest, auto_params: DCFParameters) -> DCFParameters:
-    """
-    Merges automated data with manual overrides (Expert mode).
-    """
-    if request.input_source == InputSource.MANUAL:
-        final_params = auto_params.model_copy(deep=True)
-        # Rates and growth overrides
-        for section in ['rates', 'growth']:
-            manual_data = getattr(request.manual_params, section).model_dump(exclude_unset=True)
-            for k, v in manual_data.items():
-                if v is not None: setattr(getattr(final_params, section), k, v)
-
-        # Advanced configuration injection
-        final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
-        final_params.scenarios = request.manual_params.scenarios.model_copy()
-        final_params.sotp = request.manual_params.sotp.model_copy()
-        return final_params
-
-    # Standard mode: Monte Carlo controlled by UI options
-    auto_params.monte_carlo.enable_monte_carlo = request.options.get("enable_mc", False)
-    auto_params.monte_carlo.num_simulations = request.options.get("mc_sims", 5000)
-    return auto_params
-
 
 def _log_monte_carlo_performance(ticker: str, result: ValuationResult, params: DCFParameters) -> None:
-    """Logs stochastic metrics to quantitative logs."""
+    """
+    Forwards stochastic execution metrics to the institutional logger.
+    """
     vals = result.simulation_results
     QuantLogger.log_monte_carlo(
         ticker=ticker,
@@ -288,18 +333,26 @@ def _log_monte_carlo_performance(ticker: str, result: ValuationResult, params: D
 
 
 def _display_diagnostic_message(diag: DiagnosticEvent) -> None:
-    """Displays a stylized UI alert for business errors."""
+    """
+    Renders standardized error alerts in the Streamlit UI.
+    """
     level_fn = st.error if diag.severity in [SeverityLevel.CRITICAL, SeverityLevel.ERROR] else st.warning
     level_fn(f"**{diag.code}** : {diag.message}")
+
     with st.expander(WorkflowTexts.DIAG_EXPANDER_TITLE):
         st.markdown(f"**Action :** {diag.remediation_hint}")
-        if diag.technical_detail: st.code(diag.technical_detail)
+        if diag.technical_detail:
+            st.code(diag.technical_detail)
 
 
 def _create_crash_diagnostic(error: Exception) -> DiagnosticEvent:
-    """Generates a critical system crash diagnostic event."""
+    """
+    Generates a fallback diagnostic event for unhandled system exceptions.
+    """
     return DiagnosticEvent(
-        code="SYSTEM_CRASH", severity=SeverityLevel.CRITICAL, domain=DiagnosticDomain.SYSTEM,
+        code="SYSTEM_CRASH",
+        severity=SeverityLevel.CRITICAL,
+        domain=DiagnosticDomain.SYSTEM,
         message=DiagnosticTexts.SYSTEM_CRASH_MSG,
         technical_detail=f"{str(error)}\n{traceback.format_exc()}",
         remediation_hint=DiagnosticTexts.SYSTEM_CRASH_HINT

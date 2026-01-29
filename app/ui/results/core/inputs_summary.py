@@ -98,7 +98,7 @@ class InputsSummaryTab(ResultTabBase):
                 self._render_kv(KPITexts.LABEL_MINORITIES, format_smart_number(f.minority_interests, currency=f.currency))
             with c3:
                 # Standardized audit color usage
-                net_debt_color = AuditTexts.COLOR_WARNING if f.net_debt > 0 else AuditTexts.COLOR_SUCCESS
+                net_debt_color = ""
                 self._render_kv(f"{net_debt_color}[{KPITexts.LABEL_NET_DEBT}]", format_smart_number(f.net_debt, currency=f.currency))
                 self._render_kv(KPITexts.LABEL_PENSIONS, format_smart_number(f.pension_provisions, currency=f.currency))
 
@@ -127,7 +127,7 @@ class InputsSummaryTab(ResultTabBase):
 
                 # SBC Dilution (Institutional highlighting)
                 sbc_val = p.growth.annual_dilution_rate
-                sbc_color = AuditTexts.COLOR_WARNING if sbc_val > 0 else ""
+                sbc_color = ""
                 self._render_kv(f"{sbc_color}[{KPITexts.LABEL_SBC_RATE}]", f"{sbc_val:.2%}")
 
     @staticmethod

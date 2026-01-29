@@ -409,7 +409,7 @@ def widget_equity_bridge(
             key=f"{prefix}_shares_direct"
         )
 
-        # SBC rate as percentage (Pydantic normalizes)
+        # SBC rate as percentage
         sbc_rate = st.number_input(
             SharedTexts.INP_SBC_DILUTION,
             min_value=0.0,
@@ -468,7 +468,7 @@ def widget_equity_bridge(
     # SBC rate as percentage
     sbc_rate = st.number_input(
         SharedTexts.INP_SBC_DILUTION,
-        min_value=0.0,
+        min_value=-100.0,
         max_value=100.0,
         value=None,
         step=0.1,
