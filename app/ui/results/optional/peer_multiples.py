@@ -103,7 +103,7 @@ class MarketAnalysisTab(ResultTabBase):
                     MarketTexts.LBL_TARGET: f"{result.financials.pe_ratio:.1f}x" if result.financials.pe_ratio else "—"
                 }
             ]
-            st.dataframe(pd.DataFrame(comparison_data), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(comparison_data), hide_index=True, width="stretch")
 
     @staticmethod
     def _render_sotp_section(result: ValuationResult) -> None:

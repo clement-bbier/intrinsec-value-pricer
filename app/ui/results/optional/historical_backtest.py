@@ -107,9 +107,8 @@ class HistoricalBacktestTab(ResultTabBase):
             st.dataframe(
                 df,
                 hide_index=True,
-                width="stretch",
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
             st.caption(f"**{CommonTexts.INTERPRETATION_LABEL}** : {QuantTexts.BACKTEST_INTERPRETATION}")

@@ -410,7 +410,7 @@ def main() -> None:
         launch_analysis = st.button(
             CommonTexts.RUN_BUTTON,
             type="primary",
-            use_container_width=True,
+            use_container_width=True
         )
 
         _render_sidebar_footer()

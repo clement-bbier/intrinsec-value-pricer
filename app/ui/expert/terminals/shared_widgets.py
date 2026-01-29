@@ -850,7 +850,7 @@ def widget_sotp(
     edited_df = st.data_editor(
         df_init,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         key=f"{prefix}_editor"
     )
 

@@ -85,9 +85,8 @@ class ScenarioAnalysisTab(ResultTabBase):
             st.dataframe(
                 df,
                 hide_index=True,
-                width="stretch",
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
         # --- 2. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
