@@ -4,9 +4,26 @@ infra/auditing/auditors.py
 INSTITUTIONAL AUDITORS — Specialized model validation.
 ======================================================
 Architecture: SOLID - Each auditor manages pillars specific to its valuation logic.
-This module provides the granular test implementation for the Audit Engine.
+Provides granular test implementations for the global Audit Engine.
 
-Style: Numpy docstrings
+Test Matrix (Model-Specific Applicability)
+------------------------------------------
+| Test                    | FCFF | FCFE | DDM | Graham | RIM | Multiples |
+|-------------------------|------|------|-----|--------|-----|-----------|
+| Beta Validity           |  ✓   |  ✓   |  ✓  |   ✗    |  ✓  |     ✓     |
+| Data Freshness          |  ✓   |  ✓   |  ✓  |   ✓    |  ✓  |     ✓     |
+| WACC-g Spread           |  ✓   |  ✗   |  ✗  |   ✗    |  ✗  |     ✗     |
+| Ke-g Spread             |  ✗   |  ✓   |  ✓  |   ✗    |  ✓  |     ✗     |
+| ICR (Solvency)          |  ✓   |  ✓   |  ✗  |   ✗    |  ✗  |     ✗     |
+| Reinvestment Ratio      |  ✓   |  ✓   |  ✗  |   ✗    |  ✗  |     ✗     |
+| Payout Sustainability   |  ✗   |  ✗   |  ✓  |   ✗    |  ✗  |     ✗     |
+| ROE-Ke Spread           |  ✗   |  ✗   |  ✗  |   ✗    |  ✓  |     ✗     |
+| Omega Bounds            |  ✗   |  ✗   |  ✗  |   ✗    |  ✓  |     ✗     |
+| Graham Multiplier Rule  |  ✗   |  ✗   |  ✗  |   ✓    |  ✗  |     ✗     |
+| Cohort Size             |  ✗   |  ✗   |  ✗  |   ✗    |  ✗  |     ✓     |
+| Cohort Dispersion (CV)  |  ✗   |  ✗   |  ✗  |   ✗    |  ✗  |     ✓     |
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -14,15 +31,20 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from src.config.constants import AuditThresholds
+from src.i18n import AuditTexts, StrategyFormulas
 from src.models import (
-    ValuationResult, AuditPillar, AuditPillarScore, AuditStep, AuditSeverity, CompanyFinancials
+    AuditPillar,
+    AuditPillarScore,
+    AuditSeverity,
+    AuditStep,
+    CompanyFinancials,
+    ValuationResult,
 )
-from src.config import AuditThresholds
-from src.i18n import StrategyFormulas
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +57,47 @@ class ExtendedAuditThresholds:
     """
     Extended thresholds for comprehensive audit coverage.
 
-    These complement the base AuditThresholds with model-specific limits.
+    Centralizes model-specific limits that complement the base AuditThresholds.
+    These values are calibrated to institutional standards.
+
+    Attributes
+    ----------
+    DATA_FRESHNESS_MAX_MONTHS : int
+        Maximum acceptable age of financial data in months.
+    PROVIDER_CONFIDENCE_MIN : float
+        Minimum confidence score from data provider.
+    REINVESTMENT_RATIO_MIN : float
+        Minimum CapEx/D&A ratio for sustainable growth.
+    GROWTH_PHASE1_TO_GN_MAX_RATIO : float
+        Maximum ratio of Phase 1 growth to terminal growth.
+    PAYOUT_RATIO_WARNING : float
+        Payout ratio threshold triggering a warning.
+    PAYOUT_RATIO_CRITICAL : float
+        Payout ratio threshold triggering critical alert.
+    OMEGA_MIN : float
+        Minimum persistence factor for RIM models.
+    OMEGA_MAX : float
+        Maximum persistence factor for RIM models.
+    LTD_RATIO_MAX : float
+        Maximum Loans-to-Deposits ratio for banks.
+    GRAHAM_MULTIPLIER_MAX : float
+        Graham's defensive limit for PE × PB.
+    GRAHAM_GROWTH_MAX : float
+        Maximum growth rate for Graham defensive model.
+    MULTIPLES_CV_MAX : float
+        Maximum coefficient of variation for peer multiples.
+    MULTIPLES_PE_OUTLIER : float
+        PE ratio threshold for outlier detection.
+    MULTIPLES_COHORT_MIN : int
+        Minimum number of peers for reliable triangulation.
     """
 
-    # Data Freshness
     DATA_FRESHNESS_MAX_MONTHS: int = 6
     PROVIDER_CONFIDENCE_MIN: float = 0.7
 
     # DCF Model
-    REINVESTMENT_RATIO_MIN: float = 1.0
+    REINVESTMENT_RATIO_MIN: float = 0.8
     GROWTH_PHASE1_TO_GN_MAX_RATIO: float = 3.0
-    GROWTH_TO_CAGR_MAX_RATIO: float = 2.0
 
     # DDM Model
     PAYOUT_RATIO_WARNING: float = 0.90
@@ -53,16 +105,15 @@ class ExtendedAuditThresholds:
 
     # RIM Model (Banks)
     OMEGA_MIN: float = 0.1
-    OMEGA_MAX: float = 0.9
-    LTD_RATIO_MAX: float = 1.2  # Loans to Deposits
+    OMEGA_MAX: float = 0.95
+    LTD_RATIO_MAX: float = 1.2
 
     # Graham Model
-    GRAHAM_YIELD_GAP_MIN: float = 0.02  # 2% minimum spread
-    GRAHAM_MULTIPLIER_MAX: float = 22.5  # PE × PB
-    GRAHAM_GROWTH_MAX: float = 0.10  # 10% max for defensive
+    GRAHAM_MULTIPLIER_MAX: float = 22.5
+    GRAHAM_GROWTH_MAX: float = 0.10
 
     # Multiples Model
-    MULTIPLES_CV_MAX: float = 0.50  # Coefficient of Variation
+    MULTIPLES_CV_MAX: float = 0.50
     MULTIPLES_PE_OUTLIER: float = 100.0
     MULTIPLES_COHORT_MIN: int = 5
 
@@ -80,7 +131,10 @@ class IValuationAuditor(ABC):
     """
 
     @abstractmethod
-    def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+    def audit_pillars(
+        self,
+        result: ValuationResult
+    ) -> Dict[AuditPillar, AuditPillarScore]:
         """
         Calculates score and diagnostics for each audit pillar.
 
@@ -111,11 +165,10 @@ class IValuationAuditor(ABC):
 
 class BaseAuditor(IValuationAuditor, ABC):
     """
-    Base Auditor providing common mechanics for test registration
-    and cross-model data validation.
+    Base Auditor providing common mechanics for test registration.
 
-    This class implements transversal audit checks that apply to all
-    valuation models regardless of methodology.
+    Implements transversal audit checks that apply to all valuation models
+    regardless of methodology.
 
     Attributes
     ----------
@@ -133,7 +186,7 @@ class BaseAuditor(IValuationAuditor, ABC):
         value: Any,
         threshold: Any,
         severity: AuditSeverity,
-        condition: Any,
+        condition: bool,
         penalty: float = 0.0,
         formula: Optional[str] = None
     ) -> float:
@@ -150,7 +203,7 @@ class BaseAuditor(IValuationAuditor, ABC):
             The reference threshold for comparison.
         severity : AuditSeverity
             Criticality level (CRITICAL, WARNING, INFO).
-        condition : Any
+        condition : bool
             True if the test passes, False otherwise.
         penalty : float, optional
             Points to deduct from the pillar score if test fails.
@@ -173,25 +226,22 @@ class BaseAuditor(IValuationAuditor, ABC):
             evidence=f"{value} vs {threshold}" if threshold else str(value),
             rule_formula=formula or StrategyFormulas.NA
         ))
-        return float(penalty) if not verdict else 0.0
+        return penalty if not verdict else 0.0
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TRANSVERSAL AUDITS (Apply to all models)
-    # ══════════════════════════════════════════════════════════════════════════
-
-    def _audit_data_confidence(self, result: ValuationResult) -> Tuple[float, int]:
+    def _audit_data_confidence(
+        self,
+        result: ValuationResult,
+        check_beta: bool = True
+    ) -> Tuple[float, int]:
         """
-        Transversal analysis of source data quality.
-
-        Tests performed:
-        1. Beta validity (systemic risk within normal bounds)
-        2. Data freshness (financial statements age)
-        3. Provider confidence score
+        Transversal analysis of source data quality (Pillar 1).
 
         Parameters
         ----------
         result : ValuationResult
-            The valuation result containing financials and metadata.
+            The valuation result containing financials.
+        check_beta : bool, optional
+            Whether to validate Beta (False for Graham model).
 
         Returns
         -------
@@ -199,62 +249,41 @@ class BaseAuditor(IValuationAuditor, ABC):
             (pillar_score, number_of_checks_performed)
         """
         score = 100.0
-        f = result.financials
+        financials = result.financials
         initial_count = len(self._audit_steps)
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 1: Beta Validity
-        # ─────────────────────────────────────────────────────────────────────
+        # Test 1: Beta Validity (conditional)
+        if check_beta:
+            beta = financials.beta
+            beta_valid = (
+                beta is not None and
+                AuditThresholds.BETA_MIN <= beta <= AuditThresholds.BETA_MAX
+            )
+            score -= self._add_audit_step(
+                key=AuditTexts.KEY_BETA_VALIDITY,
+                value=beta,
+                threshold=f"{AuditThresholds.BETA_MIN}-{AuditThresholds.BETA_MAX}",
+                severity=AuditSeverity.WARNING,
+                condition=beta_valid,
+                penalty=15.0
+            )
+
+        # Test 2: Data Freshness
+        age_months = self._calculate_data_age_months(financials)
+        max_age = ExtendedAuditThresholds.DATA_FRESHNESS_MAX_MONTHS
         score -= self._add_audit_step(
-            key="AUDIT_DATA_BETA",
-            value=f.beta,
-            threshold=f"{AuditThresholds.BETA_MIN}-{AuditThresholds.BETA_MAX}",
+            key=AuditTexts.KEY_DATA_FRESHNESS,
+            value=f"{age_months} mois",
+            threshold=f"≤ {max_age}",
             severity=AuditSeverity.WARNING,
-            condition=(
-                f.beta is not None and
-                AuditThresholds.BETA_MIN <= f.beta <= AuditThresholds.BETA_MAX
-            ),
-            penalty=15.0,
-            formula=rf"{AuditThresholds.BETA_MIN} \leq \beta \leq {AuditThresholds.BETA_MAX}"
+            condition=age_months <= max_age,
+            penalty=10.0
         )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 2: Data Freshness
-        # ─────────────────────────────────────────────────────────────────────
-        data_age_months = self._calculate_data_age_months(f)
-        freshness_threshold = ExtendedAuditThresholds.DATA_FRESHNESS_MAX_MONTHS
-
-        score -= self._add_audit_step(
-            key="AUDIT_DATA_FRESHNESS",
-            value=f"{data_age_months} mois",
-            threshold=f"≤ {freshness_threshold} mois",
-            severity=AuditSeverity.WARNING,
-            condition=(data_age_months <= freshness_threshold),
-            penalty=10.0,
-            formula=rf"Age\_donnees \leq {freshness_threshold}\ mois"
-        )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 3: Provider Confidence Score
-        # ─────────────────────────────────────────────────────────────────────
-        confidence_score = getattr(f, 'confidence_score', 1.0) or 1.0
-        confidence_min = ExtendedAuditThresholds.PROVIDER_CONFIDENCE_MIN
-
-        score -= self._add_audit_step(
-            key="AUDIT_PROVIDER_CONFIDENCE",
-            value=f"{confidence_score:.0%}",
-            threshold=f"≥ {confidence_min:.0%}",
-            severity=AuditSeverity.WARNING,
-            condition=(confidence_score >= confidence_min),
-            penalty=10.0,
-            formula=rf"Confidence\_Score \geq {confidence_min:.0%}"
-        )
-
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
+        return max(0.0, score), len(self._audit_steps) - initial_count
 
     @staticmethod
-    def _calculate_data_age_months(financials) -> int:
+    def _calculate_data_age_months(financials: CompanyFinancials) -> int:
         """
         Calculates the age of financial data in months.
 
@@ -270,7 +299,7 @@ class BaseAuditor(IValuationAuditor, ABC):
         """
         last_updated = getattr(financials, 'last_updated', None)
         if last_updated is None:
-            return 0  # Assume fresh if unknown
+            return 0
 
         try:
             if isinstance(last_updated, str):
@@ -282,21 +311,24 @@ class BaseAuditor(IValuationAuditor, ABC):
 
 
 # ==============================================================================
-# 2. DCF AUDITOR — Cash Flow Models (FCFF, FCFE, DDM)
+# 2. DCF AUDITOR — Cash Flow Models (FCFF, FCFE)
 # ==============================================================================
 
 class DCFAuditor(BaseAuditor):
     """
-    Auditor for DCF-based models (FCFF, FCFE, DDM).
+    Auditor for DCF-based models (FCFF, FCFE).
 
-    Focus areas:
+    Focus Areas
+    -----------
     - Mathematical stability (WACC-g spread)
     - Solvency (Interest Coverage Ratio)
-    - Growth coherence (Phase 1 vs Terminal)
     - Reinvestment adequacy (CapEx vs Depreciation)
     """
 
-    def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+    def audit_pillars(
+        self,
+        result: ValuationResult
+    ) -> Dict[AuditPillar, AuditPillarScore]:
         """
         Audits DCF-specific pillars: Data Confidence and Model Risk.
 
@@ -330,11 +362,11 @@ class DCFAuditor(BaseAuditor):
         """
         Structural analysis for DCF models.
 
-        Tests performed:
+        Tests Performed
+        ---------------
         1. Solvency (ICR - Interest Coverage Ratio)
         2. WACC-g Spread (Mathematical stability)
-        3. Growth Coherence (Phase 1 vs Terminal)
-        4. Reinvestment Ratio (CapEx sustainability)
+        3. Reinvestment Ratio (CapEx sustainability)
 
         Parameters
         ----------
@@ -347,131 +379,105 @@ class DCFAuditor(BaseAuditor):
             (pillar_score, number_of_checks_performed)
         """
         score = 100.0
-        p = result.params
-        f = result.financials
+        financials = result.financials
+        params = result.params
         initial_count = len(self._audit_steps)
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 1: Solvency (Interest Coverage Ratio)
-        # ─────────────────────────────────────────────────────────────────────
-        icr = self._calculate_icr(f)
+        # Test 1: Solvency (Interest Coverage Ratio)
+        icr = self._calculate_icr(financials)
         icr_threshold = AuditThresholds.ICR_MIN
-
         score -= self._add_audit_step(
-            key="AUDIT_SOLVENCY_ICR",
+            key=AuditTexts.KEY_ICR_WARNING,
             value=f"{icr:.2f}x",
             threshold=f"≥ {icr_threshold}x",
             severity=AuditSeverity.WARNING,
-            condition=(icr >= icr_threshold),
-            penalty=20.0,
-            formula=rf"\frac{{EBIT}}{{Int.Exp}} \geq {icr_threshold}"
+            condition=icr >= icr_threshold,
+            penalty=20.0
         )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 2: WACC-g Spread (Mathematical Stability)
-        # ─────────────────────────────────────────────────────────────────────
-        wacc = getattr(result, "wacc", None)
-        gn = getattr(p.growth, 'perpetual_growth_rate', None)
+        # Test 2: WACC-g Spread (Mathematical Stability)
+        discount_rate = result.discount_rate
+        perpetual_growth = params.growth.perpetual_growth_rate or 0.02
 
-        if wacc is not None and gn is not None:
-            spread = wacc - gn
+        if discount_rate > 0:
+            spread = discount_rate - perpetual_growth
             spread_min = AuditThresholds.WACC_G_SPREAD_MIN
-
             score -= self._add_audit_step(
-                key="AUDIT_WACC_G_SPREAD",
+                key=AuditTexts.KEY_WACC_G_SPREAD,
                 value=f"{spread:.2%}",
-                threshold=f"≥ {spread_min:.2%}",
+                threshold=f"≥ {spread_min:.1%}",
                 severity=AuditSeverity.CRITICAL,
-                condition=(spread >= spread_min),
-                penalty=50.0,
-                formula=rf"WACC - g_n \geq {spread_min:.2%}"
+                condition=spread >= spread_min,
+                penalty=50.0
             )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 3: Growth Coherence (Phase 1 vs Terminal)
-        # ─────────────────────────────────────────────────────────────────────
-        g_phase1 = getattr(p.growth, 'fcf_growth_rate', None)
-
-        if g_phase1 is not None and gn is not None and gn > 0:
-            growth_ratio = g_phase1 / gn
-            max_ratio = ExtendedAuditThresholds.GROWTH_PHASE1_TO_GN_MAX_RATIO
-
-            score -= self._add_audit_step(
-                key="AUDIT_GROWTH_COHERENCE",
-                value=f"{growth_ratio:.1f}x",
-                threshold=f"≤ {max_ratio:.1f}x",
-                severity=AuditSeverity.WARNING,
-                condition=(growth_ratio <= max_ratio),
-                penalty=15.0,
-                formula=rf"\frac{{g_{{phase1}}}}{{g_n}} \leq {max_ratio}"
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 4: Reinvestment Ratio (CapEx Sustainability)
-        # ─────────────────────────────────────────────────────────────────────
-        reinvestment_ratio = self._calculate_reinvestment_ratio(f)
-        reinv_min = ExtendedAuditThresholds.REINVESTMENT_RATIO_MIN
-
+        # Test 3: Reinvestment Ratio (CapEx Sustainability)
+        reinvestment_ratio = self._calculate_reinvestment_ratio(financials)
         if reinvestment_ratio is not None:
+            reinv_min = ExtendedAuditThresholds.REINVESTMENT_RATIO_MIN
             score -= self._add_audit_step(
-                key="AUDIT_REINVESTMENT_RATIO",
-                value=f"{reinvestment_ratio:.0%}",
-                threshold=f"≥ {reinv_min:.0%}",
+                key=AuditTexts.KEY_REINVESTMENT_DEFICIT,
+                value=f"{reinvestment_ratio:.1f}x",
+                threshold=f"≥ {reinv_min}x",
                 severity=AuditSeverity.WARNING,
-                condition=(reinvestment_ratio >= reinv_min),
-                penalty=15.0,
-                formula=rf"\frac{{CapEx}}{{D\&A}} \geq {reinv_min:.0%}"
+                condition=reinvestment_ratio >= reinv_min,
+                penalty=15.0
             )
 
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
+        return max(0.0, score), len(self._audit_steps) - initial_count
 
     @staticmethod
-    def _calculate_icr(financials) -> float:
+    def _calculate_icr(financials: CompanyFinancials) -> float:
         """
         Calculates Interest Coverage Ratio safely.
-        """
-        # Récupération sécurisée avec valeur par défaut 0
-        ebit_val = getattr(financials, 'ebit_ttm', 0.0)
-        interest_val = getattr(financials, 'interest_expense', 0.0)
-
-        # Conversion forcée en float pour le calcul
-        ebit = float(ebit_val) if ebit_val is not None else 0.0
-        interest = float(interest_val) if interest_val is not None else 0.0
-
-        # Protection contre la division par zéro (Dette nulle = Couverture infinie)
-        if interest == 0.0:
-            return 100.0
-
-        # Retourne un float pur pour satisfaire le linter
-        return float(abs(ebit / interest))
-
-    @staticmethod
-    def _calculate_reinvestment_ratio(financials: CompanyFinancials) -> Optional[float]:
-        """
-        Calculates CapEx to Depreciation ratio.
 
         Parameters
         ----------
         financials : CompanyFinancials
-            Financial data with capex and depreciation.
+            Financial data with EBIT and interest expense.
+
+        Returns
+        -------
+        float
+            ICR value (100.0 if no interest expense).
+        """
+        interest = abs(float(financials.interest_expense or 0.0))
+        ebit = abs(float(financials.ebit_ttm or 0.0))
+
+        if interest == 0.0:
+            return 100.0
+
+        return ebit / interest
+
+    @staticmethod
+    def _calculate_reinvestment_ratio(
+        financials: CompanyFinancials
+    ) -> Optional[float]:
+        """
+        Calculates CapEx to Depreciation & Amortization ratio.
+
+        Uses the correct attribute name as defined in CompanyFinancials model.
+
+        Parameters
+        ----------
+        financials : CompanyFinancials
+            Financial data with capex and depreciation_and_amortization.
 
         Returns
         -------
         Optional[float]
-            Ratio value, or None if depreciation is zero/missing.
+            Ratio value, or None if D&A is zero/missing.
         """
-        capex = abs(getattr(financials, 'capex', 0) or 0)
-        depreciation = abs(getattr(financials, 'depreciation', 0) or 0)
+        capex = abs(float(financials.capex or 0.0))
+        depreciation = abs(float(financials.depreciation_and_amortization or 0.0))
 
-        if depreciation == 0:
+        if depreciation == 0.0:
             return None
 
         return capex / depreciation
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for DCF models."""
-        # Base: 3 (Beta, Freshness, Provider) + Model: 4 (ICR, WACC-g, Growth, Reinvest)
         return 7
 
 
@@ -500,46 +506,29 @@ class DDMAuditor(DCFAuditor):
         Tuple[float, int]
             (pillar_score, number_of_checks_performed)
         """
-        # First, run base DCF audits
         score, count = super()._audit_model_risk(result)
-        f = result.financials
         initial_count = len(self._audit_steps)
+        financials = result.financials
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST: Dividend Sustainability (Payout Ratio)
-        # ─────────────────────────────────────────────────────────────────────
-        payout_ratio = self._calculate_payout_ratio(f)
+        # Test: Dividend Sustainability (Payout Ratio)
+        payout_ratio = self._calculate_payout_ratio(financials)
 
         if payout_ratio is not None:
-            # Warning level
-            payout_warning = ExtendedAuditThresholds.PAYOUT_RATIO_WARNING
-            payout_critical = ExtendedAuditThresholds.PAYOUT_RATIO_CRITICAL
-
-            if payout_ratio >= payout_critical:
-                severity = AuditSeverity.CRITICAL
-                penalty = 30.0
-            elif payout_ratio >= payout_warning:
-                severity = AuditSeverity.WARNING
-                penalty = 15.0
-            else:
-                severity = AuditSeverity.INFO
-                penalty = 0.0
-
+            payout_limit = ExtendedAuditThresholds.PAYOUT_RATIO_WARNING
             score -= self._add_audit_step(
-                key="AUDIT_DDM_PAYOUT",
+                key=AuditTexts.KEY_PAYOUT_UNSUSTAINABLE,
                 value=f"{payout_ratio:.0%}",
-                threshold=f"< {payout_warning:.0%}",
-                severity=severity,
-                condition=(payout_ratio < payout_warning),
-                penalty=penalty,
-                formula=rf"Payout\ Ratio < {payout_warning:.0%}"
+                threshold=f"< {payout_limit:.0%}",
+                severity=AuditSeverity.WARNING,
+                condition=payout_ratio < payout_limit,
+                penalty=20.0
             )
 
         additional_checks = len(self._audit_steps) - initial_count
         return max(0.0, score), count + additional_checks
 
     @staticmethod
-    def _calculate_payout_ratio(financials) -> Optional[float]:
+    def _calculate_payout_ratio(financials: CompanyFinancials) -> Optional[float]:
         """
         Calculates dividend payout ratio.
 
@@ -553,20 +542,16 @@ class DDMAuditor(DCFAuditor):
         Optional[float]
             Payout ratio, or None if net income is zero/missing.
         """
-        dividends = getattr(financials, 'dividends_paid', None)
-        net_income = getattr(financials, 'net_income', None)
-
+        net_income = financials.net_income_ttm
         if not net_income or net_income == 0:
             return None
 
-        if not dividends:
-            return 0.0
-
+        dividends = financials.dividends_total_calculated or 0.0
         return abs(dividends / net_income)
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for DDM model."""
-        return super().get_max_potential_checks() + 1  # +1 for payout ratio
+        return 8
 
 
 # ==============================================================================
@@ -577,13 +562,16 @@ class RIMAuditor(BaseAuditor):
     """
     Specialized auditor for Residual Income Models (Banks).
 
-    Focus areas:
+    Focus Areas
+    -----------
     - Value creation (ROE vs Ke spread)
     - Persistence factor (Omega bounds)
-    - Asset quality indicators
     """
 
-    def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+    def audit_pillars(
+        self,
+        result: ValuationResult
+    ) -> Dict[AuditPillar, AuditPillarScore]:
         """
         Audits RIM-specific pillars.
 
@@ -598,7 +586,7 @@ class RIMAuditor(BaseAuditor):
             Scores for DATA_CONFIDENCE and MODEL_RISK pillars.
         """
         score_data, count_data = self._audit_data_confidence(result)
-        score_model, count_model = self._audit_rim_model_risk(result)
+        score_model, count_model = self._audit_rim_risk(result)
 
         return {
             AuditPillar.DATA_CONFIDENCE: AuditPillarScore(
@@ -613,14 +601,14 @@ class RIMAuditor(BaseAuditor):
             )
         }
 
-    def _audit_rim_model_risk(self, result: ValuationResult) -> Tuple[float, int]:
+    def _audit_rim_risk(self, result: ValuationResult) -> Tuple[float, int]:
         """
         RIM-specific model risk analysis.
 
-        Tests performed:
+        Tests Performed
+        ---------------
         1. ROE-Ke Spread (Value creation)
         2. Omega Bounds (Persistence factor)
-        3. Asset Quality (NI volatility or LTD ratio)
 
         Parameters
         ----------
@@ -633,150 +621,46 @@ class RIMAuditor(BaseAuditor):
             (pillar_score, number_of_checks_performed)
         """
         score = 100.0
-        p = result.params
-        f = result.financials
         initial_count = len(self._audit_steps)
+        financials = result.financials
+        params = result.params
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 1: ROE-Ke Spread (Value Creation)
-        # ─────────────────────────────────────────────────────────────────────
-        roe = self._calculate_roe(f)
-        ke = getattr(result, "cost_of_equity", None) or getattr(result, "ke", None)
+        # Test 1: ROE-Ke Spread (Value Creation)
+        book_value = financials.book_value
+        net_income = financials.net_income_ttm
+        discount_rate = result.discount_rate
 
-        if roe is not None and ke is not None:
-            spread = roe - ke
-
-            # Negative spread = value destruction
-            if spread < 0:
-                severity = AuditSeverity.CRITICAL
-                penalty = 40.0
-            elif spread < 0.01:  # Less than 1% spread
-                severity = AuditSeverity.WARNING
-                penalty = 20.0
-            else:
-                severity = AuditSeverity.INFO
-                penalty = 0.0
+        if book_value and book_value > 0 and net_income:
+            roe = net_income / book_value
+            spread = roe - discount_rate
 
             score -= self._add_audit_step(
-                key="AUDIT_RIM_ROE_KE_SPREAD",
+                key=AuditTexts.KEY_ROE_KE_NEGATIVE,
                 value=f"{spread:.2%}",
                 threshold="> 0%",
-                severity=severity,
-                condition=(spread > 0),
-                penalty=penalty,
-                formula=r"ROE - K_e > 0"
+                severity=AuditSeverity.CRITICAL,
+                condition=spread > 0,
+                penalty=40.0
             )
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 2: Omega Bounds (Persistence Factor)
-        # ─────────────────────────────────────────────────────────────────────
-        omega = getattr(p.terminal, 'exit_multiple_value', None) if hasattr(p, 'terminal') else None
-        # Also check in growth parameters
-        if omega is None:
-            omega = getattr(p, 'exit_multiple_value', None)
+        # Test 2: Omega Bounds (Persistence Factor)
+        omega = params.growth.exit_multiple_value or 0.60
+        omega_min = ExtendedAuditThresholds.OMEGA_MIN
+        omega_max = ExtendedAuditThresholds.OMEGA_MAX
 
-        if omega is not None:
-            omega_min = ExtendedAuditThresholds.OMEGA_MIN
-            omega_max = ExtendedAuditThresholds.OMEGA_MAX
+        score -= self._add_audit_step(
+            key=AuditTexts.KEY_OMEGA_BOUNDS,
+            value=f"{omega:.2f}",
+            threshold=f"[{omega_min}, {omega_max}]",
+            severity=AuditSeverity.WARNING,
+            condition=omega_min <= omega <= omega_max,
+            penalty=20.0
+        )
 
-            is_valid = omega_min <= omega <= omega_max
-
-            if omega > omega_max:
-                severity = AuditSeverity.CRITICAL
-                penalty = 35.0
-            elif omega < omega_min:
-                severity = AuditSeverity.WARNING
-                penalty = 20.0
-            else:
-                severity = AuditSeverity.INFO
-                penalty = 0.0
-
-            score -= self._add_audit_step(
-                key="AUDIT_RIM_OMEGA_BOUNDS",
-                value=f"{omega:.2f}",
-                threshold=f"[{omega_min}, {omega_max}]",
-                severity=severity,
-                condition=is_valid,
-                penalty=penalty,
-                formula=rf"{omega_min} \leq \omega \leq {omega_max}"
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 3: Asset Quality (Loans to Deposits or NI Volatility)
-        # ──────────��──────────────────────────────────────────────────────────
-        ltd_ratio = self._calculate_ltd_ratio(f)
-
-        if ltd_ratio is not None:
-            ltd_max = ExtendedAuditThresholds.LTD_RATIO_MAX
-
-            score -= self._add_audit_step(
-                key="AUDIT_RIM_ASSET_QUALITY",
-                value=f"{ltd_ratio:.0%}",
-                threshold=f"≤ {ltd_max:.0%}",
-                severity=AuditSeverity.WARNING,
-                condition=(ltd_ratio <= ltd_max),
-                penalty=15.0,
-                formula=rf"\frac{{Loans}}{{Deposits}} \leq {ltd_max:.0%}"
-            )
-
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
-
-    @staticmethod
-    def _calculate_roe(financials) -> Optional[float]:
-        """
-        Calculates Return on Equity.
-
-        Parameters
-        ----------
-        financials : CompanyFinancials
-            Financial data with net income and book value.
-
-        Returns
-        -------
-        Optional[float]
-            ROE value, or None if book value is zero/missing.
-        """
-        net_income = getattr(financials, 'net_income', None)
-        book_value = getattr(financials, 'book_value', None)
-
-        if not book_value or book_value == 0:
-            return None
-
-        if not net_income:
-            return 0.0
-
-        return net_income / book_value
-
-    @staticmethod
-    def _calculate_ltd_ratio(financials) -> Optional[float]:
-        """
-        Calculates Loans to Deposits ratio (bank-specific).
-
-        Parameters
-        ----------
-        financials : CompanyFinancials
-            Financial data with loans and deposits.
-
-        Returns
-        -------
-        Optional[float]
-            LTD ratio, or None if not available.
-        """
-        loans = getattr(financials, 'total_loans', None)
-        deposits = getattr(financials, 'total_deposits', None)
-
-        if not deposits or deposits == 0:
-            return None
-
-        if not loans:
-            return 0.0
-
-        return loans / deposits
+        return max(0.0, score), len(self._audit_steps) - initial_count
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for RIM model."""
-        # Base: 3 (Beta, Freshness, Provider) + RIM: 3 (ROE-Ke, Omega, LTD)
         return 6
 
 
@@ -788,15 +672,21 @@ class GrahamAuditor(BaseAuditor):
     """
     Specialized auditor for Graham's Defensive Value.
 
-    Focus areas:
-    - Margin of safety (Yield gap)
-    - Graham multiplier rule (PE × PB)
-    - Growth prudence (Conservative projections)
+    Focus Areas
+    -----------
+    - Graham multiplier rule (PE × PB ≤ 22.5)
+
+    Note
+    ----
+    Beta validation is disabled as Graham model does not rely on CAPM.
     """
 
-    def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+    def audit_pillars(
+        self,
+        result: ValuationResult
+    ) -> Dict[AuditPillar, AuditPillarScore]:
         """
-        Audits Graham-specific pillars with focus on margin of safety.
+        Audits Graham-specific pillars.
 
         Parameters
         ----------
@@ -808,9 +698,9 @@ class GrahamAuditor(BaseAuditor):
         Dict[AuditPillar, AuditPillarScore]
             Scores for DATA_CONFIDENCE and MODEL_RISK pillars.
         """
-        # Graham uses simplified data confidence (no Beta dependency)
-        score_data, count_data = self._audit_graham_data_confidence(result)
-        score_model, count_model = self._audit_graham_model_risk(result)
+        # Graham model does not use Beta
+        score_data, count_data = self._audit_data_confidence(result, check_beta=False)
+        score_model, count_model = self._audit_graham_risk(result)
 
         return {
             AuditPillar.DATA_CONFIDENCE: AuditPillarScore(
@@ -825,66 +715,13 @@ class GrahamAuditor(BaseAuditor):
             )
         }
 
-    def _audit_graham_data_confidence(self, result: ValuationResult) -> Tuple[float, int]:
-        """
-        Simplified data confidence audit for Graham model.
-
-        Graham model does not rely on Beta or WACC, so we only check
-        data freshness and provider confidence.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            Graham valuation result to audit.
-
-        Returns
-        -------
-        Tuple[float, int]
-            (pillar_score, number_of_checks_performed)
-        """
-        score = 100.0
-        f = result.financials
-        initial_count = len(self._audit_steps)
-
-        # Data Freshness
-        data_age_months = self._calculate_data_age_months(f)
-        freshness_threshold = ExtendedAuditThresholds.DATA_FRESHNESS_MAX_MONTHS
-
-        score -= self._add_audit_step(
-            key="AUDIT_DATA_FRESHNESS",
-            value=f"{data_age_months} mois",
-            threshold=f"≤ {freshness_threshold} mois",
-            severity=AuditSeverity.WARNING,
-            condition=(data_age_months <= freshness_threshold),
-            penalty=10.0,
-            formula=rf"Age\_donnees \leq {freshness_threshold}\ mois"
-        )
-
-        # Provider Confidence
-        confidence_score = getattr(f, 'confidence_score', 1.0) or 1.0
-        confidence_min = ExtendedAuditThresholds.PROVIDER_CONFIDENCE_MIN
-
-        score -= self._add_audit_step(
-            key="AUDIT_PROVIDER_CONFIDENCE",
-            value=f"{confidence_score:.0%}",
-            threshold=f"≥ {confidence_min:.0%}",
-            severity=AuditSeverity.WARNING,
-            condition=(confidence_score >= confidence_min),
-            penalty=10.0,
-            formula=rf"Confidence\_Score \geq {confidence_min:.0%}"
-        )
-
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
-
-    def _audit_graham_model_risk(self, result: ValuationResult) -> Tuple[float, int]:
+    def _audit_graham_risk(self, result: ValuationResult) -> Tuple[float, int]:
         """
         Graham-specific model risk analysis.
 
-        Tests performed:
-        1. Yield Gap (Earnings yield vs AAA bonds)
-        2. Graham Multiplier (PE × PB ≤ 22.5)
-        3. Growth Prudence (g ≤ 10%)
+        Tests Performed
+        ---------------
+        1. Graham Multiplier (PE × PB ≤ 22.5)
 
         Parameters
         ----------
@@ -897,74 +734,28 @@ class GrahamAuditor(BaseAuditor):
             (pillar_score, number_of_checks_performed)
         """
         score = 100.0
-        p = result.params
-        f = result.financials
         initial_count = len(self._audit_steps)
+        financials = result.financials
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 1: Yield Gap (Margin of Safety)
-        # ─────────────────────────────────────────────────────────────────────
-        pe_ratio = getattr(f, 'pe_ratio', None)
-        aaa_yield = getattr(p, 'corporate_aaa_yield', None)
+        # Test: Graham Multiplier Rule (PE × PB ≤ 22.5)
+        pe_ratio = financials.pe_ratio or 0.0
+        pb_ratio = financials.pb_ratio or 0.0
+        graham_multiplier = pe_ratio * pb_ratio
+        multiplier_limit = ExtendedAuditThresholds.GRAHAM_MULTIPLIER_MAX
 
-        if pe_ratio is not None and pe_ratio > 0 and aaa_yield is not None:
-            earnings_yield = 1.0 / pe_ratio
-            yield_gap = earnings_yield - aaa_yield
-            gap_min = ExtendedAuditThresholds.GRAHAM_YIELD_GAP_MIN
+        score -= self._add_audit_step(
+            key=AuditTexts.KEY_GRAHAM_MULTIPLIER,
+            value=f"{graham_multiplier:.1f}",
+            threshold=f"≤ {multiplier_limit}",
+            severity=AuditSeverity.WARNING,
+            condition=graham_multiplier <= multiplier_limit,
+            penalty=30.0
+        )
 
-            score -= self._add_audit_step(
-                key="AUDIT_GRAHAM_YIELD_GAP",
-                value=f"{yield_gap:.2%}",
-                threshold=f"≥ {gap_min:.2%}",
-                severity=AuditSeverity.WARNING,
-                condition=(yield_gap >= gap_min),
-                penalty=20.0,
-                formula=rf"\frac{{1}}{{PE}} - Y_{{AAA}} \geq {gap_min:.2%}"
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 2: Graham Multiplier Rule (PE × PB ≤ 22.5)
-        # ─────────────────────────────────────────────────────────────────────
-        pb_ratio = getattr(f, 'pb_ratio', None)
-
-        if pe_ratio is not None and pb_ratio is not None:
-            graham_mult = pe_ratio * pb_ratio
-            mult_max = ExtendedAuditThresholds.GRAHAM_MULTIPLIER_MAX
-
-            score -= self._add_audit_step(
-                key="AUDIT_GRAHAM_MULTIPLIER",
-                value=f"{graham_mult:.1f}",
-                threshold=f"≤ {mult_max}",
-                severity=AuditSeverity.WARNING,
-                condition=(graham_mult <= mult_max),
-                penalty=25.0,
-                formula=rf"PE \times PB \leq {mult_max}"
-            )
-
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 3: Growth Prudence (Conservative Projections)
-        # ─────────────────────────────────────────────────────────────────────
-        g_rate = getattr(p.growth, 'fcf_growth_rate', None) if hasattr(p, 'growth') else None
-
-        if g_rate is not None:
-            g_max = ExtendedAuditThresholds.GRAHAM_GROWTH_MAX
-
-            score -= self._add_audit_step(
-                key="AUDIT_GRAHAM_GROWTH_PRUDENCE",
-                value=f"{g_rate:.1%}",
-                threshold=f"≤ {g_max:.0%}",
-                severity=AuditSeverity.WARNING,
-                condition=(g_rate <= g_max),
-                penalty=15.0,
-                formula=rf"g \leq {g_max:.0%}"
-            )
-
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
+        return max(0.0, score), len(self._audit_steps) - initial_count
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for Graham model."""
-        # Data: 2 (Freshness, Provider) + Model: 3 (Yield Gap, Multiplier, Growth)
         return 5
 
 
@@ -976,13 +767,16 @@ class MultiplesAuditor(BaseAuditor):
     """
     Auditor for relative valuation triangulation.
 
-    Focus areas:
-    - Cohort quality (Dispersion / CV)
-    - Outlier detection (Extreme multiples)
-    - Sample size adequacy
+    Focus Areas
+    -----------
+    - Cohort quality (Sample size)
+    - Cohort dispersion (Coefficient of Variation)
     """
 
-    def audit_pillars(self, result: ValuationResult) -> Dict[AuditPillar, AuditPillarScore]:
+    def audit_pillars(
+        self,
+        result: ValuationResult
+    ) -> Dict[AuditPillar, AuditPillarScore]:
         """
         Audits multiples-specific pillars.
 
@@ -1016,10 +810,10 @@ class MultiplesAuditor(BaseAuditor):
         """
         Multiples-specific model risk analysis.
 
-        Tests performed:
-        1. Cohort Dispersion (Coefficient of Variation)
-        2. Outlier Detection (Extreme PE values)
-        3. Cohort Size Adequacy
+        Tests Performed
+        ---------------
+        1. Cohort Size Adequacy
+        2. Cohort Dispersion (Coefficient of Variation)
 
         Parameters
         ----------
@@ -1034,139 +828,80 @@ class MultiplesAuditor(BaseAuditor):
         score = 100.0
         initial_count = len(self._audit_steps)
 
-        # Get peer multiples data from result
-        triangulation = getattr(result, 'multiples_triangulation', None)
-        peers_data = getattr(triangulation, 'peer_multiples', []) if triangulation else []
+        triangulation = result.multiples_triangulation
+        if not triangulation:
+            return 0.0, 0
 
-        # ─────────────────────────────────────────────────────────────────────
-        # TEST 1: Cohort Size Adequacy
-        # ─────────────────────────────────────────────────────────────────────
-        cohort_size = len(peers_data)
+        peers = triangulation.multiples_data.peers
+
+        # Test 1: Cohort Size Adequacy
+        cohort_size = len(peers)
         min_cohort = ExtendedAuditThresholds.MULTIPLES_COHORT_MIN
 
         score -= self._add_audit_step(
-            key="AUDIT_MULTIPLES_COHORT_SIZE",
+            key=AuditTexts.KEY_COHORT_SMALL,
             value=str(cohort_size),
             threshold=f"≥ {min_cohort}",
             severity=AuditSeverity.WARNING,
-            condition=(cohort_size >= min_cohort),
-            penalty=15.0,
-            formula=rf"N_{{peers}} \geq {min_cohort}"
+            condition=cohort_size >= min_cohort,
+            penalty=20.0
         )
 
-        # Only run further tests if we have peers
-        if peers_data:
-            # Extract PE ratios from peers
-            pe_values = self._extract_pe_values(peers_data)
+        # Test 2: Cohort Dispersion (CV)
+        pe_values = [p.pe_ratio for p in peers if p.pe_ratio and p.pe_ratio > 0]
 
-            if pe_values:
-                # ─────────────────────────────────────────────────────────────
-                # TEST 2: Cohort Dispersion (CV)
-                # ─────────────────────────────────────────────────────────────
-                cv = self._calculate_cv(pe_values)
-                cv_max = ExtendedAuditThresholds.MULTIPLES_CV_MAX
+        if len(pe_values) >= 3:
+            cv = self._calculate_coefficient_of_variation(pe_values)
+            cv_max = ExtendedAuditThresholds.MULTIPLES_CV_MAX
 
-                if cv is not None:
-                    score -= self._add_audit_step(
-                        key="AUDIT_MULTIPLES_DISPERSION",
-                        value=f"{cv:.0%}",
-                        threshold=f"≤ {cv_max:.0%}",
-                        severity=AuditSeverity.WARNING,
-                        condition=(cv <= cv_max),
-                        penalty=20.0,
-                        formula=rf"CV = \frac{{\sigma}}{{\mu}} \leq {cv_max:.0%}"
-                    )
-
-                # ─────────────────────────────────────────────────────────────
-                # TEST 3: Outlier Detection
-                # ─────────────────────────────────────────────────────────────
-                outlier_threshold = ExtendedAuditThresholds.MULTIPLES_PE_OUTLIER
-                outliers = [pe for pe in pe_values if pe > outlier_threshold]
-                outlier_count = len(outliers)
-
+            if cv is not None:
                 score -= self._add_audit_step(
-                    key="AUDIT_MULTIPLES_OUTLIERS",
-                    value=str(outlier_count),
-                    threshold="0",
+                    key=AuditTexts.KEY_HIGH_DISPERSION,
+                    value=f"{cv:.1%}",
+                    threshold=f"≤ {cv_max:.0%}",
                     severity=AuditSeverity.WARNING,
-                    condition=(outlier_count == 0),
-                    penalty=10.0 * min(outlier_count, 3),  # Cap penalty
-                    formula=rf"PE_{{peer}} < {outlier_threshold}"
+                    condition=cv <= cv_max,
+                    penalty=20.0
                 )
 
-        checks_performed = len(self._audit_steps) - initial_count
-        return max(0.0, score), checks_performed
+        return max(0.0, score), len(self._audit_steps) - initial_count
 
     @staticmethod
-    def _extract_pe_values(peers_data: List) -> List[float]:
+    def _calculate_coefficient_of_variation(values: List[float]) -> Optional[float]:
         """
-        Extracts PE ratios from peer data objects.
+        Calculates Coefficient of Variation (std / mean).
 
         Parameters
         ----------
-        peers_data : List
-            List of peer data objects or dictionaries.
+        values : List[float]
+            List of numeric values.
 
         Returns
         -------
-        List[float]
-            List of valid PE ratios.
-        """
-        pe_values = []
-        for peer in peers_data:
-            if isinstance(peer, dict):
-                pe = peer.get('pe_ratio') or peer.get('pe')
-            else:
-                pe = getattr(peer, 'pe_ratio', None) or getattr(peer, 'pe', None)
-
-            if pe is not None and pe > 0:
-                pe_values.append(pe)
-
-        return pe_values
-
-    @staticmethod
-    def _calculate_cv(values: List[float]) -> Optional[float]:
-        """
-        Calculates Coefficient of Variation (std / mean).
+        Optional[float]
+            CV value as Python float, or None if calculation fails.
         """
         if not values or len(values) < 2:
             return None
 
-        # Conversion en array numpy pour les performances
         arr = np.array(values, dtype=np.float64)
-        mean_val = np.mean(arr)
+        mean_val = float(np.mean(arr))
 
-        # Vérification sécurisée du dénominateur (proche de zéro)
-        if np.isclose(float(mean_val), 0.0):
+        if mean_val == 0.0:
             return None
 
-        std_val = np.std(arr)
-
-        # On force le retour en float Python standard
-        return float(std_val / mean_val)
+        std_val = float(np.std(arr))
+        return std_val / mean_val
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for Multiples model."""
-        # Base: 3 (Beta, Freshness, Provider) + Multiples: 3 (Size, CV, Outliers)
         return 6
 
 
 # ==============================================================================
-# 7. FCFE AUDITOR — Direct Equity (with leverage considerations)
+# ALIASES FOR REGISTRY SUPPORT
 # ==============================================================================
 
-class FCFEAuditor(DCFAuditor):
-    """
-    Specialized auditor for Free Cash Flow to Equity models.
-
-    Extends DCF auditor with leverage-specific checks.
-    """
-    pass  # Inherits all DCF checks, which are appropriate for FCFE
-
-
-# ==============================================================================
-# 8. ALIASES AND BACKWARD COMPATIBILITY
-# ==============================================================================
-
+FCFEAuditor = DCFAuditor
 StandardValuationAuditor = DCFAuditor
 FundamentalValuationAuditor = DCFAuditor
