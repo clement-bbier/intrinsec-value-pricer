@@ -9,9 +9,6 @@ but predictable cash flows.
 
 Architecture: ST-3.2 (Enterprise Value)
 Style: Numpy docstrings
-
-IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
-           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any

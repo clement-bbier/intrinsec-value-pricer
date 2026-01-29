@@ -26,10 +26,6 @@ from app.ui.expert.terminals.shared_widgets import (
 # NORMALIZATION CONSTANT
 # ==============================================================================
 
-_PERCENTAGE_DIVISOR = 100.0
-"""Divisor for converting percentage inputs to decimals."""
-
-
 class RIMBankTerminal(ExpertTerminalBase):
     """
     Expert terminal for the Residual Income Model (Ohlson Model).
@@ -144,7 +140,7 @@ class RIMBankTerminal(ExpertTerminalBase):
         # Normalize growth rate from percentage to decimal
         normalized_growth_rate = None
         if raw_growth_rate is not None:
-            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
+            normalized_growth_rate = raw_growth_rate
 
         return {
             "manual_book_value": st.session_state.get(f"{key_prefix}_bv_initial"),

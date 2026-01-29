@@ -8,9 +8,6 @@ a stochastic approach for earnings volatility.
 
 Architecture: ST-4.1 (Screening & Probabilistic)
 Style: Numpy docstrings
-
-IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
-           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any

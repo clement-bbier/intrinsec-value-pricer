@@ -8,9 +8,6 @@ This terminal constitutes steps 1 and 2 of the analytical "Logical Path".
 
 Architecture: ST-3.1 (Fundamental - DCF)
 Style: Numpy docstrings
-
-IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
-           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any

@@ -90,7 +90,8 @@ _PERCENTAGE_FIELDS: Set[str] = {
     "earnings_growth_rate",
     "dividend_growth_rate",
     "fcf_growth_rate",
-    "residual_income_growth_rate"
+    "residual_income_growth_rate",
+    "corporate_aaa_yield"
 }
 
 _MILLION_FIELDS: Set[str] = {
@@ -552,8 +553,6 @@ class ExpertTerminalBase(ABC):
         key_prefix = self.MODE.name
         collected_data = {"projection_years": st.session_state.get(f"{key_prefix}_years", 5)}
 
-        # Block-based data extraction with normalization
-        # Each _extract_*_data method handles its own normalization
         collected_data.update(self._extract_discount_data(key_prefix))
         if self.SHOW_TERMINAL_SECTION:
             collected_data.update(self._extract_terminal_data(key_prefix))
@@ -566,13 +565,12 @@ class ExpertTerminalBase(ABC):
         if self.SHOW_BACKTEST:
             collected_data.update(self._extract_backtest_data())
 
-        # Model-specific inputs (Anchoring & Growth) - with normalization
-        collected_data.update(self._extract_model_inputs_data(key_prefix))
+        raw_model_data = self._extract_model_inputs_data(key_prefix)
+        normalized_model_data = self._bulk_normalize(raw_model_data)
+        collected_data.update(normalized_model_data)
 
-        # Build parameters object
         params = build_dcf_parameters(collected_data)
 
-        # Scenarios and SOTP data injection
         if self.SHOW_SCENARIOS:
             params.scenarios = self._extract_scenarios_data()
         if self.SHOW_SOTP:
