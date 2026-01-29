@@ -89,7 +89,7 @@ _PERCENTAGE_FIELDS: Set[str] = {
     "earnings_growth_rate",
     "dividend_growth_rate",
     "fcf_growth_rate",
-    "residual_income_growth_rate",
+    "residual_income_growth_rate"
 }
 
 _MILLION_FIELDS: Set[str] = {
@@ -108,13 +108,6 @@ _ABSOLUTE_FIELDS: Set[str] = {
     "manual_beta",
     "manual_stock_price",
 
-    # Bridge fields (currency amounts)
-    "manual_total_debt",
-    "manual_cash",
-    "manual_minority_interests",
-    "manual_pension_provisions",
-    "manual_shares_outstanding",
-
     # Terminal Value fields
     "exit_multiple_value",
 
@@ -126,6 +119,7 @@ _ABSOLUTE_FIELDS: Set[str] = {
 
     # Scenario probabilities (already 0-1 from slider)
     "probability",
+    "manual_dividend_base"
 }
 
 
@@ -444,6 +438,16 @@ class ExpertTerminalBase(ABC):
         return value * _MILLION_MULTIPLIER
 
     @staticmethod
+    def _normalize_rate(value: Optional[float]) -> Optional[float]:
+        """
+        Logic imported from Pydantic: Guesses if a value is a percentage.
+        If value > 1.0 (ex: 5.0), assumes it's a percentage and returns 0.05.
+        """
+        if value is None:
+            return None
+        return value / 100.0 if abs(value) > 1.0 else value
+
+    @staticmethod
     def apply_field_scaling(field_name: str, value: Optional[float]) -> Optional[float]:
         """
         Applies canonical scaling based on field classification.
@@ -472,13 +476,14 @@ class ExpertTerminalBase(ABC):
             return ExpertTerminalBase._normalize_million(value)
         elif field_name in _ABSOLUTE_FIELDS:
             return value
+
         else:
             # Log warning for unclassified fields (helps catch new fields)
             logger.warning(
-                f"Field '{field_name}' is not classified as percentage or absolute. "
-                f"Returning raw value. Please add to _PERCENTAGE_FIELDS or _ABSOLUTE_FIELDS."
+                f"Field '{field_name}' is not classified as percentage, absolute or million. "
+                f"Returning raw value. Please add to _PERCENTAGE_FIELDS, _ABSOLUTE_FIELDS or _MILLION_FIELDS."
             )
-            return value
+            return ExpertTerminalBase._normalize_rate(value)
 
     @staticmethod
     def _bulk_normalize(

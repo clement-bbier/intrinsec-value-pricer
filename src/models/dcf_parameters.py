@@ -3,9 +3,9 @@ src/models/dcf_parameters.py
 
 DCF MODEL INPUT PARAMETERS
 ==========================
-Role: Configuration structures for parameters used in Discounted Cash Flow models.
-Scope: Includes financial rates, growth trajectories, and Monte Carlo configurations.
-Architecture: Pydantic V2 with mandatory classmethod validators and decimal guarding.
+Role: Pure data structures for DCF model configuration.
+Scope: Holds financial rates, growth assumptions, and simulation settings.
+Architecture: Pydantic V2. Scaling logic is deferred to the UI entry layer.
 
 Style: Numpy docstrings.
 """
@@ -13,39 +13,15 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from .enums import TerminalValueMethod
 from .scenarios import ScenarioParameters, SOTPParameters
 from src.config.constants import ModelDefaults
 
 
-def _normalize_rate(v: Any, field_name: str = "") -> Optional[float]:
-    """
-    Normalizes rate fields to decimal format.
-
-    Rules:
-    - None/empty → None
-    - Already decimal (≤1.0) → as-is
-    - Percentage (>1.0) → divide by 100
-
-    Note: This function is ONLY for rate fields (Rf, MRP, g, etc.)
-    NOT for absolute values (FCF, Debt, etc.)
-    """
-    if v is None or v == "":
-        return None
-    try:
-        val = float(v)
-        # Explicit rule: values > 1 are assumed percentages
-        if val > 1.0:
-            return val / 100.0
-        return val
-    except (ValueError, TypeError):
-        return None
-
 class CoreRateParameters(BaseModel):
-    """Financial discounting and rate parameters."""
+    """Financial discounting and rate parameters (Standardized Units)."""
     risk_free_rate: Optional[float] = None
     risk_free_source: str = "N/A"
     market_risk_premium: Optional[float] = None
@@ -56,15 +32,9 @@ class CoreRateParameters(BaseModel):
     wacc_override: Optional[float] = None
     manual_beta: Optional[float] = None
 
-    @field_validator('risk_free_rate', 'market_risk_premium', 'corporate_aaa_yield',
-                     'cost_of_debt', 'tax_rate', mode='before')
-    def enforce_decimal(cls, v: Any) -> Any:
-        """Applies decimal normalization to raw rate inputs."""
-        return _normalize_rate(v)
-
 
 class GrowthParameters(BaseModel):
-    """Forecasting and growth trajectory assumptions."""
+    """Forecasting and growth trajectory assumptions (Standardized Units)."""
     fcf_growth_rate: Optional[float] = None
     projection_years: int = ModelDefaults.DEFAULT_PROJECTION_YEARS
     high_growth_years: int = ModelDefaults.DEFAULT_HIGH_GROWTH_YEARS
@@ -88,14 +58,9 @@ class GrowthParameters(BaseModel):
     manual_net_borrowing: Optional[float] = None
     manual_dividend_base: Optional[float] = None
 
-    @field_validator('fcf_growth_rate', 'perpetual_growth_rate', 'annual_dilution_rate', mode='before')
-    def enforce_decimal(cls, v: Any) -> Any:
-        """Applies decimal normalization to growth and dilution inputs."""
-        return _normalize_rate(v)
-
 
 class MonteCarloConfig(BaseModel):
-    """Probabilistic sensitivity configuration."""
+    """Probabilistic sensitivity configuration (Standardized Units)."""
     enable_monte_carlo: bool = False
     num_simulations: int = 2000
     base_flow_volatility: Optional[float] = None
@@ -103,11 +68,6 @@ class MonteCarloConfig(BaseModel):
     growth_volatility: Optional[float] = None
     terminal_growth_volatility: Optional[float] = None
     correlation_beta_growth: float = -0.30
-
-    @field_validator('beta_volatility', 'growth_volatility', 'terminal_growth_volatility', mode='before')
-    def enforce_decimal(cls, v: Any) -> Any:
-        """Applies decimal normalization to volatility inputs."""
-        return _normalize_rate(v)
 
 
 class DCFParameters(BaseModel):
