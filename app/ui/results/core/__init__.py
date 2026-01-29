@@ -7,12 +7,16 @@ Onglets toujours visibles dans les résultats.
 - audit_report.py        : Score de fiabilité
 """
 
-from app.ui.results.core.inputs_summary import InputsSummaryTab
-from app.ui.results.core.calculation_proof import CalculationProofTab
-from app.ui.results.core.audit_report import AuditReportTab
+from .inputs_summary import InputsSummaryTab
+from .calculation_proof import CalculationProofTab
+from .audit_report import AuditReportTab
+from .risk_engineering import RiskEngineeringTab
+from .market_analysis import MarketAnalysisTab
 
 __all__ = [
     "InputsSummaryTab",
     "CalculationProofTab",
     "AuditReportTab",
+    "RiskEngineeringTab",
+    "MarketAnalysisTab"
 ]
