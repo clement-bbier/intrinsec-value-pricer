@@ -874,7 +874,7 @@ def widget_sotp(
         min_value=0,
         max_value=50,
         value=val_init,
-        step=1,
+        step=1.0,
         key=f"{prefix}_discount",
         help=SharedTexts.HELP_SOTP
     )
