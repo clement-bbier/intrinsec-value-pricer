@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from .enums import ValuationMode, InputSource
 from .company import CompanyFinancials
@@ -42,9 +42,9 @@ class ValuationRequest(BaseModel):
     projection_years : int
         Duration of the explicit forecast horizon.
     mode : ValuationMode
-        The specific valuation methodology to employ (e.g., FCFF, RIM).
+        The specific valuation methodology to employ.
     input_source : InputSource
-        Origin of the data (AUTO for providers, MANUAL for experts).
+        Origin of the data (AUTO or MANUAL).
     manual_params : DCFParameters, optional
         Expert-defined parameters for manual overrides.
     options : Dict[str, Any]
@@ -61,9 +61,7 @@ class ValuationRequest(BaseModel):
 
 
 class HistoricalPoint(BaseModel):
-    """
-    Represents a valuation snapshot at a specific point in time (Backtesting).
-    """
+    """Represents a valuation snapshot at a specific point in time."""
     valuation_date: date
     intrinsic_value: float
     market_price: float
@@ -72,11 +70,7 @@ class HistoricalPoint(BaseModel):
 
 
 class BacktestResult(BaseModel):
-    """
-    Aggregated synthesis of a historical backtest run.
-
-    Used to evaluate model accuracy and alpha generation over time.
-    """
+    """Aggregated synthesis of a historical backtest run."""
     model_config = ConfigDict(protected_namespaces=())
 
     points: List[HistoricalPoint] = Field(default_factory=list)
@@ -93,24 +87,7 @@ class ValuationResult(BaseModel, ABC):
     """
     Abstract Base Class for all valuation outputs.
 
-    Defines the shared contract for value representation, audit lineage,
-    and sensitivity analysis.
-
-    Attributes
-    ----------
-    intrinsic_value_per_share : float
-        The calculated fair value of a single share.
-    market_price : float
-        Market price at the time of calculation.
-    upside_pct : float, optional
-        The delta between market price and intrinsic value:
-        $$Upside = \frac{IV_{share}}{Price_{market}} - 1$$
-    calculation_trace : List[CalculationStep]
-        Full Glass Box traceability for mathematical audit.
-    audit_report : AuditReport
-        Institutional reliability assessment.
-    simulation_results : List[float], optional
-        Raw results from Monte Carlo iterations.
+    Provides a standardized interface for UI components and audit engines.
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -132,7 +109,7 @@ class ValuationResult(BaseModel, ABC):
     mc_clamping_applied: Optional[bool] = None
 
     # Analytical Extensions
-    multiples_triangulation: Optional['MultiplesValuationResult'] = None
+    multiples_triangulation: Optional[MultiplesValuationResult] = None
     relative_valuation: Optional[Dict[str, float]] = None
     scenario_synthesis: Optional[ScenarioSynthesis] = None
     sotp_results: Optional[SOTPParameters] = None
@@ -143,32 +120,72 @@ class ValuationResult(BaseModel, ABC):
         if self.market_price > 0 and self.upside_pct is None:
             self.upside_pct = (self.intrinsic_value_per_share / self.market_price) - 1.0
 
+    # --- UNIVERSAL COMPUTED PROPERTIES (PROV-V2) ---
+
+    @computed_field
     @property
-    def ticker(self) -> str:
+    def ticker_symbol(self) -> str:
+        """Safe access to the ticker symbol."""
         return self.request.ticker if self.request else "UNKNOWN"
 
+    @computed_field
     @property
-    def mode(self) -> Optional[ValuationMode]:
-        return self.request.mode if self.request else None
+    def discount_rate(self) -> float:
+        """Universal discount rate accessor (WACC or Ke)."""
+        return getattr(self, 'wacc', 0.0) or getattr(self, 'cost_of_equity', 0.0)
+
+    @computed_field
+    @property
+    def terminal_growth_rate(self) -> float:
+        """Direct access to perpetual growth rate (g)."""
+        return self.params.growth.perpetual_growth_rate or 0.0
+
+    @computed_field
+    @property
+    def market_cap(self) -> float:
+        """Current market capitalization."""
+        return self.market_price * self.financials.shares_outstanding
+
+    @computed_field
+    @property
+    def intrinsic_price(self) -> float:
+        """Clean alias for IV per share."""
+        return self.intrinsic_value_per_share
+
+    @computed_field
+    @property
+    def upside(self) -> float:
+        """Safe access to calculated upside."""
+        return self.upside_pct or 0.0
+
+    @computed_field
+    @property
+    def total_equity(self) -> float:
+        """
+        Calculates total market value of equity.
+        Renamed from 'equity_value' to avoid shadowing warnings with fields.
+        """
+        for attr in ['equity_value', 'total_equity_value']:
+            val = getattr(self, attr, None)
+            if val is not None:
+                return val
+        return self.intrinsic_value_per_share * self.financials.shares_outstanding
 
     @abstractmethod
     def build_output_contract(self) -> ValuationOutputContract:
-        """Ensures that every result implementation satisfies the audit contract."""
+        """Validates that the result satisfies audit requirements."""
         raise NotImplementedError
 
 
 # ==============================================================================
-# 3. CONCRETE VALUATION SPECIALIZATIONS
+# 3. CONCRETE VALUATION MODELS
 # ==============================================================================
 
 class DCFValuationResult(ValuationResult):
-    """Concrete implementation for Enterprise DCF (FCFF)."""
-    # --- Rate Variables ---
+    """Enterprise DCF Result (shadows equity_value via field)."""
     wacc: float
     cost_of_equity: float
     cost_of_debt_after_tax: float
-
-    # --- Cash Flows & Terminal Values ---
     projected_fcfs: List[float]
     discount_factors: List[float]
     sum_discounted_fcf: float
@@ -177,7 +194,6 @@ class DCFValuationResult(ValuationResult):
     enterprise_value: float
     equity_value: float
 
-    # --- Observed Audit Metrics ---
     icr_observed: Optional[float] = None
     capex_to_da_ratio: Optional[float] = None
     terminal_value_weight: Optional[float] = None
@@ -195,22 +211,17 @@ class DCFValuationResult(ValuationResult):
 
 
 class RIMValuationResult(ValuationResult):
-    """Concrete implementation for the Residual Income Model (RIM)."""
+    """Residual Income Model Result."""
     cost_of_equity: float
     current_book_value: float
     total_equity_value: float
-
-    # --- Projection Vectors ---
     projected_residual_incomes: List[float]
     projected_book_values: List[float]
     discount_factors: List[float]
-
-    # --- Components ---
     sum_discounted_ri: float
     terminal_value_ri: float
     discounted_terminal_value: float
 
-    # --- Banking-specific Audit Metrics ---
     roe_observed: Optional[float] = None
     payout_ratio_observed: Optional[float] = None
     spread_roe_ke: Optional[float] = None
@@ -227,7 +238,7 @@ class RIMValuationResult(ValuationResult):
 
 
 class GrahamValuationResult(ValuationResult):
-    """Refined result for Graham Intrinsic Value screening."""
+    """Graham Intrinsic Value Screening Result."""
     eps_used: float
     growth_rate_used: float
     aaa_yield_used: float
@@ -246,7 +257,7 @@ class GrahamValuationResult(ValuationResult):
 
 
 class EquityDCFValuationResult(ValuationResult):
-    """Result for FCFE / Dividend Discount Models (DDM)."""
+    """Direct Equity DCF Result (FCFE / DDM)."""
     cost_of_equity: float
     projected_equity_flows: List[float]
     equity_value: float
@@ -263,11 +274,11 @@ class EquityDCFValuationResult(ValuationResult):
 
 
 # ==============================================================================
-# 4. RELATIVE VALUATION (PEER MULTIPLES)
+# 4. RELATIVE VALUATION MODELS (MULTIPLES)
 # ==============================================================================
 
 class PeerMetric(BaseModel):
-    """Raw financial metrics for a competitor used in peer triangulation."""
+    """Raw financial metrics for a specific competitor."""
     ticker: str
     name: Optional[str] = "Unknown"
     pe_ratio: Optional[float] = None
@@ -277,7 +288,7 @@ class PeerMetric(BaseModel):
 
 
 class MultiplesData(BaseModel):
-    """Sectoral synthesis for multiple-based triangulation."""
+    """Sectoral synthesis used for triangulation."""
     peers: List[PeerMetric] = Field(default_factory=list)
     median_pe: float = ModelDefaults.DEFAULT_MEDIAN_PE
     median_ev_ebitda: float = ModelDefaults.DEFAULT_MEDIAN_EV_EBITDA
@@ -294,7 +305,7 @@ class MultiplesData(BaseModel):
 
 
 class MultiplesValuationResult(ValuationResult):
-    """Results container for market-based relative valuation."""
+    """Market Multiples Triangulation Result."""
     pe_based_price: float = ModelDefaults.DEFAULT_PE_BASED_PRICE
     ebitda_based_price: float = ModelDefaults.DEFAULT_EBITDA_BASED_PRICE
     rev_based_price: float = ModelDefaults.DEFAULT_REV_BASED_PRICE
