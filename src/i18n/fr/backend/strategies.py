@@ -6,6 +6,7 @@ Sources et interpretations des strategies de calcul.
 
 class StrategySources:
     """Descriptions des sources de donnees utilisees dans les calculs."""
+    CAPM_CALC = "Modèle d'Évaluation des Actifs Financiers (MEDAF / CAPM)"
     CALCULATED = "Moteur de calcul interne (Standard Institutionnel)"
     EV_CALC = "Actualisation des flux de trésorerie (NPV) et de la Valeur Terminale"
     WACC_CALC = "Capital Asset Pricing Model (CAPM) & Structure du Capital"
@@ -119,6 +120,7 @@ class StrategyInterpretations:
     """Notes pedagogiques dynamiques generees par les strategies (Glass Box)."""
     
     # DCF & Abstract
+    KE_CONTEXT = "Le coût des capitaux propres (Ke) représente le rendement minimum exigé par les actionnaires pour compenser le risque systématique (Bêta) de l'entreprise. Il sert de base au taux d'actualisation des flux futurs."
     EV_CONTEXT = "Représente la valeur intrinsèque de l'outil de production."
     WACC_CONTEXT = "Coût moyen pondéré des sources de financement."
     WACC = "Taux d'actualisation cible (WACC) de {wacc:.2%}, base sur la structure de capital actuelle."

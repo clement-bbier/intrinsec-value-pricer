@@ -1,21 +1,27 @@
 """
 app/ui/expert/base_terminal.py
 
-ABSTRACT CLASS — Expert Entry Terminal (V15 - Continuous Flow)
-==============================================================
+ABSTRACT CLASS — Expert Entry Terminal (V16 - Unified Scale Normalization)
+==========================================================================
 Renders inputs following the professional valuation sequence:
 1. Header → 2. Operational (Hook) → 3. Risk (WACC) → 4. Exit (TV)
 → 5. Bridge (inc. SBC) → 6. Monte Carlo → 7. Peers → 8. Scenarios → 9. SOTP → 10. Backtest
 
 Pattern: Template Method (GoF)
 Style: Numpy docstrings
+
+IMPORTANT - SCALE CONVENTION:
+-----------------------------
+All UI widgets accept HUMAN-READABLE PERCENTAGES (e.g., 5 for 5%).
+All extraction methods NORMALIZE to DECIMALS (e.g., 0.05) for the calculation pipeline.
+This normalization is centralized in this base class to ensure consistency.
 """
 
 from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 
 import streamlit as st
 
@@ -35,8 +41,92 @@ logger = logging.getLogger(__name__)
 # NORMALIZATION CONSTANTS
 # ==============================================================================
 
-_PERCENTAGE_DIVISOR = 100.0
-"""Divisor for converting percentage inputs (e.g., 5% entered as 5) to decimals (0.05)."""
+_PERCENTAGE_DIVISOR: float = 100.0
+_MILLION_MULTIPLIER: float = 1_000_000.0
+"""
+Divisor for converting percentage inputs to decimals.
+
+UI Convention: Users enter percentages as human-readable values (e.g., 5 for 5%).
+Pipeline Convention: Calculation engine expects decimals (e.g., 0.05 for 5%).
+
+All percentage fields are normalized in the _extract_*_data() methods using
+_normalize_percentage() to ensure consistency across the entire codebase.
+"""
+
+# ==============================================================================
+# FIELD CLASSIFICATION FOR NORMALIZATION
+# ==============================================================================
+
+# Fields that represent PERCENTAGES and MUST be normalized (divided by 100)
+_PERCENTAGE_FIELDS: Set[str] = {
+    # Discount / Cost of Capital fields
+    "risk_free_rate",
+    "market_risk_premium",
+    "cost_of_debt",
+    "tax_rate",
+    "cost_of_equity",  # Ke for direct equity models
+
+    # Terminal Value fields
+    "perpetual_growth_rate",
+
+    # Bridge fields
+    "stock_based_compensation_rate",
+
+    # Monte Carlo volatility fields
+    "base_flow_volatility",
+    "beta_volatility",
+    "growth_volatility",
+    "exit_multiple_volatility",
+    "terminal_growth_volatility",
+    "wacc_volatility",
+
+    # Scenario fields
+    "growth_rate",
+    "target_fcf_margin",
+
+    # Model-specific growth rates
+    "revenue_growth_rate",
+    "earnings_growth_rate",
+    "dividend_growth_rate",
+    "fcf_growth_rate",
+    "residual_income_growth_rate",
+}
+
+_MILLION_FIELDS: Set[str] = {
+    "manual_fcf_base",
+    "manual_book_value",
+    "manual_total_debt",
+    "manual_cash",
+    "manual_minority_interests",
+    "manual_pension_provisions",
+    "manual_shares_outstanding",
+}
+
+# Fields that are ABSOLUTE VALUES and must NOT be normalized
+_ABSOLUTE_FIELDS: Set[str] = {
+    # Discount fields
+    "manual_beta",
+    "manual_stock_price",
+
+    # Bridge fields (currency amounts)
+    "manual_total_debt",
+    "manual_cash",
+    "manual_minority_interests",
+    "manual_pension_provisions",
+    "manual_shares_outstanding",
+
+    # Terminal Value fields
+    "exit_multiple_value",
+
+    # Monte Carlo config
+    "num_simulations",
+
+    # Projection config
+    "projection_years",
+
+    # Scenario probabilities (already 0-1 from slider)
+    "probability",
+}
 
 
 class ExpertTerminalBase(ABC):
@@ -46,6 +136,16 @@ class ExpertTerminalBase(ABC):
     This class implements the Template Method pattern, orchestrating a 10-step
     valuation input sequence while allowing concrete terminals to customize
     model-specific operational inputs (Step 2).
+
+    Scale Normalization Contract
+    ----------------------------
+    This base class guarantees that ALL percentage values collected from UI
+    widgets are normalized to decimals before being passed to the calculation
+    pipeline. Concrete terminals should:
+
+    1. Use `_normalize_percentage()` for any custom percentage extraction
+    2. Use `apply_field_scaling()` for conditional normalization
+    3. Document clearly if a field is a percentage or absolute value
 
     Attributes
     ----------
@@ -284,6 +384,144 @@ class ExpertTerminalBase(ABC):
         return None
 
     # ══════════════════════════════════════════════════════════════════════════
+    # SCALE NORMALIZATION UTILITIES
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _normalize_percentage(value: Optional[float]) -> Optional[float]:
+        """
+        Converts a percentage value (e.g., 5 for 5%) to decimal (0.05).
+
+        This is the CANONICAL normalization method. All percentage fields
+        from UI widgets MUST be normalized using this method before being
+        passed to the calculation pipeline.
+
+        Parameters
+        ----------
+        value : Optional[float]
+            Raw percentage value from UI input (e.g., 5 for 5%).
+
+        Returns
+        -------
+        Optional[float]
+            Normalized decimal value (e.g., 0.05), or None if input is None.
+
+        Examples
+        --------
+        >> ExpertTerminalBase._normalize_percentage(5.0)
+        0.05
+        >> ExpertTerminalBase._normalize_percentage(None)
+        None
+        >> ExpertTerminalBase._normalize_percentage(0.0)
+        0.0
+        """
+        if value is None:
+            return None
+        return value / _PERCENTAGE_DIVISOR
+
+    @staticmethod
+    def _normalize_million(value: Optional[float]) -> Optional[float]:
+        """
+        Scales a value from Millions (UI) to absolute Units (Engine).
+
+        Parameters
+        ----------
+        value : Optional[float]
+            Raw value in millions (e.g., 68000 for 68B).
+
+        Returns
+        -------
+        Optional[float]
+            Scaled value in units (e.g., 68,000,000,000.0), or None.
+
+        Examples
+        --------
+        >> ExpertTerminalBase._normalize_million(5.0)
+        5000000.0
+        """
+        if value is None:
+            return None
+        return value * _MILLION_MULTIPLIER
+
+    @staticmethod
+    def apply_field_scaling(field_name: str, value: Optional[float]) -> Optional[float]:
+        """
+        Applies canonical scaling based on field classification.
+
+        Uses _PERCENTAGE_FIELDS, _MILLION_FIELDS, and _ABSOLUTE_FIELDS
+        to ensure the engine receives data in the correct mathematical unit.
+
+        Parameters
+        ----------
+        field_name : str
+            The canonical field name.
+        value : Optional[float]
+            The raw value from UI input.
+
+        Returns
+        -------
+        Optional[float]
+            Scaled value (decimal for %, units for Millions, raw for Absolute).
+        """
+        if value is None:
+            return None
+
+        if field_name in _PERCENTAGE_FIELDS:
+            return ExpertTerminalBase._normalize_percentage(value)
+        elif field_name in _MILLION_FIELDS:
+            return ExpertTerminalBase._normalize_million(value)
+        elif field_name in _ABSOLUTE_FIELDS:
+            return value
+        else:
+            # Log warning for unclassified fields (helps catch new fields)
+            logger.warning(
+                f"Field '{field_name}' is not classified as percentage or absolute. "
+                f"Returning raw value. Please add to _PERCENTAGE_FIELDS or _ABSOLUTE_FIELDS."
+            )
+            return value
+
+    @staticmethod
+    def _bulk_normalize(
+        data: Dict[str, Any],
+        percentage_keys: Optional[Set[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Normalizes multiple fields in a dictionary based on field classification.
+
+        This utility method processes an entire data dictionary, normalizing
+        percentage fields while leaving absolute fields unchanged.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionary containing field values to normalize.
+        percentage_keys : Optional[Set[str]]
+            Explicit set of keys to treat as percentages. If None, uses
+            the global _PERCENTAGE_FIELDS classification.
+
+        Returns
+        -------
+        Dict[str, Any]
+            New dictionary with normalized values.
+
+        Examples
+        --------
+        >> data = {"risk_free_rate": 4.0, "manual_beta": 1.2}
+        >> ExpertTerminalBase._bulk_normalize(data)
+        {"risk_free_rate": 0.04, "manual_beta": 1.2}
+        """
+        keys_to_normalize = percentage_keys or _PERCENTAGE_FIELDS
+        result = {}
+
+        for key, value in data.items():
+            if key in keys_to_normalize and isinstance(value, (int, float)):
+                result[key] = ExpertTerminalBase._normalize_percentage(value)
+            else:
+                result[key] = value
+
+        return result
+
+    # ══════════════════════════════════════════════════════════════════════════
     # DATA EXTRACTION (SessionState Mapping)
     # ══════════════════════════════════════════════════════════════════════════
 
@@ -293,6 +531,10 @@ class ExpertTerminalBase(ABC):
 
         Aggregates all collected data from UI widgets, applies percentage
         normalization, and builds the complete request for the valuation engine.
+
+        IMPORTANT: All percentage values are normalized to decimals in the
+        respective _extract_*_data() methods. The calculation pipeline
+        receives only decimal values (e.g., 0.05 for 5%).
 
         Returns
         -------
@@ -305,6 +547,7 @@ class ExpertTerminalBase(ABC):
         collected_data = {"projection_years": st.session_state.get(f"{key_prefix}_years", 5)}
 
         # Block-based data extraction with normalization
+        # Each _extract_*_data method handles its own normalization
         collected_data.update(self._extract_discount_data(key_prefix))
         if self.SHOW_TERMINAL_SECTION:
             collected_data.update(self._extract_terminal_data(key_prefix))
@@ -354,31 +597,13 @@ class ExpertTerminalBase(ABC):
     # ══════════════════════════════════════════════════════════════════════════
 
     @staticmethod
-    def _normalize_percentage(value: Optional[float]) -> Optional[float]:
-        """
-        Converts a percentage value (e.g., 5 for 5%) to decimal (0.05).
-
-        Parameters
-        ----------
-        value : Optional[float]
-            Raw percentage value from UI input (e.g., 5 for 5%).
-
-        Returns
-        -------
-        Optional[float]
-            Normalized decimal value (e.g., 0.05), or None if input is None.
-        """
-        if value is None:
-            return None
-        return value / _PERCENTAGE_DIVISOR
-
-    @staticmethod
     def _extract_discount_data(key_prefix: str) -> Dict[str, Any]:
         """
-        Maps Rf, Beta, MRP, Price, Kd, and Tax from session state.
+        Maps Rf, Beta, MRP, Price, Kd, Ke, and Tax from session state.
 
-        Rates (Rf, MRP, Kd, Tax) are normalized from percentage to decimal.
-        Beta and Price remain unchanged as they are not percentages.
+        NORMALIZATION CONTRACT:
+        - Rates (Rf, MRP, Kd, Ke, Tax) are normalized from percentage to decimal.
+        - Beta and Price remain unchanged as they are not percentages.
 
         Parameters
         ----------
@@ -389,33 +614,47 @@ class ExpertTerminalBase(ABC):
         -------
         Dict[str, Any]
             Extracted and normalized discount parameters.
+
+        Examples
+        --------
+        If session state contains:
+            FCFF_STANDARD_rf: 4.0  (user entered 4%)
+            FCFF_STANDARD_beta: 1.2
+
+        Returns:
+            {"risk_free_rate": 0.04, "manual_beta": 1.2}
         """
         data = {}
 
-        # Fields requiring percentage normalization
+        # Fields requiring percentage normalization (rates)
         rate_fields = {
             f"{key_prefix}_rf": "risk_free_rate",
             f"{key_prefix}_mrp": "market_risk_premium",
             f"{key_prefix}_kd": "cost_of_debt",
-            f"{key_prefix}_tax": "tax_rate"
+            f"{key_prefix}_ke": "cost_of_equity",  # For direct equity models
+            f"{key_prefix}_tax": "tax_rate",
         }
 
         # Fields NOT requiring normalization (absolute values)
         absolute_fields = {
             f"{key_prefix}_beta": "manual_beta",
-            f"{key_prefix}_price": "manual_stock_price"
+            f"{key_prefix}_price": "manual_stock_price",
         }
 
         # Extract and normalize rate fields
-        for key, field in rate_fields.items():
-            if key in st.session_state:
-                raw_value = st.session_state[key]
-                data[field] = ExpertTerminalBase._normalize_percentage(raw_value)
+        for session_key, field_name in rate_fields.items():
+            if session_key in st.session_state:
+                raw_value = st.session_state[session_key]
+                normalized = ExpertTerminalBase._normalize_percentage(raw_value)
+                data[field_name] = normalized
+                logger.debug(
+                    f"Normalized {field_name}: {raw_value}% -> {normalized}"
+                )
 
         # Extract absolute fields without normalization
-        for key, field in absolute_fields.items():
-            if key in st.session_state:
-                data[field] = st.session_state[key]
+        for session_key, field_name in absolute_fields.items():
+            if session_key in st.session_state:
+                data[field_name] = st.session_state[session_key]
 
         return data
 
@@ -424,8 +663,10 @@ class ExpertTerminalBase(ABC):
         """
         Maps Balance Sheet structure and SBC dilution from session state.
 
-        SBC dilution rate is normalized from percentage to decimal.
-        Currency amounts remain unchanged.
+        NORMALIZATION CONTRACT:
+        - SBC dilution rate is normalized from percentage to decimal.
+        - Currency amounts (debt, cash, etc.) remain unchanged.
+        - Share counts remain unchanged.
 
         Parameters
         ----------
@@ -436,18 +677,27 @@ class ExpertTerminalBase(ABC):
         -------
         Dict[str, Any]
             Extracted and normalized bridge parameters.
+
+        Examples
+        --------
+        If session state contains:
+            bridge_FCFF_STANDARD_sbc_rate: 2.5  (user entered 2.5%)
+            bridge_FCFF_STANDARD_debt: 1000000
+
+        Returns:
+            {"stock_based_compensation_rate": 0.025, "manual_total_debt": 1000000}
         """
         data = {}
         p = f"bridge_{key_prefix}"
 
-        # Fields NOT requiring normalization (absolute values in currency)
+        # Fields NOT requiring normalization (absolute values in currency or counts)
         absolute_fields = {
             f"{p}_debt": "manual_total_debt",
             f"{p}_cash": "manual_cash",
             f"{p}_min": "manual_minority_interests",
             f"{p}_pen": "manual_pension_provisions",
             f"{p}_shares": "manual_shares_outstanding",
-            f"{p}_shares_direct": "manual_shares_outstanding"
+            f"{p}_shares_direct": "manual_shares_outstanding",
         }
 
         # Field requiring percentage normalization
@@ -455,14 +705,18 @@ class ExpertTerminalBase(ABC):
         rate_field_name = "stock_based_compensation_rate"
 
         # Extract absolute fields
-        for k, f in absolute_fields.items():
-            if k in st.session_state:
-                data[f] = st.session_state[k]
+        for session_key, field_name in absolute_fields.items():
+            if session_key in st.session_state:
+                data[field_name] = st.session_state[session_key]
 
         # Extract and normalize SBC rate
         if rate_field_key in st.session_state:
             raw_value = st.session_state[rate_field_key]
-            data[rate_field_name] = ExpertTerminalBase._normalize_percentage(raw_value)
+            normalized = ExpertTerminalBase._normalize_percentage(raw_value)
+            data[rate_field_name] = normalized
+            logger.debug(
+                f"Normalized {rate_field_name}: {raw_value}% -> {normalized}"
+            )
 
         return data
 
@@ -471,8 +725,9 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Terminal Value parameters (Gordon or Exit Multiples).
 
-        If Gordon Growth method is selected, perpetual_growth_rate is normalized
-        from percentage to decimal. Exit multiples remain unchanged.
+        NORMALIZATION CONTRACT:
+        - Gordon Growth: perpetual_growth_rate is normalized (% -> decimal).
+        - Exit Multiple: exit_multiple_value is NOT normalized (absolute multiple).
 
         Parameters
         ----------
@@ -483,6 +738,22 @@ class ExpertTerminalBase(ABC):
         -------
         Dict[str, Any]
             Extracted and normalized terminal value parameters.
+
+        Examples
+        --------
+        Gordon Growth with session state:
+            FCFF_STANDARD_method: TerminalValueMethod.GORDON_GROWTH
+            FCFF_STANDARD_gn: 2.5  (user entered 2.5%)
+
+        Returns:
+            {"terminal_method": GORDON_GROWTH, "perpetual_growth_rate": 0.025}
+
+        Exit Multiple with session state:
+            FCFF_STANDARD_method: TerminalValueMethod.EXIT_MULTIPLE
+            FCFF_STANDARD_exit_mult: 12.0
+
+        Returns:
+            {"terminal_method": EXIT_MULTIPLE, "exit_multiple_value": 12.0}
         """
         data = {}
         method_key = f"{key_prefix}_method"
@@ -494,9 +765,13 @@ class ExpertTerminalBase(ABC):
             if method == TerminalValueMethod.GORDON_GROWTH:
                 # Normalize perpetual growth rate from percentage to decimal
                 raw_gn = st.session_state.get(f"{key_prefix}_gn")
-                data["perpetual_growth_rate"] = ExpertTerminalBase._normalize_percentage(raw_gn)
+                normalized = ExpertTerminalBase._normalize_percentage(raw_gn)
+                data["perpetual_growth_rate"] = normalized
+                logger.debug(
+                    f"Normalized perpetual_growth_rate: {raw_gn}% -> {normalized}"
+                )
             else:
-                # Exit multiple is not a percentage, no normalization needed
+                # Exit multiple is NOT a percentage, no normalization needed
                 data["exit_multiple_value"] = st.session_state.get(f"{key_prefix}_exit_mult")
 
         return data
@@ -506,35 +781,63 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Monte Carlo configuration with safety checks.
 
-        All volatility parameters are normalized from percentage to decimal.
+        NORMALIZATION CONTRACT:
+        - All volatility parameters are normalized from percentage to decimal.
+        - num_simulations is NOT normalized (absolute count).
+        - enable_monte_carlo is NOT normalized (boolean).
 
         Returns
         -------
         Dict[str, Any]
             Monte Carlo configuration with normalized volatilities.
+
+        Examples
+        --------
+        If session state contains:
+            mc_enable: True
+            mc_sims: 5000
+            mc_vol_flow: 15.0  (user entered 15%)
+            mc_vol_growth: 20.0  (user entered 20%)
+
+        Returns:
+            {
+                "enable_monte_carlo": True,
+                "num_simulations": 5000,
+                "base_flow_volatility": 0.15,
+                "growth_volatility": 0.20,
+                ...
+            }
         """
         p = "mc"
         if not st.session_state.get(f"{p}_enable", False):
             return {"enable_monte_carlo": False}
 
-        # Helper for volatility normalization
-        def normalize_vol(key: str) -> Optional[float]:
+        # Helper for volatility normalization with logging
+        def normalize_vol(key: str, field_name: str) -> Optional[float]:
             raw = st.session_state.get(key)
-            return ExpertTerminalBase._normalize_percentage(raw)
+            if raw is None:
+                return None
+            normalized = ExpertTerminalBase._normalize_percentage(raw)
+            logger.debug(f"Normalized {field_name}: {raw}% -> {normalized}")
+            return normalized
 
         return {
             "enable_monte_carlo": True,
             "num_simulations": st.session_state.get(f"{p}_sims", 5000),
-            "base_flow_volatility": normalize_vol(f"{p}_vol_flow"),
-            "beta_volatility": normalize_vol(f"{p}_vol_beta"),
-            "growth_volatility": normalize_vol(f"{p}_vol_growth"),
-            "exit_multiple_volatility": normalize_vol(f"{p}_vol_exit_m")
+            "base_flow_volatility": normalize_vol(f"{p}_vol_flow", "base_flow_volatility"),
+            "beta_volatility": normalize_vol(f"{p}_vol_beta", "beta_volatility"),
+            "growth_volatility": normalize_vol(f"{p}_vol_growth", "growth_volatility"),
+            "exit_multiple_volatility": normalize_vol(f"{p}_vol_exit_m", "exit_multiple_volatility"),
+            "terminal_growth_volatility": normalize_vol(f"{p}_vol_gn", "terminal_growth_volatility"),
+            "wacc_volatility": normalize_vol(f"{p}_vol_wacc", "wacc_volatility"),
         }
 
     @staticmethod
     def _extract_peer_triangulation_data() -> Dict[str, Any]:
         """
         Extracts peer cohort tickers for multiples triangulation.
+
+        No normalization required - peer tickers are strings.
 
         Returns
         -------
@@ -554,13 +857,25 @@ class ExpertTerminalBase(ABC):
         """
         Extracts Bull/Base/Bear scenario variants.
 
-        Growth rates and FCF margins are normalized from percentage to decimal.
-        Probabilities remain unchanged (already in decimal form 0-1).
+        NORMALIZATION CONTRACT:
+        - Growth rates are normalized from percentage to decimal.
+        - FCF margins are normalized from percentage to decimal.
+        - Probabilities are NOT normalized (already 0-1 from slider widget).
 
         Returns
         -------
         Optional[ScenarioParameters]
             Scenario configuration with normalized rates, or disabled if not set.
+
+        Examples
+        --------
+        If session state contains:
+            scenario_p_bull: 0.25 (probability, already decimal)
+            scenario_g_bull: 8.0  (user entered 8% growth)
+            scenario_m_bull: 15.0 (user entered 15% margin)
+
+        Returns ScenarioVariant with:
+            probability=0.25, growth_rate=0.08, target_fcf_margin=0.15
         """
         from src.models import ScenarioVariant
         p = "scenario"
@@ -568,40 +883,47 @@ class ExpertTerminalBase(ABC):
         if not st.session_state.get(f"{p}_scenario_enable"):
             return ScenarioParameters(enabled=False)
 
-        # Helper for percentage normalization
-        def normalize(key: str) -> Optional[float]:
+        # Helper for percentage normalization with logging
+        def normalize(key: str, field_desc: str) -> Optional[float]:
             raw = st.session_state.get(key)
-            return ExpertTerminalBase._normalize_percentage(raw)
+            if raw is None:
+                return None
+            normalized = ExpertTerminalBase._normalize_percentage(raw)
+            logger.debug(f"Normalized {field_desc}: {raw}% -> {normalized}")
+            return normalized
 
         try:
             return ScenarioParameters(
                 enabled=True,
                 bull=ScenarioVariant(
                     label=SharedTexts.LBL_BULL,
-                    probability=st.session_state[f"{p}_p_bull"],
-                    growth_rate=normalize(f"{p}_g_bull"),
-                    target_fcf_margin=normalize(f"{p}_m_bull")
+                    probability=st.session_state[f"{p}_p_bull"],  # Already 0-1
+                    growth_rate=normalize(f"{p}_g_bull", "bull.growth_rate"),
+                    target_fcf_margin=normalize(f"{p}_m_bull", "bull.target_fcf_margin"),
                 ),
                 base=ScenarioVariant(
                     label=SharedTexts.LBL_BASE,
-                    probability=st.session_state[f"{p}_p_base"],
-                    growth_rate=normalize(f"{p}_g_base"),
-                    target_fcf_margin=normalize(f"{p}_m_base")
+                    probability=st.session_state[f"{p}_p_base"],  # Already 0-1
+                    growth_rate=normalize(f"{p}_g_base", "base.growth_rate"),
+                    target_fcf_margin=normalize(f"{p}_m_base", "base.target_fcf_margin"),
                 ),
                 bear=ScenarioVariant(
                     label=SharedTexts.LBL_BEAR,
-                    probability=st.session_state[f"{p}_p_bear"],
-                    growth_rate=normalize(f"{p}_g_bear"),
-                    target_fcf_margin=normalize(f"{p}_m_bear")
-                )
+                    probability=st.session_state[f"{p}_p_bear"],  # Already 0-1
+                    growth_rate=normalize(f"{p}_g_bear", "bear.growth_rate"),
+                    target_fcf_margin=normalize(f"{p}_m_bear", "bear.target_fcf_margin"),
+                ),
             )
-        except (KeyError, RuntimeError, ValueError):
+        except (KeyError, RuntimeError, ValueError) as e:
+            logger.warning(f"Failed to extract scenarios data: {e}")
             return ScenarioParameters(enabled=False)
 
     @staticmethod
     def _extract_backtest_data() -> Dict[str, Any]:
         """
         Extracts historical backtest configuration.
+
+        No normalization required - boolean flag only.
 
         Returns
         -------
@@ -630,6 +952,10 @@ class ExpertTerminalBase(ABC):
             "enable_backtest": data.get("enable_backtest", False),
         }
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # ABSTRACT METHODS — TO BE IMPLEMENTED BY CONCRETE TERMINALS
+    # ══════════════════════════════════════════════════════════════════════════
+
     @abstractmethod
     def render_model_inputs(self) -> Dict[str, Any]:
         """
@@ -638,19 +964,31 @@ class ExpertTerminalBase(ABC):
         Each concrete terminal must implement this to render model-specific
         widgets for Step 2 (Operational Anchoring & Growth).
 
+        IMPORTANT: This method should return RAW values from UI widgets.
+        Normalization should be handled in _extract_model_inputs_data().
+
         Returns
         -------
         Dict[str, Any]
-            Model-specific parameters collected from UI widgets.
+            Model-specific parameters collected from UI widgets (RAW values).
         """
         pass
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Default hook for model-specific data extraction.
+        Default hook for model-specific data extraction with normalization.
 
         Override this in concrete terminals to extract and normalize
         model-specific parameters from session state.
+
+        NORMALIZATION CONTRACT:
+        Concrete implementations MUST normalize all percentage fields using
+        _normalize_percentage() or apply_field_scaling().
+
+        Common percentage fields in model inputs:
+        - Growth rates (revenue, earnings, dividend, FCF, etc.)
+        - Margins (FCF margin, EBIT margin, etc.)
+        - Return rates (ROE, ROIC, etc.)
 
         Parameters
         ----------
@@ -660,6 +998,27 @@ class ExpertTerminalBase(ABC):
         Returns
         -------
         Dict[str, Any]
-            Empty dict by default, overridden by concrete terminals.
+            Empty dict by default, overridden by concrete terminals
+            with normalized values.
+
+        Examples
+        --------
+        In a concrete terminal (e.g., FCFFStandardTerminal):
+
+        def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
+            data = {}
+
+            # Growth rate is a percentage - MUST normalize
+            raw_growth = st.session_state.get(f"{key_prefix}_growth_rate")
+            data["revenue_growth_rate"] = self._normalize_percentage(raw_growth)
+
+            # FCF margin is a percentage - MUST normalize
+            raw_margin = st.session_state.get(f"{key_prefix}_fcf_margin")
+            data["target_fcf_margin"] = self._normalize_percentage(raw_margin)
+
+            # Base revenue is absolute - do NOT normalize
+            data["base_revenue"] = st.session_state.get(f"{key_prefix}_base_revenue")
+
+            return data
         """
         return {}

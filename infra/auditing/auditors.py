@@ -133,7 +133,7 @@ class BaseAuditor(IValuationAuditor, ABC):
         value: Any,
         threshold: Any,
         severity: AuditSeverity,
-        condition: bool,
+        condition: Any,
         penalty: float = 0.0,
         formula: Optional[str] = None
     ) -> float:
@@ -150,7 +150,7 @@ class BaseAuditor(IValuationAuditor, ABC):
             The reference threshold for comparison.
         severity : AuditSeverity
             Criticality level (CRITICAL, WARNING, INFO).
-        condition : bool
+        condition : Any
             True if the test passes, False otherwise.
         penalty : float, optional
             Points to deduct from the pillar score if test fails.
@@ -173,7 +173,7 @@ class BaseAuditor(IValuationAuditor, ABC):
             evidence=f"{value} vs {threshold}" if threshold else str(value),
             rule_formula=formula or StrategyFormulas.NA
         ))
-        return 0.0 if verdict else penalty
+        return float(penalty) if not verdict else 0.0
 
     # ══════════════════════════════════════════════════════════════════════════
     # TRANSVERSAL AUDITS (Apply to all models)
@@ -370,7 +370,7 @@ class DCFAuditor(BaseAuditor):
         # ─────────────────────────────────────────────────────────────────────
         # TEST 2: WACC-g Spread (Mathematical Stability)
         # ─────────────────────────────────────────────────────────────────────
-        wacc = result.get_kpi("wacc")
+        wacc = getattr(result, "wacc", None)
         gn = getattr(p.growth, 'perpetual_growth_rate', None)
 
         if wacc is not None and gn is not None:
@@ -429,31 +429,22 @@ class DCFAuditor(BaseAuditor):
     @staticmethod
     def _calculate_icr(financials) -> float:
         """
-        Calculates Interest Coverage Ratio.
-
-        Parameters
-        ----------
-        financials : CompanyFinancials
-            Financial data with EBIT and interest expense.
-
-        Returns
-        -------
-        float
-            ICR value (defaults to 100.0 if no interest expense).
+        Calculates Interest Coverage Ratio safely.
         """
-        ebit: float = float(getattr(financials, 'ebit_ttm', 0) or 0)
-        interest_raw: float = float(getattr(financials, 'interest_expense', None))
+        # Récupération sécurisée avec valeur par défaut 0
+        ebit_val = getattr(financials, 'ebit_ttm', 0.0)
+        interest_val = getattr(financials, 'interest_expense', 0.0)
 
-        # Guard against None, zero, or invalid types
-        if interest_raw is None or interest_raw == 0:
-            return 100.0  # No debt service = infinite coverage
+        # Conversion forcée en float pour le calcul
+        ebit = float(ebit_val) if ebit_val is not None else 0.0
+        interest = float(interest_val) if interest_val is not None else 0.0
 
-        interest: float = float(interest_raw)
-
-        if interest == 0:
+        # Protection contre la division par zéro (Dette nulle = Couverture infinie)
+        if interest == 0.0:
             return 100.0
 
-        return abs(ebit / interest)
+        # Retourne un float pur pour satisfaire le linter
+        return float(abs(ebit / interest))
 
     @staticmethod
     def _calculate_reinvestment_ratio(financials: CompanyFinancials) -> Optional[float]:
@@ -650,7 +641,7 @@ class RIMAuditor(BaseAuditor):
         # TEST 1: ROE-Ke Spread (Value Creation)
         # ─────────────────────────────────────────────────────────────────────
         roe = self._calculate_roe(f)
-        ke = result.get_kpi("cost_of_equity") or result.get_kpi("ke")
+        ke = getattr(result, "cost_of_equity", None) or getattr(result, "ke", None)
 
         if roe is not None and ke is not None:
             spread = roe - ke
@@ -1136,30 +1127,23 @@ class MultiplesAuditor(BaseAuditor):
     @staticmethod
     def _calculate_cv(values: List[float]) -> Optional[float]:
         """
-        Calculates Coefficient of Variation.
-
-        Parameters
-        ----------
-        values : List[float]
-            List of numeric values.
-
-        Returns
-        -------
-        Optional[float]
-            CV (std/mean), or None if calculation fails.
+        Calculates Coefficient of Variation (std / mean).
         """
         if not values or len(values) < 2:
             return None
 
-        arr: np.ndarray = np.array(values, dtype=np.float64)
-        mean_val: float = float(np.mean(arr))
+        # Conversion en array numpy pour les performances
+        arr = np.array(values, dtype=np.float64)
+        mean_val = np.mean(arr)
 
-        if np.isclose(mean_val, 0.0):
+        # Vérification sécurisée du dénominateur (proche de zéro)
+        if np.isclose(float(mean_val), 0.0):
             return None
 
-        std_val: float = float(np.std(arr))
+        std_val = np.std(arr)
 
-        return std_val / mean_val
+        # On force le retour en float Python standard
+        return float(std_val / mean_val)
 
     def get_max_potential_checks(self) -> int:
         """Returns maximum audit checks for Multiples model."""

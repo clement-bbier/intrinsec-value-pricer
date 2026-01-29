@@ -8,6 +8,9 @@ This model calculates FCFF by projecting top-line revenue and target FCF margins
 
 Architecture: ST-3.2 (Enterprise Value)
 Style: Numpy docstrings
+
+IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
+           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any
@@ -17,13 +20,6 @@ from src.models import ValuationMode
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import widget_projection_years
-
-# ==============================================================================
-# NORMALIZATION CONSTANT
-# ==============================================================================
-
-_PERCENTAGE_DIVISOR = 100.0
-"""Divisor for converting percentage inputs to decimals."""
 
 
 class FCFFGrowthTerminal(ExpertTerminalBase):
@@ -37,11 +33,26 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
     ----------
     MODE : ValuationMode
         Set to FCFF_GROWTH for revenue-driven valuation.
+
+    Notes
+    -----
+    Percentage inputs are passed as-is to the Pydantic model layer,
+    which handles normalization via field validators.
     """
 
     MODE = ValuationMode.FCFF_GROWTH
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
+
+    # --- UI Pipeline Configuration ---
+    SHOW_MONTE_CARLO = True
+    SHOW_SCENARIOS = True
+    SHOW_SOTP = True
+    SHOW_PEER_TRIANGULATION = True
+    SHOW_SUBMIT_BUTTON = False
+
+    # --- Narrative LaTeX Formulas ---
+    TERMINAL_VALUE_FORMULA = r"TV_n = \frac{Rev_n \times Margin_{target} \times (1+g_n)}{WACC - g_n}"
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
@@ -71,7 +82,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
             n_years = widget_projection_years(default=5, key_prefix=prefix)
         with col2:
             g_rev = st.number_input(
-                Texts.INP_REV_GROWTH, value=None, format="%.3f",
+                Texts.INP_REV_GROWTH, value=None, format="%.2f",
                 help=Texts.HELP_REV_GROWTH, key=f"{prefix}_rev_growth"
             )
         with col3:
@@ -82,13 +93,15 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
         st.divider()
         return {
-            "manual_fcf_base": rev_base, "projection_years": n_years,
-            "fcf_growth_rate": g_rev, "target_fcf_margin": m_target
+            "manual_fcf_base": rev_base,
+            "projection_years": n_years,
+            "fcf_growth_rate": g_rev,
+            "target_fcf_margin": m_target
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF Growth data from the session_state with normalization.
+        Extracts FCFF Growth data from the session_state.
 
         Parameters
         ----------
@@ -100,29 +113,19 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
         Dict[str, Any]
             Operational data for build_request.
 
-        Note
-        ----
-        CRITICAL: Both growth rate (revenue growth) AND target FCF margin
-        are normalized from percentage (e.g., 15) to decimal (0.15).
-        Revenue base remains unchanged (absolute currency value).
+        Notes
+        -----
+        Values are passed directly to Pydantic without normalization.
+        The GrowthParameters model handles percentage-to-decimal
+        conversion via the _decimal_guard field validator.
+
+        - Revenue base: Absolute currency value (no normalization)
+        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+        - Target margin: Passed as-is; Pydantic normalizes if > 1.0
         """
-        # Extract raw values
-        raw_growth_rate = st.session_state.get(f"{key_prefix}_rev_growth")
-        raw_margin = st.session_state.get(f"{key_prefix}_margin_target")
-
-        # Normalize growth rate from percentage to decimal
-        normalized_growth_rate = None
-        if raw_growth_rate is not None:
-            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
-
-        # Normalize target FCF margin from percentage to decimal
-        normalized_margin = None
-        if raw_margin is not None:
-            normalized_margin = raw_margin / _PERCENTAGE_DIVISOR
-
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_rev_base"),
-            "fcf_growth_rate": normalized_growth_rate,
-            "target_fcf_margin": normalized_margin,
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_rev_growth"),
+            "target_fcf_margin": st.session_state.get(f"{key_prefix}_margin_target"),
             "projection_years": st.session_state.get(f"{key_prefix}_years")
         }

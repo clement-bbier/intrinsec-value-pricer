@@ -8,6 +8,9 @@ a stochastic approach for earnings volatility.
 
 Architecture: ST-4.1 (Screening & Probabilistic)
 Style: Numpy docstrings
+
+IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
+           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any
@@ -16,13 +19,6 @@ import streamlit as st
 from src.models import ValuationMode
 from src.i18n.fr.ui.expert import GrahamTexts as Texts
 from ..base_terminal import ExpertTerminalBase
-
-# ==============================================================================
-# NORMALIZATION CONSTANT
-# ==============================================================================
-
-_PERCENTAGE_DIVISOR = 100.0
-"""Divisor for converting percentage inputs to decimals."""
 
 
 class GrahamValueTerminal(ExpertTerminalBase):
@@ -37,11 +33,14 @@ class GrahamValueTerminal(ExpertTerminalBase):
     MODE : ValuationMode
         Set to GRAHAM for defensive value investing.
 
-    Note
-    ----
+    Notes
+    -----
     This terminal disables most optional features (Monte Carlo, Scenarios,
     SOTP, Peers) as Graham's formula is self-contained and does not
     require complex discount rate or terminal value mechanics.
+
+    Percentage inputs are passed as-is to the Pydantic model layer,
+    which handles normalization via field validators.
     """
 
     MODE = ValuationMode.GRAHAM
@@ -90,7 +89,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
             g_lt = st.number_input(
                 Texts.INP_GROWTH_G,
                 value=None,
-                format="%.3f",
+                format="%.2f",
                 help=Texts.HELP_GROWTH_LT,
                 key=f"{prefix}_growth_lt"
             )
@@ -105,7 +104,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
             yield_aaa = st.number_input(
                 Texts.INP_YIELD_AAA,
                 value=None,
-                format="%.3f",
+                format="%.2f",
                 help=Texts.HELP_YIELD_AAA,
                 key=f"{prefix}_yield_aaa"
             )
@@ -131,7 +130,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Graham input data from streamlit session_state with normalization.
+        Extracts Graham input data from streamlit session_state.
 
         Parameters
         ----------
@@ -143,37 +142,24 @@ class GrahamValueTerminal(ExpertTerminalBase):
         Dict[str, Any]
             Operational data for build_request.
 
-        Note
-        ----
-        CRITICAL: Three rate parameters require normalization from percentage
-        to decimal:
+        Notes
+        -----
+        Values are passed directly to Pydantic without normalization.
+        The CoreRateParameters model handles percentage-to-decimal
+        conversion via the _decimal_guard field validator.
 
-        - fcf_growth_rate (g): Long-term growth expectation
-        - corporate_aaa_yield (Y): Current AAA corporate bond yield
-        - tax_rate (tau): Effective corporate tax rate
-
-        EPS remains unchanged as it is an absolute currency value per share.
+        - EPS: Absolute currency value (no normalization)
+        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+        - AAA Yield: Passed as-is; Pydantic normalizes if > 1.0
+        - Tax rate: Passed as-is; Pydantic normalizes if > 1.0
         """
-        # Helper function for percentage normalization
-        def normalize(value):
-            if value is None:
-                return None
-            return value / _PERCENTAGE_DIVISOR
-
-        # Extract raw values from session state
-        raw_growth = st.session_state.get(f"{key_prefix}_growth_lt")
-        raw_yield = st.session_state.get(f"{key_prefix}_yield_aaa")
-        raw_tax = st.session_state.get(f"{key_prefix}_tax_rate")
-
         return {
-            # EPS: Absolute value, no normalization
+            # EPS: Absolute value, no normalization needed
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),
-            # Growth rate: Percentage to decimal
-            "fcf_growth_rate": normalize(raw_growth),
-            # AAA Yield: Percentage to decimal
-            "corporate_aaa_yield": normalize(raw_yield),
-            # Tax rate: Percentage to decimal
-            "tax_rate": normalize(raw_tax),
+            # Rates: Passed raw, Pydantic handles normalization
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_lt"),
+            "corporate_aaa_yield": st.session_state.get(f"{key_prefix}_yield_aaa"),
+            "tax_rate": st.session_state.get(f"{key_prefix}_tax_rate"),
             # Fixed projection for Graham model
             "projection_years": 1
         }

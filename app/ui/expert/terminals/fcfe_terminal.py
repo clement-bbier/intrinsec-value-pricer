@@ -8,6 +8,9 @@ This terminal constitutes steps 1 and 2 of the "Logical Path" for the FCFE model
 
 Architecture: ST-3.2 (Direct Equity)
 Style: Numpy docstrings
+
+IMPORTANT: Normalization is handled by Pydantic validators in DCFParameters.
+           This terminal passes raw values from the UI to the model layer.
 """
 
 from typing import Dict, Any
@@ -22,13 +25,6 @@ from app.ui.expert.terminals.shared_widgets import (
     widget_growth_rate,
 )
 
-# ==============================================================================
-# NORMALIZATION CONSTANT
-# ==============================================================================
-
-_PERCENTAGE_DIVISOR = 100.0
-"""Divisor for converting percentage inputs to decimals."""
-
 
 class FCFETerminal(ExpertTerminalBase):
     """
@@ -41,6 +37,11 @@ class FCFETerminal(ExpertTerminalBase):
     ----------
     MODE : ValuationMode
         Set to FCFE for direct equity valuation.
+
+    Notes
+    -----
+    Percentage inputs are passed as-is to the Pydantic model layer,
+    which handles normalization via field validators.
     """
 
     MODE = ValuationMode.FCFE
@@ -115,7 +116,7 @@ class FCFETerminal(ExpertTerminalBase):
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFE data from the session_state with normalization.
+        Extracts FCFE data from the session_state.
 
         Parameters
         ----------
@@ -127,22 +128,19 @@ class FCFETerminal(ExpertTerminalBase):
         Dict[str, Any]
             Operational data for build_request.
 
-        Note
-        ----
-        Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
-        FCF base and net borrowing remain unchanged (absolute currency values).
+        Notes
+        -----
+        Values are passed directly to Pydantic without normalization.
+        The GrowthParameters model handles percentage-to-decimal
+        conversion via the _decimal_guard field validator.
+
+        - FCF base: Absolute currency value (no normalization)
+        - Net borrowing: Absolute currency value (no normalization)
+        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
         """
-        # Extract raw growth rate
-        raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
-
-        # Normalize growth rate from percentage to decimal
-        normalized_growth_rate = None
-        if raw_growth_rate is not None:
-            normalized_growth_rate = raw_growth_rate / _PERCENTAGE_DIVISOR
-
         return {
             "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
             "manual_net_borrowing": st.session_state.get(f"{key_prefix}_net_borrowing"),
-            "fcf_growth_rate": normalized_growth_rate,
+            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
             "projection_years": st.session_state.get(f"{key_prefix}_years")
         }

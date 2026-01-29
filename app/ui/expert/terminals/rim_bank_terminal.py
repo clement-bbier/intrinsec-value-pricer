@@ -60,9 +60,6 @@ class RIMBankTerminal(ExpertTerminalBase):
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # RIM integrates its own exit logic within Step 2
-    SHOW_TERMINAL_SECTION = False
-
     def render_model_inputs(self) -> Dict[str, Any]:
         """
         Renders specific inputs for the RIM model (Steps 1 & 2).

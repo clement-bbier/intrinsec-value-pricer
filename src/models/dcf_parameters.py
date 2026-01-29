@@ -21,22 +21,28 @@ from .scenarios import ScenarioParameters, SOTPParameters
 from src.config.constants import ModelDefaults
 
 
-def _decimal_guard(v: Any) -> Optional[float]:
-    r"""
-    Safely converts percentage-based inputs into decimal form.
+def _normalize_rate(v: Any, field_name: str = "") -> Optional[float]:
+    """
+    Normalizes rate fields to decimal format.
 
-    Formula applied:
-    $$val_{decimal} = \begin{cases} val / 100 & \text{if } 1.0 < val \le 100.0 \\ val & \text{otherwise} \end{cases}$$
+    Rules:
+    - None/empty → None
+    - Already decimal (≤1.0) → as-is
+    - Percentage (>1.0) → divide by 100
+
+    Note: This function is ONLY for rate fields (Rf, MRP, g, etc.)
+    NOT for absolute values (FCF, Debt, etc.)
     """
     if v is None or v == "":
         return None
     try:
         val = float(v)
-        # Standardizes values where 1.0 < v <= 100.0 (e.g., 5.0 becomes 0.05)
-        return val / 100.0 if 1.0 < val <= 100.0 else val
+        # Explicit rule: values > 1 are assumed percentages
+        if val > 1.0:
+            return val / 100.0
+        return val
     except (ValueError, TypeError):
         return None
-
 
 class CoreRateParameters(BaseModel):
     """Financial discounting and rate parameters."""
@@ -54,7 +60,7 @@ class CoreRateParameters(BaseModel):
                      'cost_of_debt', 'tax_rate', mode='before')
     def enforce_decimal(cls, v: Any) -> Any:
         """Applies decimal normalization to raw rate inputs."""
-        return _decimal_guard(v)
+        return _normalize_rate(v)
 
 
 class GrowthParameters(BaseModel):
@@ -85,7 +91,7 @@ class GrowthParameters(BaseModel):
     @field_validator('fcf_growth_rate', 'perpetual_growth_rate', 'annual_dilution_rate', mode='before')
     def enforce_decimal(cls, v: Any) -> Any:
         """Applies decimal normalization to growth and dilution inputs."""
-        return _decimal_guard(v)
+        return _normalize_rate(v)
 
 
 class MonteCarloConfig(BaseModel):
@@ -101,7 +107,7 @@ class MonteCarloConfig(BaseModel):
     @field_validator('beta_volatility', 'growth_volatility', 'terminal_growth_volatility', mode='before')
     def enforce_decimal(cls, v: Any) -> Any:
         """Applies decimal normalization to volatility inputs."""
-        return _decimal_guard(v)
+        return _normalize_rate(v)
 
 
 class DCFParameters(BaseModel):
