@@ -72,7 +72,7 @@ class MonteCarloDistributionTab(ResultTabBase):
         # 2. PROBABILITY DENSITY CHART (Altair / Plotly)
         st.write("")
         display_simulation_chart(
-            ticker=result.ticker,
+            ticker=result.financials.ticker,
             simulation_results=result.simulation_results,
             market_price=result.market_price,
             currency=currency

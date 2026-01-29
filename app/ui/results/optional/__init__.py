@@ -4,7 +4,7 @@ Initialisation des composants optionnels.
 """
 
 from .peer_multiples import MarketAnalysisTab
-from .risk_engineering import RiskEngineeringTab
+from app.ui.results.core.risk_engineering import RiskEngineeringTab
 from .sotp_breakdown import SOTPBreakdownTab
 from .scenario_analysis import ScenarioAnalysisTab
 from .historical_backtest import HistoricalBacktestTab

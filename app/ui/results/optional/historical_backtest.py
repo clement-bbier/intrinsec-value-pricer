@@ -77,7 +77,7 @@ class HistoricalBacktestTab(ResultTabBase):
         # --- 2. CONVERGENCE CHART (IV vs Price Visualization) ---
         st.write("")
         display_backtest_convergence_chart(
-            ticker=result.ticker,
+            ticker=result.financials.ticker,
             backtest_report=bt,
             currency=currency
         )

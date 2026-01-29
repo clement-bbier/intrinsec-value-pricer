@@ -18,9 +18,9 @@ from src.i18n import PillarLabels, QuantTexts, BacktestTexts
 from app.ui.results.base_result import ResultTabBase
 
 # Internal rendering engines
-from .monte_carlo_distribution import MonteCarloDistributionTab
-from .scenario_analysis import ScenarioAnalysisTab
-from .historical_backtest import HistoricalBacktestTab
+from app.ui.results.optional.monte_carlo_distribution import MonteCarloDistributionTab
+from app.ui.results.optional.scenario_analysis import ScenarioAnalysisTab
+from app.ui.results.optional.historical_backtest import HistoricalBacktestTab
 from app.ui.components.ui_charts import display_backtest_convergence_chart
 
 
@@ -67,7 +67,7 @@ class RiskEngineeringTab(ResultTabBase):
         if result.backtest_report and result.backtest_report.points:
             # Direct rendering of convergence chart (Predicted vs Actual)
             display_backtest_convergence_chart(
-                ticker=result.ticker,
+                ticker=result.financials.ticker,
                 backtest_report=result.backtest_report,
                 currency=result.financials.currency
             )
@@ -81,7 +81,7 @@ class RiskEngineeringTab(ResultTabBase):
     def is_visible(self, result: ValuationResult) -> bool:
         """The tab is always visible to centralize risk analysis management."""
         p = result.params
-        has_mc = getattr(p, 'enable_monte_carlo', False)
+        has_mc = p.monte_carlo.enable_monte_carlo if p.monte_carlo else False
         has_scenarios = p.scenarios.enabled if p.scenarios else False
         has_backtest = result.backtest_report is not None
 

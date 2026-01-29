@@ -29,8 +29,8 @@ from app.ui.results.core.calculation_proof import CalculationProofTab
 from app.ui.results.core.audit_report import AuditReportTab
 
 # --- OPTIONAL & VERSATILE PILLARS ---
-from app.ui.results.optional.risk_engineering import RiskEngineeringTab
-from app.ui.results.optional.peer_multiples import MarketAnalysisTab
+from app.ui.results.core.risk_engineering import RiskEngineeringTab
+from app.ui.results.core.market_analysis import MarketAnalysisTab
 
 logger = logging.getLogger(__name__)
 
