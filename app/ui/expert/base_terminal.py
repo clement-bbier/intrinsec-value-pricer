@@ -565,11 +565,13 @@ class ExpertTerminalBase(ABC):
         if self.SHOW_BACKTEST:
             collected_data.update(self._extract_backtest_data())
 
-        raw_model_data = self._extract_model_inputs_data(key_prefix)
-        normalized_model_data = self._bulk_normalize(raw_model_data)
-        collected_data.update(normalized_model_data)
+        collected_data.update(self._extract_model_inputs_data(key_prefix))
 
-        params = build_dcf_parameters(collected_data)
+        final_collected_data = {}
+        for field_name, value in collected_data.items():
+            final_collected_data[field_name] = self.apply_field_scaling(field_name, value)
+
+        params = build_dcf_parameters(final_collected_data)
 
         if self.SHOW_SCENARIOS:
             params.scenarios = self._extract_scenarios_data()
@@ -579,10 +581,10 @@ class ExpertTerminalBase(ABC):
         return ValuationRequest(
             ticker=self.ticker,
             mode=self.MODE,
-            projection_years=collected_data.get("projection_years", 5),
+            projection_years=final_collected_data.get("projection_years", 5),
             input_source=InputSource.MANUAL,
             manual_params=params,
-            options=self._build_options(collected_data),
+            options=self._build_options(final_collected_data),
         )
 
     def _extract_sotp_data(self) -> Optional[SOTPParameters]:
