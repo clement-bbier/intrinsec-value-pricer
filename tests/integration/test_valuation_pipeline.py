@@ -168,7 +168,7 @@ class TestMonteCarloIntegration:
         from src.valuation.engines import run_valuation
         from src.models import ValuationRequest, ValuationMode, InputSource
         
-        sample_params.monte_carlo.enable_monte_carlo = True
+        sample_params.monte_carlo.enabled = True
         sample_params.monte_carlo.num_simulations = 100
         
         request = ValuationRequest(

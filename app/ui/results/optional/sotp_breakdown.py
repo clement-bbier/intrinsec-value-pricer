@@ -31,14 +31,13 @@ class SOTPBreakdownTab(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible only if SOTP mode is enabled and contains valid segments."""
-        return bool(
-            result.params.sotp and
-            result.params.sotp.enabled and
-            result.params.sotp.segments
-        )
+        return result.params.sotp.enabled
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Renders the value waterfall chart and the contribution detailed table."""
+        if not result.params.sotp.segments:
+            st.info(SOTPTexts.NO_SOTP_FOUND)
+            return
 
         # --- SECTION HEADER (Standardized ####) ---
         st.markdown(f"#### {SOTPTexts.TITLE}")

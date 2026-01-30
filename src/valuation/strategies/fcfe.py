@@ -30,7 +30,7 @@ from src.i18n import (
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     EquityDCFValuationResult,
     ValuationMode
 )
@@ -61,7 +61,7 @@ class FCFEStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> EquityDCFValuationResult:
         """
         Executes FCFE valuation via the Unified Pipeline with logical walk tracking.
@@ -70,7 +70,7 @@ class FCFEStrategy(ValuationStrategy):
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -149,7 +149,7 @@ class FCFEStrategy(ValuationStrategy):
     @staticmethod
     def _resolve_fcfe_components(
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[float, float, float, float, Dict[str, str]]:
         """
         Resolves FCFE components for a transparent walk.

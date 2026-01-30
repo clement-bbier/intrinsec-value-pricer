@@ -24,7 +24,7 @@ from app.workflow import (
 )
 from src.models import (
     ValuationRequest, ValuationMode, InputSource,
-    ValuationResult, DCFParameters, ScenarioSynthesis,
+    ValuationResult, Parameters, ScenarioSynthesis,
     ScenarioResult, BacktestResult, HistoricalPoint, CompanyFinancials
 )
 from src.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
@@ -98,10 +98,10 @@ class TestSmartMergeLogic:
 
     def test_map_manual_source_overrides(self):
         """Verifies Expert mode overrides with valid Pydantic types."""
-        auto_params = DCFParameters()
+        auto_params = Parameters()
         auto_params.rates.risk_free_rate = 0.02
 
-        manual_params = DCFParameters()
+        manual_params = Parameters()
         manual_params.rates.risk_free_rate = 0.045
 
         # Instantiate real request to avoid ValidationError on projection_years
@@ -121,11 +121,11 @@ class TestAdvancedAnalysis:
     @patch(f'{TARGET}.run_valuation')
     def test_compute_scenario_impact_weighted(self, mock_run_val, mock_financials):
         """Verifies probability-weighted Expected Value calculation."""
-        params = DCFParameters()
-        params.scenarios.enabled = True
-        params.scenarios.bull.probability = 0.3
-        params.scenarios.base.probability = 0.4
-        params.scenarios.bear.probability = 0.3
+        params = Parameters()
+        params.scenario.enabled = True
+        params.scenario.bull.probability = 0.3
+        params.scenario.base.probability = 0.4
+        params.scenario.bear.probability = 0.3
 
         # Engine results
         mock_res = MagicMock(spec=ValuationResult)
@@ -151,7 +151,7 @@ class TestAdvancedAnalysis:
         mock_provider = MagicMock()
         mock_provider.map_raw_to_financials.return_value = Mock()
 
-        report = _orchestrate_backtesting(Mock(), Mock(), DCFParameters(), Mock(), mock_provider)
+        report = _orchestrate_backtesting(Mock(), Mock(), Parameters(), Mock(), mock_provider)
 
         assert len(report.points) == 2
         # Use pytest.approx for floating point comparison (90.0 vs 89.999...)

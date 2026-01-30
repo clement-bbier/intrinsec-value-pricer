@@ -37,13 +37,13 @@ if str(_ROOT_PATH) not in sys.path:
 from app.assets.style_system import inject_institutional_design
 from app.workflow import run_workflow_and_display
 from src.models import (
-    DCFParameters,
+    Parameters,
     InputSource,
     ValuationMode,
     ValuationRequest,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig,
+    MonteCarloParameters,
     SOTPParameters
 )
 
@@ -356,15 +356,15 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
     from src.models import ScenarioParameters
 
     # Standard configuration with Scenarios disabled for Auto Mode
-    config_params = DCFParameters(
+    config_params = Parameters(
         rates=CoreRateParameters(),
         growth=GrowthParameters(projection_years=options["years"]),
-        monte_carlo=MonteCarloConfig(
+        monte_carlo=MonteCarloParameters(
             enable_monte_carlo=options["enable_mc"],
             num_simulations=options["mc_sims"]
         ),
-        scenarios=ScenarioParameters(enabled=False),
-        sotp=SOTPParameters(enabled=False)
+        scenario=ScenarioParameters(enable_scenario=False),
+        sotp=SOTPParameters(enable_sotp=False)
     )
 
     request = ValuationRequest(

@@ -24,7 +24,7 @@ from src.valuation.strategies.abstract import ValuationStrategy
 from src.utilities.formatting import format_smart_number
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     MultiplesValuationResult,
     MultiplesData,
     TraceHypothesis,
@@ -79,7 +79,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> MultiplesValuationResult:
         """
         Executes the multiples-based valuation sequence.
@@ -88,7 +88,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
         ----------
         financials : CompanyFinancials
             Target company financials (TTM).
-        params : DCFParameters
+        params : Parameters
             Global parameters (used for reporting and audit context).
 
         Returns

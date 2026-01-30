@@ -9,10 +9,10 @@ Elles sont automatiquement disponibles dans tous les fichiers de test.
 import pytest
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig,
+    MonteCarloParameters,
     ValuationMode,
     InputSource,
     ValuationRequest,
@@ -108,7 +108,7 @@ def sample_params():
     - Croissance FCF = 5%, g terminal = 2%
     - Monte Carlo désactivé
     """
-    return DCFParameters(
+    return Parameters(
         rates=CoreRateParameters(
             risk_free_rate=0.04,
             market_risk_premium=0.05,
@@ -121,18 +121,18 @@ def sample_params():
             projection_years=5,
             annual_dilution_rate=0.02
         ),
-        monte_carlo=MonteCarloConfig(
-            enable_monte_carlo=False
+        monte_carlo=MonteCarloParameters(
+            enabled=False
         ),
         sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
+        scenario=ScenarioParameters(enabled=False),
     )
 
 
 @pytest.fixture
 def sample_params_monte_carlo():
     """Fixture avec Monte Carlo activé (petit échantillon pour tests)."""
-    return DCFParameters(
+    return Parameters(
         rates=CoreRateParameters(
             risk_free_rate=0.04,
             market_risk_premium=0.05,
@@ -142,19 +142,19 @@ def sample_params_monte_carlo():
             perpetual_growth_rate=0.02,
             projection_years=5,
         ),
-        monte_carlo=MonteCarloConfig(
-            enable_monte_carlo=True,
+        monte_carlo=MonteCarloParameters(
+            enabled=True,
             num_simulations=100,  # Petit pour tests rapides
         ),
         sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
+        scenario=ScenarioParameters(enabled=False),
     )
 
 
 @pytest.fixture
 def sample_params_pessimistic():
     """Fixture de paramètres pessimistes."""
-    return DCFParameters(
+    return Parameters(
         rates=CoreRateParameters(
             risk_free_rate=0.05,
             market_risk_premium=0.07,  # MRP élevé
@@ -166,9 +166,9 @@ def sample_params_pessimistic():
             perpetual_growth_rate=0.01,
             projection_years=5,
         ),
-        monte_carlo=MonteCarloConfig(enable_monte_carlo=False),
+        monte_carlo=MonteCarloParameters(enabled=False),
         sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
+        scenario=ScenarioParameters(enabled=False),
     )
 
 

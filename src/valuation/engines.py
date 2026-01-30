@@ -29,7 +29,7 @@ from src.models import (
     ValuationRequest,
     ValuationMode,
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     ValuationResult
 )
 from src.valuation.strategies import ValuationStrategy
@@ -58,7 +58,7 @@ VALUATION_ERRORS = (
 def run_valuation(
     request: ValuationRequest,
     financials: CompanyFinancials,
-    params: DCFParameters
+    params: Parameters
 ) -> ValuationResult:
     """
     Executes the unified valuation lifecycle and triggers the institutional audit.
@@ -72,7 +72,7 @@ def run_valuation(
         The formal analyst request specifying mode and ticker.
     financials : CompanyFinancials
         Unified financial data container.
-    params : DCFParameters
+    params : Parameters
         Validated parameters (Rates, Growth, Monte Carlo).
 
     Returns
@@ -89,7 +89,7 @@ def run_valuation(
 
     # B. Monte Carlo Injection (Stochastic Wrapping)
     # Checks if MC is enabled in params AND supported by the specific mode
-    use_mc = params.monte_carlo.enable_monte_carlo and request.mode.supports_monte_carlo
+    use_mc = params.monte_carlo.enabled and request.mode.supports_monte_carlo
     strategy = (
         MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
         if use_mc else strategy_cls()
@@ -135,7 +135,7 @@ def run_valuation(
 
 def run_reverse_dcf(
     financials: CompanyFinancials,
-    params: DCFParameters,
+    params: Parameters,
     market_price: float,
     max_iterations: int = 50
 ) -> Optional[float]:
@@ -193,7 +193,7 @@ def _apply_triangulation(
     result: ValuationResult,
     request: ValuationRequest,
     financials: CompanyFinancials,
-    params: DCFParameters
+    params: Parameters
 ) -> None:
     """Handles optional Pillar 5 triangulation via market peer multiples."""
     multiples_data = request.options.get("multiples_data")

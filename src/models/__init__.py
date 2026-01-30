@@ -5,9 +5,8 @@ Modeles de donnees pour le moteur de valorisation.
 Structure :
 - enums.py          : Enumerations (ValuationMode, InputSource, etc.)
 - glass_box.py      : Tracabilite (CalculationStep, AuditStep)
-- scenarios.py      : Scenarios et SOTP (ScenarioVariant, BusinessUnit)
 - company.py        : Donnees entreprise (CompanyFinancials)
-- dcf_parameters.py     : Parametres DCF (DCFParameters et segments)
+- parameters.py     : Parametres DCF (DCFParameters et segments), Scenarios et SOTP (ScenarioVariant, BusinessUnit)
 - audit.py          : Audit (AuditReport, AuditPillarScore)
 - valuation.py : Requetes/Resultats (ValuationRequest, ValuationResult)
 
@@ -42,27 +41,23 @@ from .glass_box import (
     AuditStep,
 )
 
-# Scenarios et SOTP
-from .scenarios import (
-    ScenarioVariant,
-    ScenarioResult,
-    ScenarioSynthesis,
-    ScenarioParameters,
-    BusinessUnit,
-    SOTPParameters,
-)
-
 # Donnees Entreprise
 from .company import (
     CompanyFinancials,
 )
 
 # Parametres DCF
-from .dcf_parameters import (
+from .parameters import (
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig,
-    DCFParameters,
+    MonteCarloParameters,
+    Parameters,
+    ScenarioVariant,
+    ScenarioResult,
+    ScenarioSynthesis,
+    ScenarioParameters,
+    BusinessUnit,
+    SOTPParameters
 )
 
 # Audit
@@ -123,8 +118,8 @@ __all__ = [
     # DCF Inputs
     "CoreRateParameters",
     "GrowthParameters",
-    "MonteCarloConfig",
-    "DCFParameters",
+    "MonteCarloParameters",
+    "Parameters",
     # Audit
     "AuditPillarScore",
     "AuditScoreBreakdown",

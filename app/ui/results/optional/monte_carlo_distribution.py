@@ -29,7 +29,7 @@ class MonteCarloDistributionTab(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible only if the simulation array is populated."""
-        return bool(result.simulation_results and len(result.simulation_results) > 0)
+        return result.params.monte_carlo.enabled
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Institutional rendering of the Monte Carlo Risk Hub."""

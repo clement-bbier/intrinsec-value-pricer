@@ -35,7 +35,7 @@ from src.exceptions import (
 )
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     ValuationResult,
     TerminalValueMethod,
     VariableInfo,
@@ -69,7 +69,7 @@ VALUATION_ERRORS = (
 def _run_stress_test(
     worker: ValuationStrategy,
     financials: CompanyFinancials,
-    params: DCFParameters,
+    params: Parameters,
     final_result: ValuationResult
 ) -> None:
     """
@@ -81,7 +81,7 @@ def _run_stress_test(
         The deterministic engine instance.
     financials : CompanyFinancials
         Target company data.
-    params : DCFParameters
+    params : Parameters
         Calculation hypotheses.
     final_result : ValuationResult
         The result object to enrich with stress test data.
@@ -141,7 +141,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> ValuationResult:
         """
         Executes the full Monte Carlo simulation lifecycle.
@@ -273,14 +273,14 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     # PRIVATE STOCHASTIC CORE
     # ==========================================================================
 
-    def _compute_base_wacc(self, financials: CompanyFinancials, params: DCFParameters) -> float:
+    def _compute_base_wacc(self, financials: CompanyFinancials, params: Parameters) -> float:
         """Calculates reference WACC for clamping logic."""
         try:
             return calculate_wacc(financials, params).wacc
         except VALUATION_ERRORS:
             return self.DEFAULT_WACC_FALLBACK
 
-    def _apply_growth_clamping(self, params: DCFParameters, base_wacc: float) -> Tuple[float, float, bool]:
+    def _apply_growth_clamping(self, params: Parameters, base_wacc: float) -> Tuple[float, float, bool]:
         """Ensures perpetuity growth g < WACC with a safety margin."""
         g_raw = params.growth.fcf_growth_rate or 0.03
         g_clamped = min(g_raw, base_wacc - self.GROWTH_SAFETY_MARGIN)
@@ -289,7 +289,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     @staticmethod
     def _generate_samples(
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         num_simulations: int,
         base_wacc: float
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -332,7 +332,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self,
         worker: ValuationStrategy,
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         betas: np.ndarray,
         growths: np.ndarray,
         terminal_growths: np.ndarray,
@@ -387,7 +387,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
         self,
         worker: ValuationStrategy,
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         final_result: ValuationResult,
         p50_base: float
     ) -> None:

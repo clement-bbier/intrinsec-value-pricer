@@ -29,7 +29,7 @@ from src.i18n import (
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     DCFValuationResult,
     ValuationMode
 )
@@ -61,7 +61,7 @@ class RevenueBasedStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> DCFValuationResult:
         """
         Executes Revenue-driven valuation with margin convergence logic.
@@ -70,7 +70,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -143,7 +143,7 @@ class RevenueBasedStrategy(ValuationStrategy):
     @staticmethod
     def _select_revenue_base(
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[float, str]:
         """
         Determines the starting Revenue anchor based on hierarchy.

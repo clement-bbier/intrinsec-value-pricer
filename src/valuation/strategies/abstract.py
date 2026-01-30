@@ -21,7 +21,7 @@ from src.exceptions import CalculationError
 from src.models.valuation import ValuationResult
 from src.models.glass_box import CalculationStep, TraceHypothesis, VariableInfo, VariableSource
 from src.models.company import CompanyFinancials
-from src.models.dcf_parameters import DCFParameters
+from src.models.parameters import Parameters
 
 # Centralized i18n Mapping
 from src.i18n import CalculationErrors
@@ -63,7 +63,7 @@ class ValuationStrategy(ABC):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> ValuationResult:
         """
         Primary entry point for the valuation methodology.
@@ -75,7 +75,7 @@ class ValuationStrategy(ABC):
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses and configuration.
 
         Returns

@@ -1,9 +1,11 @@
 """
 app/ui/results/core/calculation_proof.py
 
-CALCULATION PROOF TAB (Glass Box) — Institutional Grade.
+PILLAR 2 — CALCULATION PROOF (GLASS BOX)
+========================================
 Role: Orchestrates the sequential rendering of financial calculation steps.
-Ensures full auditability of the valuation model.
+Ensures full auditability and transparency of the valuation model by
+decomposing the final result into its mathematical constituents.
 """
 
 from typing import Any
@@ -19,10 +21,12 @@ from app.ui.results.components.step_renderer import render_calculation_step
 class CalculationProofTab(ResultTabBase):
     """
     Glass Box calculation proof tab.
-    Strictly decouples rendering logic from calculation trace filtering.
+
+    This component manages the institutional hierarchy of the valuation trace,
+    ensuring that complex formulas are presented in a readable, step-by-step
+    format for professional auditing.
     """
 
-    # i18n identification
     TAB_ID = "calculation_proof"
     LABEL = KPITexts.TAB_CALC
     ORDER = 2
@@ -31,10 +35,16 @@ class CalculationProofTab(ResultTabBase):
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """
         Renders the valuation calculation sequence in an ordered fashion.
-        """
 
+        Parameters
+        ----------
+        result : ValuationResult
+            The complete valuation result containing the calculation trace.
+        **kwargs : Any
+            Additional rendering context.
+        """
         # 1. UI Business Logic: Filter technical/internal steps
-        # Excludes prefixes defined in UIConstants (e.g., MC simulations, SOTP internals)
+        # Excludes internal calculation steps defined in UIConstants (e.g., MC internals)
         core_steps = [
             step for step in result.calculation_trace
             if not any(prefix in step.step_key for prefix in UIConstants.EXCLUDED_STEP_PREFIXES)
@@ -45,21 +55,31 @@ class CalculationProofTab(ResultTabBase):
             st.info(UIMessages.NO_CALCULATION_STEPS)
             return
 
-        # 3. Tab Header (Zero hardcoding)
+        # 3. Tab Header (Standardized formatting)
         st.markdown(f"### {KPITexts.TAB_CALC}")
         st.caption(KPITexts.SECTION_INPUTS_CAPTION)
         st.divider()
 
         # 4. Iterative rendering via stabilized atomic component
-        # Each step is rendered within its own container with LaTeX support
+        # Each calculation step is encapsulated in its own rendering context
         for idx, step in enumerate(core_steps, start=1):
             render_calculation_step(idx, step)
 
-            # Institutional spacing between calculation blocks
+            # Institutional vertical spacing between blocks
             st.write("")
 
     def is_visible(self, result: ValuationResult) -> bool:
         """
-        The tab is visible only if a calculation trace is present.
+        Determines visibility based on the presence of a calculation trace.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            The valuation result to inspect.
+
+        Returns
+        -------
+        bool
+            True if the calculation trace contains data, False otherwise.
         """
         return bool(result.calculation_trace)

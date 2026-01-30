@@ -13,7 +13,7 @@ from infra.data_providers.yahoo_provider import (
     YahooFinanceProvider,
     DataProviderStatus
 )
-from src.models import CompanyFinancials, DCFParameters, MultiplesData
+from src.models import CompanyFinancials, Parameters, MultiplesData
 from src.exceptions import TickerNotFoundError
 
 

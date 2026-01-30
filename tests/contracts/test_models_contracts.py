@@ -51,9 +51,9 @@ class TestDCFParametersContract:
     
     def test_segmented_architecture(self):
         """Vérifie l'architecture segmentée V9.0+ (rates, growth, monte_carlo)."""
-        from src.models import DCFParameters
+        from src.models import Parameters
         
-        schema = DCFParameters.model_json_schema()
+        schema = Parameters.model_json_schema()
         properties = schema.get("properties", {})
         
         # L'architecture segmentée DOIT être respectée
@@ -63,12 +63,12 @@ class TestDCFParametersContract:
     
     def test_default_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les défauts."""
-        from src.models import DCFParameters, CoreRateParameters, GrowthParameters, MonteCarloConfig
+        from src.models import Parameters, CoreRateParameters, GrowthParameters, MonteCarloParameters
         
-        params = DCFParameters(
+        params = Parameters(
             rates=CoreRateParameters(),
             growth=GrowthParameters(),
-            monte_carlo=MonteCarloConfig(),
+            monte_carlo=MonteCarloParameters(),
         )
         
         assert params.rates is not None

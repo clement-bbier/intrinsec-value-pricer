@@ -29,7 +29,7 @@ from src.i18n import (
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     DCFValuationResult,
     ValuationMode
 )
@@ -60,7 +60,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> DCFValuationResult:
         """
         Executes fundamental valuation using normalized cash flows.
@@ -69,7 +69,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -135,7 +135,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
     @staticmethod
     def _select_normalized_fcf(
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[float, str]:
         """
         Determines the smoothed FCF anchor based on data hierarchy.

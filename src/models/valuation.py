@@ -20,10 +20,9 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from .enums import ValuationMode, InputSource
 from .company import CompanyFinancials
-from .dcf_parameters import DCFParameters
+from .parameters import Parameters, ScenarioSynthesis, SOTPParameters
 from .glass_box import CalculationStep
 from .audit import AuditReport, ValuationOutputContract
-from .scenarios import ScenarioSynthesis, SOTPParameters
 from src.config.constants import ModelDefaults
 
 
@@ -56,7 +55,7 @@ class ValuationRequest(BaseModel):
     projection_years: int
     mode: ValuationMode
     input_source: InputSource
-    manual_params: Optional[DCFParameters] = None
+    manual_params: Optional[Parameters] = None
     options: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -93,7 +92,7 @@ class ValuationResult(BaseModel, ABC):
 
     request: Optional[ValuationRequest] = None
     financials: CompanyFinancials
-    params: DCFParameters
+    params: Parameters
     intrinsic_value_per_share: float
     market_price: float
     upside_pct: Optional[float] = None
@@ -319,3 +318,4 @@ class MultiplesValuationResult(ValuationResult):
             has_intrinsic_value=True,
             has_audit=self.audit_report is not None
         )
+

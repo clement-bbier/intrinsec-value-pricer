@@ -15,7 +15,7 @@ import logging
 from typing import Tuple, Dict, Optional
 
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, DCFParameters, GrahamValuationResult
+from src.models import CompanyFinancials, Parameters, GrahamValuationResult
 from src.valuation.strategies.abstract import ValuationStrategy
 
 # i18n Centralized Mapping
@@ -45,7 +45,7 @@ class GrahamNumberStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> GrahamValuationResult:
         """
         Executes the Graham valuation sequence.
@@ -129,7 +129,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         return result
 
     @staticmethod
-    def _select_eps(financials: CompanyFinancials, params: DCFParameters) -> Tuple[float, str]:
+    def _select_eps(financials: CompanyFinancials, params: Parameters) -> Tuple[float, str]:
         """Selects the reference EPS based on sovereignty hierarchy."""
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE

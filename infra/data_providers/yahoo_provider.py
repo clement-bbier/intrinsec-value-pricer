@@ -30,10 +30,10 @@ from src.computation.financial_math import (
 from src.exceptions import ExternalServiceError, TickerNotFoundError
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     CoreRateParameters,
     GrowthParameters,
-    MonteCarloConfig,
+    MonteCarloParameters,
     MultiplesData
 )
 from infra.data_providers.base_provider import DataProvider
@@ -158,7 +158,7 @@ class YahooFinanceProvider(DataProvider):
             self,
             ticker: str,
             projection_years: int
-    ) -> Tuple[CompanyFinancials, DCFParameters]:
+    ) -> Tuple[CompanyFinancials, Parameters]:
         """
         Automated Workflow: High-level orchestration for Pillar 1 (Configuration).
         Combines fundamental financials with dynamic macro-economic rate resolution.
@@ -196,7 +196,7 @@ class YahooFinanceProvider(DataProvider):
         # 4. Regional Macro Parameterization (Tax, Rf, MRP)
         country_data = get_country_context(financials.country)
 
-        params = DCFParameters(
+        params = Parameters(
             rates=CoreRateParameters(
                 risk_free_rate=macro.risk_free_rate,
                 risk_free_source=macro.risk_free_source,
@@ -217,7 +217,7 @@ class YahooFinanceProvider(DataProvider):
                 target_debt_weight=financials.total_debt,
                 manual_dividend_base=financials.dividend_share
             ),
-            monte_carlo=MonteCarloConfig()
+            monte_carlo=MonteCarloParameters()
         )
 
         params.normalize_weights()

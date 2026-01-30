@@ -2,6 +2,7 @@ from typing import Any
 import streamlit as st
 import pandas as pd
 
+from src.i18n.fr.ui import PeersTexts
 from src.models import ValuationResult
 from src.i18n import MarketTexts, KPITexts, SharedTexts
 from src.utilities.formatting import format_smart_number
@@ -17,12 +18,13 @@ class PeerMultiples(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible only if peer data exists and is populated."""
-        return bool(
-            result.multiples_triangulation is not None
-            and len(result.multiples_triangulation.multiples_data.peers) > 0
-        )
+        return result.params.peers.enabled
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
+        if not result.multiples_triangulation or not result.multiples_triangulation.multiples_data.peers:
+            st.info(PeersTexts.NO_PEERS_FOUND)
+            return
+
         md = result.multiples_triangulation.multiples_data
         currency = result.financials.currency
 

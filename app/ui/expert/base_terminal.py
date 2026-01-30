@@ -31,7 +31,7 @@ from src.models import (
     ValuationRequest,
     ScenarioParameters,
     TerminalValueMethod,
-    SOTPParameters
+    SOTPParameters, Parameters
 )
 from src.i18n import SharedTexts
 
@@ -130,6 +130,16 @@ _ABSOLUTE_FIELDS: Set[str] = {
     "manual_dividend_base"
 }
 
+for mode in ValuationMode:
+    prefix = mode.name
+    _PERCENTAGE_FIELDS.update({
+        f"{prefix}_rf", f"{prefix}_mrp", f"{prefix}_kd",
+        f"{prefix}_ke", f"{prefix}_tax", f"{prefix}_gn"
+    })
+    _ABSOLUTE_FIELDS.update({
+        f"{prefix}_years", f"{prefix}_beta", f"{prefix}_price",
+        f"{prefix}_method", f"{prefix}_exit_mult"
+    })
 
 class ExpertTerminalBase(ABC):
     """
@@ -558,43 +568,40 @@ class ExpertTerminalBase(ABC):
         Optional[ValuationRequest]
             The fully constructed valuation request.
         """
-        from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
+        # 1. Collect all keys from Streamlit session state into a flat dictionary
+        raw_ui_data: Dict[str, Any] = dict(st.session_state)
 
-        key_prefix = self.MODE.name
-        collected_data = {"projection_years": st.session_state.get(f"{key_prefix}_years", 5)}
+        # 2. Add manual_peers and enable_backtest as explicit options (for completeness)
+        raw_ui_data["manual_peers"] = self._manual_peers
+        raw_ui_data["enable_backtest"] = bool(st.session_state.get("bt_enable", False))
 
-        collected_data.update(self._extract_discount_data(key_prefix))
-        if self.SHOW_TERMINAL_SECTION:
-            collected_data.update(self._extract_terminal_data(key_prefix))
-        if self.SHOW_BRIDGE_SECTION:
-            collected_data.update(self._extract_bridge_data(key_prefix))
-        if self.SHOW_MONTE_CARLO:
-            collected_data.update(self._extract_monte_carlo_data())
-        if self.SHOW_PEER_TRIANGULATION:
-            collected_data.update(self._extract_peer_triangulation_data())
-        if self.SHOW_BACKTEST:
-            collected_data.update(self._extract_backtest_data())
+        # 3. Normalization (Apply % -> decimal where needed)
+        final_data: Dict[str, Any] = {k: self.apply_field_scaling(k, v) for k, v in raw_ui_data.items()}
 
-        collected_data.update(self._extract_model_inputs_data(key_prefix))
+        # 4. Defensive extraction and typage for projection_years (force int, fallback to 5)
+        proj_years_key = f"{self.MODE.name}_years"
+        projection_years_val = final_data.get(proj_years_key, 5)
+        # Handle float-to-int or None
+        if projection_years_val is None:
+            projection_years = 5
+        elif isinstance(projection_years_val, float):
+            projection_years = int(round(projection_years_val))
+        else:
+            try:
+                projection_years = int(projection_years_val)
+            except (TypeError, ValueError):
+                projection_years = 5
 
-        final_collected_data = {}
-        for field_name, value in collected_data.items():
-            final_collected_data[field_name] = self.apply_field_scaling(field_name, value)
-
-        params = build_dcf_parameters(final_collected_data)
-
-        if self.SHOW_SCENARIOS:
-            params.scenarios = self._extract_scenarios_data()
-        if self.SHOW_SOTP:
-            params.sotp = self._extract_sotp_data()
+        # 5. Construction Atomique (Unique source of truth)
+        params = Parameters.from_legacy(final_data)
 
         return ValuationRequest(
             ticker=self.ticker,
             mode=self.MODE,
-            projection_years=final_collected_data.get("projection_years", 5),
+            projection_years=projection_years,
             input_source=InputSource.MANUAL,
             manual_params=params,
-            options=self._build_options(final_collected_data),
+            options=self._build_options(final_data)
         )
 
     def _extract_sotp_data(self) -> Optional[SOTPParameters]:
@@ -828,7 +835,7 @@ class ExpertTerminalBase(ABC):
     @staticmethod
     def _extract_scenarios_data() -> Optional[ScenarioParameters]:
         """
-        Extracts Bull/Base/Bear scenario variants.
+        Extracts Bull/Base/Bear scenario variants from Streamlit session state.
 
         NORMALIZATION CONTRACT:
         - Growth rates are normalized from percentage to decimal.
@@ -854,10 +861,9 @@ class ExpertTerminalBase(ABC):
         p = "scenario"
 
         if not st.session_state.get(f"{p}_scenario_enable"):
-            return ScenarioParameters(enabled=False)
+            return ScenarioParameters(enable_scenario=False)
 
-        # Helper for percentage normalization with logging
-        def normalize(key: str, field_desc: str) -> Optional[float]:
+        def normalize_percent(key: str, field_desc: str) -> Optional[float]:
             raw = st.session_state.get(key)
             if raw is None:
                 return None
@@ -866,30 +872,33 @@ class ExpertTerminalBase(ABC):
             return normalized
 
         try:
-            return ScenarioParameters(
-                enabled=True,
-                bull=ScenarioVariant(
-                    label=SharedTexts.LBL_BULL,
-                    probability=st.session_state[f"{p}_p_bull"],  # Already 0-1
-                    growth_rate=normalize(f"{p}_g_bull", "bull.growth_rate"),
-                    target_fcf_margin=normalize(f"{p}_m_bull", "bull.target_fcf_margin"),
-                ),
-                base=ScenarioVariant(
-                    label=SharedTexts.LBL_BASE,
-                    probability=st.session_state[f"{p}_p_base"],  # Already 0-1
-                    growth_rate=normalize(f"{p}_g_base", "base.growth_rate"),
-                    target_fcf_margin=normalize(f"{p}_m_base", "base.target_fcf_margin"),
-                ),
-                bear=ScenarioVariant(
-                    label=SharedTexts.LBL_BEAR,
-                    probability=st.session_state[f"{p}_p_bear"],  # Already 0-1
-                    growth_rate=normalize(f"{p}_g_bear", "bear.growth_rate"),
-                    target_fcf_margin=normalize(f"{p}_m_bear", "bear.target_fcf_margin"),
-                ),
+            bull = ScenarioVariant(
+                label=SharedTexts.LBL_BULL,
+                probability=float(st.session_state.get(f"{p}_p_bull", 0.0)),  # float for certainty
+                growth_rate=normalize_percent(f"{p}_g_bull", "bull.growth_rate"),
+                target_fcf_margin=normalize_percent(f"{p}_m_bull", "bull.target_fcf_margin"),
             )
-        except (KeyError, RuntimeError, ValueError) as e:
+            base = ScenarioVariant(
+                label=SharedTexts.LBL_BASE,
+                probability=float(st.session_state.get(f"{p}_p_base", 0.0)),
+                growth_rate=normalize_percent(f"{p}_g_base", "base.growth_rate"),
+                target_fcf_margin=normalize_percent(f"{p}_m_base", "base.target_fcf_margin"),
+            )
+            bear = ScenarioVariant(
+                label=SharedTexts.LBL_BEAR,
+                probability=float(st.session_state.get(f"{p}_p_bear", 0.0)),
+                growth_rate=normalize_percent(f"{p}_g_bear", "bear.growth_rate"),
+                target_fcf_margin=normalize_percent(f"{p}_m_bear", "bear.target_fcf_margin"),
+            )
+            return ScenarioParameters(
+                enable_scenario=True,
+                bull=bull,
+                base=base,
+                bear=bear
+            )
+        except (KeyError, RuntimeError, ValueError, TypeError) as e:
             logger.warning(f"Failed to extract scenarios data: {e}")
-            return ScenarioParameters(enabled=False)
+            return ScenarioParameters(enable_scenario=False)
 
     @staticmethod
     def _extract_backtest_data() -> Dict[str, Any]:

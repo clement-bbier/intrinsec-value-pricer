@@ -63,11 +63,11 @@ class TestDCFParameters:
     def test_segmented_structure(self):
         """Structure segmentée avec rates, growth, monte_carlo."""
         from src.models import (
-            DCFParameters, CoreRateParameters, 
-            GrowthParameters, MonteCarloConfig
+            Parameters, CoreRateParameters,
+            GrowthParameters, MonteCarloParameters
         )
         
-        params = DCFParameters(
+        params = Parameters(
             rates=CoreRateParameters(
                 risk_free_rate=0.04,
                 market_risk_premium=0.05,
@@ -76,26 +76,26 @@ class TestDCFParameters:
                 fcf_growth_rate=0.05,
                 perpetual_growth_rate=0.02,
             ),
-            monte_carlo=MonteCarloConfig(
-                enable_monte_carlo=False,
+            monte_carlo=MonteCarloParameters(
+                enabled=False,
             ),
         )
         
         assert params.rates.risk_free_rate == 0.04
         assert params.growth.fcf_growth_rate == 0.05
-        assert params.monte_carlo.enable_monte_carlo is False
+        assert params.monte_carlo.enabled is False
     
     def test_model_copy_deep(self):
         """model_copy(deep=True) crée une copie indépendante."""
         from src.models import (
-            DCFParameters, CoreRateParameters, 
-            GrowthParameters, MonteCarloConfig
+            Parameters, CoreRateParameters,
+            GrowthParameters, MonteCarloParameters
         )
         
-        original = DCFParameters(
+        original = Parameters(
             rates=CoreRateParameters(),
             growth=GrowthParameters(fcf_growth_rate=0.05),
-            monte_carlo=MonteCarloConfig(),
+            monte_carlo=MonteCarloParameters(),
         )
         
         copy = original.model_copy(deep=True)

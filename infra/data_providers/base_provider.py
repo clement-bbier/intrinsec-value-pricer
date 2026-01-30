@@ -17,7 +17,7 @@ from typing import Tuple, List, Optional
 
 import pandas as pd
 
-from src.models import CompanyFinancials, DCFParameters, MultiplesData
+from src.models import CompanyFinancials, Parameters, MultiplesData
 
 
 class DataProvider(ABC):
@@ -91,7 +91,7 @@ class DataProvider(ABC):
         self,
         ticker: str,
         projection_years: int
-    ) -> Tuple[CompanyFinancials, DCFParameters]:
+    ) -> Tuple[CompanyFinancials, Parameters]:
         """
         'All-in-one' method for Automated Mode workflow.
         Fetches fundamental data and resolves localized macro/risk parameters.
@@ -105,7 +105,7 @@ class DataProvider(ABC):
 
         Returns
         -------
-        Tuple[CompanyFinancials, DCFParameters]
+        Tuple[CompanyFinancials, Parameters]
             The baseline data required to launch a valuation request.
         """
         raise NotImplementedError

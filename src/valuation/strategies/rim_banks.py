@@ -23,7 +23,7 @@ from src.computation.financial_math import (
 )
 from src.config.constants import ValuationEngineDefaults
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, DCFParameters, RIMValuationResult
+from src.models import CompanyFinancials, Parameters, RIMValuationResult
 from src.valuation.strategies.abstract import ValuationStrategy
 
 # Centralized i18n
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 def _compute_ohlson_tv(terminal_ri: float, ke: float, last_df: float,
-                       params: DCFParameters) -> Tuple[float, float]:
+                       params: Parameters) -> Tuple[float, float]:
     omega = params.growth.exit_multiple_value or ValuationEngineDefaults.RIM_DEFAULT_OMEGA
     tv_ri = (terminal_ri * omega) / (1 + ke - omega)
     discounted_tv = tv_ri * last_df
@@ -61,7 +61,7 @@ class RIMBankingStrategy(ValuationStrategy):
     def execute(
             self,
             financials: CompanyFinancials,
-            params: DCFParameters
+            params: Parameters
     ) -> RIMValuationResult:
         """
         Executes the comprehensive RIM sequence.
@@ -160,7 +160,7 @@ class RIMBankingStrategy(ValuationStrategy):
         return result
 
     @staticmethod
-    def _select_book_value(financials: CompanyFinancials, params: DCFParameters) -> Tuple[float, str]:
+    def _select_book_value(financials: CompanyFinancials, params: Parameters) -> Tuple[float, str]:
         if params.growth.manual_book_value is not None:
             return params.growth.manual_book_value, StrategySources.MANUAL_OVERRIDE
         if financials.book_value_per_share and financials.book_value_per_share > 0:
@@ -168,7 +168,7 @@ class RIMBankingStrategy(ValuationStrategy):
         raise CalculationError(CalculationErrors.RIM_NEGATIVE_BV)
 
     @staticmethod
-    def _compute_ke(financials: CompanyFinancials, params: DCFParameters) -> Tuple[float, str]:
+    def _compute_ke(financials: CompanyFinancials, params: Parameters) -> Tuple[float, str]:
         r = params.rates
         if r.manual_cost_of_equity is not None:
             return r.manual_cost_of_equity, StrategySources.WACC_MANUAL.format(wacc=r.manual_cost_of_equity)
@@ -178,7 +178,7 @@ class RIMBankingStrategy(ValuationStrategy):
         return ke, KPITexts.SUB_CAPM_MATH.format(rf=rf, beta=beta, mrp=mrp)
 
     @staticmethod
-    def _select_eps_base(financials: CompanyFinancials, params: DCFParameters) -> Tuple[float, str]:
+    def _select_eps_base(financials: CompanyFinancials, params: Parameters) -> Tuple[float, str]:
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
         if financials.eps_ttm and financials.eps_ttm > 0:

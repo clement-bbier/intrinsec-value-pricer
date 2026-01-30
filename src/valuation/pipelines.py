@@ -37,7 +37,7 @@ from src.i18n import (
 from src.models import (
     CalculationStep,
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     DCFValuationResult,
     EquityDCFValuationResult,
     TerminalValueMethod,
@@ -237,7 +237,7 @@ class DCFCalculationPipeline:
         self,
         base_value: float,
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         wacc_override: Optional[float] = None
     ) -> ValuationResult:
         """
@@ -249,7 +249,7 @@ class DCFCalculationPipeline:
             Anchor flow value (FCF, Dividend, or Revenue).
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses (rates, growth, dilution).
         wacc_override : float, optional
             Forces the use of a specific WACC if provided.
@@ -339,7 +339,7 @@ class DCFCalculationPipeline:
     def _resolve_discount_rate(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         is_equity: bool,
         override: Optional[float]
     ) -> Tuple[float, Any]:
@@ -350,7 +350,7 @@ class DCFCalculationPipeline:
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
         is_equity : bool
             True for direct equity models (DDM, FCFE, RIM).
@@ -490,7 +490,7 @@ class DCFCalculationPipeline:
         equity_val: float,
         shares: float,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> float:
         """
         Calculates IV per share by integrating the SBC dilution adjustment.
@@ -503,7 +503,7 @@ class DCFCalculationPipeline:
             Number of shares outstanding.
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -682,7 +682,7 @@ class DCFCalculationPipeline:
         self,
         output: ProjectionOutput,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> None:
         """
         Specialized trace for the flow projection phase (FCF_PROJ).
@@ -696,7 +696,7 @@ class DCFCalculationPipeline:
             Output from the flow projector containing flows and trace info.
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
         """
         g = params.growth
@@ -736,7 +736,7 @@ class DCFCalculationPipeline:
         self,
         flows: List[float],
         discount_rate: float,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[float, str]:
         """
         Calculates terminal value via Gordon Growth or Exit Multiple.
@@ -747,7 +747,7 @@ class DCFCalculationPipeline:
             Projected cash flows.
         discount_rate : float
             WACC or Cost of Equity.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -855,7 +855,7 @@ class DCFCalculationPipeline:
         flows: List[float],
         tv: float,
         rate: float,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[List[float], float, float, float]:
         """
         Calculates NPV of flows and Terminal Value.
@@ -868,7 +868,7 @@ class DCFCalculationPipeline:
             Terminal value.
         rate : float
             Discount rate.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -929,7 +929,7 @@ class DCFCalculationPipeline:
         self,
         val: float,
         financials: CompanyFinancials,
-        params: DCFParameters,
+        params: Parameters,
         is_equity: bool
     ) -> Tuple[float, float]:
         """
@@ -941,7 +941,7 @@ class DCFCalculationPipeline:
             Enterprise value or equity value.
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
         is_equity : bool
             True for direct equity models.

@@ -31,10 +31,13 @@ class HistoricalBacktestTab(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible only if the engine generated at least one historical comparison point."""
-        return bool(result.backtest_report and len(result.backtest_report.points) > 0)
+        return result.params.backtest.enabled
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Institutional Backtest rendering with accuracy metrics and convergence chart."""
+        if not result.backtest_report or not result.backtest_report.points:
+            st.info(BacktestTexts.NO_BACKTEST_FOUND)
+            return
         bt = result.backtest_report
         currency = result.financials.currency
 

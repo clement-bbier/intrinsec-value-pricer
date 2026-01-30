@@ -35,10 +35,10 @@ from decimal import Decimal, ROUND_HALF_UP
 from src.models import (
     ValuationMode,
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     GrowthParameters,
     CoreRateParameters,
-    MonteCarloConfig,
+    MonteCarloParameters,
     ValuationRequest,
     InputSource,
 )
@@ -231,11 +231,11 @@ class TestGoldenDatasetValuation:
         )
 
     @pytest.fixture
-    def default_params(self) -> DCFParameters:
-        return DCFParameters(
+    def default_params(self) -> Parameters:
+        return Parameters(
             rates=CoreRateParameters(risk_free_rate=0.04, market_risk_premium=0.05),
             growth=GrowthParameters(projection_years=5, perpetual_growth_rate=0.02),
-            monte_carlo=MonteCarloConfig(enable_monte_carlo=False),
+            monte_carlo=MonteCarloParameters(enabled=False),
         )
 
     @pytest.mark.parametrize("golden_ref", GOLDEN_DATASET, ids=[f"{g.ticker}_{g.mode.name}" for g in GOLDEN_DATASET])

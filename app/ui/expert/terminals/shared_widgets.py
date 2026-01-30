@@ -26,7 +26,7 @@ import streamlit as st
 import pandas as pd
 
 from src.models import (
-    DCFParameters,
+    Parameters,
     ValuationMode,
     TerminalValueMethod,
     ScenarioParameters,
@@ -400,73 +400,37 @@ def widget_equity_bridge(
     st.info(SharedTexts.SEC_5_DESC)
     st.latex(formula_latex)
 
+    data = {}
+
     if mode.is_direct_equity:
-        shares = st.number_input(
+        data["manual_shares_outstanding"] = st.number_input(
             SharedTexts.INP_SHARES,
             value=None,
             format="%.0f",
             help=SharedTexts.HELP_SHARES,
             key=f"{prefix}_shares_direct"
         )
-
-        # SBC rate as percentage
-        sbc_rate = st.number_input(
-            SharedTexts.INP_SBC_DILUTION,
-            min_value=0.0,
-            max_value=100.0,
-            value=None,
-            step=0.1,
-            format="%.2f",
-            key=f"{prefix}_sbc_rate"
+    else:
+        c_d, c_c = st.columns(2)
+        data["manual_total_debt"] = c_d.number_input(
+            SharedTexts.INP_DEBT, value=None, format="%.0f", key=f"{prefix}_debt"
+        )
+        data["manual_cash"] = c_c.number_input(
+            SharedTexts.INP_CASH, value=None, format="%.0f", key=f"{prefix}_cash"
         )
 
-        return {
-            "manual_shares_outstanding": shares,
-            "annual_dilution_rate": sbc_rate
-        }
+        c_m, c_p, c_s = st.columns(3)
+        data["manual_minority_interests"] = c_m.number_input(
+            SharedTexts.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_min"
+        )
+        data["manual_pension_provisions"] = c_p.number_input(
+            SharedTexts.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_pen"
+        )
+        data["manual_shares_outstanding"] = c_s.number_input(
+            SharedTexts.INP_SHARES, value=None, format="%.0f", key=f"{prefix}_shares"
+        )
 
-    # Enterprise Value Layout (FCFF models)
-    c_d, c_c = st.columns(2)
-
-    debt = c_d.number_input(
-        SharedTexts.INP_DEBT,
-        value=None,
-        format="%.0f",
-        key=f"{prefix}_debt"
-    )
-
-    cash = c_c.number_input(
-        SharedTexts.INP_CASH,
-        value=None,
-        format="%.0f",
-        key=f"{prefix}_cash"
-    )
-
-    c_m, c_p, c_s = st.columns(3)
-
-    minorities = c_m.number_input(
-        SharedTexts.INP_MINORITIES,
-        value=None,
-        format="%.0f",
-        key=f"{prefix}_min"
-    )
-
-    pensions = c_p.number_input(
-        SharedTexts.INP_PENSIONS,
-        value=None,
-        format="%.0f",
-        key=f"{prefix}_pen"
-    )
-
-    shares = c_s.number_input(
-        SharedTexts.INP_SHARES,
-        value=None,
-        format="%.0f",
-        key=f"{prefix}_shares"
-    )
-
-    # SBC rate as percentage
-    sbc_rate = st.number_input(
+    data["annual_dilution_rate"] = st.number_input(
         SharedTexts.INP_SBC_DILUTION,
         min_value=-100.0,
         max_value=100.0,
@@ -476,14 +440,7 @@ def widget_equity_bridge(
         key=f"{prefix}_sbc_rate"
     )
 
-    return {
-        "manual_total_debt": debt,
-        "manual_cash": cash,
-        "manual_shares_outstanding": shares,
-        "manual_minority_interests": minorities,
-        "manual_pension_provisions": pensions,
-        "annual_dilution_rate": sbc_rate
-    }
+    return data
 
 
 # ==============================================================================
@@ -724,7 +681,7 @@ def widget_scenarios(
     st.info(SharedTexts.SEC_8_DESC_SCENARIOS)
 
     if not st.toggle(SharedTexts.INP_SCENARIO_ENABLE, False, key=f"{prefix}_enable"):
-        return ScenarioParameters(enabled=False)
+        return ScenarioParameters(enable_scenario=False)
 
     show_margin = (mode == ValuationMode.FCFF_GROWTH)
 
@@ -775,10 +732,10 @@ def widget_scenarios(
     if round(p_bull + p_base + p_bear, 2) != 1.0:
         total_pct = int((p_bull + p_base + p_bear) * 100)
         st.error(SharedTexts.ERR_SCENARIO_PROBA_SUM.format(sum=total_pct))
-        return ScenarioParameters(enabled=False)
+        return ScenarioParameters(enable_scenario=False)
 
     return ScenarioParameters(
-        enabled=True,
+        enable_scenario=True,
         bull=ScenarioVariant(
             label=SharedTexts.LBL_BULL,
             probability=p_bull,
@@ -805,7 +762,7 @@ def widget_scenarios(
 # ==============================================================================
 
 def widget_sotp(
-    params: DCFParameters,
+    params: Parameters,
     is_conglomerate: bool = False,
     key_prefix: Optional[str] = None
 ) -> None:
@@ -814,7 +771,7 @@ def widget_sotp(
 
     Parameters
     ----------
-    params : DCFParameters
+    params : Parameters
         Parameter object to be populated.
     is_conglomerate : bool, optional
         Whether the firm is identified as a conglomerate.
@@ -886,7 +843,7 @@ def widget_sotp(
 # 9. PARAMETERS CONSTRUCTOR
 # ==============================================================================
 
-def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
+def build_dcf_parameters(collected_data: Dict[str, Any]) -> Parameters:
     """
     Constructs DCFParameters from collected widget data.
 
@@ -898,7 +855,7 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
 
     Returns
     -------
-    DCFParameters
+    Parameters
         Validated parameter object with normalized values.
     """
     defaults = {
@@ -917,4 +874,4 @@ def build_dcf_parameters(collected_data: Dict[str, Any]) -> DCFParameters:
         **{k: v for k, v in collected_data.items() if v is not None}
     }
 
-    return DCFParameters.from_legacy(merged)
+    return Parameters.from_legacy(merged)

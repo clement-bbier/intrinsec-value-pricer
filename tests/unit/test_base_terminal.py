@@ -13,7 +13,7 @@ from app.ui.expert.base_terminal import ExpertTerminalBase
 from src.i18n import SharedTexts
 from src.models import (
     ValuationMode, TerminalValueMethod, InputSource,
-    ValuationRequest, DCFParameters, ScenarioParameters
+    ValuationRequest, Parameters, ScenarioParameters
 )
 
 # 1. Création d'une classe concrète pour tester l'abstraction

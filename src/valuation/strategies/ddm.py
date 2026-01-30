@@ -30,7 +30,7 @@ from src.i18n import (
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import (
     CompanyFinancials,
-    DCFParameters,
+    Parameters,
     EquityDCFValuationResult,
     ValuationMode
 )
@@ -61,7 +61,7 @@ class DividendDiscountStrategy(ValuationStrategy):
     def execute(
         self,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> EquityDCFValuationResult:
         """
         Executes DDM valuation via the Unified Pipeline with type-safe downcasting.
@@ -70,7 +70,7 @@ class DividendDiscountStrategy(ValuationStrategy):
         ----------
         financials : CompanyFinancials
             Target company financial data.
-        params : DCFParameters
+        params : Parameters
             Calculation hypotheses.
 
         Returns
@@ -160,7 +160,7 @@ class DividendDiscountStrategy(ValuationStrategy):
     @staticmethod
     def _resolve_dividend_base(
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> Tuple[float, str]:
         """
         Resolves the reference dividend per share ($D_0$).

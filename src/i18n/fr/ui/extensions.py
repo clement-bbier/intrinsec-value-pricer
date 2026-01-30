@@ -2,10 +2,49 @@
 core/i18n/fr/ui/extensions.py
 Textes des extensions (SOTP, Backtest).
 """
+class MonteCarloTexts:
+    NO_MC_FOUND = None
 
+class ScenarioTexts:
+    """Textes pour l'affichage des scénarios déterministes."""
+
+    # Titres et sous-titres
+    TITLE_ANALYSIS = "ANALYSE DE SCÉNARIOS"
+    CAPTION_ANALYSIS = "Valorisation sous différentes hypothèses de croissance"
+
+    # En-têtes de colonnes du tableau
+    COL_SCENARIO = "Scénario"
+    COL_PROBABILITY = "Probabilité"
+    COL_GROWTH = "Croissance"
+    COL_MARGIN_FCF = "Marge FCF"
+    COL_VALUE_PER_SHARE = "Valeur/Action"
+    COL_UPSIDE = "Upside"
+
+    # Métriques de synthèse
+    METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
+    METRIC_WEIGHTED_UPSIDE = "Upside Pondéré"
+
+class BacktestTexts:
+    NO_BACKTEST_FOUND = "Données historiques insuffisantes pour générer un audit de performance (Backtest). Cela survient généralement pour les entreprises récemment cotées (IPO) ou si l'historique des prix est incomplet."
+    LABEL = "Backtest"
+    TITLE = "Validation Historique (Backtest)"
+    HELP_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) calculée par le modèle aux cours de clôture historiques."
+    LBL_PERIODS = "Périodes testées"
+    METRIC_ACCURACY = "Précision"
+    SEC_RESULTS = "Détail des séquences historiques"
+    LBL_DATE = "Période"
+    LBL_HIST_IV = "IV Historique"
+    LBL_REAL_PRICE = "Prix Réel"
+    LBL_ERROR_GAP = "Écart (Gap)"
+    GRADE_A = "Grade A"
+    GRADE_B = "Grade B"
+
+class PeersTexts:
+    NO_PEERS_FOUND = "Aucune entreprise comparable identifiée ou données sectorielles manquantes. La triangulation par multiples boursiers n'est pas disponible pour ce ticker."
 
 class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""
+    NO_SOTP_FOUND = "Aucun segment défini pour l'analyse SOTP."
     LABEL_HOLDING_DISCOUNT = "Décote holding"
     TITLE = "Analyse Sum-Of-The-Parts (SOTP)"
     SEC_SEGMENTS = "#### 1. Definition des Business Units (Segments)"
@@ -32,24 +71,6 @@ class SOTPTexts:
     STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
     DESC_SOTP_VALUATION = "Segmentation de la valeur d'entreprise par divisions opérationnelles."
 
-class BacktestTexts:
-    LABEL = "Backtest"
-    TITLE = "Validation Historique (Backtest)"
-    HELP_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) calculée par le modèle aux cours de clôture historiques."
-    LBL_PERIODS = "Périodes testées"
-    METRIC_ACCURACY = "Précision"
-    SEC_RESULTS = "Détail des séquences historiques"
-    LBL_DATE = "Période"
-    LBL_HIST_IV = "IV Historique"
-    LBL_REAL_PRICE = "Prix Réel"
-    LBL_ERROR_GAP = "Écart (Gap)"
-    GRADE_A = "Grade A"
-    GRADE_B = "Grade B"
-
-
-class SOTPResultTexts:
-    """Textes pour l'affichage des résultats Sum-of-the-Parts (SOTP)."""
-
     # Titres et sous-titres
     TITLE_SEGMENTATION = "VALORISATION PAR SEGMENTS"
     CAPTION_SEGMENTATION = "Somme des parties avec multiples sectoriels"
@@ -66,28 +87,4 @@ class SOTPResultTexts:
     METRIC_HOLDING_DISCOUNT = "Décote Holding"
     METRIC_NET_VALUE = "Valeur Nette SOTP"
 
-    LBL_SEGMENT_NAME = "Nom du Segment"
-    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
-    LBL_SEGMENT_REVENUE = "Chiffre d'Affaires"
-    LBL_SEGMENT_METHOD = "Méthode"
     LBL_SEGMENT_CONTRIBUTION = "Contribution"
-
-
-class ScenarioTexts:
-    """Textes pour l'affichage des scénarios déterministes."""
-
-    # Titres et sous-titres
-    TITLE_ANALYSIS = "ANALYSE DE SCÉNARIOS"
-    CAPTION_ANALYSIS = "Valorisation sous différentes hypothèses de croissance"
-
-    # En-têtes de colonnes du tableau
-    COL_SCENARIO = "Scénario"
-    COL_PROBABILITY = "Probabilité"
-    COL_GROWTH = "Croissance"
-    COL_MARGIN_FCF = "Marge FCF"
-    COL_VALUE_PER_SHARE = "Valeur/Action"
-    COL_UPSIDE = "Upside"
-
-    # Métriques de synthèse
-    METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
-    METRIC_WEIGHTED_UPSIDE = "Upside Pondéré"

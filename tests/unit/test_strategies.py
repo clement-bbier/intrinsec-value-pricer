@@ -128,7 +128,7 @@ class TestMonteCarloStrategy:
         from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         from src.models import ValuationResult
         
-        sample_params.monte_carlo.enable_monte_carlo = True
+        sample_params.monte_carlo.enabled = True
         sample_params.monte_carlo.num_simulations = 100  # Petit nombre pour le test
         
         strategy = MonteCarloGenericStrategy(
@@ -146,7 +146,7 @@ class TestMonteCarloStrategy:
         from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
         from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
-        sample_params.monte_carlo.enable_monte_carlo = True
+        sample_params.monte_carlo.enabled = True
         sample_params.monte_carlo.num_simulations = 100
         
         strategy = MonteCarloGenericStrategy(

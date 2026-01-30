@@ -14,7 +14,7 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from typing import List, Tuple
-from src.models.scenarios import SOTPParameters
+from src.models.parameters import SOTPParameters
 from src.models.company import CompanyFinancials
 from src.models.glass_box import CalculationStep, TraceHypothesis
 

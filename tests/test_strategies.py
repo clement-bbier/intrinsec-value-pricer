@@ -33,7 +33,7 @@ def test_monte_carlo_strategy_structure(sample_financials, sample_params):
     """Vérifie que Monte Carlo utilise le segment monte_carlo et retourne des quantiles."""
     # Setup via le segment monte_carlo
     mc = sample_params.monte_carlo
-    mc.enable_monte_carlo = True
+    mc.enabled = True
     mc.beta_volatility = 0.10
     mc.growth_volatility = 0.02
     mc.num_simulations = 50 # Simulations réduites pour le test

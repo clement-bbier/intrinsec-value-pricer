@@ -150,7 +150,7 @@ class TestMonteCarloInjection:
         self, mock_valuation_request, mock_company_financials, mock_dcf_parameters
     ):
         """Test Monte Carlo strategy is used when enabled."""
-        mock_dcf_parameters.monte_carlo.enable_monte_carlo = True
+        mock_dcf_parameters.monte_carlo.enabled = True
         mock_valuation_request.mode.supports_monte_carlo = True
 
         # Create result with real numeric values
@@ -194,7 +194,7 @@ class TestMonteCarloInjection:
         self, mock_valuation_request, mock_company_financials, mock_dcf_parameters
     ):
         """Test deterministic strategy when MC is disabled."""
-        mock_dcf_parameters.monte_carlo.enable_monte_carlo = False
+        mock_dcf_parameters.monte_carlo.enabled = False
 
         mock_result = MagicMock()
         mock_result.ticker = "AAPL"
@@ -233,7 +233,7 @@ class TestMonteCarloInjection:
         self, mock_valuation_request, mock_company_financials, mock_dcf_parameters
     ):
         """Test no MC injection when mode doesn't support it."""
-        mock_dcf_parameters.monte_carlo.enable_monte_carlo = True
+        mock_dcf_parameters.monte_carlo.enabled = True
         mock_valuation_request.mode.supports_monte_carlo = False
 
         mock_result = MagicMock()

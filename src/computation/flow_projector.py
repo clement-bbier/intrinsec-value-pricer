@@ -23,7 +23,7 @@ from src.config.constants import GrowthCalculationDefaults
 from src.models import VariableInfo, VariableSource
 
 if TYPE_CHECKING:
-    from src.models import CompanyFinancials, DCFParameters
+    from src.models import CompanyFinancials, Parameters
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class FlowProjector(ABC):
         self,
         base_value: float,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> ProjectionOutput:
         """
         Executes the projection and returns the flows with calculation trace.
@@ -84,7 +84,7 @@ class FlowProjector(ABC):
             The anchor value (FCF0 or Revenue0).
         financials : CompanyFinancials
             Current company financial data.
-        params : DCFParameters
+        params : Parameters
             User-defined or automated projection parameters.
         """
         pass
@@ -135,7 +135,7 @@ class SimpleFlowProjector(FlowProjector):
         self,
         base_value: float,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> ProjectionOutput:
         """Projects flows with full provenance of growth rates."""
         g = params.growth
@@ -186,7 +186,7 @@ class MarginConvergenceProjector(FlowProjector):
         self,
         base_value: float,
         financials: CompanyFinancials,
-        params: DCFParameters
+        params: Parameters
     ) -> ProjectionOutput:
         """Projects FCF with margin expansion/contraction traceability."""
         g = params.growth
