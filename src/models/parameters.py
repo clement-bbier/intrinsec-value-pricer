@@ -228,7 +228,7 @@ class Parameters(BaseModel):
     rates: CoreRateParameters = Field(default_factory=CoreRateParameters)
     growth: GrowthParameters = Field(default_factory=GrowthParameters)
     monte_carlo: MonteCarloParameters = Field(default_factory=MonteCarloParameters)
-    scenario: ScenarioParameters = Field(default_factory=ScenarioParameters)
+    scenarios: ScenarioParameters = Field(default_factory=ScenarioParameters)
     backtest: BacktestParameters = Field(default_factory=BacktestParameters)
     peers: PeerParameters = Field(default_factory=PeerParameters)
     sotp: SOTPParameters = Field(default_factory=SOTPParameters)
@@ -256,7 +256,7 @@ class Parameters(BaseModel):
             rates=CoreRateParameters(**data),
             growth=GrowthParameters(**data),
             monte_carlo=MonteCarloParameters(**data),
-            scenario=ScenarioParameters(**data),
+            scenarios=ScenarioParameters(**data),
             sotp=SOTPParameters(**data),
             backtest=BacktestParameters(**data),
             peers=PeerParameters(**data)

@@ -16,9 +16,9 @@ from src.i18n import PillarLabels, QuantTexts, BacktestTexts
 from app.ui.results.base_result import ResultTabBase
 
 # Internal rendering engines (Spokes)
-from app.ui.results.optional.monte_carlo_distribution import MonteCarloDistributionTab
-from app.ui.results.optional.scenario_analysis import ScenarioAnalysisTab
-from app.ui.results.optional.historical_backtest import HistoricalBacktestTab
+from app.ui.results.core.optional.monte_carlo_distribution import MonteCarloDistributionTab
+from app.ui.results.core.optional.scenario_analysis import ScenarioAnalysisTab
+from app.ui.results.core.optional.historical_backtest import HistoricalBacktestTab
 from app.ui.components.ui_charts import display_backtest_convergence_chart
 
 
@@ -103,4 +103,4 @@ class RiskEngineeringTab(ResultTabBase):
             True if at least one risk component is active or has data.
         """
         p = result.params
-        return p.monte_carlo.enabled or p.scenario.enabled or p.backtest.enabled
+        return p.monte_carlo.enabled or p.scenarios.enabled or p.backtest.enabled

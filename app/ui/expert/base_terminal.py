@@ -130,15 +130,28 @@ _ABSOLUTE_FIELDS: Set[str] = {
     "manual_dividend_base"
 }
 
+_PERCENTAGE_FIELDS.update({
+    "mc_vol_flow", "mc_vol_beta", "mc_vol_growth",
+    "mc_vol_exit_m", "mc_vol_gn", "mc_vol_wacc",
+    "scenario_g_bull", "scenario_g_base", "scenario_g_bear",
+    "scenario_m_bull", "scenario_m_base", "scenario_m_bear"
+})
+
+_ABSOLUTE_FIELDS.update({
+    "mc_enable", "mc_sims", "scenario_enable", "bt_enable", "sotp_enable",
+    "scenario_p_bull", "scenario_p_base", "scenario_p_bear"
+})
+
 for mode in ValuationMode:
     prefix = mode.name
     _PERCENTAGE_FIELDS.update({
         f"{prefix}_rf", f"{prefix}_mrp", f"{prefix}_kd",
-        f"{prefix}_ke", f"{prefix}_tax", f"{prefix}_gn"
+        f"{prefix}_ke", f"{prefix}_tax", f"{prefix}_gn",
+        f"{prefix}_growth_rate", f"{prefix}_fcf_margin"
     })
     _ABSOLUTE_FIELDS.update({
         f"{prefix}_years", f"{prefix}_beta", f"{prefix}_price",
-        f"{prefix}_method", f"{prefix}_exit_mult"
+        f"{prefix}_method", f"{prefix}_exit_mult", f"{prefix}_fcf_base"
     })
 
 class ExpertTerminalBase(ABC):
@@ -553,55 +566,48 @@ class ExpertTerminalBase(ABC):
     # ══════════════════════════════════════════════════════════════════════════
 
     def build_request(self) -> Optional[ValuationRequest]:
-        """
-        Constructs the final ValuationRequest domain object.
+        """Corrected: Explicitly extract data using class methods to ensure correct keys."""
+        prefix = self.MODE.name
 
-        Aggregates all collected data from UI widgets, applies percentage
-        normalization, and builds the complete request for the valuation engine.
+        # 1. Extraction ciblée via les méthodes dédiées (qui mappent les bons noms de champs)
+        extracted_data = {}
+        extracted_data.update(self._extract_discount_data(prefix))
+        extracted_data.update(self._extract_model_inputs_data(prefix))
 
-        IMPORTANT: All percentage values are normalized to decimals in the
-        respective _extract_*_data() methods. The calculation pipeline
-        receives only decimal values (e.g., 0.05 for 5%).
+        extracted_data.update(self._extract_peer_triangulation_data())
+        extracted_data.update(self._extract_backtest_data())
 
-        Returns
-        -------
-        Optional[ValuationRequest]
-            The fully constructed valuation request.
-        """
-        # 1. Collect all keys from Streamlit session state into a flat dictionary
-        raw_ui_data: Dict[str, Any] = dict(st.session_state)
+        if self.SHOW_TERMINAL_SECTION:
+            extracted_data.update(self._extract_terminal_data(prefix))
+        if self.SHOW_BRIDGE_SECTION:
+            extracted_data.update(self._extract_bridge_data(prefix))
+        if self.SHOW_MONTE_CARLO:
+            extracted_data.update(self._extract_monte_carlo_data())
 
-        # 2. Add manual_peers and enable_backtest as explicit options (for completeness)
-        raw_ui_data["manual_peers"] = self._manual_peers
-        raw_ui_data["enable_backtest"] = bool(st.session_state.get("bt_enable", False))
+        # 2. Normalisation des échelles (% -> decimal)
+        final_normalized_data = {
+            k: self.apply_field_scaling(k, v) for k, v in extracted_data.items()
+        }
 
-        # 3. Normalization (Apply % -> decimal where needed)
-        final_data: Dict[str, Any] = {k: self.apply_field_scaling(k, v) for k, v in raw_ui_data.items()}
+        # 3. Construction SSOT
+        params = Parameters.from_legacy(final_normalized_data)
 
-        # 4. Defensive extraction and typage for projection_years (force int, fallback to 5)
-        proj_years_key = f"{self.MODE.name}_years"
-        projection_years_val = final_data.get(proj_years_key, 5)
-        # Handle float-to-int or None
-        if projection_years_val is None:
-            projection_years = 5
-        elif isinstance(projection_years_val, float):
-            projection_years = int(round(projection_years_val))
-        else:
-            try:
-                projection_years = int(projection_years_val)
-            except (TypeError, ValueError):
-                projection_years = 5
+        # Injection forcée des blocs complexes non gérés par from_legacy
+        if self.SHOW_SCENARIOS:
+            params.scenarios = self._extract_scenarios_data()
+        if self.SHOW_SOTP:
+            params.sotp = self._extract_sotp_data()
 
-        # 5. Construction Atomique (Unique source of truth)
-        params = Parameters.from_legacy(final_data)
+        # Récupération des années (clé spécifique)
+        proj_years = int(st.session_state.get(f"{prefix}_years", 5))
 
         return ValuationRequest(
             ticker=self.ticker,
             mode=self.MODE,
-            projection_years=projection_years,
+            projection_years=proj_years,
             input_source=InputSource.MANUAL,
             manual_params=params,
-            options=self._build_options(final_data)
+            options=self._build_options(final_normalized_data)
         )
 
     def _extract_sotp_data(self) -> Optional[SOTPParameters]:

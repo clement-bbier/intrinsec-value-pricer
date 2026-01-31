@@ -125,7 +125,7 @@ def sample_params():
             enabled=False
         ),
         sotp=SOTPParameters(enabled=False),
-        scenario=ScenarioParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
     )
 
 
@@ -147,7 +147,7 @@ def sample_params_monte_carlo():
             num_simulations=100,  # Petit pour tests rapides
         ),
         sotp=SOTPParameters(enabled=False),
-        scenario=ScenarioParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
     )
 
 
@@ -168,7 +168,7 @@ def sample_params_pessimistic():
         ),
         monte_carlo=MonteCarloParameters(enabled=False),
         sotp=SOTPParameters(enabled=False),
-        scenario=ScenarioParameters(enabled=False),
+        scenarios=ScenarioParameters(enabled=False),
     )
 
 

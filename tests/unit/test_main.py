@@ -466,7 +466,7 @@ class TestAutoLaunchHandling:
                 with patch('app.main._set_active_request'):
                     # We need to let the function run and check options is modified
                     # But the function creates real Pydantic models, so we mock the whole flow
-                    with patch('app.main.DCFParameters'):
+                    with patch('app.main.Parameters'):
                         with patch('app.main.ValuationRequest'):
                             from app.main import _handle_auto_launch
 

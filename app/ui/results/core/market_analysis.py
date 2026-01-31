@@ -15,8 +15,8 @@ from src.i18n import PillarLabels, KPITexts
 from app.ui.results.base_result import ResultTabBase
 
 # Internal rendering engines (Spokes)
-from app.ui.results.optional.peer_multiples import PeerMultiples
-from app.ui.results.optional.sotp_breakdown import SOTPBreakdownTab
+from app.ui.results.core.optional.peer_multiples import PeerMultiples
+from app.ui.results.core.optional.sotp_breakdown import SOTPBreakdownTab
 
 
 class MarketAnalysisTab(ResultTabBase):

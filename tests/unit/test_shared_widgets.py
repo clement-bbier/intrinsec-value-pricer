@@ -904,7 +904,7 @@ class TestSOTPWidget:
 
     @pytest.fixture
     def mock_dcf_params(self):
-        """Mock DCFParameters with SOTP sub-object."""
+        """Mock Parameters with SOTP sub-object."""
         params = MagicMock()
         params.sotp = MagicMock()
         params.sotp.enabled = False
@@ -1016,7 +1016,7 @@ class TestSOTPWidget:
 # 9. PARAMETERS CONSTRUCTOR TESTS
 # ==============================================================================
 
-class TestBuildDCFParameters:
+class TestBuildParameters:
     """Test suite for build_dcf_parameters constructor."""
 
     def test_build_dcf_parameters_with_defaults(self, mock_shared_texts, mock_ui_defaults):
@@ -1042,7 +1042,7 @@ class TestBuildDCFParameters:
             with patch('app.ui.expert.terminals.shared_widgets.TerminalValueMethod') as mock_tvm:
                 mock_tvm.GORDON_GROWTH = mock_terminal_method
                 
-                with patch('app.ui.expert.terminals.shared_widgets.DCFParameters') as mock_dcf:
+                with patch('app.ui.expert.terminals.shared_widgets.Parameters') as mock_dcf:
                     mock_dcf.from_legacy.return_value = MagicMock()
                     
                     from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
@@ -1078,7 +1078,7 @@ class TestBuildDCFParameters:
             with patch('app.ui.expert.terminals.shared_widgets.TerminalValueMethod') as mock_tvm:
                 mock_tvm.GORDON_GROWTH = MagicMock()
                 
-                with patch('app.ui.expert.terminals.shared_widgets.DCFParameters') as mock_dcf:
+                with patch('app.ui.expert.terminals.shared_widgets.Parameters') as mock_dcf:
                     mock_dcf.from_legacy.return_value = MagicMock()
                     
                     from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
@@ -1120,7 +1120,7 @@ class TestBuildDCFParameters:
             with patch('app.ui.expert.terminals.shared_widgets.TerminalValueMethod') as mock_tvm:
                 mock_tvm.GORDON_GROWTH = MagicMock()
                 
-                with patch('app.ui.expert.terminals.shared_widgets.DCFParameters') as mock_dcf:
+                with patch('app.ui.expert.terminals.shared_widgets.Parameters') as mock_dcf:
                     mock_dcf.from_legacy.return_value = MagicMock()
                     
                     from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
@@ -1234,7 +1234,7 @@ class TestWidgetIntegration:
                 mock_tvm.GORDON_GROWTH = mock_gordon
                 mock_tvm.EXIT_MULTIPLE = MagicMock()
                 
-                with patch('app.ui.expert.terminals.shared_widgets.DCFParameters') as mock_dcf:
+                with patch('app.ui.expert.terminals.shared_widgets.Parameters') as mock_dcf:
                     mock_params = MagicMock()
                     mock_dcf.from_legacy.return_value = mock_params
                     

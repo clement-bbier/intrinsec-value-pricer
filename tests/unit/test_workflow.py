@@ -122,10 +122,10 @@ class TestAdvancedAnalysis:
     def test_compute_scenario_impact_weighted(self, mock_run_val, mock_financials):
         """Verifies probability-weighted Expected Value calculation."""
         params = Parameters()
-        params.scenario.enabled = True
-        params.scenario.bull.probability = 0.3
-        params.scenario.base.probability = 0.4
-        params.scenario.bear.probability = 0.3
+        params.scenarios.enabled = True
+        params.scenarios.bull.probability = 0.3
+        params.scenarios.base.probability = 0.4
+        params.scenarios.bear.probability = 0.3
 
         # Engine results
         mock_res = MagicMock(spec=ValuationResult)

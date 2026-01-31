@@ -128,6 +128,9 @@ def mock_valuation_result():
     # Mock params
     result.params = MagicMock()
 
+    result.request = MagicMock()
+    result.request.mode.name = "FCFF_STANDARD"
+
     return result
 
 
@@ -326,13 +329,14 @@ class TestCacheManagement:
             assert mock_streamlit.session_state['valuation_context_hash'] != 'old_hash'
 
     def test_handle_cache_invalidation_same_context(self, mock_streamlit, mock_valuation_result):
-        """Test cache is preserved when context unchanged."""
-        # Generate expected hash
+        """Test cache is preserved when context unchanged (Corrected Hash Logic)."""
+        # On aligne le payload du test exactement sur la logique interne de l'orchestrateur
+        # On utilise .name pour l'Enum et on s'assure que la valeur IV est convertie en string
         ctx_payload = (
             str(mock_valuation_result.ticker),
             str(mock_valuation_result.intrinsic_value_per_share),
-            str(mock_valuation_result.mode.value),
-            int(0)  # No simulation results
+            str(mock_valuation_result.request.mode.name),  # Utilisation du .name de l'Enum
+            0  # len(None) -> 0
         )
         expected_hash = hashlib.md5(str(ctx_payload).encode()).hexdigest()[:12]
 
@@ -342,10 +346,12 @@ class TestCacheManagement:
 
         with patch('app.ui.results.orchestrator.st', mock_streamlit):
             from app.ui.results.orchestrator import ResultTabOrchestrator
+            # On s'assure que le mock du résultat a bien la même structure
+            mock_valuation_result.request.mode.name = "FCFF_STANDARD"
 
             ResultTabOrchestrator._handle_cache_invalidation(mock_valuation_result)
 
-            # Cache should be preserved
+            # Assert: Le cache doit être préservé car le hash calculé correspond
             assert mock_streamlit.session_state['stats_monte_carlo_cache'] == cached_data
 
     def test_cache_technical_data_with_simulations(self, mock_streamlit, mock_valuation_result):
@@ -446,25 +452,29 @@ class TestTabFiltering:
             assert len(filtered) < 5
 
     def test_filter_relevant_tabs_graham_excludes_market(self, mock_streamlit, mock_valuation_result):
-        """Test Graham mode excludes MarketAnalysisTab."""
+        """Test Graham mode excludes MarketAnalysisTab (Fixed visibility override)."""
+        from src.models import ValuationMode
+        from app.ui.results.orchestrator import ResultTabOrchestrator
+
         with patch('app.ui.results.orchestrator.st', mock_streamlit):
-            with patch('app.ui.results.orchestrator.ValuationMode') as mock_vm:
-                mock_graham = MagicMock()
-                mock_vm.GRAHAM = mock_graham
-                mock_valuation_result.mode = mock_graham
+            # 1. Setup : Mode Graham
+            mock_valuation_result.request.mode = ValuationMode.GRAHAM
 
-                from app.ui.results.orchestrator import ResultTabOrchestrator
+            orchestrator = ResultTabOrchestrator()
 
-                orchestrator = ResultTabOrchestrator()
-
-                # Make all tabs visible
-                for tab in orchestrator._tabs:
+            # 2. On laisse les onglets décider de leur propre visibilité
+            # (au lieu de tout forcer à True), SAUF pour simuler la présence de données
+            for tab in orchestrator._tabs:
+                if tab.TAB_ID != "market_analysis":
                     tab.is_visible = MagicMock(return_value=True)
+                # L'onglet MarketAnalysis utilisera sa vraie logique métier
 
-                filtered = orchestrator._filter_relevant_tabs(mock_valuation_result)
+            filtered = orchestrator._filter_relevant_tabs(mock_valuation_result)
 
-                # MarketAnalysisTab should be excluded for Graham
-                assert len(filtered) == 4
+            # Assert: On attend 4 onglets (Inputs, Proof, Audit, Risk)
+            # car Market est exclu par le mode GRAHAM
+            assert len(filtered) == 4
+            assert not any(t.TAB_ID == "market_analysis" for t in filtered)
 
     def test_filter_relevant_tabs_sorted_by_order(self, mock_streamlit, mock_valuation_result):
         """Test filtered tabs are sorted by ORDER attribute."""

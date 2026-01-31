@@ -30,7 +30,7 @@ class ScenarioAnalysisTab(ResultTabBase):
 
     def is_visible(self, result: ValuationResult) -> bool:
         """Visible only if the scenario engine generated variants."""
-        return result.params.scenario.enabled
+        return result.params.scenarios.enabled
 
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """

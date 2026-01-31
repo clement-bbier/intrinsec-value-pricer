@@ -201,7 +201,7 @@ def map_request_to_params(request: ValuationRequest, auto_params: Parameters) ->
 
         # Inject advanced analytical configurations
         final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
-        final_params.scenario = request.manual_params.scenario.model_copy()
+        final_params.scenarios = request.manual_params.scenarios.model_copy()
         final_params.sotp = request.manual_params.sotp.model_copy()
         return final_params
 
@@ -236,7 +236,7 @@ def compute_scenario_impact(
     ScenarioSynthesis
         Synthesis of the deterministic variations.
     """
-    sc = params.scenario
+    sc = params.scenarios
     results = []
     variants = [(sc.bull, "Bull"), (sc.base, "Base"), (sc.bear, "Bear")]
 

@@ -363,7 +363,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
             enable_monte_carlo=options["enable_mc"],
             num_simulations=options["mc_sims"]
         ),
-        scenario=ScenarioParameters(enable_scenario=False),
+        scenarios=ScenarioParameters(enable_scenario=False),
         sotp=SOTPParameters(enable_sotp=False)
     )
 
