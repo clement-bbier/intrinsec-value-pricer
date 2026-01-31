@@ -7,8 +7,38 @@ Role: Pilots the analysis lifecycle, multi-temporal orchestration, and risk scen
 Architecture: Segmented Smart Merge, Point-in-Time Isolation, and Enrichment Phases.
 ST-4.2 Compliant.
 """
-
 from __future__ import annotations
+
+"""
+Note Technique : Logique de Résolution "Glass Box"
+
+    Concept : Chaque paramètre utilisé dans le calcul final doit être "résolu" selon une hiérarchie stricte. Le système doit systématiquement logger la source de la valeur retenue pour garantir l'auditabilité totale de la valorisation.
+
+1. Hiérarchie de Résolution (La "Danse") pour tous les params issus des extensions ou des strategy
+
+Pour chaque champ param_X requis par un moteur :
+
+    Surcharge (User Override) : Si Parameters.strategy.param_X est différent de None.
+
+    Source (Provider Data) : Si Company.param_X est disponible (via Yahoo Finance/Sourcing).
+
+    Secours (Fallback Constant) : Utilisation de la constante définie dans src/config/constants.py.
+
+2. Standard de Logging
+
+Tout accès à une donnée doit produire une entrée dans les logs de type DEBUG ou INFO selon ce format :
+
+    [RESOLVER][{ticker}][{param_name}] -> Source: {USER|PROVIDER|FALLBACK} | Value: {value}
+
+3. Exemple de Trace de Calcul (Audit Trail)
+Plaintext
+
+[RESOLVER][AAPL][growth_rate_p1] -> User provided None. Checking Provider...
+[RESOLVER][AAPL][growth_rate_p1] -> Found 0.045 in Provider (Yahoo). Applied.
+[RESOLVER][AAPL][risk_free_rate] -> User provided 0.042. Overriding Provider. Applied.
+[RESOLVER][AAPL][tax_rate]       -> User None, Provider None. Using Fallback (0.25).
+"""
+
 import logging
 import traceback
 from datetime import datetime, date

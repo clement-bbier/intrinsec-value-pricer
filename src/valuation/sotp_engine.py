@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 from src.models.parameters import SOTPParameters
-from src.models.company import CompanyFinancials
+from src.models.company import Company
 from src.models.glass_box import CalculationStep, TraceHypothesis
 
 # Centralized i18n imports (Aligned with src/i18n/fr/backend/)
@@ -24,7 +24,7 @@ from src.i18n import SOTPTexts, RegistryTexts, KPITexts
 
 def run_sotp_valuation(
     params: SOTPParameters,
-    financials: CompanyFinancials
+    financials: Company
 ) -> Tuple[float, List[CalculationStep]]:
     """
     Orchestrates the complete SOTP valuation lifecycle.
@@ -37,7 +37,7 @@ def run_sotp_valuation(
     ----------
     params : SOTPParameters
         Configuration containing segment data and discount rates.
-    financials : CompanyFinancials
+    financials : Company
         Consolidated balance sheet data for the equity bridge.
 
     Returns

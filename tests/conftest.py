@@ -8,7 +8,7 @@ Elles sont automatiquement disponibles dans tous les fichiers de test.
 
 import pytest
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     CoreRateParameters,
     GrowthParameters,
@@ -39,7 +39,7 @@ def sample_financials():
     - FCF : 10M USD (yield 10%)
     - Levier modéré (20M dette)
     """
-    return CompanyFinancials(
+    return Company(
         ticker="TEST",
         currency="USD",
         sector="Technology",
@@ -66,7 +66,7 @@ def sample_financials():
 @pytest.fixture
 def sample_financials_minimal():
     """Fixture avec le minimum de données requis."""
-    return CompanyFinancials(
+    return Company(
         ticker="MIN",
         currency="USD",
         current_price=50.0,
@@ -77,7 +77,7 @@ def sample_financials_minimal():
 @pytest.fixture
 def sample_financials_bank():
     """Fixture pour tests de valorisation bancaire (RIM)."""
-    return CompanyFinancials(
+    return Company(
         ticker="BANK",
         currency="USD",
         sector="Financial Services",

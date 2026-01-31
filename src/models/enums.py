@@ -49,64 +49,15 @@ Ratio: TypeAlias = float
 class ValuationMode(str, Enum):
     """
     Supported valuation methodologies.
-
     Defines the specific analytical engine to be invoked by the orchestrator.
     """
-
-    # Firm Value Approaches (Entity-Level)
-    FCFF_STANDARD = "DCF - Free Cash Flow to Firm"
-    FCFF_NORMALIZED = "DCF - Normalized Free Cash Flow"
-    FCFF_GROWTH = "DCF - Revenue-Driven Growth"
-
-    # Equity Value Approaches (Shareholder-Level)
-    FCFE = "DCF - Free Cash Flow to Equity"
+    FCFF_STANDARD = "Free Cash Flow to Firm"
+    FCFF_NORMALIZED = "Normalized Free Cash Flow to Firm"
+    FCFF_GROWTH = "Top-Down Free Cash Flow to Firm"
+    FCFE = "Free Cash Flow to Equity"
     DDM = "Dividend Discount Model"
-
-    # Hybrid and Fundamental Models
     RIM = "Residual Income Model"
     GRAHAM = "Graham Intrinsic Value"
-
-    @property
-    def supports_monte_carlo(self) -> bool:
-        """
-        Determines if the mode is compatible with stochastic Monte Carlo analysis.
-
-        Returns
-        -------
-        bool
-            True if probabilistic sensitivity can be applied. (Disabled for Graham).
-        """
-        return self != ValuationMode.GRAHAM
-
-    @property
-    def is_direct_equity(self) -> bool:
-        """
-        Indicates if the model calculates Equity Value directly.
-
-        Returns
-        -------
-        bool
-            True if the output bypasses the Net Debt bridge and produces
-            intrinsic price per share directly.
-        """
-        return self in [
-            ValuationMode.FCFE,
-            ValuationMode.DDM,
-            ValuationMode.RIM,
-            ValuationMode.GRAHAM
-        ]
-
-
-class InputSource(str, Enum):
-    """
-    Source of the calculation parameters.
-
-    Used to drive audit weighting and data lineage tracking.
-    """
-    AUTO = "AUTO"      # Automated acquisition via providers
-    MANUAL = "MANUAL"  # Expert overrides provided by the user
-    SYSTEM = "SYSTEM"  # Internal fallback or calculated constants
-
 
 class TerminalValueMethod(str, Enum):
     """
@@ -114,6 +65,18 @@ class TerminalValueMethod(str, Enum):
     """
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
+
+class InputSource(str, Enum):
+    """
+    Source of the calculation parameters.
+    Used to drive audit weighting and data lineage tracking.
+    """
+    AUTO = "AUTO"      # Automated acquisition via providers
+    MANUAL = "MANUAL"  # Expert overrides provided by the user
+    SYSTEM = "SYSTEM"  # Internal fallback or calculated constants
+
+
+
 
 
 class AuditSeverity(str, Enum):

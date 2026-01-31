@@ -29,7 +29,7 @@ from src.i18n import (
 )
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     EquityDCFValuationResult,
     ValuationMode
@@ -60,7 +60,7 @@ class FCFEStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> EquityDCFValuationResult:
         """
@@ -68,7 +68,7 @@ class FCFEStrategy(ValuationStrategy):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -148,7 +148,7 @@ class FCFEStrategy(ValuationStrategy):
 
     @staticmethod
     def _resolve_fcfe_components(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> Tuple[float, float, float, float, Dict[str, str]]:
         """

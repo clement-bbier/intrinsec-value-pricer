@@ -15,7 +15,7 @@ import logging
 from typing import Tuple, Dict, Optional
 
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, Parameters, GrahamValuationResult
+from src.models import Company, Parameters, GrahamValuationResult
 from src.valuation.strategies.abstract import ValuationStrategy
 
 # i18n Centralized Mapping
@@ -44,7 +44,7 @@ class GrahamNumberStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> GrahamValuationResult:
         """
@@ -129,7 +129,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         return result
 
     @staticmethod
-    def _select_eps(financials: CompanyFinancials, params: Parameters) -> Tuple[float, str]:
+    def _select_eps(financials: Company, params: Parameters) -> Tuple[float, str]:
         """Selects the reference EPS based on sovereignty hierarchy."""
         if params.growth.manual_fcf_base is not None:
             return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
@@ -161,7 +161,7 @@ class GrahamNumberStrategy(ValuationStrategy):
         return (eps * multiplier * 4.4) / (aaa_yield * 100.0)
 
     @staticmethod
-    def _compute_graham_audit_metrics(financials: CompanyFinancials, eps: float) -> Dict[str, Optional[float]]:
+    def _compute_graham_audit_metrics(financials: Company, eps: float) -> Dict[str, Optional[float]]:
         """Prepares audit metrics for Pillar 3 (Reliability)."""
         pe = financials.current_price / eps if eps > 0 else None
         payout = None

@@ -13,7 +13,7 @@ from infra.data_providers.yahoo_provider import (
     YahooFinanceProvider,
     DataProviderStatus
 )
-from src.models import CompanyFinancials, Parameters, MultiplesData
+from src.models import Company, Parameters, MultiplesData
 from src.exceptions import TickerNotFoundError
 
 
@@ -65,7 +65,7 @@ class TestYahooFinanceProvider:
 
         # 2. Setup Normalizer
         mock_normalizer = mock_normalizer_cls.return_value
-        mock_fin = MagicMock(spec=CompanyFinancials)
+        mock_fin = MagicMock(spec=Company)
         mock_fin.ticker = "AAPL"
         mock_fin.beta = 1.2
         mock_fin.sector = "Technology"

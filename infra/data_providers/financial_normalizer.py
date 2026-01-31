@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from pydantic import ValidationError
 
-from src.models import CompanyFinancials, PeerMetric, MultiplesData
+from src.models import Company, PeerMetric, MultiplesData
 from src.i18n import DiagnosticTexts
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from infra.data_providers.extraction_utils import (
@@ -46,7 +46,7 @@ class FinancialDataNormalizer:
     # 1. TARGET COMPANY NORMALIZATION
     # =========================================================================
 
-    def normalize(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
+    def normalize(self, raw: RawFinancialData) -> Optional[Company]:
         """
         Main orchestrator for company data normalization.
         Reconstructs the capital structure and TTM profitability.
@@ -71,7 +71,7 @@ class FinancialDataNormalizer:
             raw.quarterly_cash_flow
         )
 
-        return CompanyFinancials(
+        return Company(
             ticker=raw.ticker,
             name=str(info.get("shortName", raw.ticker)),
             sector=str(info.get("sector", "Unknown")),

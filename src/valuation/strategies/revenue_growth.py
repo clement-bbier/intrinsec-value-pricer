@@ -28,7 +28,7 @@ from src.i18n import (
 )
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     DCFValuationResult,
     ValuationMode
@@ -60,7 +60,7 @@ class RevenueBasedStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> DCFValuationResult:
         """
@@ -68,7 +68,7 @@ class RevenueBasedStrategy(ValuationStrategy):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -142,7 +142,7 @@ class RevenueBasedStrategy(ValuationStrategy):
 
     @staticmethod
     def _select_revenue_base(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> Tuple[float, str]:
         """

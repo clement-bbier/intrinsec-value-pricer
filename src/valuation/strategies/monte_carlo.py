@@ -34,7 +34,7 @@ from src.exceptions import (
     MonteCarloInstabilityError,
 )
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     ValuationResult,
     TerminalValueMethod,
@@ -68,7 +68,7 @@ VALUATION_ERRORS = (
 
 def _run_stress_test(
     worker: ValuationStrategy,
-    financials: CompanyFinancials,
+    financials: Company,
     params: Parameters,
     final_result: ValuationResult
 ) -> None:
@@ -79,7 +79,7 @@ def _run_stress_test(
     ----------
     worker : ValuationStrategy
         The deterministic engine instance.
-    financials : CompanyFinancials
+    financials : Company
         Target company data.
     params : Parameters
         Calculation hypotheses.
@@ -140,7 +140,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> ValuationResult:
         """
@@ -273,7 +273,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     # PRIVATE STOCHASTIC CORE
     # ==========================================================================
 
-    def _compute_base_wacc(self, financials: CompanyFinancials, params: Parameters) -> float:
+    def _compute_base_wacc(self, financials: Company, params: Parameters) -> float:
         """Calculates reference WACC for clamping logic."""
         try:
             return calculate_wacc(financials, params).wacc
@@ -288,7 +288,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
 
     @staticmethod
     def _generate_samples(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         num_simulations: int,
         base_wacc: float
@@ -331,7 +331,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     def _run_simulations(
         self,
         worker: ValuationStrategy,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         betas: np.ndarray,
         growths: np.ndarray,
@@ -386,7 +386,7 @@ class MonteCarloGenericStrategy(ValuationStrategy):
     def _run_sensitivity_analysis(
         self,
         worker: ValuationStrategy,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         final_result: ValuationResult,
         p50_base: float

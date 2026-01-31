@@ -28,7 +28,7 @@ from src.i18n import (
 )
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     DCFValuationResult,
     ValuationMode
@@ -59,7 +59,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> DCFValuationResult:
         """
@@ -67,7 +67,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -134,7 +134,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
 
     @staticmethod
     def _select_normalized_fcf(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> Tuple[float, str]:
         """

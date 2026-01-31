@@ -28,7 +28,7 @@ from src.exceptions import (
 from src.models import (
     ValuationRequest,
     ValuationMode,
-    CompanyFinancials,
+    Company,
     Parameters,
     ValuationResult
 )
@@ -57,7 +57,7 @@ VALUATION_ERRORS = (
 
 def run_valuation(
     request: ValuationRequest,
-    financials: CompanyFinancials,
+    financials: Company,
     params: Parameters
 ) -> ValuationResult:
     """
@@ -70,7 +70,7 @@ def run_valuation(
     ----------
     request : ValuationRequest
         The formal analyst request specifying mode and ticker.
-    financials : CompanyFinancials
+    financials : Company
         Unified financial data container.
     params : Parameters
         Validated parameters (Rates, Growth, Monte Carlo).
@@ -134,7 +134,7 @@ def run_valuation(
 # ==============================================================================
 
 def run_reverse_dcf(
-    financials: CompanyFinancials,
+    financials: Company,
     params: Parameters,
     market_price: float,
     max_iterations: int = 50
@@ -192,7 +192,7 @@ def _inject_context(result: ValuationResult, request: ValuationRequest) -> None:
 def _apply_triangulation(
     result: ValuationResult,
     request: ValuationRequest,
-    financials: CompanyFinancials,
+    financials: Company,
     params: Parameters
 ) -> None:
     """Handles optional Pillar 5 triangulation via market peer multiples."""

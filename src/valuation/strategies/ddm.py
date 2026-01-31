@@ -29,7 +29,7 @@ from src.i18n import (
 )
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     EquityDCFValuationResult,
     ValuationMode
@@ -60,7 +60,7 @@ class DividendDiscountStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> EquityDCFValuationResult:
         """
@@ -68,7 +68,7 @@ class DividendDiscountStrategy(ValuationStrategy):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -159,7 +159,7 @@ class DividendDiscountStrategy(ValuationStrategy):
 
     @staticmethod
     def _resolve_dividend_base(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> Tuple[float, str]:
         """

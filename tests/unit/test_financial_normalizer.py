@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 from infra.data_providers.financial_normalizer import FinancialDataNormalizer
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
-from src.models import CompanyFinancials, MultiplesData
+from src.models import Company, MultiplesData
 
 
 class TestFinancialNormalizer:
@@ -61,7 +61,7 @@ class TestFinancialNormalizer:
                     result = normalizer.normalize(raw)
 
                     assert result is not None
-                    assert isinstance(result, CompanyFinancials)
+                    assert isinstance(result, Company)
                     assert result.ticker == "AAPL"
                     assert result.name == "Apple Inc."
                     assert result.sector == "Technology"

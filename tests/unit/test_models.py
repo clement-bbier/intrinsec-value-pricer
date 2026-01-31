@@ -11,9 +11,9 @@ class TestCompanyFinancials:
     
     def test_valid_instantiation(self):
         """Instanciation avec données valides."""
-        from src.models import CompanyFinancials
+        from src.models import Company
         
-        f = CompanyFinancials(
+        f = Company(
             ticker="AAPL",
             currency="USD",
             current_price=150.0,
@@ -27,11 +27,11 @@ class TestCompanyFinancials:
     
     def test_negative_price_accepted(self):
         """Prix négatif est accepté par le modèle (pas de validation stricte)."""
-        from src.models import CompanyFinancials
+        from src.models import Company
         
         # Note: Le modèle actuel n'a pas de validation stricte sur current_price
         # Cette validation pourrait être ajoutée dans un sprint futur
-        financials = CompanyFinancials(
+        financials = Company(
             ticker="TEST",
             currency="USD",
             current_price=-10.0,  # Accepté actuellement
@@ -43,9 +43,9 @@ class TestCompanyFinancials:
     
     def test_optional_fields_have_defaults(self):
         """Les champs optionnels ont des valeurs par défaut."""
-        from src.models import CompanyFinancials
+        from src.models import Company
         
-        f = CompanyFinancials(
+        f = Company(
             ticker="TEST",
             currency="USD",
             current_price=100.0,

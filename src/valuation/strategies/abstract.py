@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 from src.exceptions import CalculationError
 from src.models.valuation import ValuationResult
 from src.models.glass_box import CalculationStep, TraceHypothesis, VariableInfo, VariableSource
-from src.models.company import CompanyFinancials
+from src.models.company import Company
 from src.models.parameters import Parameters
 
 # Centralized i18n Mapping
@@ -62,7 +62,7 @@ class ValuationStrategy(ABC):
     @abstractmethod
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> ValuationResult:
         """
@@ -73,7 +73,7 @@ class ValuationStrategy(ABC):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses and configuration.

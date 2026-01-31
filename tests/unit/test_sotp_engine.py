@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 from src.valuation.sotp_engine import run_sotp_valuation
 from src.models import (
-    SOTPParameters, CompanyFinancials, BusinessUnit
+    SOTPParameters, Company, BusinessUnit
 )
 
 class TestSOTPValuation:
@@ -21,7 +21,7 @@ class TestSOTPValuation:
         """Test SOTP désactivé : doit retourner 0.0 et aucune étape."""
         # On utilise l'alias 'enable_sotp' pour garantir l'initialisation Pydantic
         params = SOTPParameters(enable_sotp=False)
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
 
         equity_value, steps = run_sotp_valuation(params, financials)
 
@@ -31,7 +31,7 @@ class TestSOTPValuation:
     def test_run_sotp_no_segments(self):
         """Test SOTP activé mais sans segments : doit retourner 0.0."""
         params = SOTPParameters(enable_sotp=True, segments=[])
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
 
         equity_value, steps = run_sotp_valuation(params, financials)
 
@@ -50,7 +50,7 @@ class TestSOTPValuation:
         params = SOTPParameters(enable_sotp=True, segments=[segment], conglomerate_discount=0.0)
 
         # Mocking des attributs financiers (Bridge)
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
         financials.total_debt = 200.0
         financials.cash_and_equivalents = 50.0
         financials.minority_interests = 10.0
@@ -70,7 +70,7 @@ class TestSOTPValuation:
         ]
         params = SOTPParameters(enable_sotp=True, segments=segments, conglomerate_discount=0.10)
 
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
         financials.total_debt = 0.0
         financials.cash_and_equivalents = 0.0
         financials.minority_interests = 0.0
@@ -91,7 +91,7 @@ class TestSOTPValuation:
         segment = BusinessUnit(name="Unit", enterprise_value=500.0)
         params = SOTPParameters(enable_sotp=True, segments=[segment], conglomerate_discount=0.0)
 
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
         financials.total_debt = 150.0
         financials.cash_and_equivalents = 75.0
         financials.minority_interests = 25.0
@@ -111,7 +111,7 @@ class TestSOTPValuation:
         segment = BusinessUnit(name="Premium", enterprise_value=100.0)
         params = SOTPParameters(enable_sotp=True, segments=[segment], conglomerate_discount=-0.10)
 
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
         financials.total_debt = 20.0
         financials.cash_and_equivalents = 5.0
         financials.minority_interests = 0.0
@@ -128,7 +128,7 @@ class TestSOTPValuation:
         segment = BusinessUnit(name="Test", enterprise_value=1000.0)
         params = SOTPParameters(enable_sotp=True, segments=[segment], conglomerate_discount=0.20)
 
-        financials = MagicMock(spec=CompanyFinancials)
+        financials = MagicMock(spec=Company)
         financials.total_debt = 100.0
         financials.cash_and_equivalents = 0.0
         financials.minority_interests = 0.0

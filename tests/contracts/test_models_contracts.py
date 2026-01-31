@@ -14,7 +14,7 @@ class TestCompanyFinancialsContract:
     
     def test_required_fields_exist(self):
         """Vérifie que les champs obligatoires existent."""
-        from src.models import CompanyFinancials
+        from src.models import Company
         
         # Ces champs DOIVENT exister et être obligatoires
         required_fields = [
@@ -24,7 +24,7 @@ class TestCompanyFinancialsContract:
             "shares_outstanding",
         ]
         
-        schema = CompanyFinancials.model_json_schema()
+        schema = Company.model_json_schema()
         properties = schema.get("properties", {})
         
         for field in required_fields:
@@ -32,10 +32,10 @@ class TestCompanyFinancialsContract:
     
     def test_minimal_instantiation(self):
         """Vérifie qu'on peut créer une instance avec les champs minimaux."""
-        from src.models import CompanyFinancials
+        from src.models import Company
         
         # Doit fonctionner avec les champs minimaux
-        financials = CompanyFinancials(
+        financials = Company(
             ticker="TEST",
             currency="USD",
             current_price=100.0,

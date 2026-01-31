@@ -25,7 +25,7 @@ from app.workflow import (
 from src.models import (
     ValuationRequest, ValuationMode, InputSource,
     ValuationResult, Parameters, ScenarioSynthesis,
-    ScenarioResult, BacktestResult, HistoricalPoint, CompanyFinancials
+    ScenarioResult, BacktestResult, HistoricalPoint, Company
 )
 from src.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
 from src.exceptions import ValuationException
@@ -46,7 +46,7 @@ def base_request():
 @pytest.fixture
 def mock_financials():
     """Minimal CompanyFinancials for logic tests."""
-    return CompanyFinancials(
+    return Company(
         ticker="AAPL", currency="USD", current_price=150.0, shares_outstanding=1e9
     )
 

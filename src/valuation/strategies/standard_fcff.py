@@ -15,7 +15,7 @@ import logging
 from typing import Tuple
 
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, Parameters, DCFValuationResult, ValuationMode
+from src.models import Company, Parameters, DCFValuationResult, ValuationMode
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.flow_projector import SimpleFlowProjector
@@ -46,7 +46,7 @@ class StandardFCFFStrategy(ValuationStrategy):
 
     def execute(
             self,
-            financials: CompanyFinancials,
+            financials: Company,
             params: Parameters
     ) -> DCFValuationResult:
         """
@@ -102,7 +102,7 @@ class StandardFCFFStrategy(ValuationStrategy):
 
     @staticmethod
     def _select_base_fcf(
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> Tuple[float, str]:
         """

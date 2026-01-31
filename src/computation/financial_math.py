@@ -17,7 +17,7 @@ from dataclasses import dataclass
 # DT-001/002: Internal i18n imports for UI-facing error messages
 from src.i18n import CalculationErrors, StrategySources
 from src.exceptions import CalculationError
-from src.models import CompanyFinancials, Parameters
+from src.models import Company, Parameters
 from src.config.constants import ValuationEngineDefaults, TechnicalDefaults, MacroDefaults
 
 logger = logging.getLogger(__name__)
@@ -377,13 +377,13 @@ def relever_beta(beta_unlevered: float, tax_rate: float, target_debt_equity_rati
         return beta_unlevered
     return beta_unlevered * (1.0 + (1.0 - tax_rate) * target_debt_equity_ratio)
 
-def calculate_cost_of_equity(financials: CompanyFinancials, params: Parameters) -> float:
+def calculate_cost_of_equity(financials: Company, params: Parameters) -> float:
     r"""
     Calculates Ke for Direct Equity approaches, prioritizing manual overrides.
 
     Parameters
     ----------
-    financials : CompanyFinancials
+    financials : Company
         Company historical data.
     params : Parameters
         User-defined or automated parameters.
@@ -437,7 +437,7 @@ def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float],
             return rf + spread
     return rf + 0.1900
 
-def calculate_wacc(financials: CompanyFinancials, params: Parameters) -> WACCBreakdown:
+def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     r"""
     Computes the Weighted Average Cost of Capital (WACC).
 
@@ -445,7 +445,7 @@ def calculate_wacc(financials: CompanyFinancials, params: Parameters) -> WACCBre
 
     Parameters
     ----------
-    financials : CompanyFinancials
+    financials : Company
         Financial snapshots.
     params : Parameters
         Projection parameters.

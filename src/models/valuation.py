@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from .enums import ValuationMode, InputSource
-from .company import CompanyFinancials
+from .company import Company
 from .parameters import Parameters, ScenarioSynthesis, SOTPParameters
 from .glass_box import CalculationStep
 from .audit import AuditReport, ValuationOutputContract
@@ -91,7 +91,7 @@ class ValuationResult(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     request: Optional[ValuationRequest] = None
-    financials: CompanyFinancials
+    financials: Company
     params: Parameters
     intrinsic_value_per_share: float
     market_price: float

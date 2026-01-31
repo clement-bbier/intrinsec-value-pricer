@@ -36,7 +36,7 @@ from src.i18n import (
 )
 from src.models import (
     CalculationStep,
-    CompanyFinancials,
+    Company,
     Parameters,
     DCFValuationResult,
     EquityDCFValuationResult,
@@ -236,7 +236,7 @@ class DCFCalculationPipeline:
     def run(
         self,
         base_value: float,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         wacc_override: Optional[float] = None
     ) -> ValuationResult:
@@ -247,7 +247,7 @@ class DCFCalculationPipeline:
         ----------
         base_value : float
             Anchor flow value (FCF, Dividend, or Revenue).
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses (rates, growth, dilution).
@@ -338,7 +338,7 @@ class DCFCalculationPipeline:
 
     def _resolve_discount_rate(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         is_equity: bool,
         override: Optional[float]
@@ -348,7 +348,7 @@ class DCFCalculationPipeline:
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -489,7 +489,7 @@ class DCFCalculationPipeline:
         self,
         equity_val: float,
         shares: float,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> float:
         """
@@ -501,7 +501,7 @@ class DCFCalculationPipeline:
             Total equity value.
         shares : float
             Number of shares outstanding.
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -681,7 +681,7 @@ class DCFCalculationPipeline:
     def _add_projection_step(
         self,
         output: ProjectionOutput,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> None:
         """
@@ -694,7 +694,7 @@ class DCFCalculationPipeline:
         ----------
         output : ProjectionOutput
             Output from the flow projector containing flows and trace info.
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -928,7 +928,7 @@ class DCFCalculationPipeline:
     def _compute_bridge_by_level(
         self,
         val: float,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters,
         is_equity: bool
     ) -> Tuple[float, float]:
@@ -939,7 +939,7 @@ class DCFCalculationPipeline:
         ----------
         val : float
             Enterprise value or equity value.
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         params : Parameters
             Calculation hypotheses.
@@ -1062,7 +1062,7 @@ class DCFCalculationPipeline:
 
     @staticmethod
     def _extract_audit_metrics(
-        financials: CompanyFinancials,
+        financials: Company,
         pv_tv: float,
         ev: float
     ) -> Dict[str, Optional[float]]:
@@ -1071,7 +1071,7 @@ class DCFCalculationPipeline:
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financial data.
         pv_tv : float
             Present value of terminal value.

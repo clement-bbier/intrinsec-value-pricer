@@ -42,7 +42,7 @@ from src.models import (
     AuditPillarScore,
     AuditSeverity,
     AuditStep,
-    CompanyFinancials,
+    Company,
     ValuationResult,
 )
 
@@ -283,13 +283,13 @@ class BaseAuditor(IValuationAuditor, ABC):
         return max(0.0, score), len(self._audit_steps) - initial_count
 
     @staticmethod
-    def _calculate_data_age_months(financials: CompanyFinancials) -> int:
+    def _calculate_data_age_months(financials: Company) -> int:
         """
         Calculates the age of financial data in months.
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Financial data object with optional last_updated attribute.
 
         Returns
@@ -427,13 +427,13 @@ class DCFAuditor(BaseAuditor):
         return max(0.0, score), len(self._audit_steps) - initial_count
 
     @staticmethod
-    def _calculate_icr(financials: CompanyFinancials) -> float:
+    def _calculate_icr(financials: Company) -> float:
         """
         Calculates Interest Coverage Ratio safely.
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Financial data with EBIT and interest expense.
 
         Returns
@@ -451,7 +451,7 @@ class DCFAuditor(BaseAuditor):
 
     @staticmethod
     def _calculate_reinvestment_ratio(
-        financials: CompanyFinancials
+        financials: Company
     ) -> Optional[float]:
         """
         Calculates CapEx to Depreciation & Amortization ratio.
@@ -460,7 +460,7 @@ class DCFAuditor(BaseAuditor):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Financial data with capex and depreciation_and_amortization.
 
         Returns
@@ -528,13 +528,13 @@ class DDMAuditor(DCFAuditor):
         return max(0.0, score), count + additional_checks
 
     @staticmethod
-    def _calculate_payout_ratio(financials: CompanyFinancials) -> Optional[float]:
+    def _calculate_payout_ratio(financials: Company) -> Optional[float]:
         """
         Calculates dividend payout ratio.
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Financial data with dividends and net income.
 
         Returns

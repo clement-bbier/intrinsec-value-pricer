@@ -34,7 +34,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from src.models import (
     ValuationMode,
-    CompanyFinancials,
+    Company,
     Parameters,
     GrowthParameters,
     CoreRateParameters,
@@ -208,9 +208,9 @@ class TestGoldenDatasetConfiguration:
 
 
 class TestGoldenDatasetValuation:
-    def get_mock_financials(self, ticker: str) -> CompanyFinancials:
+    def get_mock_financials(self, ticker: str) -> Company:
         """Génère un objet financier ultra-complet pour satisfaire TOUS les modèles."""
-        return CompanyFinancials(
+        return Company(
             ticker=ticker,
             current_price=150.0,
             shares_outstanding=1_000_000,

@@ -29,7 +29,7 @@ from src.computation.financial_math import (
 )
 from src.exceptions import ExternalServiceError, TickerNotFoundError
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     CoreRateParameters,
     GrowthParameters,
@@ -95,7 +95,7 @@ class YahooFinanceProvider(DataProvider):
     # =========================================================================
 
     @st.cache_data(ttl=3600, show_spinner=False)
-    def get_company_financials(_self, ticker: str) -> CompanyFinancials:
+    def get_company_financials(_self, ticker: str) -> Company:
         """Fetches and normalizes core financial data for the target entity."""
         normalized_ticker = ticker.upper().strip()
         return _self._fetch_financials_with_fallback(normalized_ticker)
@@ -158,7 +158,7 @@ class YahooFinanceProvider(DataProvider):
             self,
             ticker: str,
             projection_years: int
-    ) -> Tuple[CompanyFinancials, Parameters]:
+    ) -> Tuple[Company, Parameters]:
         """
         Automated Workflow: High-level orchestration for Pillar 1 (Configuration).
         Combines fundamental financials with dynamic macro-economic rate resolution.
@@ -270,7 +270,7 @@ class YahooFinanceProvider(DataProvider):
         except (ValueError, AttributeError):
             return 0.03
 
-    def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> CompanyFinancials:
+    def _fetch_financials_with_fallback(self, ticker: str, _attempt: int = 0) -> Company:
         """Executes fetching with automatic market-suffix retry (.PA, .L, etc.)."""
         try:
             result = self._fetch_and_normalize(ticker)
@@ -284,12 +284,12 @@ class YahooFinanceProvider(DataProvider):
         except (RuntimeError, ValueError) as e:
             raise ExternalServiceError(provider="Yahoo Finance", error_detail=str(e)) from e
 
-    def _fetch_and_normalize(self, ticker: str) -> Optional[CompanyFinancials]:
+    def _fetch_and_normalize(self, ticker: str) -> Optional[Company]:
         """Core execution pipeline: Acquisition -> Normalization."""
         self.last_raw_data = self.fetcher.fetch_historical_deep(ticker)
         return self.normalizer.normalize(self.last_raw_data)
 
-    def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> CompanyFinancials:
+    def _attempt_market_suffix_fallback(self, original_ticker: str, current_attempt: int) -> Company:
         """Handles European stock symbols by attempting automatic suffix injection."""
         if current_attempt >= self.MAX_RETRY_ATTEMPTS or any(original_ticker.upper().endswith(s) for s in self.MARKET_SUFFIXES):
             raise TickerNotFoundError(ticker=original_ticker)
@@ -304,7 +304,7 @@ class YahooFinanceProvider(DataProvider):
             pass
         raise TickerNotFoundError(ticker=original_ticker)
 
-    def _fetch_macro_context(self, financials: CompanyFinancials) -> MacroContext:
+    def _fetch_macro_context(self, financials: Company) -> MacroContext:
         """Retrieves country-specific macro parameters (Rf, MRP, Inflation)."""
         try:
             return self.macro_provider.get_macro_context(
@@ -325,6 +325,6 @@ class YahooFinanceProvider(DataProvider):
                 corporate_aaa_yield=float(country_data["risk_free_rate"] + 0.01)
             )
 
-    def map_raw_to_financials(self, raw: RawFinancialData) -> Optional[CompanyFinancials]:
+    def map_raw_to_financials(self, raw: RawFinancialData) -> Optional[Company]:
         """Facade for normalization, used primarily in Backtesting temporal loops."""
         return self.normalizer.normalize(raw)

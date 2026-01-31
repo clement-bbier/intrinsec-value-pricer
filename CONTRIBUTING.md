@@ -59,7 +59,7 @@ from src.computation.financial_math import calculate_wacc
 
 # ✅ CORRECT dans app/ : Import depuis src/
 from src.valuation.engines import run_valuation
-from src.models import CompanyFinancials
+from src.models import Company
 ```
 
 ### Inversion de Dépendances (Pattern DIP)

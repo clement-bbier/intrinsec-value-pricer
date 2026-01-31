@@ -17,7 +17,7 @@ from typing import Tuple, List, Optional
 
 import pandas as pd
 
-from src.models import CompanyFinancials, Parameters, MultiplesData
+from src.models import Company, Parameters, MultiplesData
 
 
 class DataProvider(ABC):
@@ -29,7 +29,7 @@ class DataProvider(ABC):
     """
 
     @abstractmethod
-    def get_company_financials(self, ticker: str) -> CompanyFinancials:
+    def get_company_financials(self, ticker: str) -> Company:
         """
         Retrieves current financial snapshot (Balance Sheet, Income Stmt, Cash Flow)
         for a specific entity.
@@ -41,7 +41,7 @@ class DataProvider(ABC):
 
         Returns
         -------
-        CompanyFinancials
+        Company
             Mapped and cleaned financial data structure.
         """
         raise NotImplementedError
@@ -91,7 +91,7 @@ class DataProvider(ABC):
         self,
         ticker: str,
         projection_years: int
-    ) -> Tuple[CompanyFinancials, Parameters]:
+    ) -> Tuple[Company, Parameters]:
         """
         'All-in-one' method for Automated Mode workflow.
         Fetches fundamental data and resolves localized macro/risk parameters.
@@ -105,7 +105,7 @@ class DataProvider(ABC):
 
         Returns
         -------
-        Tuple[CompanyFinancials, Parameters]
+        Tuple[Company, Parameters]
             The baseline data required to launch a valuation request.
         """
         raise NotImplementedError

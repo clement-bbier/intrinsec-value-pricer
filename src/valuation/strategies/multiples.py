@@ -23,7 +23,7 @@ from typing import Dict
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.utilities.formatting import format_smart_number
 from src.models import (
-    CompanyFinancials,
+    Company,
     Parameters,
     MultiplesValuationResult,
     MultiplesData,
@@ -78,7 +78,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
 
     def execute(
         self,
-        financials: CompanyFinancials,
+        financials: Company,
         params: Parameters
     ) -> MultiplesValuationResult:
         """
@@ -86,7 +86,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
 
         Parameters
         ----------
-        financials : CompanyFinancials
+        financials : Company
             Target company financials (TTM).
         params : Parameters
             Global parameters (used for reporting and audit context).
@@ -154,7 +154,7 @@ class MarketMultiplesStrategy(ValuationStrategy):
         self.verify_output_contract(result)
         return result
 
-    def _record_steps(self, f: CompanyFinancials, m: MultiplesData,
+    def _record_steps(self, f: Company, m: MultiplesData,
                       signals: Dict[str, float], final_iv: float) -> None:
         """
         Records the mathematical steps with full variable provenance.

@@ -43,7 +43,7 @@ from .glass_box import (
 
 # Donnees Entreprise
 from .company import (
-    CompanyFinancials,
+    Company,
 )
 
 # Parametres DCF
@@ -114,7 +114,7 @@ __all__ = [
     "BusinessUnit",
     "SOTPParameters",
     # Company
-    "CompanyFinancials",
+    "Company",
     # DCF Inputs
     "CoreRateParameters",
     "GrowthParameters",
