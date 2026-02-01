@@ -24,10 +24,8 @@ from src.config.constants import ModelDefaults
 class VariableSource(str, Enum):
     """
     Source of a variable used in a calculation.
-
     Categorizes the origin of data points to drive audit confidence scoring.
     """
-
     YAHOO_FINANCE = "Yahoo Finance"
     MANUAL_OVERRIDE = "Surcharge Expert"
     CALCULATED = "Calculé"
@@ -160,45 +158,3 @@ class CalculationStep(BaseModel):
     def has_overrides(self) -> bool:
         """Determines if any component of this step was manually overridden."""
         return any(v.is_overridden for v in self.variables_map.values())
-
-
-class AuditStep(BaseModel):
-    """
-    Audit Check Step with Verdict.
-
-    Represents a single consistency or risk verification performed
-    by the Audit Engine.
-
-    Attributes
-    ----------
-    step_id : int, default=ModelDefaults.DEFAULT_STEP_ID
-        Sequential order of the check.
-    step_key : str, default=""
-        Unique identifier for the audit check.
-    label : str, default=""
-        Human-readable title of the check.
-    rule_formula : str, default=""
-        The business rule formula (LaTeX or text).
-    indicator_value : Union[float, str], default=ModelDefaults.DEFAULT_INDICATOR_VALUE
-        The observed value of the KPI being tested.
-    threshold_value : Union[float, str, None]
-        The limit or benchmark for the check.
-    severity : AuditSeverity, default=AuditSeverity.INFO
-        Classification of the risk (CRITICAL, WARNING, etc.).
-    verdict : bool, default=True
-        Result of the validation (True = PASS).
-    evidence : str, default=""
-        Justification or detailed finding for the verdict.
-    description : str, default=""
-        Detailed background on the audit check.
-    """
-    step_id: int = ModelDefaults.DEFAULT_STEP_ID
-    step_key: str = ""
-    label: str = ""
-    rule_formula: str = ""
-    indicator_value: Union[float, str] = ModelDefaults.DEFAULT_INDICATOR_VALUE
-    threshold_value: Union[float, str, None] = None
-    severity: AuditSeverity = AuditSeverity.INFO
-    verdict: bool = True
-    evidence: str = ""
-    description: str = ""

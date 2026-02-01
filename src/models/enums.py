@@ -66,7 +66,7 @@ class TerminalValueMethod(str, Enum):
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
 
-class InputSource(str, Enum):
+class ParametersSource(str, Enum):
     """
     Source of the calculation parameters.
     Used to drive audit weighting and data lineage tracking.

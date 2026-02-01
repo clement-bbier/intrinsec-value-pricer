@@ -17,7 +17,7 @@ Tous les modeles sont re-exportes ici pour la compatibilite.
 from .enums import (
     # Enumerations
     ValuationMode,
-    InputSource,
+    ParametersSource,
     TerminalValueMethod,
     AuditSeverity,
     SOTPMethod,
@@ -87,7 +87,7 @@ from .valuation import (
 __all__ = [
     # Enums
     "ValuationMode",
-    "InputSource",
+    "ParametersSource",
     "TerminalValueMethod",
     "AuditSeverity",
     "SOTPMethod",
