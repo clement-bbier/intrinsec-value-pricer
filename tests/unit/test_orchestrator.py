@@ -453,12 +453,12 @@ class TestTabFiltering:
 
     def test_filter_relevant_tabs_graham_excludes_market(self, mock_streamlit, mock_valuation_result):
         """Test Graham mode excludes MarketAnalysisTab (Fixed visibility override)."""
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
         from app.ui.results.orchestrator import ResultTabOrchestrator
 
         with patch('app.ui.results.orchestrator.st', mock_streamlit):
             # 1. Setup : Mode Graham
-            mock_valuation_result.request.mode = ValuationMode.GRAHAM
+            mock_valuation_result.request.mode = ValuationMethodology.GRAHAM
 
             orchestrator = ResultTabOrchestrator()
 

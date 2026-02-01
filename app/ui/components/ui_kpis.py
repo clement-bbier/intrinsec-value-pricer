@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Optional, Literal
 import streamlit as st
 
-from src.models import AuditStep, AuditSeverity
+from src.models import AuditStep, DiagnosticLevel
 from src.i18n import AuditTexts
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 
@@ -44,7 +44,7 @@ def atom_audit_card(step: AuditStep) -> None:
     if step.verdict:
         color, status = "green", AuditTexts.STATUS_OK
     else:
-        color = "red" if step.severity == AuditSeverity.CRITICAL else "orange"
+        color = "red" if step.severity == DiagnosticLevel.CRITICAL else "orange"
         status = AuditTexts.STATUS_ALERT
 
     with st.container(border=True):

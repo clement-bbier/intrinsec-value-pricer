@@ -27,7 +27,7 @@ import pandas as pd
 
 from src.models import (
     Parameters,
-    ValuationMode,
+    ValuationMethodology,
     TerminalValueMethod,
     ScenarioParameters,
     ScenarioVariant,
@@ -131,7 +131,7 @@ def widget_growth_rate(
 # ==============================================================================
 
 def widget_cost_of_capital(
-    mode: ValuationMode,
+    mode: ValuationMethodology,
     key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -142,7 +142,7 @@ def widget_cost_of_capital(
 
     Parameters
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         Current valuation mode (determines WACC vs Ke display).
     key_prefix : str, optional
         Prefix for session state keys.
@@ -373,7 +373,7 @@ def widget_terminal_value_rim(
 @st.fragment
 def widget_equity_bridge(
     formula_latex: str,
-    mode: ValuationMode,
+    mode: ValuationMethodology,
     key_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -383,7 +383,7 @@ def widget_equity_bridge(
     ----------
     formula_latex : str
         LaTeX formula for the equity bridge.
-    mode : ValuationMode
+    mode : ValuationMethodology
         Current valuation mode.
     key_prefix : str, optional
         Prefix for session state keys.
@@ -448,7 +448,7 @@ def widget_equity_bridge(
 # ==============================================================================
 
 def widget_monte_carlo(
-    mode: ValuationMode,
+    mode: ValuationMethodology,
     terminal_method: Optional[TerminalValueMethod] = None,
     custom_vols: Optional[Dict[str, str]] = None,
     key_prefix: Optional[str] = None
@@ -458,7 +458,7 @@ def widget_monte_carlo(
 
     Parameters
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         Current valuation mode for label customization.
     terminal_method : TerminalValueMethod, optional
         Terminal value method for exit multiple volatility.
@@ -500,11 +500,11 @@ def widget_monte_carlo(
     # Determine base flow volatility label
     if custom_vols and "base_flow_volatility" in custom_vols:
         label_base = custom_vols["base_flow_volatility"]
-    elif mode == ValuationMode.GRAHAM:
+    elif mode == ValuationMethodology.GRAHAM:
         label_base = SharedTexts.MC_VOL_EPS
-    elif mode == ValuationMode.RIM:
+    elif mode == ValuationMethodology.RIM:
         label_base = SharedTexts.MC_VOL_NI
-    elif mode == ValuationMode.DDM:
+    elif mode == ValuationMethodology.DDM:
         label_base = SharedTexts.MC_VOL_DIV
     else:
         label_base = SharedTexts.MC_VOL_BASE_FLOW
@@ -525,7 +525,7 @@ def widget_monte_carlo(
         label_growth = custom_vols["growth_volatility"]
     else:
         label_growth = (
-            SharedTexts.LBL_VOL_OMEGA if mode == ValuationMode.RIM
+            SharedTexts.LBL_VOL_OMEGA if mode == ValuationMethodology.RIM
             else SharedTexts.MC_VOL_G
         )
 
@@ -539,7 +539,7 @@ def widget_monte_carlo(
     )
 
     v_beta = None
-    if mode != ValuationMode.GRAHAM:
+    if mode != ValuationMethodology.GRAHAM:
         v_beta = v_col2.number_input(
             SharedTexts.MC_VOL_BETA,
             min_value=0.0,
@@ -657,7 +657,7 @@ def widget_peer_triangulation(key_prefix: Optional[str] = None) -> Dict[str, Any
 # ==============================================================================
 
 def widget_scenarios(
-    mode: ValuationMode,
+    mode: ValuationMethodology,
     key_prefix: Optional[str] = None
 ) -> ScenarioParameters:
     """
@@ -665,7 +665,7 @@ def widget_scenarios(
 
     Parameters
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         Current valuation mode.
     key_prefix : str, optional
         Prefix for session state keys.
@@ -683,7 +683,7 @@ def widget_scenarios(
     if not st.toggle(SharedTexts.INP_SCENARIO_ENABLE, False, key=f"{prefix}_enable"):
         return ScenarioParameters(enable_scenario=False)
 
-    show_margin = (mode == ValuationMode.FCFF_GROWTH)
+    show_margin = (mode == ValuationMethodology.FCFF_GROWTH)
 
     def _render_variant(label: str, case_id: str, default_p: float):
         """Renders a single scenario variant row."""

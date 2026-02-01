@@ -10,7 +10,7 @@ Architecture: Institutional FactSheet reactive to the selected valuation model.
 from typing import Any
 import streamlit as st
 
-from src.models import ValuationResult, ValuationMode
+from src.models import ValuationResult, ValuationMethodology
 from src.i18n import (
     KPITexts,
     DDMTexts,
@@ -83,7 +83,7 @@ class InputsSummaryTab(ResultTabBase):
             st.divider()
 
             # Responsive logic for Cash/Distribution section
-            if mode == ValuationMode.DDM:
+            if mode == ValuationMethodology.DDM:
                 st.caption(RegistryTexts.DDM_GROWTH_L)
                 c1, c2, c3 = st.columns(3)
                 div_total = f.dividend_share * f.shares_outstanding if f.dividend_share else 0
@@ -128,7 +128,7 @@ class InputsSummaryTab(ResultTabBase):
                 self._render_kv(KPITexts.LABEL_BETA, f"{p.rates.manual_beta or f.beta:.2f}")
                 self._render_kv(KPITexts.LABEL_MRP, f"{p.rates.market_risk_premium:.2%}")
 
-                if mode == ValuationMode.GRAHAM:
+                if mode == ValuationMethodology.GRAHAM:
                     self._render_kv(KPITexts.LABEL_AAA_YIELD, f"{p.growth.exit_multiple_value:.2%}")
 
             with c2:
@@ -136,7 +136,7 @@ class InputsSummaryTab(ResultTabBase):
                 self._render_kv(KPITexts.LABEL_G, f"{p.growth.fcf_growth_rate:.2%}")
                 self._render_kv(KPITexts.LABEL_GN, f"{p.growth.perpetual_growth_rate:.2%}")
 
-                if mode == ValuationMode.RIM:
+                if mode == ValuationMethodology.RIM:
                     self._render_kv(KPITexts.LABEL_OMEGA, f"{p.growth.exit_multiple_value:.2f}")
 
                 # SBC Dilution (Neutral rendering)

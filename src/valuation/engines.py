@@ -27,7 +27,7 @@ from src.exceptions import (
 )
 from src.models import (
     ValuationRequest,
-    ValuationMode,
+    ValuationMethodology,
     Company,
     Parameters,
     ValuationResult
@@ -222,7 +222,7 @@ def _log_final_status(request: ValuationRequest, result: ValuationResult) -> Non
         upside=result.upside_pct
     )
 
-def _raise_unknown_strategy(mode: ValuationMode) -> ValuationException:
+def _raise_unknown_strategy(mode: ValuationMethodology) -> ValuationException:
     return ValuationException(DiagnosticEvent(
         code="UNKNOWN_STRATEGY",
         severity=SeverityLevel.CRITICAL,
@@ -250,7 +250,7 @@ def _handle_system_crash(e: Exception) -> ValuationException:
         remediation_hint=DiagnosticTexts.STRATEGY_CRASH_HINT
     ))
 
-def _build_legacy_registry() -> Dict[ValuationMode, Type[ValuationStrategy]]:
+def _build_legacy_registry() -> Dict[ValuationMethodology, Type[ValuationStrategy]]:
     """
     Builds the correspondence table for backward compatibility.
     Required for unit tests.

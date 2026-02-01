@@ -15,9 +15,9 @@ import logging
 from typing import Dict, Any, List, cast, Optional
 
 from src.models import (
-    ValuationResult, ValuationMode, AuditReport, AuditLog,
-    AuditPillar, AuditPillarScore, AuditScoreBreakdown, InputSource,
-    AuditStep, AuditSeverity
+    ValuationResult, ValuationMethodology, AuditReport, AuditLog,
+    AuditPillar, AuditPillarScore, AuditScoreBreakdown, ParametersSource,
+    AuditStep, DiagnosticLevel
 )
 from src.i18n import (
     AuditEngineTexts,
@@ -32,7 +32,7 @@ class AuditorFactory:
     """Factory for routing specialized auditors based on valuation mode."""
 
     @staticmethod
-    def get_auditor(mode: ValuationMode) -> Any:
+    def get_auditor(mode: ValuationMethodology) -> Any:
         """Retrieves the specific auditor implementation from the registry."""
         from src.valuation.registry import get_auditor
         return get_auditor(mode)
@@ -105,7 +105,7 @@ class AuditEngine:
                     total_score=final_score
                 ),
                 block_monte_carlo=AuditEngine._should_block_mc(final_score, all_steps),
-                critical_warning=any(s.severity == AuditSeverity.CRITICAL and not s.verdict for s in all_steps)
+                critical_warning=any(s.severity == DiagnosticLevel.CRITICAL and not s.verdict for s in all_steps)
             )
 
         except Exception as e:
@@ -135,9 +135,9 @@ class AuditEngine:
         return steps
 
     @staticmethod
-    def _aggregate_pillars(raw_pillars: Dict[AuditPillar, AuditPillarScore], source: InputSource) -> Dict[str, Any]:
+    def _aggregate_pillars(raw_pillars: Dict[AuditPillar, AuditPillarScore], source: ParametersSource) -> Dict[str, Any]:
         """Calculates weighted contributions per pillar."""
-        weights = MODE_WEIGHTS.get(source, MODE_WEIGHTS[InputSource.AUTO])
+        weights = MODE_WEIGHTS.get(source, MODE_WEIGHTS[ParametersSource.AUTO])
         weighted_pillars = {}
         total_score, total_checks = 0.0, 0
 
@@ -167,7 +167,7 @@ class AuditEngine:
                 step_key="SBC_DILUTION_CHECK",
                 label=AuditTexts.LBL_SOTP_DISCOUNT_CHECK, # Reusing SOTP label logic if specific SBC label missing
                 verdict=False,
-                severity=AuditSeverity.WARNING,
+                severity=DiagnosticLevel.WARNING,
                 indicator_value=f"{dilution:.2%}",
                 evidence=raw_msg.format(sector=sector)
             ))
@@ -187,7 +187,7 @@ class AuditEngine:
                 step_key="SOTP_REVENUE_CHECK",
                 label=AuditTexts.LBL_SOTP_REVENUE_CHECK,
                 verdict=gap < AuditThresholds.SOTP_REVENUE_GAP_WARNING,
-                severity=AuditSeverity.WARNING if gap < AuditThresholds.SOTP_REVENUE_GAP_ERROR else AuditSeverity.CRITICAL,
+                severity=DiagnosticLevel.WARNING if gap < AuditThresholds.SOTP_REVENUE_GAP_ERROR else DiagnosticLevel.CRITICAL,
                 indicator_value=f"{gap:.1%}",
                 evidence=AuditMessages.SOTP_REVENUE_MISMATCH.format(gap=gap)
             ))
@@ -210,7 +210,7 @@ class AuditEngine:
     @staticmethod
     def _should_block_mc(score: float, steps: List[AuditStep]) -> bool:
         """Determines if Monte Carlo should be disabled due to low data quality."""
-        return score <= 0 or any(s.severity == AuditSeverity.CRITICAL and not s.verdict for s in steps)
+        return score <= 0 or any(s.severity == DiagnosticLevel.CRITICAL and not s.verdict for s in steps)
 
     @staticmethod
     def _get_max_checks(result: ValuationResult, auditor: Any) -> int:
@@ -234,18 +234,18 @@ class AuditEngine:
         """Generates a critical failure report."""
         return AuditReport(
             global_score=0.0, rating="C", audit_depth=0,
-            audit_mode=InputSource.SYSTEM, audit_coverage=0.0,
+            audit_mode=ParametersSource.SYSTEM, audit_coverage=0.0,
             logs=[AuditLog(category="SYSTEM", severity="CRITICAL", message=f"ERR: {error}", penalty=0)],
             pillar_breakdown=None, block_monte_carlo=True, critical_warning=True
         )
 
 # --- CONFIGURATION INITIALIZATION ---
 
-def _build_mode_weights() -> Dict[InputSource, Dict[AuditPillar, float]]:
+def _build_mode_weights() -> Dict[ParametersSource, Dict[AuditPillar, float]]:
     """Initializes weight maps from constants."""
     return {
         src: {getattr(AuditPillar, k): v for k, v in getattr(AuditWeights, src.name).items()}
-        for src in [InputSource.AUTO, InputSource.MANUAL]
+        for src in [ParametersSource.AUTO, ParametersSource.MANUAL]
     }
 
 MODE_WEIGHTS = _build_mode_weights()

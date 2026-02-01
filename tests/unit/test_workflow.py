@@ -23,7 +23,7 @@ from app.workflow import (
     _create_crash_diagnostic
 )
 from src.models import (
-    ValuationRequest, ValuationMode, InputSource,
+    ValuationRequest, ValuationMethodology, ParametersSource,
     ValuationResult, Parameters, ScenarioSynthesis,
     ScenarioResult, BacktestResult, HistoricalPoint, Company
 )
@@ -38,8 +38,8 @@ def base_request():
     return ValuationRequest(
         ticker="AAPL",
         projection_years=5,
-        mode=ValuationMode.FCFF_STANDARD,
-        input_source=InputSource.AUTO,
+        mode=ValuationMethodology.FCFF_STANDARD,
+        input_source=ParametersSource.AUTO,
         options={"enable_backtest": False}
     )
 
@@ -107,8 +107,8 @@ class TestSmartMergeLogic:
         # Instantiate real request to avoid ValidationError on projection_years
         request = ValuationRequest(
             ticker="TEST", projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
             manual_params=manual_params
         )
 

@@ -26,8 +26,8 @@ from typing import Optional, Dict, Any, List, Set
 import streamlit as st
 
 from src.models import (
-    InputSource,
-    ValuationMode,
+    ParametersSource,
+    ValuationMethodology,
     ValuationRequest,
     ScenarioParameters,
     TerminalValueMethod,
@@ -142,7 +142,7 @@ _ABSOLUTE_FIELDS.update({
     "scenario_p_bull", "scenario_p_base", "scenario_p_bear"
 })
 
-for mode in ValuationMode:
+for mode in ValuationMethodology:
     prefix = mode.name
     _PERCENTAGE_FIELDS.update({
         f"{prefix}_rf", f"{prefix}_mrp", f"{prefix}_kd",
@@ -174,7 +174,7 @@ class ExpertTerminalBase(ABC):
 
     Attributes
     ----------
-    MODE : ValuationMode
+    MODE : ValuationMethodology
         The valuation methodology this terminal implements.
     DISPLAY_NAME : str
         Human-readable name shown in the UI header.
@@ -185,7 +185,7 @@ class ExpertTerminalBase(ABC):
     """
 
     # --- Default Configuration (Overridden by concrete terminals) ---
-    MODE: ValuationMode = None
+    MODE: ValuationMethodology = None
     DISPLAY_NAME: str = "Expert Terminal"
     DESCRIPTION: str = ""
     ICON: str = ""
@@ -249,7 +249,7 @@ class ExpertTerminalBase(ABC):
 
         # 4. EXIT VALUE STEP (Terminal Value / Horizon)
         if self.SHOW_TERMINAL_SECTION:
-            if self.MODE == ValuationMode.RIM:
+            if self.MODE == ValuationMethodology.RIM:
                 from app.ui.expert.terminals.shared_widgets import widget_terminal_value_rim
                 self._collected_data.update(widget_terminal_value_rim(
                     formula_latex=SharedTexts.FORMULA_TV_RIM,
@@ -371,20 +371,20 @@ class ExpertTerminalBase(ABC):
         """
         # 1. Cash Flow models: focus on growth volatility (g)
         if self.MODE in [
-            ValuationMode.FCFF_STANDARD,
-            ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.FCFF_GROWTH,
-            ValuationMode.FCFE,
-            ValuationMode.DDM
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_NORMALIZED,
+            ValuationMethodology.FCFF_GROWTH,
+            ValuationMethodology.FCFE,
+            ValuationMethodology.DDM
         ]:
             return {"growth_volatility": SharedTexts.MC_VOL_G}
 
         # 2. RIM Model: focus on residual income persistence (omega)
-        if self.MODE == ValuationMode.RIM:
+        if self.MODE == ValuationMethodology.RIM:
             return {"terminal_growth_volatility": SharedTexts.LBL_VOL_OMEGA}
 
         # 3. Graham Model: focus on Earnings Per Share (EPS) uncertainty
-        if self.MODE == ValuationMode.GRAHAM:
+        if self.MODE == ValuationMethodology.GRAHAM:
             return {
                 "base_flow_volatility": SharedTexts.MC_VOL_BASE_FLOW,
                 "growth_volatility": SharedTexts.MC_VOL_G
@@ -605,7 +605,7 @@ class ExpertTerminalBase(ABC):
             ticker=self.ticker,
             mode=self.MODE,
             projection_years=proj_years,
-            input_source=InputSource.MANUAL,
+            input_source=ParametersSource.MANUAL,
             manual_params=params,
             options=self._build_options(final_normalized_data)
         )

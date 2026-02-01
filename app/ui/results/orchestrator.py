@@ -18,7 +18,7 @@ from typing import List, Any, Type
 
 import streamlit as st
 
-from src.models import ValuationResult, ValuationMode
+from src.models import ValuationResult, ValuationMethodology
 from src.i18n import UIMessages, KPITexts, AuditTexts
 from src.utilities.formatting import format_smart_number
 from .base_result import ResultTabBase
@@ -146,7 +146,7 @@ class ResultTabOrchestrator:
         """
         filtered = []
         mode = result.request.mode if result.request else None
-        is_graham = (mode == ValuationMode.GRAHAM)
+        is_graham = (mode == ValuationMethodology.GRAHAM)
 
         for tab in self._tabs:
             if not tab.is_visible(result):

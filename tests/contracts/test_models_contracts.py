@@ -103,18 +103,18 @@ class TestValuationRequestContract:
     
     def test_request_fields(self):
         """Vérifie les champs de requête."""
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="AAPL",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         assert request.ticker == "AAPL"
         assert request.projection_years == 5
-        assert request.mode == ValuationMode.FCFF_STANDARD
+        assert request.mode == ValuationMethodology.FCFF_STANDARD
 
 
 class TestValuationModeContract:
@@ -122,7 +122,7 @@ class TestValuationModeContract:
     
     def test_all_modes_exist(self):
         """Vérifie que tous les modes de valorisation existent."""
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
         
         # Ces modes DOIVENT exister
         expected_modes = [
@@ -135,17 +135,17 @@ class TestValuationModeContract:
             "GRAHAM",
         ]
         
-        actual_modes = [m.name for m in ValuationMode]
+        actual_modes = [m.name for m in ValuationMethodology]
         
         for mode in expected_modes:
             assert mode in actual_modes, f"Mode '{mode}' manquant dans ValuationMode"
     
     def test_monte_carlo_support_property(self):
         """Vérifie que la propriété supports_monte_carlo existe."""
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
         
         # Cette propriété DOIT exister sur chaque mode
-        for mode in ValuationMode:
+        for mode in ValuationMethodology:
             assert hasattr(mode, "supports_monte_carlo"), f"{mode} n'a pas supports_monte_carlo"
 
 

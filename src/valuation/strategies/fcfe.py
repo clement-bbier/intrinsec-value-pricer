@@ -32,7 +32,7 @@ from src.models import (
     Company,
     Parameters,
     EquityDCFValuationResult,
-    ValuationMode
+    ValuationMethodology
 )
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.valuation.strategies.abstract import ValuationStrategy
@@ -119,7 +119,7 @@ class FCFEStrategy(ValuationStrategy):
         # 2. PIPELINE EXECUTION (DIRECT EQUITY MODE)
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.FCFE,
+            mode=ValuationMethodology.FCFE,
             glass_box_enabled=self.glass_box_enabled
         )
 

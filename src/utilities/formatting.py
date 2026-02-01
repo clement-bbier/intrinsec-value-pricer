@@ -17,51 +17,45 @@ import numpy as np
 from typing import Optional, Union
 from src.i18n import CommonTexts
 
+
 def format_smart_number(
-    val: Optional[Union[float, int]],
-    currency: str = "",
-    is_pct: bool = False,
-    decimals: int = 2
+        val: Optional[Union[float, int]],
+        currency: str = "",
+        is_pct: bool = False,
+        decimals: int = 2
 ) -> str:
-    """
-    Formats numbers into human-readable institutional notation.
+    """Institutional Bloomberg-style formatting."""
+    import math
 
-    Handles Billions (B), Millions (M), and Trillions (T) to prevent
-    UI overflow and cognitive overload.
+    # 1. Handling Nulls/NaNs safely
+    if val is None or (isinstance(val, float) and math.isnan(val)):
+        return "CommonTexts.VALUE_NOT_AVAILABLE"
 
-    Parameters
-    ----------
-    val : float | int, optional
-        The raw numeric value to format.
-    currency : str, default=""
-        The currency symbol (e.g., "$", "€").
-    is_pct : bool, default=False
-        If True, formats as a percentage (value 0.05 -> "5.00%").
-    decimals : int, default=2
-        Number of decimal places to preserve.
-
-    Returns
-    -------
-    str
-        Formatted string (e.g., "1.50 B €" or "8.45%").
-    """
-    if val is None or (isinstance(val, float) and np.isnan(val)):
-        return CommonTexts.VALUE_NOT_AVAILABLE
-
+    # 2. Percentage Case (prioritary)
     if is_pct:
         return f"{val:.{decimals}%}"
 
     abs_val = abs(val)
+    suffix = ""
+    scaled_val = val
 
-    # Institutional Scale Logic (Standard Bloomberg/Reuters)
+    # 3. Institutional Scaling
     if abs_val >= 1e12:
-        return f"{val/1e12:,.{decimals}f} T {currency}".strip()
-    if abs_val >= 1e9:
-        return f"{val/1e9:,.{decimals}f} B {currency}".strip()
-    if abs_val >= 1e6:
-        return f"{val/1e6:,.{decimals}f} M {currency}".strip()
+        scaled_val, suffix = val / 1e12, "T"
+    elif abs_val >= 1e9:
+        scaled_val, suffix = val / 1e9, "B"
+    elif abs_val >= 1e6:
+        scaled_val, suffix = val / 1e6, "M"
 
-    return f"{val:,.{decimals}f} {currency}".strip()
+    # 4. Final assembly with non-breaking space
+    formatted = f"{scaled_val:,.{decimals}f}"
+
+    # Construction propre : [Nombre][Suffixe] [Devise]
+    result = f"{formatted}{suffix}"
+    if currency:
+        result += f" {currency.strip()}"
+
+    return result.strip()
 
 
 def get_delta_color(val: float, inverse: bool = False) -> str:

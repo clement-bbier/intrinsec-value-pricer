@@ -13,7 +13,7 @@ Style: Numpy docstrings
 from typing import Dict, Any
 import streamlit as st
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import RIMTexts as Texts
 from src.i18n import SharedTexts
 from ..base_terminal import ExpertTerminalBase
@@ -35,7 +35,7 @@ class RIMBankTerminal(ExpertTerminalBase):
 
     Attributes
     ----------
-    MODE : ValuationMode
+    MODE : ValuationMethodology
         Set to RIM for bank and financial institution valuation.
 
     Note
@@ -45,7 +45,7 @@ class RIMBankTerminal(ExpertTerminalBase):
     duplicate terminal value configuration.
     """
 
-    MODE = ValuationMode.RIM
+    MODE = ValuationMethodology.RIM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 

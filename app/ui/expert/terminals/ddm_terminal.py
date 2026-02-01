@@ -13,7 +13,7 @@ Style: Numpy docstrings
 from typing import Dict, Any
 import streamlit as st
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.i18n import SharedTexts
 from ..base_terminal import ExpertTerminalBase
@@ -32,7 +32,7 @@ class DDMTerminal(ExpertTerminalBase):
 
     Attributes
     ----------
-    MODE : ValuationMode
+    MODE : ValuationMethodology
         Set to DDM for dividend-based valuation.
 
     Notes
@@ -41,7 +41,7 @@ class DDMTerminal(ExpertTerminalBase):
     which handles normalization via field validators.
     """
 
-    MODE = ValuationMode.DDM
+    MODE = ValuationMethodology.DDM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 

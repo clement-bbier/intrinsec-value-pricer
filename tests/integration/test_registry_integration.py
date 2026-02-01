@@ -6,7 +6,7 @@ Ces tests vérifient la cohérence entre les différents registres.
 Migration depuis test_integration_registry.py (legacy).
 """
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 
 
 class TestRegistrySynchronization:
@@ -28,11 +28,11 @@ class TestRegistrySynchronization:
         
         names = get_display_names()
         
-        for mode in ValuationMode:
+        for mode in ValuationMethodology:
             # Vérifier que les modes principaux ont un nom
             if mode in [
-                ValuationMode.FCFF_STANDARD,
-                ValuationMode.GRAHAM,
+                ValuationMethodology.FCFF_STANDARD,
+                ValuationMethodology.GRAHAM,
             ]:
                 assert mode in names, f"{mode} n'a pas de display_name"
     
@@ -65,8 +65,8 @@ class TestUIRegistryIntegration:
         assert len(VALUATION_DISPLAY_NAMES) >= 7
         
         # Vérifier quelques noms attendus
-        assert ValuationMode.FCFF_STANDARD in VALUATION_DISPLAY_NAMES
-        assert "DCF" in VALUATION_DISPLAY_NAMES[ValuationMode.FCFF_STANDARD]
+        assert ValuationMethodology.FCFF_STANDARD in VALUATION_DISPLAY_NAMES
+        assert "DCF" in VALUATION_DISPLAY_NAMES[ValuationMethodology.FCFF_STANDARD]
 
 
 class TestAuditFactoryIntegration:
@@ -78,8 +78,8 @@ class TestAuditFactoryIntegration:
         from src.valuation.registry import get_auditor
         
         # Les deux méthodes doivent retourner le même type
-        factory_auditor = AuditorFactory.get_auditor(ValuationMode.FCFF_STANDARD)
-        registry_auditor = get_auditor(ValuationMode.FCFF_STANDARD)
+        factory_auditor = AuditorFactory.get_auditor(ValuationMethodology.FCFF_STANDARD)
+        registry_auditor = get_auditor(ValuationMethodology.FCFF_STANDARD)
         
         assert type(factory_auditor) == type(registry_auditor)
     
@@ -92,30 +92,30 @@ class TestAuditFactoryIntegration:
         
         # FCFF modes → DCFAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.FCFF_STANDARD), 
+            AuditorFactory.get_auditor(ValuationMethodology.FCFF_STANDARD),
             DCFAuditor
         )
         
         # RIM → RIMAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.RIM), 
+            AuditorFactory.get_auditor(ValuationMethodology.RIM),
             RIMAuditor
         )
         
         # Graham → GrahamAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.GRAHAM), 
+            AuditorFactory.get_auditor(ValuationMethodology.GRAHAM),
             GrahamAuditor
         )
         
         # FCFE → FCFEAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.FCFE), 
+            AuditorFactory.get_auditor(ValuationMethodology.FCFE),
             FCFEAuditor
         )
         
         # DDM → DDMAuditor
         assert isinstance(
-            AuditorFactory.get_auditor(ValuationMode.DDM), 
+            AuditorFactory.get_auditor(ValuationMethodology.DDM),
             DDMAuditor
         )

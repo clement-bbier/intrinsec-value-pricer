@@ -15,7 +15,7 @@ import logging
 from typing import Tuple
 
 from src.exceptions import CalculationError
-from src.models import Company, Parameters, DCFValuationResult, ValuationMode
+from src.models import Company, Parameters, DCFValuationResult, ValuationMethodology
 from src.valuation.strategies.abstract import ValuationStrategy
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.computation.flow_projector import SimpleFlowProjector
@@ -76,7 +76,7 @@ class StandardFCFFStrategy(ValuationStrategy):
         # 2. PIPELINE EXECUTION
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.FCFF_STANDARD,
+            mode=ValuationMethodology.FCFF_STANDARD,
             glass_box_enabled=self.glass_box_enabled
         )
 

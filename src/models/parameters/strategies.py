@@ -11,7 +11,7 @@ Architecture: Pydantic V2 inheritance. Factors common projection fields
 from __future__ import annotations
 from typing import Optional, Literal, Union
 from pydantic import BaseModel, Field
-from src.models.enums import ValuationMode, TerminalValueMethod
+from src.models.enums import ValuationMethodology, TerminalValueMethod
 
 # ==============================================================================
 # 1. REUSABLE COMPONENTS
@@ -37,7 +37,7 @@ class BaseProjectedParameters(BaseModel):
 
 class FCFFStandardParameters(BaseProjectedParameters):
     """Standard DCF based on Free Cash Flow to Firm."""
-    mode: Literal[ValuationMode.FCFF_STANDARD] = ValuationMode.FCFF_STANDARD
+    mode: Literal[ValuationMethodology.FCFF_STANDARD] = ValuationMethodology.FCFF_STANDARD
 
     # --- Accounting Overrides ---
     fcf_anchor: Optional[float] = None
@@ -50,7 +50,7 @@ class FCFFStandardParameters(BaseProjectedParameters):
 
 class FCFFNormalizedParameters(BaseProjectedParameters):
     """DCF based on normalized cycle flows."""
-    mode: Literal[ValuationMode.FCFF_NORMALIZED] = ValuationMode.FCFF_NORMALIZED
+    mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
 
     # --- Accounting Overrides ---
     fcf_norm: Optional[float] = None
@@ -61,7 +61,7 @@ class FCFFNormalizedParameters(BaseProjectedParameters):
 
 class FCFFGrowthParameters(BaseProjectedParameters):
     """DCF starting from Revenue and Margins."""
-    mode: Literal[ValuationMode.FCFF_GROWTH] = ValuationMode.FCFF_GROWTH
+    mode: Literal[ValuationMethodology.FCFF_GROWTH] = ValuationMethodology.FCFF_GROWTH
 
     # --- Accounting Overrides ---
     revenue_ttm: Optional[float] = None
@@ -74,7 +74,7 @@ class FCFFGrowthParameters(BaseProjectedParameters):
 
 class FCFEParameters(BaseProjectedParameters):
     """Free Cash Flow to Equity (Post-Debt)."""
-    mode: Literal[ValuationMode.FCFE] = ValuationMode.FCFE
+    mode: Literal[ValuationMethodology.FCFE] = ValuationMethodology.FCFE
 
     # --- Accounting Overrides ---
     fcfe_anchor: Optional[float] = None
@@ -87,7 +87,7 @@ class FCFEParameters(BaseProjectedParameters):
 
 class DDMParameters(BaseProjectedParameters):
     """Dividend Discount Model."""
-    mode: Literal[ValuationMode.DDM] = ValuationMode.DDM
+    mode: Literal[ValuationMethodology.DDM] = ValuationMethodology.DDM
 
     # --- Accounting Overrides ---
     dividend_per_share: Optional[float] = None
@@ -98,7 +98,7 @@ class DDMParameters(BaseProjectedParameters):
 
 class RIMParameters(BaseProjectedParameters):
     """Residual Income Model (Ohlson)."""
-    mode: Literal[ValuationMode.RIM] = ValuationMode.RIM
+    mode: Literal[ValuationMethodology.RIM] = ValuationMethodology.RIM
 
     # --- Accounting Overrides ---
     book_value_anchor: Optional[float] = None
@@ -114,7 +114,7 @@ class GrahamParameters(BaseModel):
     Graham Intrinsic Value.
     Note: Does NOT inherit from BaseProjectedParameters (Static Formula).
     """
-    mode: Literal[ValuationMode.GRAHAM] = ValuationMode.GRAHAM
+    mode: Literal[ValuationMethodology.GRAHAM] = ValuationMethodology.GRAHAM
 
     # --- Accounting Overrides ---
     eps_normalized: Optional[float] = None

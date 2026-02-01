@@ -182,7 +182,7 @@ from typing import Dict, Optional
 import pandas as pd
 
 # Local
-from src.models import ValuationMode, ValuationRequest
+from src.models import ValuationMethodology, ValuationRequest
 ```
 
 **Règles :**

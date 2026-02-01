@@ -12,7 +12,7 @@ class TestExpertModeWorkflow:
     def test_expert_can_override_parameters(self, sample_financials, sample_params):
         """L'expert peut surcharger les paramètres automatiques."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # L'expert définit ses propres paramètres
         sample_params.rates.risk_free_rate = 0.035  # Override
@@ -22,8 +22,8 @@ class TestExpertModeWorkflow:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=7,  # Horizon personnalisé
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
             manual_params=sample_params,
         )
         
@@ -31,20 +31,20 @@ class TestExpertModeWorkflow:
         
         # Vérifier que les paramètres ont été utilisés
         assert result is not None
-        assert result.audit_report.audit_mode == InputSource.MANUAL
+        assert result.audit_report.audit_mode == ParametersSource.MANUAL
     
     def test_expert_mode_uses_reduced_data_weight(self, sample_financials, sample_params):
         """Le mode Expert réduit le poids du pilier DATA_CONFIDENCE."""
         from src.valuation.engines import run_valuation
         from src.models import (
-            ValuationRequest, ValuationMode, InputSource, AuditPillar
+            ValuationRequest, ValuationMethodology, ParametersSource, AuditPillar
         )
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -64,7 +64,7 @@ class TestExpertModeScenarios:
     def test_pessimistic_scenario(self, sample_financials, sample_params):
         """Scénario pessimiste avec croissance faible."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # Paramètres pessimistes
         sample_params.growth.fcf_growth_rate = 0.01  # 1%
@@ -74,8 +74,8 @@ class TestExpertModeScenarios:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -85,7 +85,7 @@ class TestExpertModeScenarios:
     def test_optimistic_scenario(self, sample_financials, sample_params):
         """Scénario optimiste avec croissance élevée."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # Paramètres optimistes
         sample_params.growth.fcf_growth_rate = 0.15  # 15%
@@ -95,8 +95,8 @@ class TestExpertModeScenarios:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -125,7 +125,7 @@ class TestExpertModeValidation:
     def test_expert_parameters_preserved(self, sample_financials, sample_params):
         """Les paramètres Expert sont préservés dans le résultat."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         custom_rate = 0.0375  # Taux personnalisé
         sample_params.rates.risk_free_rate = custom_rate
@@ -133,8 +133,8 @@ class TestExpertModeValidation:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
             manual_params=sample_params,
         )
         

@@ -15,7 +15,7 @@ from typing import Tuple, Optional, Dict, List
 import numpy as np
 
 # We import the models to ensure type safety in the engine
-from src.models import ValuationResult, Parameters, ValuationMode
+from src.models import ValuationResult, Parameters, ValuationMethodology
 
 
 @dataclass
@@ -58,12 +58,12 @@ class MonteCarloEngine:
         )
 
         # 2. VECTORIZED VALUATION DISPATCH
-        mode = result.request.mode if result.request else ValuationMode.FCFF_STANDARD
+        mode = result.request.mode if result.request else ValuationMethodology.FCFF_STANDARD
 
-        if mode in [ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_GROWTH]:
+        if mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH]:
             simulated_values = MonteCarloEngine._simulate_dcf_vector(result, params, beta_samples, growth_samples)
 
-        elif mode == ValuationMode.GRAHAM:
+        elif mode == ValuationMethodology.GRAHAM:
             simulated_values = MonteCarloEngine._simulate_graham_vector(result, growth_samples)
 
         else:

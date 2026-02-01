@@ -16,14 +16,14 @@ class TestFullValuationPipeline:
         """Pipeline complet FCFF Standard."""
         from src.valuation.engines import run_valuation
         from src.models import (
-            ValuationRequest, ValuationMode, InputSource, ValuationResult
+            ValuationRequest, ValuationMethodology, ParametersSource, ValuationResult
         )
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -39,17 +39,17 @@ class TestFullValuationPipeline:
         """Tous les modes passent par le pipeline complet."""
         from src.valuation.engines import run_valuation
         from src.models import (
-            ValuationRequest, ValuationMode, InputSource
+            ValuationRequest, ValuationMethodology, ParametersSource
         )
         
         # Note: On utilise les fixtures avec les bons noms de champs
         # sample_financials a déjà eps_ttm, book_value_per_share, etc.
         
         modes_to_test = [
-            ValuationMode.FCFF_STANDARD,
-            ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.FCFF_GROWTH,
-            ValuationMode.GRAHAM,
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_NORMALIZED,
+            ValuationMethodology.FCFF_GROWTH,
+            ValuationMethodology.GRAHAM,
         ]
         
         for mode in modes_to_test:
@@ -57,7 +57,7 @@ class TestFullValuationPipeline:
                 ticker="TEST",
                 projection_years=5,
                 mode=mode,
-                input_source=InputSource.AUTO,
+                input_source=ParametersSource.AUTO,
             )
             
             try:
@@ -76,13 +76,13 @@ class TestAuditAfterValuation:
     def test_audit_report_has_score(self, sample_financials, sample_params):
         """Le rapport d'audit contient un score global."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -93,13 +93,13 @@ class TestAuditAfterValuation:
     def test_audit_report_has_rating(self, sample_financials, sample_params):
         """Le rapport d'audit contient une notation."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -109,14 +109,14 @@ class TestAuditAfterValuation:
     def test_manual_mode_affects_audit_weights(self, sample_financials, sample_params):
         """Le mode MANUAL change les pondérations d'audit."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # Mode AUTO
         request_auto = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         result_auto = run_valuation(request_auto, sample_financials, sample_params)
         
@@ -124,14 +124,14 @@ class TestAuditAfterValuation:
         request_manual = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.MANUAL,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.MANUAL,
         )
         result_manual = run_valuation(request_manual, sample_financials, sample_params)
         
         # Les modes d'audit doivent être différents
-        assert result_auto.audit_report.audit_mode == InputSource.AUTO
-        assert result_manual.audit_report.audit_mode == InputSource.MANUAL
+        assert result_auto.audit_report.audit_mode == ParametersSource.AUTO
+        assert result_manual.audit_report.audit_mode == ParametersSource.MANUAL
 
 
 class TestGlassBoxIntegration:
@@ -166,7 +166,7 @@ class TestMonteCarloIntegration:
     def test_monte_carlo_with_engine(self, sample_financials, sample_params):
         """Monte Carlo fonctionne via le moteur principal."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         sample_params.monte_carlo.enabled = True
         sample_params.monte_carlo.num_simulations = 100
@@ -174,8 +174,8 @@ class TestMonteCarloIntegration:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)

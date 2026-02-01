@@ -11,7 +11,7 @@ metrics and granular test results.
 from typing import Any
 import streamlit as st
 
-from src.models import ValuationResult, AuditSeverity, AuditStep
+from src.models import ValuationResult, DiagnosticLevel, AuditStep
 from src.i18n import AuditTexts, PillarLabels
 from app.ui.results.base_result import ResultTabBase
 from app.ui.components.ui_kpis import (
@@ -86,7 +86,7 @@ class AuditReportTab(ResultTabBase):
         # Immediate visibility for violations that could invalidate the valuation
         critical_fails = [
             s for s in report.audit_steps
-            if not s.verdict and s.severity == AuditSeverity.CRITICAL
+            if not s.verdict and s.severity == DiagnosticLevel.CRITICAL
         ]
 
         if critical_fails:
@@ -105,7 +105,7 @@ class AuditReportTab(ResultTabBase):
         # Prioritization: Failed tests and criticalities appear first
         sorted_steps = sorted(
             report.audit_steps,
-            key=lambda s: (s.verdict, s.severity != AuditSeverity.CRITICAL)
+            key=lambda s: (s.verdict, s.severity != DiagnosticLevel.CRITICAL)
         )
 
         st.markdown(f"#### {AuditTexts.AUDIT_NOTES_EXPANDER}")
@@ -131,7 +131,7 @@ class AuditReportTab(ResultTabBase):
             status_label = AuditTexts.STATUS_OK
             icon = "✅"
         else:
-            is_crit = step.severity == AuditSeverity.CRITICAL
+            is_crit = step.severity == DiagnosticLevel.CRITICAL
             color = "#ef4444" if is_crit else "#f59e0b"  # Red (Critical) vs Amber (Warning)
             status_label = AuditTexts.STATUS_ALERT
             icon = "❌" if is_crit else "⚠️"

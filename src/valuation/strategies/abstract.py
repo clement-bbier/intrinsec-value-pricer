@@ -177,24 +177,24 @@ class ValuationStrategy(ABC):
             ValuationRequest, DCFValuationResult, RIMValuationResult,
             GrahamValuationResult, MultiplesValuationResult
         )
-        from src.models.enums import ValuationMode, InputSource
+        from src.models.enums import ValuationMethodology, ParametersSource
 
         if result.request is None:
             # Dynamic mode determination for fallback requests
             if isinstance(result, DCFValuationResult):
-                mode = ValuationMode.FCFF_STANDARD
+                mode = ValuationMethodology.FCFF_STANDARD
             elif isinstance(result, RIMValuationResult):
-                mode = ValuationMode.RIM
+                mode = ValuationMethodology.RIM
             elif isinstance(result, GrahamValuationResult):
-                mode = ValuationMode.GRAHAM
+                mode = ValuationMethodology.GRAHAM
             else:
-                mode = ValuationMode.FCFF_STANDARD
+                mode = ValuationMethodology.FCFF_STANDARD
 
             result.request = ValuationRequest(
                 ticker=result.financials.ticker,
                 projection_years=result.params.growth.projection_years,
                 mode=mode,
-                input_source=InputSource.AUTO,
+                input_source=ParametersSource.AUTO,
                 options={}
             )
 

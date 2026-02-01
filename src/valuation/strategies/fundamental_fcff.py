@@ -31,7 +31,7 @@ from src.models import (
     Company,
     Parameters,
     DCFValuationResult,
-    ValuationMode
+    ValuationMethodology
 )
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.valuation.strategies.abstract import ValuationStrategy
@@ -108,7 +108,7 @@ class FundamentalFCFFStrategy(ValuationStrategy):
         # 2. PIPELINE ORCHESTRATION
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.FCFF_NORMALIZED,
+            mode=ValuationMethodology.FCFF_NORMALIZED,
             glass_box_enabled=self.glass_box_enabled
         )
 

@@ -13,7 +13,7 @@ Style: Numpy docstrings
 from typing import Dict, Any
 import streamlit as st
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFStandardTexts as Texts
 from ..base_terminal import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
@@ -32,7 +32,7 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
     Attributes
     ----------
-    MODE : ValuationMode
+    MODE : ValuationMethodology
         Set to FCFF_STANDARD for entity-level DCF valuation.
 
     Notes
@@ -41,7 +41,7 @@ class FCFFStandardTerminal(ExpertTerminalBase):
     which handles normalization via field validators.
     """
 
-    MODE = ValuationMode.FCFF_STANDARD
+    MODE = ValuationMethodology.FCFF_STANDARD
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 

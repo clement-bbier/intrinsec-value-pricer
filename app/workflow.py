@@ -54,7 +54,7 @@ from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
 from src.exceptions import ValuationException
 from src.models import (
     Parameters,
-    InputSource,
+    ParametersSource,
     ValuationRequest,
     ScenarioResult,
     ScenarioSynthesis,
@@ -219,7 +219,7 @@ def map_request_to_params(request: ValuationRequest, auto_params: Parameters) ->
     Parameters
         The final parameter set for engine execution.
     """
-    if request.input_source == InputSource.MANUAL:
+    if request.input_source == ParametersSource.MANUAL:
         final_params = auto_params.model_copy(deep=True)
 
         # Merge Rates and Growth sections

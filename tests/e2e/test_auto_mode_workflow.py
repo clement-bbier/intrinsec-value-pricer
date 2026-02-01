@@ -14,15 +14,15 @@ class TestAutoModeWorkflow:
         """Workflow Auto complet avec données mockées."""
         from src.valuation.engines import run_valuation
         from src.models import (
-            ValuationRequest, ValuationMode, InputSource
+            ValuationRequest, ValuationMethodology, ParametersSource
         )
         
         # Simuler une requête utilisateur Auto
         request = ValuationRequest(
             ticker="AAPL",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
             manual_params=sample_params,
         )
         
@@ -38,16 +38,16 @@ class TestAutoModeWorkflow:
     def test_workflow_handles_different_modes(self, sample_financials, sample_params):
         """Le workflow gère tous les modes de valorisation."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # Préparer données supplémentaires
         sample_financials.eps_ttm = 5.0
         sample_financials.book_value_per_share = 30.0
         
         modes = [
-            ValuationMode.FCFF_STANDARD,
-            ValuationMode.FCFF_NORMALIZED,
-            ValuationMode.GRAHAM,
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_NORMALIZED,
+            ValuationMethodology.GRAHAM,
         ]
         
         for mode in modes:
@@ -55,7 +55,7 @@ class TestAutoModeWorkflow:
                 ticker="TEST",
                 projection_years=5,
                 mode=mode,
-                input_source=InputSource.AUTO,
+                input_source=ParametersSource.AUTO,
             )
             
             result = run_valuation(request, sample_financials, sample_params)
@@ -70,13 +70,13 @@ class TestAutoModeOutputValidation:
     def test_output_has_all_required_fields(self, sample_financials, sample_params):
         """La sortie contient tous les champs requis pour l'affichage."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -94,13 +94,13 @@ class TestAutoModeOutputValidation:
     def test_output_values_are_reasonable(self, sample_financials, sample_params):
         """Les valeurs de sortie sont dans des plages raisonnables."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -122,15 +122,15 @@ class TestAutoModeErrorHandling:
     
     def test_invalid_ticker_format_handled(self):
         """Format de ticker invalide est géré."""
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         # Un ticker vide devrait être accepté par le modèle
         # mais la validation métier devrait se faire ailleurs
         request = ValuationRequest(
             ticker="",  # Vide mais accepté par Pydantic
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         assert request.ticker == ""
@@ -138,7 +138,7 @@ class TestAutoModeErrorHandling:
     def test_extreme_parameters_handled(self, sample_financials, sample_params):
         """Paramètres extrêmes sont gérés sans crash."""
         from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         from src.exceptions import CalculationError, ValuationException
         
         # Paramètres extrêmes mais valides
@@ -148,8 +148,8 @@ class TestAutoModeErrorHandling:
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         # Ne doit pas planter (peut lever une exception métier)

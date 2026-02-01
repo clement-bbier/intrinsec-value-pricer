@@ -16,10 +16,10 @@ Tous les modeles sont re-exportes ici pour la compatibilite.
 # Enumerations et Alias Financiers
 from .enums import (
     # Enumerations
-    ValuationMode,
+    ValuationMethodology,
     ParametersSource,
     TerminalValueMethod,
-    AuditSeverity,
+    DiagnosticLevel,
     SOTPMethod,
     AuditPillar,
     # Type Aliases (ST-1.2 Type-Safe)
@@ -86,10 +86,10 @@ from .valuation import (
 
 __all__ = [
     # Enums
-    "ValuationMode",
+    "ValuationMethodology",
     "ParametersSource",
     "TerminalValueMethod",
-    "AuditSeverity",
+    "DiagnosticLevel",
     "SOTPMethod",
     "AuditPillar",
     # Type Aliases (ST-1.2 Type-Safe)

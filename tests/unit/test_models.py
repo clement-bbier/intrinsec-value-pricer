@@ -111,13 +111,13 @@ class TestValuationRequest:
     
     def test_valid_request(self):
         """Requête valide."""
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="MSFT",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         assert request.ticker == "MSFT"
@@ -125,13 +125,13 @@ class TestValuationRequest:
     
     def test_options_default_to_empty_dict(self):
         """Options par défaut = dict vide."""
-        from src.models import ValuationRequest, ValuationMode, InputSource
+        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
         
         request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
         
         assert request.options == {} or request.options is not None
@@ -142,19 +142,19 @@ class TestValuationMode:
     
     def test_supports_monte_carlo_property(self):
         """Propriété supports_monte_carlo selon le mode."""
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
         
         # Les modes DCF supportent généralement Monte Carlo
-        assert ValuationMode.FCFF_STANDARD.supports_monte_carlo is True
+        assert ValuationMethodology.FCFF_STANDARD.supports_monte_carlo is True
         
         # Graham ne supporte pas Monte Carlo
-        assert ValuationMode.GRAHAM.supports_monte_carlo is False
+        assert ValuationMethodology.GRAHAM.supports_monte_carlo is False
     
     def test_mode_values_are_strings(self):
         """Les valeurs sont des chaînes descriptives."""
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
         
-        for mode in ValuationMode:
+        for mode in ValuationMethodology:
             assert isinstance(mode.value, str)
             assert len(mode.value) > 0
 
@@ -164,7 +164,7 @@ class TestInputSource:
     
     def test_input_sources_exist(self):
         """Les sources AUTO et MANUAL existent."""
-        from src.models import InputSource
+        from src.models import ParametersSource
         
-        assert InputSource.AUTO is not None
-        assert InputSource.MANUAL is not None
+        assert ParametersSource.AUTO is not None
+        assert ParametersSource.MANUAL is not None

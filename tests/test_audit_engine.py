@@ -8,7 +8,7 @@ de valorisation pour générer le résultat avant de l'auditer.
 """
 
 from infra.auditing.audit_engine import AuditEngine
-from src.models import InputSource, ValuationRequest, ValuationMode, AuditSeverity
+from src.models import ParametersSource, ValuationRequest, ValuationMethodology, DiagnosticLevel
 from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 
 
@@ -35,8 +35,8 @@ def test_audit_critical_wacc_g_proximity(sample_financials, sample_params):
         result.request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO
         )
         
         report = AuditEngine.compute_audit(result)
@@ -50,13 +50,13 @@ def test_audit_critical_wacc_g_proximity(sample_financials, sample_params):
         # Vérification : Un audit_step critique doit signaler le problème
         critical_steps = [
             s for s in report.audit_steps
-            if s.severity == AuditSeverity.CRITICAL and not s.verdict
+            if s.severity == DiagnosticLevel.CRITICAL and not s.verdict
         ]
         # Note: Si le modèle converge malgré tout, on vérifie les warnings
         if not critical_steps:
             warning_steps = [
                 s for s in report.audit_steps
-                if s.severity == AuditSeverity.WARNING and not s.verdict
+                if s.severity == DiagnosticLevel.WARNING and not s.verdict
             ]
             assert len(warning_steps) > 0, "Aucun warning trouvé pour g proche de WACC"
             
@@ -81,15 +81,15 @@ def test_audit_manual_mode_trust(sample_financials, sample_params):
     result.request = ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_STANDARD,
-        input_source=InputSource.MANUAL  # Mode Expert
+        mode=ValuationMethodology.FCFF_STANDARD,
+        input_source=ParametersSource.MANUAL  # Mode Expert
     )
 
     report = AuditEngine.compute_audit(result)
 
     # En mode MANUAL, le pilier DATA_CONFIDENCE a un poids réduit (10% vs 30%)
     # Donc le score global doit être influencé davantage par ASSUMPTION_RISK
-    assert report.audit_mode == InputSource.MANUAL
+    assert report.audit_mode == ParametersSource.MANUAL
     
     # Vérification que le breakdown des piliers existe
     assert report.pillar_breakdown is not None

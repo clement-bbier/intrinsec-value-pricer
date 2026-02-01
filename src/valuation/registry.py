@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Dict, Type, Optional, Callable, TYPE_CHECKING
 
 # Core models and i18n requirements
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n import RegistryTexts
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class StrategyMetadata:
 
     Attributes
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         Unique identifier for the valuation methodology.
     strategy_cls : Type[ValuationStrategy]
         The class implementing the specific valuation algorithm.
@@ -46,7 +46,7 @@ class StrategyMetadata:
     display_name : str, optional
         The localized (i18n) label displayed in the application.
     """
-    mode: ValuationMode
+    mode: ValuationMethodology
     strategy_cls: Type[ValuationStrategy]
     auditor_cls_name: str = "DCFAuditor"
     ui_renderer_name: Optional[str] = None
@@ -90,7 +90,7 @@ class StrategyRegistry:
     """
 
     _instance: Optional[StrategyRegistry] = None
-    _strategies: Dict[ValuationMode, StrategyMetadata] = {}
+    _strategies: Dict[ValuationMethodology, StrategyMetadata] = {}
 
     def __new__(cls) -> StrategyRegistry:
         if cls._instance is None:
@@ -101,7 +101,7 @@ class StrategyRegistry:
     @classmethod
     def register(
         cls,
-        mode: ValuationMode,
+        mode: ValuationMethodology,
         strategy_cls: Type[ValuationStrategy],
         auditor_cls_name: str = "DCFAuditor",
         ui_renderer_name: Optional[str] = None,
@@ -121,13 +121,13 @@ class StrategyRegistry:
         logger.debug("[Registry] Strategy registered | mode=%s", mode.value)
 
     @classmethod
-    def get_strategy_cls(cls, mode: ValuationMode) -> Optional[Type[ValuationStrategy]]:
+    def get_strategy_cls(cls, mode: ValuationMethodology) -> Optional[Type[ValuationStrategy]]:
         """Retrieves the calculation class for a specific mode."""
         metadata = cls._strategies.get(mode)
         return metadata.strategy_cls if metadata else None
 
     @classmethod
-    def get_auditor_cls(cls, mode: ValuationMode) -> Type[IValuationAuditor]:
+    def get_auditor_cls(cls, mode: ValuationMethodology) -> Type[IValuationAuditor]:
         """Retrieves the audit class associated with the mode."""
         from infra.auditing.auditors import StandardValuationAuditor
 
@@ -135,24 +135,24 @@ class StrategyRegistry:
         return metadata.get_auditor_cls() if metadata else StandardValuationAuditor
 
     @classmethod
-    def get_ui_renderer_name(cls, mode: ValuationMode) -> Optional[str]:
+    def get_ui_renderer_name(cls, mode: ValuationMethodology) -> Optional[str]:
         """Identifies the specialized UI renderer for the given mode."""
         metadata = cls._strategies.get(mode)
         return metadata.ui_renderer_name if metadata else None
 
     @classmethod
-    def get_display_name(cls, mode: ValuationMode) -> str:
+    def get_display_name(cls, mode: ValuationMethodology) -> str:
         """Retrieves the localized (i18n) label for the model."""
         metadata = cls._strategies.get(mode)
         return metadata.display_name if metadata else mode.value
 
     @classmethod
-    def get_all_modes(cls) -> Dict[ValuationMode, StrategyMetadata]:
+    def get_all_modes(cls) -> Dict[ValuationMethodology, StrategyMetadata]:
         """Provides a copy of the full strategy catalog."""
         return cls._strategies.copy()
 
     @classmethod
-    def get_display_names_map(cls) -> Dict[ValuationMode, str]:
+    def get_display_names_map(cls) -> Dict[ValuationMethodology, str]:
         """Generates a mapping of modes to localized labels for UI components."""
         return {
             mode: meta.display_name
@@ -162,7 +162,7 @@ class StrategyRegistry:
 
 
 def register_strategy(
-    mode: ValuationMode,
+    mode: ValuationMethodology,
     auditor: str = "DCFAuditor",
     ui_renderer: Optional[str] = None,
     display_name: Optional[str] = None
@@ -187,23 +187,23 @@ def register_strategy(
     return decorator
 
 
-def get_strategy(mode: ValuationMode) -> Optional[Type[ValuationStrategy]]:
+def get_strategy(mode: ValuationMethodology) -> Optional[Type[ValuationStrategy]]:
     """Simplified facade for accessing strategy classes."""
     return StrategyRegistry.get_strategy_cls(mode)
 
 
-def get_auditor(mode: ValuationMode) -> IValuationAuditor:
+def get_auditor(mode: ValuationMethodology) -> IValuationAuditor:
     """Instantiates the institutional auditor associated with the mode."""
     target_auditor_cls = StrategyRegistry.get_auditor_cls(mode)
     return target_auditor_cls()
 
 
-def get_all_strategies() -> Dict[ValuationMode, StrategyMetadata]:
+def get_all_strategies() -> Dict[ValuationMethodology, StrategyMetadata]:
     """Global access to the metadata catalog."""
     return StrategyRegistry.get_all_modes()
 
 
-def get_display_names() -> Dict[ValuationMode, str]:
+def get_display_names() -> Dict[ValuationMethodology, str]:
     """Simplified access to localized i18n label mapping."""
     return StrategyRegistry.get_display_names_map()
 
@@ -224,21 +224,21 @@ def _register_all_strategies() -> None:
 
     # --- Firm Value Approaches (WACC-Based) ---
     StrategyRegistry.register(
-        mode=ValuationMode.FCFF_STANDARD,
+        mode=ValuationMethodology.FCFF_STANDARD,
         strategy_cls=StandardFCFFStrategy,
         ui_renderer_name="render_expert_fcff_standard",
         display_name=RegistryTexts.FCFF_STANDARD_L
     )
 
     StrategyRegistry.register(
-        mode=ValuationMode.FCFF_NORMALIZED,
+        mode=ValuationMethodology.FCFF_NORMALIZED,
         strategy_cls=FundamentalFCFFStrategy,
         ui_renderer_name="render_expert_fcff_fundamental",
         display_name=RegistryTexts.FCFF_NORM_L
     )
 
     StrategyRegistry.register(
-        mode=ValuationMode.FCFF_GROWTH,
+        mode=ValuationMethodology.FCFF_GROWTH,
         strategy_cls=RevenueBasedStrategy,
         ui_renderer_name="render_expert_fcff_growth",
         display_name=RegistryTexts.FCFF_GROWTH_L
@@ -246,7 +246,7 @@ def _register_all_strategies() -> None:
 
     # --- Shareholder Value Approaches (Ke-Based) ---
     StrategyRegistry.register(
-        mode=ValuationMode.FCFE,
+        mode=ValuationMethodology.FCFE,
         strategy_cls=FCFEStrategy,
         auditor_cls_name="FCFEAuditor",
         ui_renderer_name="render_expert_fcfe",
@@ -254,7 +254,7 @@ def _register_all_strategies() -> None:
     )
 
     StrategyRegistry.register(
-        mode=ValuationMode.DDM,
+        mode=ValuationMethodology.DDM,
         strategy_cls=DividendDiscountStrategy,
         auditor_cls_name="DDMAuditor",
         ui_renderer_name="render_expert_ddm",
@@ -263,7 +263,7 @@ def _register_all_strategies() -> None:
 
     # --- Alternative Models ---
     StrategyRegistry.register(
-        mode=ValuationMode.RIM,
+        mode=ValuationMethodology.RIM,
         strategy_cls=RIMBankingStrategy,
         auditor_cls_name="RIMAuditor",
         ui_renderer_name="render_expert_rim",
@@ -271,7 +271,7 @@ def _register_all_strategies() -> None:
     )
 
     StrategyRegistry.register(
-        mode=ValuationMode.GRAHAM,
+        mode=ValuationMethodology.GRAHAM,
         strategy_cls=GrahamNumberStrategy,
         auditor_cls_name="GrahamAuditor",
         ui_renderer_name="render_expert_graham",

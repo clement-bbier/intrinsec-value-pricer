@@ -32,7 +32,7 @@ from src.models import (
     Company,
     Parameters,
     EquityDCFValuationResult,
-    ValuationMode
+    ValuationMethodology
 )
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.valuation.strategies.abstract import ValuationStrategy
@@ -129,7 +129,7 @@ class DividendDiscountStrategy(ValuationStrategy):
         # 2. PIPELINE CONFIGURATION (DIRECT EQUITY MODE)
         pipeline = DCFCalculationPipeline(
             projector=SimpleFlowProjector(),
-            mode=ValuationMode.DDM,
+            mode=ValuationMethodology.DDM,
             glass_box_enabled=self.glass_box_enabled
         )
 

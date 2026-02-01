@@ -13,8 +13,8 @@ from src.models import (
     CoreRateParameters,
     GrowthParameters,
     MonteCarloParameters,
-    ValuationMode,
-    InputSource,
+    ValuationMethodology,
+    ParametersSource,
     ValuationRequest,
     SOTPParameters,
     ScenarioParameters,
@@ -182,8 +182,8 @@ def sample_request_auto(sample_params):
     return ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_STANDARD,
-        input_source=InputSource.AUTO,
+        mode=ValuationMethodology.FCFF_STANDARD,
+        input_source=ParametersSource.AUTO,
         manual_params=sample_params,
     )
 
@@ -194,8 +194,8 @@ def sample_request_expert(sample_params):
     return ValuationRequest(
         ticker="TEST",
         projection_years=5,
-        mode=ValuationMode.FCFF_STANDARD,
-        input_source=InputSource.MANUAL,
+        mode=ValuationMethodology.FCFF_STANDARD,
+        input_source=ParametersSource.MANUAL,
         manual_params=sample_params,
     )
 
@@ -207,14 +207,14 @@ def sample_request_expert(sample_params):
 @pytest.fixture
 def all_valuation_modes():
     """Liste de tous les modes de valorisation."""
-    return list(ValuationMode)
+    return list(ValuationMethodology)
 
 
 @pytest.fixture
 def dcf_modes():
     """Modes DCF uniquement."""
     return [
-        ValuationMode.FCFF_STANDARD,
-        ValuationMode.FCFF_NORMALIZED,
-        ValuationMode.FCFF_GROWTH,
+        ValuationMethodology.FCFF_STANDARD,
+        ValuationMethodology.FCFF_NORMALIZED,
+        ValuationMethodology.FCFF_GROWTH,
     ]

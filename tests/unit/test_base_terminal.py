@@ -12,13 +12,13 @@ from unittest.mock import patch, MagicMock
 from app.ui.expert.base_terminal import ExpertTerminalBase
 from src.i18n import SharedTexts
 from src.models import (
-    ValuationMode, TerminalValueMethod, InputSource,
+    ValuationMethodology, TerminalValueMethod, ParametersSource,
     ValuationRequest, Parameters
 )
 
 # 1. Création d'une classe concrète pour tester l'abstraction
 class ConcreteTerminal(ExpertTerminalBase):
-    MODE = ValuationMode.FCFF_STANDARD
+    MODE = ValuationMethodology.FCFF_STANDARD
     DISPLAY_NAME = "Test Terminal"
 
     def render_model_inputs(self):
@@ -154,11 +154,11 @@ class TestMethodologyAdaptation:
 
     def test_monte_carlo_volatility_mapping(self, terminal):
         # Graham focus sur BPA (EPS)
-        terminal.MODE = ValuationMode.GRAHAM
+        terminal.MODE = ValuationMethodology.GRAHAM
         vols = terminal.get_custom_monte_carlo_vols()
         assert "base_flow_volatility" in vols
 
         # RIM focus sur persistance (Omega)
-        terminal.MODE = ValuationMode.RIM
+        terminal.MODE = ValuationMethodology.RIM
         vols = terminal.get_custom_monte_carlo_vols()
         assert vols["terminal_growth_volatility"] == SharedTexts.LBL_VOL_OMEGA

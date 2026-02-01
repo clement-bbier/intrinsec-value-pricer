@@ -13,7 +13,7 @@ Style: Numpy docstrings
 from typing import Dict, Any
 import streamlit as st
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import GrahamTexts as Texts
 from ..base_terminal import ExpertTerminalBase
 
@@ -27,7 +27,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     Attributes
     ----------
-    MODE : ValuationMode
+    MODE : ValuationMethodology
         Set to GRAHAM for defensive value investing.
 
     Notes
@@ -40,7 +40,7 @@ class GrahamValueTerminal(ExpertTerminalBase):
     which handles normalization via field validators.
     """
 
-    MODE = ValuationMode.GRAHAM
+    MODE = ValuationMethodology.GRAHAM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 

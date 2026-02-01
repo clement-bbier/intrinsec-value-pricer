@@ -38,8 +38,8 @@ from app.assets.style_system import inject_institutional_design
 from app.workflow import run_workflow_and_display
 from src.models import (
     Parameters,
-    InputSource,
-    ValuationMode,
+    ParametersSource,
+    ValuationMethodology,
     ValuationRequest,
     CoreRateParameters,
     GrowthParameters,
@@ -73,15 +73,15 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 # Valuation display names mapped from the central registry
-VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
+VALUATION_DISPLAY_NAMES: Dict[ValuationMethodology, str] = get_display_names()
 
-def _expert_render_wrapper(mode: ValuationMode, ticker: str):
+def _expert_render_wrapper(mode: ValuationMethodology, ticker: str):
     """
     Wrapper to render the expert terminal via the factory.
 
     Parameters
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         The selected valuation methodology.
     ticker : str
         The target company ticker.
@@ -89,8 +89,8 @@ def _expert_render_wrapper(mode: ValuationMode, ticker: str):
     return create_expert_terminal(mode, ticker).render()
 
 # Expert UI Registry for dynamic component injection
-EXPERT_UI_REGISTRY: Dict[ValuationMode, Callable] = {
-    mode: _expert_render_wrapper for mode in ValuationMode
+EXPERT_UI_REGISTRY: Dict[ValuationMethodology, Callable] = {
+    mode: _expert_render_wrapper for mode in ValuationMethodology
 }
 
 # ==============================================================================
@@ -164,7 +164,7 @@ def _render_sidebar_ticker() -> str:
     return ticker.strip().upper()
 
 
-def _render_sidebar_methodology() -> ValuationMode:
+def _render_sidebar_methodology() -> ValuationMethodology:
     """Renders the methodology selector."""
     st.header(SidebarTexts.SEC_2_METHODOLOGY)
     selected_name = st.selectbox(
@@ -192,7 +192,7 @@ def _render_sidebar_source() -> bool:
     return input_mode == SidebarTexts.SOURCE_OPTIONS[1]
 
 
-def _render_sidebar_auto_options(_mode: ValuationMode) -> Dict:
+def _render_sidebar_auto_options(_mode: ValuationMethodology) -> Dict:
     """Renders options specific to the Automated (Standard) mode."""
     st.header(SidebarTexts.SEC_4_HORIZON)
     years = st.slider(
@@ -315,7 +315,7 @@ def _render_onboarding_guide() -> None:
     d2.warning(OnboardingTexts.DIAGNOSTIC_WARN)
     d3.info(OnboardingTexts.DIAGNOSTIC_INFO)
 
-def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool = False) -> None:
+def _handle_expert_mode(ticker: str, mode: ValuationMethodology, external_launch: bool = False) -> None:
     """
     Handles expert terminal rendering and valuation triggering.
 
@@ -323,7 +323,7 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool 
     ----------
     ticker : str
         Stock symbol.
-    mode : ValuationMode
+    mode : ValuationMethodology
         Selected methodology.
     external_launch : bool, optional
         Indicates if calculation is triggered from a secondary UI element (e.g. Sidebar).
@@ -345,7 +345,7 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode, external_launch: bool 
             _set_active_request(request)
 
 
-def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
+def _handle_auto_launch(ticker: str, mode: ValuationMethodology, options: Dict) -> None:
     """Handles automated analysis launch with default risk parameters."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_INVALID)
@@ -371,7 +371,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
         ticker=ticker,
         projection_years=options["years"],
         mode=mode,
-        input_source=InputSource.AUTO,
+        input_source=ParametersSource.AUTO,
         manual_params=config_params,
         options=options
     )

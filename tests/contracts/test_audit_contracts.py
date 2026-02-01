@@ -26,7 +26,7 @@ class TestAuditEngineContract:
     def test_compute_audit_returns_audit_report(self, sample_financials, sample_params):
         """Vérifie que compute_audit retourne un AuditReport valide."""
         from infra.auditing.audit_engine import AuditEngine
-        from src.models import AuditReport, ValuationRequest, ValuationMode, InputSource
+        from src.models import AuditReport, ValuationRequest, ValuationMethodology, ParametersSource
         from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 
         # SÉCURISATION : On donne des valeurs minimales pour éviter les TypeError dans le pipeline
@@ -38,8 +38,8 @@ class TestAuditEngineContract:
         result.request = ValuationRequest(
             ticker="TEST",
             projection_years=5,
-            mode=ValuationMode.FCFF_STANDARD,
-            input_source=InputSource.AUTO,
+            mode=ValuationMethodology.FCFF_STANDARD,
+            input_source=ParametersSource.AUTO,
         )
 
         report = AuditEngine.compute_audit(result)
@@ -57,13 +57,13 @@ class TestAuditorFactoryContract:
         """Vérifie l'instanciation des nouveaux auditeurs refactorisés."""
         from infra.auditing.audit_engine import AuditorFactory
         from infra.auditing.auditors import DCFAuditor, RIMAuditor, GrahamAuditor
-        from src.models import ValuationMode
+        from src.models import ValuationMethodology
 
         # DCF modes → DCFAuditor (Le socle commun)
-        for mode in [ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_NORMALIZED]:
+        for mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_NORMALIZED]:
             auditor = AuditorFactory.get_auditor(mode)
             assert isinstance(auditor, DCFAuditor)
 
         # RIM & Graham ont maintenant leurs propres classes spécialisées
-        assert isinstance(AuditorFactory.get_auditor(ValuationMode.RIM), RIMAuditor)
-        assert isinstance(AuditorFactory.get_auditor(ValuationMode.GRAHAM), GrahamAuditor)
+        assert isinstance(AuditorFactory.get_auditor(ValuationMethodology.RIM), RIMAuditor)
+        assert isinstance(AuditorFactory.get_auditor(ValuationMethodology.GRAHAM), GrahamAuditor)

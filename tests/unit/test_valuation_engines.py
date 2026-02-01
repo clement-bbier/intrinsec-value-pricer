@@ -4,10 +4,10 @@ Version "Pure Engine" - Correction du chemin de Patching
 """
 
 from src.valuation.engines import _build_legacy_registry
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 
 
 class TestStrategyRegistry:
     def test_registry_integrity(self):
         registry = _build_legacy_registry()
-        assert ValuationMode.FCFF_STANDARD in registry
+        assert ValuationMethodology.FCFF_STANDARD in registry

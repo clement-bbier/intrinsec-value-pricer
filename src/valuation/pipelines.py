@@ -42,7 +42,7 @@ from src.models import (
     EquityDCFValuationResult,
     TerminalValueMethod,
     TraceHypothesis,
-    ValuationMode,
+    ValuationMethodology,
     ValuationResult,
     VariableInfo,
     VariableSource,
@@ -204,7 +204,7 @@ class DCFCalculationPipeline:
     ----------
     projector : FlowProjector
         The flow projection engine (Simple, Convergence, etc.).
-    mode : ValuationMode
+    mode : ValuationMethodology
         Valuation mode determining the logical branch (Entity vs Equity).
     glass_box_enabled : bool
         Enables or disables detailed mathematical trace generation.
@@ -213,7 +213,7 @@ class DCFCalculationPipeline:
     def __init__(
         self,
         projector: FlowProjector,
-        mode: ValuationMode,
+        mode: ValuationMethodology,
         glass_box_enabled: bool = True
     ):
         """
@@ -223,7 +223,7 @@ class DCFCalculationPipeline:
         ----------
         projector : FlowProjector
             The flow projection engine to use.
-        mode : ValuationMode
+        mode : ValuationMethodology
             Valuation mode (FCFF_STANDARD, DDM, FCFE, etc.).
         glass_box_enabled : bool, optional
             Enable Glass Box traceability (default: True).

@@ -33,14 +33,14 @@ from typing import List
 from decimal import Decimal, ROUND_HALF_UP
 
 from src.models import (
-    ValuationMode,
+    ValuationMethodology,
     Company,
     Parameters,
     GrowthParameters,
     CoreRateParameters,
     MonteCarloParameters,
     ValuationRequest,
-    InputSource,
+    ParametersSource,
 )
 from src.valuation.engines import run_valuation
 
@@ -60,7 +60,7 @@ class GoldenReference:
         Symbole du ticker.
     sector : str
         Secteur d'activité.
-    mode : ValuationMode
+    mode : ValuationMethodology
         Mode de valorisation utilisé.
     intrinsic_value : Decimal
         Valeur intrinsèque de référence (en devise locale).
@@ -71,7 +71,7 @@ class GoldenReference:
     """
     ticker: str
     sector: str
-    mode: ValuationMode
+    mode: ValuationMethodology
     intrinsic_value: Decimal
     tolerance_cents: int = 0
     notes: str = ""
@@ -85,80 +85,80 @@ GOLDEN_DATASET: List[GoldenReference] = [
     # =========================================================================
     # TECHNOLOGIE (10 tickers)
     # =========================================================================
-    GoldenReference(ticker="AAPL", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Apple Inc. - Référence Tech Mega Cap"),
-    GoldenReference(ticker="MSFT", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Microsoft Corp - Cloud Leader"),
-    GoldenReference(ticker="GOOGL", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Alphabet Inc. - Search & Cloud"),
-    GoldenReference(ticker="AMZN", sector="Technology", mode=ValuationMode.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Amazon - E-commerce & AWS"),
-    GoldenReference(ticker="META", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Meta Platforms - Social Media"),
-    GoldenReference(ticker="NVDA", sector="Technology", mode=ValuationMode.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="NVIDIA - AI & GPU Leader"),
-    GoldenReference(ticker="TSM", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Taiwan Semiconductor - Foundry Leader"),
-    GoldenReference(ticker="ASML", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="ASML Holding - Semiconductor Equipment"),
-    GoldenReference(ticker="CRM", sector="Technology", mode=ValuationMode.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Salesforce - Enterprise SaaS"),
-    GoldenReference(ticker="ORCL", sector="Technology", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Oracle Corp - Database & Cloud"),
+    GoldenReference(ticker="AAPL", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Apple Inc. - Référence Tech Mega Cap"),
+    GoldenReference(ticker="MSFT", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Microsoft Corp - Cloud Leader"),
+    GoldenReference(ticker="GOOGL", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Alphabet Inc. - Search & Cloud"),
+    GoldenReference(ticker="AMZN", sector="Technology", mode=ValuationMethodology.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Amazon - E-commerce & AWS"),
+    GoldenReference(ticker="META", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Meta Platforms - Social Media"),
+    GoldenReference(ticker="NVDA", sector="Technology", mode=ValuationMethodology.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="NVIDIA - AI & GPU Leader"),
+    GoldenReference(ticker="TSM", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Taiwan Semiconductor - Foundry Leader"),
+    GoldenReference(ticker="ASML", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="ASML Holding - Semiconductor Equipment"),
+    GoldenReference(ticker="CRM", sector="Technology", mode=ValuationMethodology.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Salesforce - Enterprise SaaS"),
+    GoldenReference(ticker="ORCL", sector="Technology", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Oracle Corp - Database & Cloud"),
     
     # =========================================================================
     # BANQUES & FINANCE (10 tickers)
     # =========================================================================
-    GoldenReference(ticker="JPM", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="JPMorgan Chase - US Banking Leader"),
-    GoldenReference(ticker="BAC", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Bank of America - US Major Bank"),
-    GoldenReference(ticker="WFC", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Wells Fargo - US Regional Leader"),
-    GoldenReference(ticker="GS", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Goldman Sachs - Investment Banking"),
-    GoldenReference(ticker="MS", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Morgan Stanley - Investment Banking"),
-    GoldenReference(ticker="C", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Citigroup - Global Banking"),
-    GoldenReference(ticker="HSBC", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="HSBC Holdings - European Banking"),
-    GoldenReference(ticker="BNP.PA", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="BNP Paribas - French Banking Leader"),
-    GoldenReference(ticker="SAN", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="Santander - Spanish Banking"),
-    GoldenReference(ticker="UBS", sector="Banking", mode=ValuationMode.RIM, intrinsic_value=Decimal("0.00"), notes="UBS Group - Swiss Banking"),
+    GoldenReference(ticker="JPM", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="JPMorgan Chase - US Banking Leader"),
+    GoldenReference(ticker="BAC", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Bank of America - US Major Bank"),
+    GoldenReference(ticker="WFC", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Wells Fargo - US Regional Leader"),
+    GoldenReference(ticker="GS", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Goldman Sachs - Investment Banking"),
+    GoldenReference(ticker="MS", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Morgan Stanley - Investment Banking"),
+    GoldenReference(ticker="C", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Citigroup - Global Banking"),
+    GoldenReference(ticker="HSBC", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="HSBC Holdings - European Banking"),
+    GoldenReference(ticker="BNP.PA", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="BNP Paribas - French Banking Leader"),
+    GoldenReference(ticker="SAN", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="Santander - Spanish Banking"),
+    GoldenReference(ticker="UBS", sector="Banking", mode=ValuationMethodology.RIM, intrinsic_value=Decimal("0.00"), notes="UBS Group - Swiss Banking"),
     
     # =========================================================================
     # INDUSTRIE (10 tickers)
     # =========================================================================
-    GoldenReference(ticker="CAT", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Caterpillar - Heavy Equipment"),
-    GoldenReference(ticker="DE", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Deere & Co - Agricultural Equipment"),
-    GoldenReference(ticker="GE", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="GE Aerospace - Aviation"),
-    GoldenReference(ticker="HON", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Honeywell - Diversified Industrial"),
-    GoldenReference(ticker="UNP", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Union Pacific - Railroad"),
-    GoldenReference(ticker="RTX", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="RTX Corp - Defense & Aerospace"),
-    GoldenReference(ticker="LMT", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Lockheed Martin - Defense"),
-    GoldenReference(ticker="BA", sector="Industrials", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Boeing - Commercial Aviation"),
-    GoldenReference(ticker="MMM", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="3M Company - Diversified Industrial"),
-    GoldenReference(ticker="ABB", sector="Industrials", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="ABB Ltd - Automation & Electrification"),
+    GoldenReference(ticker="CAT", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Caterpillar - Heavy Equipment"),
+    GoldenReference(ticker="DE", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Deere & Co - Agricultural Equipment"),
+    GoldenReference(ticker="GE", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="GE Aerospace - Aviation"),
+    GoldenReference(ticker="HON", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Honeywell - Diversified Industrial"),
+    GoldenReference(ticker="UNP", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Union Pacific - Railroad"),
+    GoldenReference(ticker="RTX", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="RTX Corp - Defense & Aerospace"),
+    GoldenReference(ticker="LMT", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Lockheed Martin - Defense"),
+    GoldenReference(ticker="BA", sector="Industrials", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Boeing - Commercial Aviation"),
+    GoldenReference(ticker="MMM", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="3M Company - Diversified Industrial"),
+    GoldenReference(ticker="ABB", sector="Industrials", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="ABB Ltd - Automation & Electrification"),
     
     # =========================================================================
     # SANTÉ (5 tickers)
     # =========================================================================
-    GoldenReference(ticker="JNJ", sector="Healthcare", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Johnson & Johnson - Pharma & MedTech"),
-    GoldenReference(ticker="UNH", sector="Healthcare", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="UnitedHealth - Healthcare Services"),
-    GoldenReference(ticker="PFE", sector="Healthcare", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Pfizer - Pharmaceuticals"),
-    GoldenReference(ticker="ABBV", sector="Healthcare", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="AbbVie - Biopharmaceuticals"),
-    GoldenReference(ticker="NVO", sector="Healthcare", mode=ValuationMode.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Novo Nordisk - Diabetes & Obesity"),
+    GoldenReference(ticker="JNJ", sector="Healthcare", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Johnson & Johnson - Pharma & MedTech"),
+    GoldenReference(ticker="UNH", sector="Healthcare", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="UnitedHealth - Healthcare Services"),
+    GoldenReference(ticker="PFE", sector="Healthcare", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Pfizer - Pharmaceuticals"),
+    GoldenReference(ticker="ABBV", sector="Healthcare", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="AbbVie - Biopharmaceuticals"),
+    GoldenReference(ticker="NVO", sector="Healthcare", mode=ValuationMethodology.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="Novo Nordisk - Diabetes & Obesity"),
     
     # =========================================================================
     # CONSOMMATION (5 tickers)
     # =========================================================================
-    GoldenReference(ticker="PG", sector="Consumer", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Procter & Gamble - Consumer Staples"),
-    GoldenReference(ticker="KO", sector="Consumer", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="Coca-Cola - Beverages (Dividend Model)"),
-    GoldenReference(ticker="PEP", sector="Consumer", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="PepsiCo - Beverages & Snacks (Dividend Model)"),
-    GoldenReference(ticker="WMT", sector="Consumer", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Walmart - Retail Giant"),
-    GoldenReference(ticker="COST", sector="Consumer", mode=ValuationMode.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Costco - Warehouse Retail"),
+    GoldenReference(ticker="PG", sector="Consumer", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Procter & Gamble - Consumer Staples"),
+    GoldenReference(ticker="KO", sector="Consumer", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="Coca-Cola - Beverages (Dividend Model)"),
+    GoldenReference(ticker="PEP", sector="Consumer", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="PepsiCo - Beverages & Snacks (Dividend Model)"),
+    GoldenReference(ticker="WMT", sector="Consumer", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Walmart - Retail Giant"),
+    GoldenReference(ticker="COST", sector="Consumer", mode=ValuationMethodology.FCFF_STANDARD, intrinsic_value=Decimal("0.00"), notes="Costco - Warehouse Retail"),
     
     # =========================================================================
     # ÉNERGIE (5 tickers)
     # =========================================================================
-    GoldenReference(ticker="XOM", sector="Energy", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Exxon Mobil - Oil & Gas Major"),
-    GoldenReference(ticker="CVX", sector="Energy", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Chevron - Oil & Gas Major"),
-    GoldenReference(ticker="SHEL", sector="Energy", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Shell PLC - European Oil Major"),
-    GoldenReference(ticker="TTE", sector="Energy", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="TotalEnergies - French Oil Major"),
-    GoldenReference(ticker="BP", sector="Energy", mode=ValuationMode.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="BP PLC - British Oil Major"),
+    GoldenReference(ticker="XOM", sector="Energy", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Exxon Mobil - Oil & Gas Major"),
+    GoldenReference(ticker="CVX", sector="Energy", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Chevron - Oil & Gas Major"),
+    GoldenReference(ticker="SHEL", sector="Energy", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="Shell PLC - European Oil Major"),
+    GoldenReference(ticker="TTE", sector="Energy", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="TotalEnergies - French Oil Major"),
+    GoldenReference(ticker="BP", sector="Energy", mode=ValuationMethodology.FCFF_NORMALIZED, intrinsic_value=Decimal("0.00"), notes="BP PLC - British Oil Major"),
     
     # =========================================================================
     # UTILITIES & TELECOM (5 tickers)
     # =========================================================================
-    GoldenReference(ticker="NEE", sector="Utilities", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="NextEra Energy - Renewable Utilities"),
-    GoldenReference(ticker="DUK", sector="Utilities", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="Duke Energy - Electric Utilities"),
-    GoldenReference(ticker="T", sector="Telecom", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="AT&T - Telecommunications"),
-    GoldenReference(ticker="VZ", sector="Telecom", mode=ValuationMode.DDM, intrinsic_value=Decimal("0.00"), notes="Verizon - Telecommunications"),
-    GoldenReference(ticker="TMUS", sector="Telecom", mode=ValuationMode.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="T-Mobile US - Wireless Growth"),
+    GoldenReference(ticker="NEE", sector="Utilities", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="NextEra Energy - Renewable Utilities"),
+    GoldenReference(ticker="DUK", sector="Utilities", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="Duke Energy - Electric Utilities"),
+    GoldenReference(ticker="T", sector="Telecom", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="AT&T - Telecommunications"),
+    GoldenReference(ticker="VZ", sector="Telecom", mode=ValuationMethodology.DDM, intrinsic_value=Decimal("0.00"), notes="Verizon - Telecommunications"),
+    GoldenReference(ticker="TMUS", sector="Telecom", mode=ValuationMethodology.FCFF_GROWTH, intrinsic_value=Decimal("0.00"), notes="T-Mobile US - Wireless Growth"),
 ]
 
 
@@ -198,7 +198,7 @@ class TestGoldenDatasetConfiguration:
     def test_all_valuation_modes_covered(self) -> None:
         """Vérifie que les principaux modes de valorisation sont testés."""
         modes = {entry.mode for entry in GOLDEN_DATASET}
-        required_modes = {ValuationMode.FCFF_STANDARD, ValuationMode.FCFF_GROWTH, ValuationMode.FCFF_NORMALIZED, ValuationMode.DDM, ValuationMode.RIM}
+        required_modes = {ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH, ValuationMethodology.FCFF_NORMALIZED, ValuationMethodology.DDM, ValuationMethodology.RIM}
         assert not (required_modes - modes)
     
     def test_unique_tickers(self) -> None:
@@ -244,7 +244,7 @@ class TestGoldenDatasetValuation:
             ticker=golden_ref.ticker, 
             projection_years=5, 
             mode=golden_ref.mode, 
-            input_source=InputSource.MANUAL, 
+            input_source=ParametersSource.MANUAL,
             manual_params=default_params
         )
         financials = self.get_mock_financials(golden_ref.ticker)

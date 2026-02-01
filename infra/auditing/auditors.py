@@ -40,7 +40,7 @@ from src.i18n import AuditTexts, StrategyFormulas
 from src.models import (
     AuditPillar,
     AuditPillarScore,
-    AuditSeverity,
+    DiagnosticLevel,
     AuditStep,
     Company,
     ValuationResult,
@@ -185,7 +185,7 @@ class BaseAuditor(IValuationAuditor, ABC):
         key: str,
         value: Any,
         threshold: Any,
-        severity: AuditSeverity,
+        severity: DiagnosticLevel,
         condition: bool,
         penalty: float = 0.0,
         formula: Optional[str] = None
@@ -201,7 +201,7 @@ class BaseAuditor(IValuationAuditor, ABC):
             The actual value being tested.
         threshold : Any
             The reference threshold for comparison.
-        severity : AuditSeverity
+        severity : DiagnosticLevel
             Criticality level (CRITICAL, WARNING, INFO).
         condition : bool
             True if the test passes, False otherwise.
@@ -263,7 +263,7 @@ class BaseAuditor(IValuationAuditor, ABC):
                 key=AuditTexts.KEY_BETA_VALIDITY,
                 value=beta,
                 threshold=f"{AuditThresholds.BETA_MIN}-{AuditThresholds.BETA_MAX}",
-                severity=AuditSeverity.WARNING,
+                severity=DiagnosticLevel.WARNING,
                 condition=beta_valid,
                 penalty=15.0
             )
@@ -275,7 +275,7 @@ class BaseAuditor(IValuationAuditor, ABC):
             key=AuditTexts.KEY_DATA_FRESHNESS,
             value=f"{age_months} mois",
             threshold=f"≤ {max_age}",
-            severity=AuditSeverity.WARNING,
+            severity=DiagnosticLevel.WARNING,
             condition=age_months <= max_age,
             penalty=10.0
         )
@@ -390,7 +390,7 @@ class DCFAuditor(BaseAuditor):
             key=AuditTexts.KEY_ICR_WARNING,
             value=f"{icr:.2f}x",
             threshold=f"≥ {icr_threshold}x",
-            severity=AuditSeverity.WARNING,
+            severity=DiagnosticLevel.WARNING,
             condition=icr >= icr_threshold,
             penalty=20.0
         )
@@ -406,7 +406,7 @@ class DCFAuditor(BaseAuditor):
                 key=AuditTexts.KEY_WACC_G_SPREAD,
                 value=f"{spread:.2%}",
                 threshold=f"≥ {spread_min:.1%}",
-                severity=AuditSeverity.CRITICAL,
+                severity=DiagnosticLevel.CRITICAL,
                 condition=spread >= spread_min,
                 penalty=50.0
             )
@@ -419,7 +419,7 @@ class DCFAuditor(BaseAuditor):
                 key=AuditTexts.KEY_REINVESTMENT_DEFICIT,
                 value=f"{reinvestment_ratio:.1f}x",
                 threshold=f"≥ {reinv_min}x",
-                severity=AuditSeverity.WARNING,
+                severity=DiagnosticLevel.WARNING,
                 condition=reinvestment_ratio >= reinv_min,
                 penalty=15.0
             )
@@ -519,7 +519,7 @@ class DDMAuditor(DCFAuditor):
                 key=AuditTexts.KEY_PAYOUT_UNSUSTAINABLE,
                 value=f"{payout_ratio:.0%}",
                 threshold=f"< {payout_limit:.0%}",
-                severity=AuditSeverity.WARNING,
+                severity=DiagnosticLevel.WARNING,
                 condition=payout_ratio < payout_limit,
                 penalty=20.0
             )
@@ -638,7 +638,7 @@ class RIMAuditor(BaseAuditor):
                 key=AuditTexts.KEY_ROE_KE_NEGATIVE,
                 value=f"{spread:.2%}",
                 threshold="> 0%",
-                severity=AuditSeverity.CRITICAL,
+                severity=DiagnosticLevel.CRITICAL,
                 condition=spread > 0,
                 penalty=40.0
             )
@@ -652,7 +652,7 @@ class RIMAuditor(BaseAuditor):
             key=AuditTexts.KEY_OMEGA_BOUNDS,
             value=f"{omega:.2f}",
             threshold=f"[{omega_min}, {omega_max}]",
-            severity=AuditSeverity.WARNING,
+            severity=DiagnosticLevel.WARNING,
             condition=omega_min <= omega <= omega_max,
             penalty=20.0
         )
@@ -747,7 +747,7 @@ class GrahamAuditor(BaseAuditor):
             key=AuditTexts.KEY_GRAHAM_MULTIPLIER,
             value=f"{graham_multiplier:.1f}",
             threshold=f"≤ {multiplier_limit}",
-            severity=AuditSeverity.WARNING,
+            severity=DiagnosticLevel.WARNING,
             condition=graham_multiplier <= multiplier_limit,
             penalty=30.0
         )
@@ -842,7 +842,7 @@ class MultiplesAuditor(BaseAuditor):
             key=AuditTexts.KEY_COHORT_SMALL,
             value=str(cohort_size),
             threshold=f"≥ {min_cohort}",
-            severity=AuditSeverity.WARNING,
+            severity=DiagnosticLevel.WARNING,
             condition=cohort_size >= min_cohort,
             penalty=20.0
         )
@@ -859,7 +859,7 @@ class MultiplesAuditor(BaseAuditor):
                     key=AuditTexts.KEY_HIGH_DISPERSION,
                     value=f"{cv:.1%}",
                     threshold=f"≤ {cv_max:.0%}",
-                    severity=AuditSeverity.WARNING,
+                    severity=DiagnosticLevel.WARNING,
                     condition=cv <= cv_max,
                     penalty=20.0
                 )

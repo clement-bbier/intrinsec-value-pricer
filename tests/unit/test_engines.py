@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 
-from src.models import Parameters, ValuationMode, InputSource
+from src.models import Parameters, ValuationMethodology, ParametersSource
 
 # ==============================================================================
 # FIXTURES
@@ -26,9 +26,9 @@ def mock_valuation_request():
     request.ticker = "AAPL"
     request.mode.value = "FCFF_STANDARD"
     request.mode.name = "FCFF_STANDARD"
-    request.mode = MagicMock(spec=ValuationMode)
+    request.mode = MagicMock(spec=ValuationMethodology)
     request.mode.supports_monte_carlo = True
-    request.input_source = InputSource.MANUAL
+    request.input_source = ParametersSource.MANUAL
     request.options = {}
     return request
 

@@ -34,7 +34,7 @@ from typing import Dict, Type, List, Tuple
 from dataclasses import dataclass
 from enum import IntEnum
 
-from src.models import ValuationMode
+from src.models import ValuationMethodology
 from src.i18n import SharedTexts
 from .base_terminal import ExpertTerminalBase
 
@@ -95,11 +95,11 @@ class ExpertTerminalFactory:
     """
 
     # Registry enriched with sorting metadata (ST-3.1)
-    _REGISTRY: Dict[ValuationMode, TerminalMetadata] = {
+    _REGISTRY: Dict[ValuationMethodology, TerminalMetadata] = {
         # ══════════════════════════════════════════════════════════════════
         # TIER 1: DEFENSIVE (Quick Screening)
         # ══════════════════════════════════════════════════════════════════
-        ValuationMode.GRAHAM: TerminalMetadata(
+        ValuationMethodology.GRAHAM: TerminalMetadata(
             terminal_cls=GrahamValueTerminal,
             tier=AnalyticalTier.DEFENSIVE,
             sort_order=1,
@@ -109,13 +109,13 @@ class ExpertTerminalFactory:
         # ══════════════════════════════════════════════════════════════════
         # TIER 2: RELATIVE (Market Comparison)
         # ══════════════════════════════════════════════════════════════════
-        ValuationMode.RIM: TerminalMetadata(
+        ValuationMethodology.RIM: TerminalMetadata(
             terminal_cls=RIMBankTerminal,
             tier=AnalyticalTier.RELATIVE,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
-        ValuationMode.DDM: TerminalMetadata(
+        ValuationMethodology.DDM: TerminalMetadata(
             terminal_cls=DDMTerminal,
             tier=AnalyticalTier.RELATIVE,
             sort_order=2,
@@ -125,25 +125,25 @@ class ExpertTerminalFactory:
         # ══════════════════════════════════════════════════════════════════
         # TIER 3: FUNDAMENTAL (Intrinsic Value DCF)
         # ══════════════════════════════════════════════════════════════════
-        ValuationMode.FCFF_STANDARD: TerminalMetadata(
+        ValuationMethodology.FCFF_STANDARD: TerminalMetadata(
             terminal_cls=FCFFStandardTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
-        ValuationMode.FCFF_NORMALIZED: TerminalMetadata(
+        ValuationMethodology.FCFF_NORMALIZED: TerminalMetadata(
             terminal_cls=FCFFNormalizedTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=2,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
-        ValuationMode.FCFF_GROWTH: TerminalMetadata(
+        ValuationMethodology.FCFF_GROWTH: TerminalMetadata(
             terminal_cls=FCFFGrowthTerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=3,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
-        ValuationMode.FCFE: TerminalMetadata(
+        ValuationMethodology.FCFE: TerminalMetadata(
             terminal_cls=FCFETerminal,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=4,
@@ -152,13 +152,13 @@ class ExpertTerminalFactory:
     }
 
     @classmethod
-    def create(cls, mode: ValuationMode, ticker: str) -> ExpertTerminalBase:
+    def create(cls, mode: ValuationMethodology, ticker: str) -> ExpertTerminalBase:
         """
         Creates the appropriate terminal for the given mode.
 
         Parameters
         ----------
-        mode : ValuationMode
+        mode : ValuationMethodology
             The valuation mode to instantiate.
         ticker : str
             Target stock ticker.
@@ -185,13 +185,13 @@ class ExpertTerminalFactory:
         return metadata.terminal_cls(ticker)
 
     @classmethod
-    def get_available_modes(cls) -> List[ValuationMode]:
+    def get_available_modes(cls) -> List[ValuationMethodology]:
         """
         Lists available modes sorted by analytical hierarchy (ST-3.1).
 
         Returns
         -------
-        List[ValuationMode]
+        List[ValuationMethodology]
             Ordered modes: Defensive → Relative → Fundamental.
         """
         return sorted(
@@ -200,7 +200,7 @@ class ExpertTerminalFactory:
         )
 
     @classmethod
-    def get_mode_display_names(cls) -> Dict[ValuationMode, str]:
+    def get_mode_display_names(cls) -> Dict[ValuationMethodology, str]:
         """Mapping from mode to UI display name."""
         return {
             mode: meta.terminal_cls.DISPLAY_NAME
@@ -208,7 +208,7 @@ class ExpertTerminalFactory:
         }
 
     @classmethod
-    def get_mode_descriptions(cls) -> Dict[ValuationMode, str]:
+    def get_mode_descriptions(cls) -> Dict[ValuationMethodology, str]:
         """Mapping from mode to UI description."""
         return {
             mode: meta.terminal_cls.DESCRIPTION
@@ -216,16 +216,16 @@ class ExpertTerminalFactory:
         }
 
     @classmethod
-    def get_modes_by_tier(cls) -> Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]]:
+    def get_modes_by_tier(cls) -> Dict[AnalyticalTier, List[Tuple[ValuationMethodology, TerminalMetadata]]]:
         """
         Returns modes grouped by analytical tier (ST-3.1).
 
         Returns
         -------
-        Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]]
+        Dict[AnalyticalTier, List[Tuple[ValuationMethodology, TerminalMetadata]]]
             Modes grouped and sorted by complexity tier.
         """
-        result: Dict[AnalyticalTier, List[Tuple[ValuationMode, TerminalMetadata]]] = {}
+        result: Dict[AnalyticalTier, List[Tuple[ValuationMethodology, TerminalMetadata]]] = {}
 
         for mode, meta in cls._REGISTRY.items():
             if meta.tier not in result:
@@ -239,13 +239,13 @@ class ExpertTerminalFactory:
         return result
 
     @classmethod
-    def get_tier_label(cls, mode: ValuationMode) -> str:
+    def get_tier_label(cls, mode: ValuationMethodology) -> str:
         """
         Returns the category label for a given mode.
 
         Parameters
         ----------
-        mode : ValuationMode
+        mode : ValuationMethodology
             Target valuation mode.
 
         Returns
@@ -257,13 +257,13 @@ class ExpertTerminalFactory:
         return meta.category_label if meta else SharedTexts.CATEGORY_OTHER
 
 
-def create_expert_terminal(mode: ValuationMode, ticker: str) -> ExpertTerminalBase:
+def create_expert_terminal(mode: ValuationMethodology, ticker: str) -> ExpertTerminalBase:
     """
     Factory helper to instantiate an expert terminal.
 
     Parameters
     ----------
-    mode : ValuationMode
+    mode : ValuationMethodology
         Target valuation mode.
     ticker : str
         Stock ticker symbol.

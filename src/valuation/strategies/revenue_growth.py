@@ -31,7 +31,7 @@ from src.models import (
     Company,
     Parameters,
     DCFValuationResult,
-    ValuationMode
+    ValuationMethodology
 )
 from src.valuation.pipelines import DCFCalculationPipeline
 from src.valuation.strategies.abstract import ValuationStrategy
@@ -116,7 +116,7 @@ class RevenueBasedStrategy(ValuationStrategy):
         # On utilise le projecteur de convergence de marges
         pipeline = DCFCalculationPipeline(
             projector=MarginConvergenceProjector(),
-            mode=ValuationMode.FCFF_GROWTH,
+            mode=ValuationMethodology.FCFF_GROWTH,
             glass_box_enabled=self.glass_box_enabled
         )
 
