@@ -1,5 +1,5 @@
 """
-src/models/params/extensions.py
+src/models/params/options.py
 
 ANALYTICAL EXTENSIONS PARAMETERS (MASTER ARCHITECTURE)
 ====================================================
