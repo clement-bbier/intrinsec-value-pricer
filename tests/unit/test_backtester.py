@@ -8,9 +8,8 @@ Couvre UNIQUEMENT les fonctions réelles : freeze_data_at_fiscal_year, _filter_d
 import pytest
 from unittest.mock import Mock, patch
 import pandas as pd
-from datetime import datetime
 
-from infra.auditing.backtester import BacktestEngine
+from src.valuation.backtest_engine import BacktestEngine
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 
 

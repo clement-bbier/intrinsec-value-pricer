@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, Field
 
-class FinancialRates(BaseModel):
+class FinancialRatesParameters(BaseModel):
     """Universal financial discounting and risk parameters."""
     risk_free_rate: Optional[float] = None
     market_risk_premium: Optional[float] = None
@@ -24,7 +24,7 @@ class FinancialRates(BaseModel):
     corporate_aaa_yield: Optional[float] = None     # Graham specific but kept in common for market context
 
 
-class CapitalStructure(BaseModel):
+class CapitalStructureParameters(BaseModel):
     """Universal balance sheet and equity bridge components."""
     total_debt: Optional[float] = None
     cash_and_equivalents: Optional[float] = None
@@ -35,5 +35,5 @@ class CapitalStructure(BaseModel):
 
 class CommonParameters(BaseModel):
     """Main container for shared valuation inputs."""
-    rates: FinancialRates = Field(default_factory=FinancialRates)
-    capital: CapitalStructure = Field(default_factory=CapitalStructure)
+    rates: FinancialRatesParameters = Field(default_factory=FinancialRatesParameters)
+    capital: CapitalStructureParameters = Field(default_factory=CapitalStructureParameters)

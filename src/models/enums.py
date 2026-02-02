@@ -33,9 +33,10 @@ class ParametersSource(str, Enum):
     Provenance of a specific parameter value.
     Used for the 'Glass Box' resolution dance.
     """
-    MANUAL = "MANUAL"  # Expert override
-    AUTO = "AUTO"      # Market data provider (Yahoo)
-    SYSTEM = "SYSTEM"  # Internal fallback or sector benchmark
+    MANUAL = "USER_INPUT"        # Expert override
+    AUTO = "PROVIDER_INPUT"      # Market data provider (Yahoo)
+    SYSTEM = "SYSTEM_INPUT"      # Internal fallback or sector benchmark
+    EMPTY = None
 
 class SOTPMethod(str, Enum):
     """Valuation techniques for segment-based analysis."""

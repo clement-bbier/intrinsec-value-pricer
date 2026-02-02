@@ -64,7 +64,7 @@ from src.models import (
 )
 from src.valuation.engines import run_valuation
 from src.quant_logger import QuantLogger
-from infra.auditing.backtester import BacktestEngine
+from src.valuation.backtest_engine import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
 
