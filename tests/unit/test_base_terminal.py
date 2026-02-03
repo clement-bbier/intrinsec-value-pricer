@@ -9,7 +9,7 @@ Fixes: Aligned session state keys with targeted extraction methods (V16).
 
 import pytest
 from unittest.mock import patch, MagicMock
-from app.ui.expert.base_terminal import ExpertTerminalBase
+from app.ui.expert.base_terminal import BaseTerminalExpert
 from src.i18n import SharedTexts
 from src.models import (
     ValuationMethodology, TerminalValueMethod, ParametersSource,
@@ -17,7 +17,7 @@ from src.models import (
 )
 
 # 1. Création d'une classe concrète pour tester l'abstraction
-class ConcreteTerminal(ExpertTerminalBase):
+class ConcreteTerminalTerminalExpert(BaseTerminalExpert):
     MODE = ValuationMethodology.FCFF_STANDARD
     DISPLAY_NAME = "Test Terminal"
 
@@ -30,7 +30,7 @@ class ConcreteTerminal(ExpertTerminalBase):
 
 @pytest.fixture
 def terminal():
-    return ConcreteTerminal(ticker="AAPL")
+    return ConcreteTerminalTerminalExpert(ticker="AAPL")
 
 class TestExpertTerminalLifecycle:
     """Validation de l'orchestration du rendu (Template Method)."""

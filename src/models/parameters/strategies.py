@@ -1,138 +1,74 @@
 """
-src/models/params/strategies.py
+src/models/parameters/strategies.py
 
-SPECIFIC VALUATION STRATEGY PARAMETERS (ULTRA-CLINICAL & DRY)
-============================================================
-Role: Captures User Overrides with factored projection logic.
-Architecture: Pydantic V2 inheritance. Factors common projection fields
-              while keeping accounting anchors specialized per model.
+SPECIFIC VALUATION STRATEGY PARAMETERS
+======================================
+Role: Captures User Overrides with factored projection logic and UI mapping.
+Architecture: Inherits from BaseNormalizedModel for automatic scaling.
 """
 
 from __future__ import annotations
-from typing import Optional, Literal, Union
-from pydantic import BaseModel, Field
+from typing import Optional, Literal, Union, Annotated
+from pydantic import Field
 from src.models.enums import ValuationMethodology, TerminalValueMethod
+from src.models.parameters.ui_bridge import UIKey
+from .common import BaseNormalizedModel
 
-# ==============================================================================
-# 1. REUSABLE COMPONENTS
-# ==============================================================================
-
-class TerminalValueParameters(BaseModel):
+class TerminalValueParameters(BaseNormalizedModel):
     """Parameters for Step 4: Terminal Value (Exit Logic)."""
     method: Optional[TerminalValueMethod] = None
-    perpetual_growth_rate: Optional[float] = None
-    exit_multiple: Optional[float] = None
+    perpetual_growth_rate: Annotated[Optional[float], UIKey("gn", scale="pct")] = None
+    exit_multiple: Annotated[Optional[float], UIKey("exit_mult", scale="raw")] = None
 
-class BaseProjectedParameters(BaseModel):
-    """
-    Base Mixin for models requiring a discrete projection period.
-    Factors common fields for DCF, DDM, and RIM.
-    """
-    projection_years: Optional[int] = Field(None, ge=1, le=50)
+class BaseProjectedParameters(BaseNormalizedModel):
+    """Mixin for models requiring a discrete projection period."""
+    projection_years: Annotated[Optional[int], UIKey("years", scale="raw")] = Field(None, ge=1, le=50)
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
-
-# ==============================================================================
-# 2. STRATEGY CLASSES (The Drawers)
-# ==============================================================================
 
 class FCFFStandardParameters(BaseProjectedParameters):
     """Standard DCF based on Free Cash Flow to Firm."""
     mode: Literal[ValuationMethodology.FCFF_STANDARD] = ValuationMethodology.FCFF_STANDARD
-
-    # --- Accounting Overrides ---
-    fcf_anchor: Optional[float] = None
-    ebit_ttm: Optional[float] = None
-    capex_ttm: Optional[float] = None
-    da_ttm: Optional[float] = None
-
-    # --- Specific Lever ---
-    growth_rate_p1: Optional[float] = None
+    fcf_anchor: Annotated[Optional[float], UIKey("fcf_base", scale="million")] = None
+    growth_rate_p1: Annotated[Optional[float], UIKey("growth_rate", scale="pct")] = None
 
 class FCFFNormalizedParameters(BaseProjectedParameters):
     """DCF based on normalized cycle flows."""
     mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
-
-    # --- Accounting Overrides ---
-    fcf_norm: Optional[float] = None
-    ebit_norm: Optional[float] = None
-
-    # --- Specific Lever ---
-    cycle_growth_rate: Optional[float] = None
+    fcf_norm: Annotated[Optional[float], UIKey("fcf_norm", scale="million")] = None
+    cycle_growth_rate: Annotated[Optional[float], UIKey("growth_rate", scale="pct")] = None
 
 class FCFFGrowthParameters(BaseProjectedParameters):
     """DCF starting from Revenue and Margins."""
     mode: Literal[ValuationMethodology.FCFF_GROWTH] = ValuationMethodology.FCFF_GROWTH
-
-    # --- Accounting Overrides ---
-    revenue_ttm: Optional[float] = None
-    ebitda_ttm: Optional[float] = None
-    target_fcf_margin: Optional[float] = None
-    capex_ttm: Optional[float] = None
-
-    # --- Specific Lever ---
-    revenue_growth_rate: Optional[float] = None
+    revenue_ttm: Annotated[Optional[float], UIKey("revenue_ttm", scale="million")] = None
+    revenue_growth_rate: Annotated[Optional[float], UIKey("growth_rate", scale="pct")] = None
+    target_fcf_margin: Annotated[Optional[float], UIKey("fcf_margin", scale="pct")] = None
 
 class FCFEParameters(BaseProjectedParameters):
     """Free Cash Flow to Equity (Post-Debt)."""
     mode: Literal[ValuationMethodology.FCFE] = ValuationMethodology.FCFE
-
-    # --- Accounting Overrides ---
-    fcfe_anchor: Optional[float] = None
-    net_income_ttm: Optional[float] = None
-    net_borrowing_delta: Optional[float] = None
-    capex_ttm: Optional[float] = None
-
-    # --- Specific Lever ---
-    growth_rate: Optional[float] = None
+    fcfe_anchor: Annotated[Optional[float], UIKey("fcfe_anchor", scale="million")] = None
+    growth_rate: Annotated[Optional[float], UIKey("growth_rate", scale="pct")] = None
 
 class DDMParameters(BaseProjectedParameters):
     """Dividend Discount Model."""
     mode: Literal[ValuationMethodology.DDM] = ValuationMethodology.DDM
-
-    # --- Accounting Overrides ---
-    dividend_per_share: Optional[float] = None
-    net_income_ttm: Optional[float] = None
-
-    # --- Specific Lever ---
-    dividend_growth_rate: Optional[float] = None
+    dividend_per_share: Annotated[Optional[float], UIKey("div_base", scale="raw")] = None
+    dividend_growth_rate: Annotated[Optional[float], UIKey("growth_rate", scale="pct")] = None
 
 class RIMParameters(BaseProjectedParameters):
     """Residual Income Model (Ohlson)."""
     mode: Literal[ValuationMethodology.RIM] = ValuationMethodology.RIM
+    book_value_anchor: Annotated[Optional[float], UIKey("bv_anchor", scale="million")] = None
+    persistence_factor: Annotated[Optional[float], UIKey("omega", scale="raw")] = None
 
-    # --- Accounting Overrides ---
-    book_value_anchor: Optional[float] = None
-    net_income_norm: Optional[float] = None
-    total_assets: Optional[float] = None
-
-    # --- Specific Levers ---
-    growth_rate: Optional[float] = None
-    persistence_factor: Optional[float] = None
-
-class GrahamParameters(BaseModel):
-    """
-    Graham Intrinsic Value.
-    Note: Does NOT inherit from BaseProjectedParameters (Static Formula).
-    """
+class GrahamParameters(BaseNormalizedModel):
+    """Graham Intrinsic Value (Static Formula)."""
     mode: Literal[ValuationMethodology.GRAHAM] = ValuationMethodology.GRAHAM
-
-    # --- Accounting Overrides ---
-    eps_normalized: Optional[float] = None
-    revenue_ttm: Optional[float] = None
-
-    # --- Method Levers ---
-    growth_estimate: Optional[float] = None
-
-# ==============================================================================
-# 3. THE ORCHESTRATOR
-# ==============================================================================
+    eps_normalized: Annotated[Optional[float], UIKey("eps_normalized", scale="raw")] = None
+    growth_estimate: Annotated[Optional[float], UIKey("growth_estimate", scale="pct")] = None
 
 StrategyUnionParameters = Union[
-    FCFFStandardParameters,
-    FCFFNormalizedParameters,
-    FCFFGrowthParameters,
-    FCFEParameters,
-    DDMParameters,
-    RIMParameters,
-    GrahamParameters
+    FCFFStandardParameters, FCFFNormalizedParameters, FCFFGrowthParameters,
+    FCFEParameters, DDMParameters, RIMParameters, GrahamParameters
 ]

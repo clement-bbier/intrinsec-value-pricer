@@ -24,6 +24,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Set
 
 import streamlit as st
+from pydantic import ValidationError
 
 from src.models import (
     ParametersSource,
@@ -154,7 +155,7 @@ for mode in ValuationMethodology:
         f"{prefix}_method", f"{prefix}_exit_mult", f"{prefix}_fcf_base"
     })
 
-class ExpertTerminalBase(ABC):
+class BaseTerminalExpert(ABC):
     """
     Abstract base class defining the expert valuation entry workflow.
 
@@ -506,9 +507,9 @@ class ExpertTerminalBase(ABC):
             return value
 
         if field_name in _PERCENTAGE_FIELDS:
-            return ExpertTerminalBase._normalize_percentage(value)
+            return BaseTerminalExpert._normalize_percentage(value)
         elif field_name in _MILLION_FIELDS:
-            return ExpertTerminalBase._normalize_million(value)
+            return BaseTerminalExpert._normalize_million(value)
         elif field_name in _ABSOLUTE_FIELDS:
             return value
 
@@ -518,7 +519,7 @@ class ExpertTerminalBase(ABC):
                 f"Field '{field_name}' is not classified as percentage, absolute or million. "
                 f"Returning raw value. Please add to _PERCENTAGE_FIELDS, _ABSOLUTE_FIELDS or _MILLION_FIELDS."
             )
-            return ExpertTerminalBase._normalize_rate(value)
+            return BaseTerminalExpert._normalize_rate(value)
 
     @staticmethod
     def _bulk_normalize(
@@ -555,7 +556,7 @@ class ExpertTerminalBase(ABC):
 
         for key, value in data.items():
             if key in keys_to_normalize and isinstance(value, (int, float)):
-                result[key] = ExpertTerminalBase._normalize_percentage(value)
+                result[key] = BaseTerminalExpert._normalize_percentage(value)
             else:
                 result[key] = value
 
@@ -566,49 +567,49 @@ class ExpertTerminalBase(ABC):
     # ══════════════════════════════════════════════════════════════════════════
 
     def build_request(self) -> Optional[ValuationRequest]:
-        """Corrected: Explicitly extract data using class methods to ensure correct keys."""
+        """
+        Constructs the final ValuationRequest by aggregating UI blocks.
+        """
         prefix = self.MODE.name
 
-        # 1. Extraction ciblée via les méthodes dédiées (qui mappent les bons noms de champs)
-        extracted_data = {}
-        extracted_data.update(self._extract_discount_data(prefix))
-        extracted_data.update(self._extract_model_inputs_data(prefix))
+        try:
+            # 1. Block Extraction
+            # Raw data from UI. Pydantic's internal validators will handle
+            # the initial decimal/scale guard during instantiation.
+            strategy_data = self._extract_model_inputs_data(prefix)
+            common_data = self._extract_common_params(prefix)
+            extension_data = self._extract_extension_params()
 
-        extracted_data.update(self._extract_peer_triangulation_data())
-        extracted_data.update(self._extract_backtest_data())
+            # 2. Parameters Instantiation (The Ghost Object)
+            params = Parameters(
+                structure=self.company_context,  # Pillar 1: Identity
+                common=common_data,  # Pillar 2: Common (Rates/Capital)
+                strategy=strategy_data,  # Pillar 3: Methodology
+                extensions=extension_data  # Pillar 4: Optional modules
+            )
 
-        if self.SHOW_TERMINAL_SECTION:
-            extracted_data.update(self._extract_terminal_data(prefix))
-        if self.SHOW_BRIDGE_SECTION:
-            extracted_data.update(self._extract_bridge_data(prefix))
-        if self.SHOW_MONTE_CARLO:
-            extracted_data.update(self._extract_monte_carlo_data())
+            # 3. Final Envelope
+            # We return ValuationRequest so the Resolver knows the Ticker/Mode
+            # to fetch missing data.
+            return ValuationRequest(
+                ticker=self.ticker,
+                mode=self.MODE,
+                input_source=ParametersSource.MANUAL,
+                manual_params=params
+            )
 
-        # 2. Normalisation des échelles (% -> decimal)
-        final_normalized_data = {
-            k: self.apply_field_scaling(k, v) for k, v in extracted_data.items()
-        }
-
-        # 3. Construction SSOT
-        params = Parameters.from_legacy(final_normalized_data)
-
-        # Injection forcée des blocs complexes non gérés par from_legacy
-        if self.SHOW_SCENARIOS:
-            params.scenarios = self._extract_scenarios_data()
-        if self.SHOW_SOTP:
-            params.sotp = self._extract_sotp_data()
-
-        # Récupération des années (clé spécifique)
-        proj_years = int(st.session_state.get(f"{prefix}_years", 5))
-
-        return ValuationRequest(
-            ticker=self.ticker,
-            mode=self.MODE,
-            projection_years=proj_years,
-            input_source=ParametersSource.MANUAL,
-            manual_params=params,
-            options=self._build_options(final_normalized_data)
-        )
+        except ValidationError as e:
+            # Professional English logging with precise field tracking
+            for error in e.errors():
+                field = " -> ".join([str(loc) for loc in error['loc']])
+                msg = error['msg']
+                logger.error(f"Validation Error in [{field}]: {msg}")
+                st.error(f"**Input Error:** {field} — {msg}")
+            return None
+        except Exception as e:
+            logger.exception("Unexpected terminal error")
+            st.error(f"**Critical Error:** An unexpected error occurred during request assembly.")
+            return None
 
     def _extract_sotp_data(self) -> Optional[SOTPParameters]:
         """
@@ -873,7 +874,7 @@ class ExpertTerminalBase(ABC):
             raw = st.session_state.get(key)
             if raw is None:
                 return None
-            normalized = ExpertTerminalBase._normalize_percentage(raw)
+            normalized = BaseTerminalExpert._normalize_percentage(raw)
             logger.debug(f"Normalized {field_desc}: {raw}% -> {normalized}")
             return normalized
 

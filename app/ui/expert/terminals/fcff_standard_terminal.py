@@ -4,9 +4,8 @@ app/ui/expert/terminals/fcff_standard_terminal.py
 EXPERT TERMINAL — FCFF TWO-STAGE STANDARD (CONTINUOUS FLOW)
 ==========================================================
 Implementation of the Entity DCF (FCFF) interface.
-This terminal constitutes steps 1 and 2 of the analytical "Logical Path".
+Aligned with FCFFStandardParameters for direct Pydantic injection.
 
-Architecture: ST-3.1 (Fundamental - DCF)
 Style: Numpy docstrings
 """
 
@@ -15,40 +14,30 @@ import streamlit as st
 
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFStandardTexts as Texts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
-    widget_growth_rate,
+    widget_projection_years
 )
 
 
-class FCFFStandardTerminal(ExpertTerminalBase):
+class FCFFStandardTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for Free Cash Flow to the Firm (FCFF) valuation.
-
-    This module guides the analyst in defining the cash flow anchor (Y0)
-    and the growth trajectory before proceeding to risk and capital
-    structure steps managed by the base class.
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to FCFF_STANDARD for entity-level DCF valuation.
-
-    Notes
-    -----
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.FCFF_STANDARD
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- UI Pipeline Configuration (9 Steps) ---
+    # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = True  # Enabled: becomes Step 9 of the expert tunnel
+    SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
@@ -58,69 +47,64 @@ class FCFFStandardTerminal(ExpertTerminalBase):
     def render_model_inputs(self) -> Dict[str, Any]:
         """
         Renders operational inputs (Steps 1 & 2).
+        Keys are aligned with FCFFStandardParameters fields.
 
         Returns
         -------
         Dict[str, Any]
-            Captured parameters: manual_fcf_base, projection_years, fcf_growth_rate.
+            Captured parameters: fcf_anchor, projection_years, growth_rate_p1.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: CASH FLOW ANCHOR ---
+        # --- STEP 1: CASH FLOW ANCHOR (Strategy -> fcf_anchor) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
-        fcf_base = st.number_input(
+        fcf_anchor = st.number_input(
             Texts.INP_BASE,
             value=None,
             format="%.0f",
             help=Texts.HELP_BASE,
-            key=f"{prefix}_fcf_base"
+            key="fcf_anchor"  # Direct Pydantic Field
         )
         st.divider()
 
-        # --- STEP 2: GROWTH PROJECTION ---
+        # --- STEP 2: GROWTH PROJECTION (Strategy -> projection_years / growth_rate_p1) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # Note: widget_projection_years doit être mis à jour pour accepter 'key' direct
+            # Pour l'instant on force l'alignement via l'extraction
+            n_years = widget_projection_years(default=5, key_prefix="strategy")
+
         with col2:
-            g_rate = widget_growth_rate(label=Texts.INP_GROWTH_G, key_prefix=prefix)
+            growth_p1 = st.number_input(
+                Texts.INP_GROWTH_G,
+                value=None,
+                format="%.2f",
+                help=Texts.HELP_GROWTH_RATE,
+                key="growth_rate_p1" # Direct Pydantic Field
+            )
 
         st.divider()
 
         return {
-            "manual_fcf_base": fcf_base,
+            "fcf_anchor": fcf_anchor,
             "projection_years": n_years,
-            "fcf_growth_rate": g_rate,
+            "growth_rate_p1": growth_p1,
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF-specific data from the session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts FCFF-specific data for the 'strategy' block.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The GrowthParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - FCF base: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+            Dictionnaire miroir de FCFFStandardParameters.
         """
         return {
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
-            "projection_years": st.session_state.get(f"{key_prefix}_years")
+            "mode": self.MODE,
+            "fcf_anchor": st.session_state.get("fcf_anchor"),
+            "growth_rate_p1": st.session_state.get("growth_rate_p1"),
+            "projection_years": st.session_state.get("strategy_years"), # Aligné sur widget_projection_years
         }

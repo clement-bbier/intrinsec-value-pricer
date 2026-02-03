@@ -17,13 +17,13 @@ app/ui/expert/terminals/
 Terminaux d'expert pour la valorisation avancée.
 """
 
-from .fcff_standard_terminal import FCFFStandardTerminal
-from .fcff_normalized_terminal import FCFFNormalizedTerminal
-from .fcff_growth_terminal import FCFFGrowthTerminal
-from .fcfe_terminal import FCFETerminal
-from .ddm_terminal import DDMTerminal
-from .rim_bank_terminal import RIMBankTerminal
-from .graham_value_terminal import GrahamValueTerminal
+from .fcff_standard_terminal import FCFFStandardTerminalTerminalExpert
+from .fcff_normalized_terminal import FCFFNormalizedTerminalTerminalExpert
+from .fcff_growth_terminal import FCFFGrowthTerminalTerminalExpert
+from .fcfe_terminal import FCFETerminalTerminalExpert
+from .ddm_terminal import DDMTerminalTerminalExpert
+from .rim_bank_terminal import RIMBankTerminalTerminalExpert
+from .graham_value_terminal import GrahamValueTerminalTerminalExpert
 from .shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
@@ -36,13 +36,13 @@ from .shared_widgets import (
 )
 
 __all__ = [
-    "FCFFStandardTerminal",
-    "FCFFNormalizedTerminal",
-    "FCFFGrowthTerminal",
-    "FCFETerminal",
-    "DDMTerminal",
-    "RIMBankTerminal",
-    "GrahamValueTerminal",
+    "FCFFStandardTerminalTerminalExpert",
+    "FCFFNormalizedTerminalTerminalExpert",
+    "FCFFGrowthTerminalTerminalExpert",
+    "FCFETerminalTerminalExpert",
+    "DDMTerminalTerminalExpert",
+    "RIMBankTerminalTerminalExpert",
+    "GrahamValueTerminalTerminalExpert",
     "widget_projection_years",
     "widget_growth_rate",
     "widget_cost_of_capital",

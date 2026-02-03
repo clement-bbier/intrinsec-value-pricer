@@ -4,8 +4,7 @@ app/ui/expert/terminals/fcff_normalized_terminal.py
 EXPERT TERMINAL — FCFF NORMALIZED (SMOOTHED FLOW)
 =================================================
 Valuation interface based on smoothed normative flows.
-This terminal implements steps 1 and 2 for companies with cyclical
-but predictable cash flows.
+Aligned with FCFFNormalizedParameters for direct Pydantic injection.
 
 Architecture: ST-3.2 (Enterprise Value)
 Style: Numpy docstrings
@@ -16,29 +15,20 @@ import streamlit as st
 
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
-    widget_growth_rate,
+    widget_projection_years
 )
 
 
-class FCFFNormalizedTerminal(ExpertTerminalBase):
+class FCFFNormalizedTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for Normalized Free Cash Flow to the Firm (FCFF).
-
-    This model uses a 'smoothed' or normative cash flow anchor to avoid
-    valuation distortions caused by temporary cyclical peaks or troughs.
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to FCFF_NORMALIZED for mid-cycle valuation.
-
-    Notes
-    -----
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.FCFF_NORMALIZED
@@ -57,64 +47,59 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Renders specific inputs for the Normalized FCFF model (Steps 1 & 2).
+        Renders specific inputs for the Normalized FCFF model.
+        Keys are aligned with FCFFNormalizedParameters fields.
 
         Returns
         -------
         Dict[str, Any]
-            Parameters: manual_fcf_base, projection_years, fcf_growth_rate.
+            Captured parameters for the strategy block.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: NORMATIVE FLOW ---
+        # --- STEP 1: NORMATIVE FLOW (Strategy -> fcf_norm) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        fcf_base = st.number_input(
-            Texts.INP_BASE, value=None, format="%.0f",
-            help=Texts.HELP_BASE, key=f"{prefix}_fcf_base"
+        fcf_norm = st.number_input(
+            Texts.INP_BASE,
+            value=None,
+            format="%.0f",
+            help=Texts.HELP_BASE,
+            key="fcf_norm" # Direct Pydantic Field
         )
         st.divider()
 
-        # --- STEP 2: GROWTH DYNAMICS ---
+        # --- STEP 2: GROWTH DYNAMICS (Strategy -> projection_years / cycle_growth_rate) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         col1, col2 = st.columns(2)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # Aligné via le préfixe 'strategy' pour donner 'strategy_years'
+            n_years = widget_projection_years(default=5, key_prefix="strategy")
         with col2:
-            g_rate = widget_growth_rate(key_prefix=prefix)
+            cycle_g = st.number_input(
+                Texts.LBL_GROWTH_G, # Ou label spécifique i18n
+                value=None,
+                format="%.2f",
+                key="cycle_growth_rate" # Direct Pydantic Field
+            )
 
         st.divider()
         return {
-            "manual_fcf_base": fcf_base,
+            "fcf_norm": fcf_norm,
             "projection_years": n_years,
-            "fcf_growth_rate": g_rate
+            "cycle_growth_rate": cycle_g
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Normalized FCFF data from the session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts Normalized FCFF data for the 'strategy' block.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The GrowthParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - FCF base: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+            Dictionnaire miroir de FCFFNormalizedParameters.
         """
         return {
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
-            "projection_years": st.session_state.get(f"{key_prefix}_years")
+            "mode": self.MODE,
+            "fcf_norm": st.session_state.get("fcf_norm"),
+            "cycle_growth_rate": st.session_state.get("cycle_growth_rate"),
+            "projection_years": st.session_state.get("strategy_years")
         }

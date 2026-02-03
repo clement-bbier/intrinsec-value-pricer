@@ -4,9 +4,8 @@ app/ui/expert/terminals/rim_bank_terminal.py
 EXPERT TERMINAL — RESIDUAL INCOME MODEL (RIM)
 =============================================
 Dedicated interface for valuing financial institutions and banks.
-The model relies on Book Value and the persistence of Residual Income.
+Aligned with RIMParameters for Pydantic injection.
 
-Architecture: ST-3.2 (Direct Equity)
 Style: Numpy docstrings
 """
 
@@ -16,33 +15,19 @@ import streamlit as st
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import RIMTexts as Texts
 from src.i18n import SharedTexts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
-    widget_growth_rate
+    widget_projection_years
 )
 
-# ==============================================================================
-# NORMALIZATION CONSTANT
-# ==============================================================================
-
-class RIMBankTerminal(ExpertTerminalBase):
+class RIMBankTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for the Residual Income Model (Ohlson Model).
-
-    This model values a firm as the sum of its current book value
-    and the present value of future abnormal profits (Residual Income).
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to RIM for bank and financial institution valuation.
-
-    Note
-    ----
-    The RIM model integrates its own exit logic (omega persistence factor)
-    within Step 2, so SHOW_TERMINAL_SECTION is disabled to avoid
-    duplicate terminal value configuration.
     """
 
     MODE = ValuationMethodology.RIM
@@ -58,94 +43,90 @@ class RIMBankTerminal(ExpertTerminalBase):
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Renders specific inputs for the RIM model (Steps 1 & 2).
+        Renders specific inputs for the RIM model.
+        Keys are aligned with RIMParameters fields.
 
         Returns
         -------
         Dict[str, Any]
-            Parameters: manual_book_value, manual_fcf_base (NI),
-            projection_years, fcf_growth_rate, exit_multiple_value (omega).
+            Captured parameters for the strategy block.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: BALANCE SHEET ANCHOR ---
+        # --- STEP 1: BALANCE SHEET ANCHOR (Strategy -> book_value_anchor / net_income_norm) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
-
         st.latex(Texts.STEP_1_FORMULA)
 
         col1, col2 = st.columns(2)
         with col1:
-            bv_initial = st.number_input(
+            bv_anchor = st.number_input(
                 Texts.INP_BV_INITIAL,
                 value=None,
                 format="%.0f",
                 help=Texts.HELP_BV_INITIAL,
-                key=f"{prefix}_bv_initial"
+                key="book_value_anchor"  # Direct Pydantic Field
             )
 
         with col2:
-            ni_base = st.number_input(
+            ni_norm = st.number_input(
                 Texts.INP_NI_TTM,
                 value=None,
                 format="%.0f",
                 help=Texts.HELP_NI_TTM,
-                key=f"{prefix}_ni_ttm"
+                key="net_income_norm"  # Direct Pydantic Field
             )
 
         st.divider()
 
-        # --- STEP 2: RESIDUAL INCOME & PERSISTENCE ---
+        # --- STEP 2: RESIDUAL INCOME & PERSISTENCE (Strategy -> growth_rate / persistence_factor) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # Aligné via le préfixe 'strategy' pour donner 'strategy_years'
+            n_years = widget_projection_years(default=5, key_prefix="strategy")
         with col2:
-            g_rate = widget_growth_rate(label=SharedTexts.INP_GROWTH_G, key_prefix=prefix)
+            g_rate = st.number_input(
+                SharedTexts.INP_GROWTH_G,
+                value=None,
+                format="%.2f",
+                help=SharedTexts.HELP_GROWTH_RATE,
+                key="growth_rate"  # Direct Pydantic Field
+            )
+
+        # Persistence Factor (Omega) - Intégré à la stratégie RIM
+        persistence = st.number_input(
+            SharedTexts.INP_OMEGA,
+            min_value=0.0,
+            max_value=1.0,
+            value=None,
+            format="%.2f",
+            help=SharedTexts.HELP_OMEGA,
+            key="persistence_factor"  # Direct Pydantic Field
+        )
 
         st.divider()
 
         return {
-            "manual_book_value": bv_initial,
-            "manual_fcf_base": ni_base,
+            "book_value_anchor": bv_anchor,
+            "net_income_norm": ni_norm,
             "projection_years": n_years,
-            "fcf_growth_rate": g_rate,
+            "growth_rate": g_rate,
+            "persistence_factor": persistence
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts RIM data from the session_state with normalization.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts RIM-specific data for the 'strategy' block.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Note
-        ----
-        Growth rate is normalized from percentage (e.g., 5) to decimal (0.05).
-
-        The following parameters remain UNCHANGED:
-        - Book value and Net Income: absolute currency values
-        - Omega (persistence factor): already a coefficient in range [0, 1]
+            Dictionnaire miroir de RIMParameters.
         """
-        # Extract raw growth rate
-        raw_growth_rate = st.session_state.get(f"{key_prefix}_growth_rate")
-
-        # Normalize growth rate from percentage to decimal
-        normalized_growth_rate = None
-        if raw_growth_rate is not None:
-            normalized_growth_rate = raw_growth_rate
-
         return {
-            "manual_book_value": st.session_state.get(f"{key_prefix}_bv_initial"),
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_ni_ttm"),
-            "fcf_growth_rate": normalized_growth_rate,
-            "projection_years": st.session_state.get(f"{key_prefix}_years"),
-            "exit_multiple_value": st.session_state.get(f"{key_prefix}_omega")
+            "mode": self.MODE,
+            "book_value_anchor": st.session_state.get("book_value_anchor"),
+            "net_income_norm": st.session_state.get("net_income_norm"),
+            "growth_rate": st.session_state.get("growth_rate"),
+            "persistence_factor": st.session_state.get("persistence_factor"),
+            "projection_years": st.session_state.get("strategy_years")
         }

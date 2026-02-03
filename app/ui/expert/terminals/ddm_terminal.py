@@ -4,10 +4,6 @@ app/ui/expert/terminals/ddm_terminal.py
 EXPERT TERMINAL — DIVIDEND DISCOUNT MODEL (DDM)
 ===============================================
 Valuation interface based on discounted future dividends.
-Implements steps 1 and 2 for mature dividend-paying firms.
-
-Architecture: ST-3.2 (Direct Equity)
-Style: Numpy docstrings
 """
 
 from typing import Dict, Any
@@ -16,29 +12,16 @@ import streamlit as st
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.i18n import SharedTexts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
 )
 
 
-class DDMTerminal(ExpertTerminalBase):
+class DDMTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for the Dividend Discount Model.
-
-    The DDM values a share as the present value of all expected
-    future dividends, discounted at the cost of equity (Ke).
-
-    Attributes
-    ----------
-    MODE : ValuationMethodology
-        Set to DDM for dividend-based valuation.
-
-    Notes
-    -----
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.DDM
@@ -58,13 +41,8 @@ class DDMTerminal(ExpertTerminalBase):
     def render_model_inputs(self) -> Dict[str, Any]:
         """
         Renders specific inputs for the DDM model (Steps 1 & 2).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Parameters: manual_dividend_base, projection_years, fcf_growth_rate.
         """
-        prefix = self.MODE.name
+        prefix = self.MODE.name  # "DDM"
 
         # --- STEP 1: DIVIDEND CASH FLOWS ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
@@ -76,7 +54,7 @@ class DDMTerminal(ExpertTerminalBase):
             value=None,
             format="%.2f",
             help=Texts.HELP_DIVIDEND_BASE,
-            key=f"{prefix}_dividend_base"
+            key=f"{prefix}_dividend_base"  # Clé: DDM_dividend_base
         )
 
         st.divider()
@@ -86,8 +64,10 @@ class DDMTerminal(ExpertTerminalBase):
 
         col1, col2 = st.columns(2)
         with col1:
+            # Ce widget génère la clé : {prefix}_years
             n_years = widget_projection_years(default=5, key_prefix=prefix)
         with col2:
+            # Ce widget génère la clé : {prefix}_growth_rate
             g_rate = widget_growth_rate(
                 label=SharedTexts.INP_GROWTH_G,
                 key_prefix=prefix
@@ -99,36 +79,19 @@ class DDMTerminal(ExpertTerminalBase):
         st.divider()
 
         return {
-            "manual_dividend_base": d0_base,
-            "projection_years": n_years,
-            "fcf_growth_rate": g_rate,
+            "dividend_per_share": d0_base,
+            "dividend_growth_rate": g_rate,
+            "projection_years": n_years
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts DDM data from streamlit session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The GrowthParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - Dividend base: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+        Extracts DDM data from streamlit session_state with precise keys.
         """
+        # On s'assure que les clés de récupération correspondent
+        # exactement à celles définies dans render_model_inputs et shared_widgets.
         return {
-            "manual_dividend_base": st.session_state.get(f"{key_prefix}_dividend_base"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
+            "dividend_per_share": st.session_state.get(f"{key_prefix}_dividend_base"),
+            "dividend_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
             "projection_years": st.session_state.get(f"{key_prefix}_years")
         }

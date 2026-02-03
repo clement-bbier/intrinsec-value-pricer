@@ -4,9 +4,8 @@ app/ui/expert/terminals/fcff_growth_terminal.py
 EXPERT TERMINAL — FCFF REVENUE-DRIVEN (GROWTH & MARGIN)
 ======================================================
 Valuation interface based on revenue growth and margin convergence.
-This model calculates FCFF by projecting top-line revenue and target FCF margins.
+Aligned with FCFFGrowthParameters for direct Pydantic injection.
 
-Architecture: ST-3.2 (Enterprise Value)
 Style: Numpy docstrings
 """
 
@@ -15,26 +14,18 @@ import streamlit as st
 
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import widget_projection_years
 
 
-class FCFFGrowthTerminal(ExpertTerminalBase):
+class FCFFGrowthTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for the Revenue-Driven FCFF model.
-
-    This approach is ideal for growth companies where margins are expected
-    to converge toward an industry target over a projection horizon.
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to FCFF_GROWTH for revenue-driven valuation.
-
-    Notes
-    -----
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.FCFF_GROWTH
@@ -53,76 +44,70 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Renders specific inputs for the Revenue-Driven FCFF model (Steps 1 & 2).
+        Renders specific inputs for the Revenue-Driven FCFF model.
+        Keys are aligned with FCFFGrowthParameters fields.
 
         Returns
         -------
         Dict[str, Any]
-            Parameters: manual_fcf_base (revenue), projection_years,
-            fcf_growth_rate (rev growth), target_fcf_margin.
+            Full set of captured parameters for strategy extraction.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: REVENUE BASE ---
+        # --- STEP 1: REVENUE BASE (Strategy -> revenue_ttm) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         rev_base = st.number_input(
-            Texts.INP_BASE, value=None, format="%.0f",
-            help=Texts.HELP_REV_TTM, key=f"{prefix}_rev_base"
+            Texts.INP_BASE,
+            value=None,
+            format="%.0f",
+            help=Texts.HELP_REV_TTM,
+            key="revenue_ttm"  # Direct Pydantic Field
         )
         st.divider()
 
-        # --- STEP 2: MARGIN CONVERGENCE ---
+        # --- STEP 2: MARGIN CONVERGENCE (Strategy -> growth & margin) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         col1, col2, col3 = st.columns(3)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # Aligné via le préfixe 'strategy' pour donner 'strategy_years'
+            n_years = widget_projection_years(default=5, key_prefix="strategy")
         with col2:
             g_rev = st.number_input(
-                Texts.INP_REV_GROWTH, value=None, format="%.2f",
-                help=Texts.HELP_REV_GROWTH, key=f"{prefix}_rev_growth"
+                Texts.INP_REV_GROWTH,
+                value=None,
+                format="%.2f",
+                help=Texts.HELP_REV_GROWTH,
+                key="revenue_growth_rate"  # Direct Pydantic Field
             )
         with col3:
             m_target = st.number_input(
-                Texts.INP_MARGIN_TARGET, value=None, format="%.2f",
-                help=Texts.HELP_MARGIN_TARGET, key=f"{prefix}_margin_target"
+                Texts.INP_MARGIN_TARGET,
+                value=None,
+                format="%.2f",
+                help=Texts.HELP_MARGIN_TARGET,
+                key="target_fcf_margin"  # Direct Pydantic Field
             )
 
         st.divider()
         return {
-            "manual_fcf_base": rev_base,
+            "revenue_ttm": rev_base,
             "projection_years": n_years,
-            "fcf_growth_rate": g_rev,
+            "revenue_growth_rate": g_rev,
             "target_fcf_margin": m_target
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF Growth data from the session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts FCFF Growth data for the 'strategy' block.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The GrowthParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - Revenue base: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
-        - Target margin: Passed as-is; Pydantic normalizes if > 1.0
+            Mirror dictionary of FCFFGrowthParameters.
         """
         return {
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_rev_base"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_rev_growth"),
-            "target_fcf_margin": st.session_state.get(f"{key_prefix}_margin_target"),
-            "projection_years": st.session_state.get(f"{key_prefix}_years")
+            "mode": self.MODE,
+            "revenue_ttm": st.session_state.get("revenue_ttm"),
+            "revenue_growth_rate": st.session_state.get("revenue_growth_rate"),
+            "target_fcf_margin": st.session_state.get("target_fcf_margin"),
+            "projection_years": st.session_state.get("strategy_years")
         }

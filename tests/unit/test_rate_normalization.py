@@ -1,5 +1,5 @@
 import pytest
-from app.ui.expert.base_terminal import ExpertTerminalBase
+from app.ui.expert.base_terminal import BaseTerminalExpert
 
 class TestRateNormalization:
     """Boundary testing for unified scaling (V16)."""
@@ -16,4 +16,4 @@ class TestRateNormalization:
     ])
     def test_apply_field_scaling(self, field_name, input_val, expected):
         """Vérifie que le contrat ExpertTerminalBase.apply_field_scaling est respecté."""
-        assert ExpertTerminalBase.apply_field_scaling(field_name, input_val) == expected
+        assert BaseTerminalExpert.apply_field_scaling(field_name, input_val) == expected

@@ -36,16 +36,16 @@ from enum import IntEnum
 
 from src.models import ValuationMethodology
 from src.i18n import SharedTexts
-from .base_terminal import ExpertTerminalBase
+from .base_terminal import BaseTerminalExpert
 
 # Concrete terminal imports
-from app.ui.expert.terminals.fcff_standard_terminal import FCFFStandardTerminal
-from app.ui.expert.terminals.fcff_normalized_terminal import FCFFNormalizedTerminal
-from app.ui.expert.terminals.fcff_growth_terminal import FCFFGrowthTerminal
-from app.ui.expert.terminals.fcfe_terminal import FCFETerminal
-from app.ui.expert.terminals.ddm_terminal import DDMTerminal
-from app.ui.expert.terminals.rim_bank_terminal import RIMBankTerminal
-from app.ui.expert.terminals.graham_value_terminal import GrahamValueTerminal
+from app.ui.expert.terminals.fcff_standard_terminal import FCFFStandardTerminalTerminalExpert
+from app.ui.expert.terminals.fcff_normalized_terminal import FCFFNormalizedTerminalTerminalExpert
+from app.ui.expert.terminals.fcff_growth_terminal import FCFFGrowthTerminalTerminalExpert
+from app.ui.expert.terminals.fcfe_terminal import FCFETerminalTerminalExpert
+from app.ui.expert.terminals.ddm_terminal import DDMTerminalTerminalExpert
+from app.ui.expert.terminals.rim_bank_terminal import RIMBankTerminalTerminalExpert
+from app.ui.expert.terminals.graham_value_terminal import GrahamValueTerminalTerminalExpert
 
 
 class AnalyticalTier(IntEnum):
@@ -66,7 +66,7 @@ class TerminalMetadata:
 
     Attributes
     ----------
-    terminal_cls : Type[ExpertTerminalBase]
+    terminal_cls : Type[BaseTerminalExpert]
         The terminal class to instantiate.
     tier : AnalyticalTier
         Analytical complexity tier.
@@ -75,7 +75,7 @@ class TerminalMetadata:
     category_label : str
         I18n label for the UI category display.
     """
-    terminal_cls: Type[ExpertTerminalBase]
+    terminal_cls: Type[BaseTerminalExpert]
     tier: AnalyticalTier
     sort_order: int
     category_label: str
@@ -100,7 +100,7 @@ class ExpertTerminalFactory:
         # TIER 1: DEFENSIVE (Quick Screening)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.GRAHAM: TerminalMetadata(
-            terminal_cls=GrahamValueTerminal,
+            terminal_cls=GrahamValueTerminalTerminalExpert,
             tier=AnalyticalTier.DEFENSIVE,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_DEFENSIVE
@@ -110,13 +110,13 @@ class ExpertTerminalFactory:
         # TIER 2: RELATIVE (Market Comparison)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.RIM: TerminalMetadata(
-            terminal_cls=RIMBankTerminal,
+            terminal_cls=RIMBankTerminalTerminalExpert,
             tier=AnalyticalTier.RELATIVE,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
         ValuationMethodology.DDM: TerminalMetadata(
-            terminal_cls=DDMTerminal,
+            terminal_cls=DDMTerminalTerminalExpert,
             tier=AnalyticalTier.RELATIVE,
             sort_order=2,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
@@ -126,25 +126,25 @@ class ExpertTerminalFactory:
         # TIER 3: FUNDAMENTAL (Intrinsic Value DCF)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.FCFF_STANDARD: TerminalMetadata(
-            terminal_cls=FCFFStandardTerminal,
+            terminal_cls=FCFFStandardTerminalTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFF_NORMALIZED: TerminalMetadata(
-            terminal_cls=FCFFNormalizedTerminal,
+            terminal_cls=FCFFNormalizedTerminalTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=2,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFF_GROWTH: TerminalMetadata(
-            terminal_cls=FCFFGrowthTerminal,
+            terminal_cls=FCFFGrowthTerminalTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=3,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFE: TerminalMetadata(
-            terminal_cls=FCFETerminal,
+            terminal_cls=FCFETerminalTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=4,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
@@ -152,7 +152,7 @@ class ExpertTerminalFactory:
     }
 
     @classmethod
-    def create(cls, mode: ValuationMethodology, ticker: str) -> ExpertTerminalBase:
+    def create(cls, mode: ValuationMethodology, ticker: str) -> BaseTerminalExpert:
         """
         Creates the appropriate terminal for the given mode.
 
@@ -165,7 +165,7 @@ class ExpertTerminalFactory:
 
         Returns
         -------
-        ExpertTerminalBase
+        BaseTerminalExpert
             Ready-to-render terminal instance.
 
         Raises
@@ -257,7 +257,7 @@ class ExpertTerminalFactory:
         return meta.category_label if meta else SharedTexts.CATEGORY_OTHER
 
 
-def create_expert_terminal(mode: ValuationMethodology, ticker: str) -> ExpertTerminalBase:
+def create_expert_terminal(mode: ValuationMethodology, ticker: str) -> BaseTerminalExpert:
     """
     Factory helper to instantiate an expert terminal.
 
@@ -270,7 +270,7 @@ def create_expert_terminal(mode: ValuationMethodology, ticker: str) -> ExpertTer
 
     Returns
     -------
-    ExpertTerminalBase
+    BaseTerminalExpert
         Ready-to-render terminal.
     """
     return ExpertTerminalFactory.create(mode, ticker)

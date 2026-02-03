@@ -244,6 +244,7 @@ class FCFFStandardTexts(SharedTexts):
 
 
 class FCFFNormalizedTexts(SharedTexts):
+    LBL_GROWTH_G = None
     TITLE = "Approche Entité (FCFF Normalisé)"
     DESCRIPTION = "DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme."
     STEP_1_TITLE = "#### Étape 1 : Flux Normatif (FCF norm)"

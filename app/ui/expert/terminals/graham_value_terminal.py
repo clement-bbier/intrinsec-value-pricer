@@ -5,8 +5,8 @@ EXPERT TERMINAL — GRAHAM INTRINSIC VALUE (QUANT REVISED)
 ========================================================
 Defensive screening formula (Revised 1974) enhanced with
 a stochastic approach for earnings volatility.
+Aligned with GrahamParameters (Strategy) and FinancialRatesParameters (Common).
 
-Architecture: ST-4.1 (Screening & Probabilistic)
 Style: Numpy docstrings
 """
 
@@ -15,39 +15,28 @@ import streamlit as st
 
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import GrahamTexts as Texts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 
 
-class GrahamValueTerminal(ExpertTerminalBase):
+class GrahamValueTerminalTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for Benjamin Graham's intrinsic value formula.
-
-    While the original model is deterministic, this terminal allows for
-    sensitivity analysis through the global valuation engine.
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to GRAHAM for defensive value investing.
-
-    Notes
-    -----
-    This terminal disables most optional features (Monte Carlo, Scenarios,
-    SOTP, Peers) as Graham's formula is self-contained and does not
-    require complex discount rate or terminal value mechanics.
-
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.GRAHAM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- UI Pipeline Configuration (Static Adaptation) ---
-    SHOW_DISCOUNT_SECTION = False  # No explicit WACC/Ke required
-    SHOW_TERMINAL_SECTION = False  # No Gordon/Exit Multiples
-    SHOW_BRIDGE_SECTION = False    # Values the share directly
+    # --- UI Pipeline Configuration ---
+    # La section Discount standard est masquée car Graham intègre ses propres taux.
+    SHOW_DISCOUNT_SECTION = False
+    SHOW_TERMINAL_SECTION = False
+    SHOW_BRIDGE_SECTION = False
 
     SHOW_MONTE_CARLO = False
     SHOW_SCENARIOS = False
@@ -58,17 +47,15 @@ class GrahamValueTerminal(ExpertTerminalBase):
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Renders operational inputs for the Graham model (Steps 1 & 2).
+        Renders operational inputs for the Graham model.
+        All keys are aligned with Pydantic schemas (GrahamParameters & FinancialRatesParameters).
 
         Returns
         -------
         Dict[str, Any]
-            Parameters: manual_fcf_base (EPS), fcf_growth_rate (g),
-            corporate_aaa_yield (Y), tax_rate (tau).
+            Full set of captured parameters for session storage.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: EARNINGS & GROWTH ---
+        # --- STEP 1: EARNINGS & GROWTH (Strategy Block) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
 
@@ -79,84 +66,65 @@ class GrahamValueTerminal(ExpertTerminalBase):
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_EPS_NORM,
-                key=f"{prefix}_eps_norm"
+                key="eps_normalized"  # Strategy: GrahamParameters
             )
 
         with col2:
-            g_lt = st.number_input(
+            g_estimate = st.number_input(
                 Texts.INP_GROWTH_G,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_GROWTH_LT,
-                key=f"{prefix}_growth_lt"
+                key="growth_estimate"  # Strategy: GrahamParameters
             )
 
         st.divider()
 
-        # --- STEP 2: MARKET CONDITIONS ---
+        # --- STEP 2: MARKET CONDITIONS (Common Rates Block) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
+            # Saisie manuelle du taux AAA pour le bloc Common.
             yield_aaa = st.number_input(
                 Texts.INP_YIELD_AAA,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_YIELD_AAA,
-                key=f"{prefix}_yield_aaa"
+                key="corporate_aaa_yield"  # Common: FinancialRatesParameters
             )
 
         with col2:
+            # Saisie manuelle du taux d'imposition pour le bloc Common.
             tau = st.number_input(
                 Texts.INP_TAX,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_TAX,
-                key=f"{prefix}_tax_rate"
+                key="tax_rate"  # Common: FinancialRatesParameters
             )
 
         st.caption(Texts.NOTE_GRAHAM)
 
+        # Correction : Retourne l'intégralité des champs saisis pour build_request.
         return {
-            "manual_fcf_base": eps,
-            "fcf_growth_rate": g_lt,
+            "eps_normalized": eps,
+            "growth_estimate": g_estimate,
             "corporate_aaa_yield": yield_aaa,
-            "tax_rate": tau,
-            "projection_years": 1
+            "tax_rate": tau
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Graham input data from streamlit session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts only Graham-specific data for the 'strategy' dicationary.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The CoreRateParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - EPS: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
-        - AAA Yield: Passed as-is; Pydantic normalizes if > 1.0
-        - Tax rate: Passed as-is; Pydantic normalizes if > 1.0
+            Mirror dictionary of GrahamParameters.
         """
         return {
-            # EPS: Absolute value, no normalization needed
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_eps_norm"),
-            # Rates: Passed raw, Pydantic handles normalization
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_lt"),
-            "corporate_aaa_yield": st.session_state.get(f"{key_prefix}_yield_aaa"),
-            "tax_rate": st.session_state.get(f"{key_prefix}_tax_rate"),
-            # Fixed projection for Graham model
-            "projection_years": 1
+            "mode": self.MODE,
+            "eps_normalized": st.session_state.get("eps_normalized"),
+            "growth_estimate": st.session_state.get("growth_estimate"),
         }

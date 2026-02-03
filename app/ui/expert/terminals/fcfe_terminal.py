@@ -4,7 +4,7 @@ app/ui/expert/terminals/fcfe_terminal.py
 EXPERT TERMINAL — FREE CASH FLOW TO EQUITY (FCFE)
 =================================================
 Implementation of the direct equity valuation interface.
-This terminal constitutes steps 1 and 2 of the "Logical Path" for the FCFE model.
+Aligned with FCFEParameters for direct Pydantic injection.
 
 Architecture: ST-3.2 (Direct Equity)
 Style: Numpy docstrings
@@ -16,29 +16,20 @@ import streamlit as st
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.i18n import SharedTexts
-from ..base_terminal import ExpertTerminalBase
+from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
-    widget_growth_rate,
+    widget_projection_years
 )
 
 
-class FCFETerminal(ExpertTerminalBase):
+class FCFETerminalTerminalExpert(BaseTerminalExpert):
     """
-    Expert terminal for shareholder cash flow valuation.
-
-    The FCFE model values equity directly by discounting residual
-    cash flows after debt service at the cost of equity (Ke).
+    Expert terminal for shareholder cash flow valuation (FCFE).
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to FCFE for direct equity valuation.
-
-    Notes
-    -----
-    Percentage inputs are passed as-is to the Pydantic model layer,
-    which handles normalization via field validators.
     """
 
     MODE = ValuationMethodology.FCFE
@@ -57,29 +48,27 @@ class FCFETerminal(ExpertTerminalBase):
 
     def render_model_inputs(self) -> Dict[str, Any]:
         """
-        Renders specific inputs for the FCFE model (Steps 1 & 2).
+        Renders specific inputs for the FCFE model.
+        Keys are aligned with FCFEParameters fields.
 
         Returns
         -------
         Dict[str, Any]
-            Parameters: manual_fcf_base, manual_net_borrowing,
-            projection_years, fcf_growth_rate.
+            Full set of captured parameters for strategy extraction.
         """
-        prefix = self.MODE.name
-
-        # --- STEP 1: SHAREHOLDER ANCHOR ---
+        # --- STEP 1: SHAREHOLDER ANCHOR (Strategy -> fcfe_anchor / net_borrowing_delta) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
 
         st.latex(Texts.STEP_1_FORMULA)
 
         col1, col2 = st.columns(2)
         with col1:
-            fcfe_base = st.number_input(
+            fcfe_anchor = st.number_input(
                 Texts.INP_BASE,
                 value=None,
                 format="%.0f",
                 help=Texts.HELP_FCFE_BASE,
-                key=f"{prefix}_fcf_base"
+                key="fcfe_anchor"  # Direct Pydantic Field
             )
 
         with col2:
@@ -88,56 +77,49 @@ class FCFETerminal(ExpertTerminalBase):
                 value=None,
                 format="%.0f",
                 help=Texts.HELP_NET_BORROWING,
-                key=f"{prefix}_net_borrowing"
+                key="net_borrowing_delta"  # Direct Pydantic Field
             )
 
         st.divider()
 
-        # --- STEP 2: PROJECTION HORIZON ---
+        # --- STEP 2: PROJECTION HORIZON (Strategy -> projection_years / growth_rate) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # Aligné via le préfixe 'strategy' pour donner 'strategy_years'
+            n_years = widget_projection_years(default=5, key_prefix="strategy")
         with col2:
-            g_rate = widget_growth_rate(label=SharedTexts.INP_GROWTH_G, key_prefix=prefix)
+            g_rate = st.number_input(
+                SharedTexts.INP_GROWTH_G,
+                value=None,
+                format="%.2f",
+                help=SharedTexts.HELP_GROWTH_RATE,
+                key="growth_rate"  # Direct Pydantic Field
+            )
 
         st.divider()
 
         return {
-            "manual_fcf_base": fcfe_base,
-            "manual_net_borrowing": net_borrowing,
+            "fcfe_anchor": fcfe_anchor,
+            "net_borrowing_delta": net_borrowing,
             "projection_years": n_years,
-            "fcf_growth_rate": g_rate,
+            "growth_rate": g_rate,
         }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFE data from the session_state.
-
-        Parameters
-        ----------
-        key_prefix : str
-            Prefix based on the ValuationMode.
+        Extracts FCFE-specific data for the 'strategy' block.
 
         Returns
         -------
         Dict[str, Any]
-            Operational data for build_request.
-
-        Notes
-        -----
-        Values are passed directly to Pydantic without normalization.
-        The GrowthParameters model handles percentage-to-decimal
-        conversion via the _decimal_guard field validator.
-
-        - FCF base: Absolute currency value (no normalization)
-        - Net borrowing: Absolute currency value (no normalization)
-        - Growth rate: Passed as-is; Pydantic normalizes if > 1.0
+            Mirror dictionary of FCFEParameters.
         """
         return {
-            "manual_fcf_base": st.session_state.get(f"{key_prefix}_fcf_base"),
-            "manual_net_borrowing": st.session_state.get(f"{key_prefix}_net_borrowing"),
-            "fcf_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
-            "projection_years": st.session_state.get(f"{key_prefix}_years")
+            "mode": self.MODE,
+            "fcfe_anchor": st.session_state.get("fcfe_anchor"),
+            "net_borrowing_delta": st.session_state.get("net_borrowing_delta"),
+            "growth_rate": st.session_state.get("growth_rate"),
+            "projection_years": st.session_state.get("strategy_years")
         }
