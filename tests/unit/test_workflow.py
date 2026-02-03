@@ -109,7 +109,7 @@ class TestSmartMergeLogic:
             ticker="TEST", projection_years=5,
             mode=ValuationMethodology.FCFF_STANDARD,
             input_source=ParametersSource.MANUAL,
-            manual_params=manual_params
+            params=manual_params
         )
 
         final = map_request_to_params(request, auto_params)

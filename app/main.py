@@ -372,7 +372,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMethodology, options: Dict) 
         projection_years=options["years"],
         mode=mode,
         input_source=ParametersSource.AUTO,
-        manual_params=config_params,
+        params=config_params,
         options=options
     )
 

@@ -23,7 +23,7 @@ class TestAutoModeWorkflow:
             projection_years=5,
             mode=ValuationMethodology.FCFF_STANDARD,
             input_source=ParametersSource.AUTO,
-            manual_params=sample_params,
+            params=sample_params,
         )
         
         # Exécuter le workflow

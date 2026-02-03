@@ -184,7 +184,7 @@ def sample_request_auto(sample_params):
         projection_years=5,
         mode=ValuationMethodology.FCFF_STANDARD,
         input_source=ParametersSource.AUTO,
-        manual_params=sample_params,
+        params=sample_params,
     )
 
 
@@ -196,7 +196,7 @@ def sample_request_expert(sample_params):
         projection_years=5,
         mode=ValuationMethodology.FCFF_STANDARD,
         input_source=ParametersSource.MANUAL,
-        manual_params=sample_params,
+        params=sample_params,
     )
 
 

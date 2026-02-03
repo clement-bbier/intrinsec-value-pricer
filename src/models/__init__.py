@@ -1,141 +1,83 @@
 """
-core/models/
-Modeles de donnees pour le moteur de valorisation.
+src/models/
+Data layer orchestrator for the valuation engine.
 
-Structure :
-- enums.py          : Enumerations (ValuationMode, InputSource, etc.)
-- glass_box.py      : Tracabilite (CalculationStep, AuditStep)
-- company.py        : Donnees entreprise (CompanyFinancials)
-- parameters.py     : Parametres DCF (DCFParameters et segments), Scenarios et SOTP (ScenarioVariant, BusinessUnit)
-- audit.py          : Audit (AuditReport, AuditPillarScore)
-- valuation.py : Requetes/Resultats (ValuationRequest, ValuationResult)
-
-Tous les modeles sont re-exportes ici pour la compatibilite.
+Structure:
+- enums.py      : Domain enumerations (Methodology, Sources, etc.)
+- company.py    : Static company identity (Pillar 1)
+- parameters/   : Input containers (The "Ghost" Objects)
+- results/      : Output containers (The "Mirror" Objects)
+- valuation.py  : High-level Request/Result envelopes
 """
 
-# Enumerations et Alias Financiers
+# 1. Base Enumerations (Enums only)
 from .enums import (
-    # Enumerations
     ValuationMethodology,
     ParametersSource,
     TerminalValueMethod,
-    DiagnosticLevel,
-    SOTPMethod,
-    AuditPillar,
-    # Type Aliases (ST-1.2 Type-Safe)
-    Rate,
-    Currency,
-    Percentage,
-    Multiple,
-    ShareCount,
-    Years,
-    Ratio,
 )
 
-# Glass Box (ST-2.1 Enhanced)
-from .glass_box import (
-    VariableSource,
-    VariableInfo,
-    TraceHypothesis,
-    CalculationStep,
-    AuditStep,
-)
+# 2. Domain Identity (Pillar 1)
+from .company import Company
 
-# Donnees Entreprise
-from .company import (
-    Company,
+# 3. Parameter Containers (Pillar 2, 3, 4 Inputs)
+# We export the main Parameters bundle and key sub-structures
+from .parameters.base_parameter import Parameters
+from .parameters.common import (
+    CommonParameters,
+    FinancialRatesParameters,
+    CapitalStructureParameters
 )
-
-# Parametres DCF
-from .parameters import (
-    CoreRateParameters,
-    GrowthParameters,
-    MonteCarloParameters,
-    Parameters,
-    ScenarioVariant,
-    ScenarioResult,
-    ScenarioSynthesis,
-    ScenarioParameters,
-    BusinessUnit,
+from .parameters.options import (
+    ExtensionBundleParameters,
+    MCParameters,
+    ScenariosParameters,
+    BacktestParameters,
+    PeersParameters,
     SOTPParameters
 )
 
-# Audit
-from .audit import (
-    AuditPillarScore,
-    AuditScoreBreakdown,
-    AuditLog,
-    AuditReport,
-    ValuationOutputContract,
+# 4. Results Containers (The calculated Outputs)
+from .results.base_result import Results
+from .results.common import CommonResults
+from .results.options import ExtensionBundleResults
+
+# 5. High-Level Envelopes
+# ValuationRequest remains the entry point for the Resolvers
+from .valuation import (
+    ValuationRequest
 )
 
-# Requetes et Resultats
-from .valuation import (
-    ValuationRequest,
-    ValuationResult,
-    DCFValuationResult,
-    RIMValuationResult,
-    GrahamValuationResult,
-    EquityDCFValuationResult,
-    PeerMetric,
-    MultiplesData,
-    MultiplesValuationResult,
-    HistoricalPoint,
-    BacktestResult,
-)
+# 6. Glass Box & Audit (Traceability)
+from .glass_box import CalculationStep
 
 __all__ = [
     # Enums
     "ValuationMethodology",
     "ParametersSource",
     "TerminalValueMethod",
-    "DiagnosticLevel",
-    "SOTPMethod",
-    "AuditPillar",
-    # Type Aliases (ST-1.2 Type-Safe)
-    "Rate",
-    "Currency",
-    "Percentage",
-    "Multiple",
-    "ShareCount",
-    "Years",
-    "Ratio",
-    # Glass Box (ST-2.1 Enhanced)
-    "VariableSource",
-    "VariableInfo",
-    "TraceHypothesis",
-    "CalculationStep",
-    "AuditStep",
-    # Scenarios
-    "ScenarioVariant",
-    "ScenarioResult",
-    "ScenarioSynthesis",
-    "ScenarioParameters",
-    "BusinessUnit",
-    "SOTPParameters",
-    # Company
+
+    # Pillars & Root Containers
     "Company",
-    # DCF Inputs
-    "CoreRateParameters",
-    "GrowthParameters",
-    "MonteCarloParameters",
     "Parameters",
-    # Audit
-    "AuditPillarScore",
-    "AuditScoreBreakdown",
-    "AuditLog",
-    "AuditReport",
-    "ValuationOutputContract",
-    # Results
+    "Results",
     "ValuationRequest",
-    "ValuationResult",
-    "DCFValuationResult",
-    "RIMValuationResult",
-    "GrahamValuationResult",
-    "EquityDCFValuationResult",
-    "PeerMetric",
-    "MultiplesData",
-    "MultiplesValuationResult",
-    "HistoricalPoint",
-    "BacktestResult",
+
+    # Parameters Sub-structures
+    "CommonParameters",
+    "FinancialRatesParameters",
+    "CapitalStructureParameters",
+    "ExtensionBundleParameters",
+    "MCParameters",
+    "ScenariosParameters",
+    "BacktestParameters",
+    "PeersParameters",
+    "SOTPParameters",
+
+    # Results Sub-structures
+    "CommonResults",
+    "ExtensionBundleResults",
+
+    # Traceability
+    "CalculationStep",
 ]

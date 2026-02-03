@@ -24,7 +24,7 @@ class TestExpertModeWorkflow:
             projection_years=7,  # Horizon personnalisé
             mode=ValuationMethodology.FCFF_STANDARD,
             input_source=ParametersSource.MANUAL,
-            manual_params=sample_params,
+            params=sample_params,
         )
         
         result = run_valuation(request, sample_financials, sample_params)
@@ -135,7 +135,7 @@ class TestExpertModeValidation:
             projection_years=5,
             mode=ValuationMethodology.FCFF_STANDARD,
             input_source=ParametersSource.MANUAL,
-            manual_params=sample_params,
+            params=sample_params,
         )
         
         result = run_valuation(request, sample_financials, sample_params)

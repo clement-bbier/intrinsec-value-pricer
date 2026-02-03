@@ -20,10 +20,9 @@ import streamlit as st
 from pydantic import ValidationError
 
 from src.models import (
-    ParametersSource,
     ValuationMethodology,
     ValuationRequest,
-    Parameters
+    Parameters, Company
 )
 from src.models.parameters.common import FinancialRatesParameters, CapitalStructureParameters, CommonParameters
 from src.models.parameters.options import (
@@ -134,49 +133,60 @@ class BaseTerminalExpert(ABC):
 
         This method leverages the Metadata-Driven architecture to pull and
         self-normalize data via Pydantic models.
+
+        Returns
+        -------
+        Optional[ValuationRequest]
+            A validated instruction for the backend, or None if validation fails.
         """
         prefix = self.MODE.name
 
         try:
-            # 1. Strategy Block (Model Specific Strategy Parameters)
+            # --- 1. STRATEGY BLOCK (Pillar 3: Model Specific) ---
             strategy_params = self._extract_model_inputs_data(prefix)
 
-            # 2. Common Blocks (Universal Financial Rates and Capital Structure)
+            # --- 2. COMMON BLOCKS (Pillar 2: Rates & Capital) ---
             rates = FinancialRatesParameters(**UIBinder.pull(FinancialRatesParameters, prefix=prefix))
             capital = CapitalStructureParameters(**UIBinder.pull(CapitalStructureParameters, prefix=f"bridge_{prefix}"))
 
-            # 3. Extension Blocks (Modular One-liners)
-            mc = MCParameters(**UIBinder.pull(MCParameters, prefix="mc"))
-            scenarios = ScenariosParameters(**UIBinder.pull(ScenariosParameters, prefix="scenario"))
-            backtest = BacktestParameters(**UIBinder.pull(BacktestParameters, prefix="bt"))
-            peers = PeersParameters(**UIBinder.pull(PeersParameters, prefix="peer"))
-            sotp = SOTPParameters(**UIBinder.pull(SOTPParameters, prefix="sotp"))
+            # --- 3. EXTENSION BLOCKS (Pillars 4 & 5: Analytical Options) ---
+            extensions = ExtensionBundleParameters(
+                monte_carlo=MCParameters(**UIBinder.pull(MCParameters, prefix="mc")),
+                scenarios=ScenariosParameters(**UIBinder.pull(ScenariosParameters, prefix="scenario")),
+                backtest=BacktestParameters(**UIBinder.pull(BacktestParameters, prefix="bt")),
+                peers=PeersParameters(**UIBinder.pull(PeersParameters, prefix="peer")),
+                sotp=SOTPParameters(**UIBinder.pull(SOTPParameters, prefix="sotp"))
+            )
 
-            # 4. Final Assembly (Ghost Architecture)
+            # --- 4. FINAL ASSEMBLY (The Global Parameters Bundle) ---
             params = Parameters(
-                structure=None,  # Handled by the resolution workflow
+                structure=Company(ticker=self.ticker),
                 common=CommonParameters(rates=rates, capital=capital),
                 strategy=strategy_params,
-                extensions=ExtensionBundleParameters(
-                    monte_carlo=mc,
-                    scenarios=scenarios,
-                    backtest=backtest,
-                    peers=peers,
-                    sotp=sotp
-                )
+                extensions=extensions
             )
 
+            # --- 5. ENVELOPE (The Valuation Trigger) ---
             return ValuationRequest(
-                ticker=self.ticker,
                 mode=self.MODE,
-                input_source=ParametersSource.MANUAL,
-                manual_params=params
+                parameters=params
             )
 
-        except ValidationError as e:
-            for error in e.errors():
-                field = " -> ".join([str(loc) for loc in error['loc']])
-                st.error(f"**{SharedTexts.ERR_VALIDATION}** {field}: {error['msg']}")
+        except ValidationError as ve:
+            logger.error(f"Validation failed for {prefix} request: {ve}")
+            for error in ve.errors():
+                field_path = " -> ".join(map(str, error['loc']))
+                st.error(f"**{SharedTexts.ERR_VALIDATION}** ({field_path}): {error['msg']}")
+            return None
+
+        except (AttributeError, KeyError, ValueError) as runtime_err:
+            logger.error(f"Data mapping error in {prefix} Terminal: {runtime_err}")
+            st.error(SharedTexts.ERR_CRITICAL)
+            return None
+
+        except Exception as e:
+            logger.exception(f"Critical system failure during build_request {e} for {prefix}")
+            st.error(SharedTexts.ERR_CRITICAL)
             return None
 
     # ══════════════════════════════════════════════════════════════════════════

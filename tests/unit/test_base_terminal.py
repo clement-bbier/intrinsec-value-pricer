@@ -110,7 +110,7 @@ class TestDataExtractionLogic:
         assert request.projection_years == 10
 
         # Vérification du SSOT via Parameters
-        params = request.manual_params
+        params = request.params
         assert params.rates.risk_free_rate == pytest.approx(0.041)
         assert params.growth.perpetual_growth_rate == pytest.approx(0.025)
 

@@ -11,6 +11,9 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -28,7 +31,7 @@ class Company(BaseModel):
     # --- Identification ---
     ticker: str
     name: str = "Unknown"
-    currency: str
+    currency: Optional[str] = None
 
     # --- Sectoral Classification ---
     sector: str = "Unknown"
@@ -37,4 +40,4 @@ class Company(BaseModel):
     headquarters: str = "Unknown"
 
     # --- Market Witness (Sacred) ---
-    current_price: float
+    current_price: Optional[float] = None

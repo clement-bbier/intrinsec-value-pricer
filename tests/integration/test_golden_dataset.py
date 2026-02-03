@@ -245,7 +245,7 @@ class TestGoldenDatasetValuation:
             projection_years=5, 
             mode=golden_ref.mode, 
             input_source=ParametersSource.MANUAL,
-            manual_params=default_params
+            params=default_params
         )
         financials = self.get_mock_financials(golden_ref.ticker)
         result = run_valuation(request, financials, default_params)

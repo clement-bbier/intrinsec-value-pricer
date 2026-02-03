@@ -22,6 +22,7 @@ class SharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
+    ERR_CRITICAL = "Une erreur critique est survenue lors de l'assemblage de la valorisation. Veuillez vérifier vos saisies ou contacter le support."
     LBL_LOOKBACK = "Recul historique (années)"
     FORMULA_TV_FCFF_STD = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
     FORMULA_TV_FCFF_NORM = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"

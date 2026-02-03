@@ -224,15 +224,15 @@ def map_request_to_params(request: ValuationRequest, auto_params: Parameters) ->
 
         # Merge Rates and Growth sections
         for section in ['rates', 'growth']:
-            manual_data = getattr(request.manual_params, section).model_dump(exclude_unset=True)
+            manual_data = getattr(request.params, section).model_dump(exclude_unset=True)
             for k, v in manual_data.items():
                 if v is not None:
                     setattr(getattr(final_params, section), k, v)
 
         # Inject advanced analytical configurations
-        final_params.monte_carlo = request.manual_params.monte_carlo.model_copy()
-        final_params.scenarios = request.manual_params.scenarios.model_copy()
-        final_params.sotp = request.manual_params.sotp.model_copy()
+        final_params.monte_carlo = request.params.monte_carlo.model_copy()
+        final_params.scenarios = request.params.scenarios.model_copy()
+        final_params.sotp = request.params.sotp.model_copy()
         return final_params
 
     # Standard Mode logic
