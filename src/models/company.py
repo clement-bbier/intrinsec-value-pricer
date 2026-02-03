@@ -30,14 +30,14 @@ class Company(BaseModel):
 
     # --- Identification ---
     ticker: str
-    name: str = "Unknown"
+    name: Optional[str] = None
     currency: Optional[str] = None
 
     # --- Sectoral Classification ---
-    sector: str = "Unknown"
-    industry: str = "Unknown"
-    country: str = "Unknown"
-    headquarters: str = "Unknown"
+    sector: Optional[str] = None
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    headquarters: Optional[str] = None
 
     # --- Market Witness (Sacred) ---
     current_price: Optional[float] = None
