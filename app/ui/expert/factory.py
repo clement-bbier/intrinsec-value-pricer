@@ -39,13 +39,13 @@ from src.i18n import SharedTexts
 from .base_terminal import BaseTerminalExpert
 
 # Concrete terminal imports
-from app.ui.expert.terminals.fcff_standard_terminal import FCFFStandardTerminalTerminalExpert
-from app.ui.expert.terminals.fcff_normalized_terminal import FCFFNormalizedTerminalTerminalExpert
-from app.ui.expert.terminals.fcff_growth_terminal import FCFFGrowthTerminalTerminalExpert
-from app.ui.expert.terminals.fcfe_terminal import FCFETerminalTerminalExpert
-from app.ui.expert.terminals.ddm_terminal import DDMTerminalTerminalExpert
-from app.ui.expert.terminals.rim_bank_terminal import RIMBankTerminalTerminalExpert
-from app.ui.expert.terminals.graham_value_terminal import GrahamValueTerminalTerminalExpert
+from app.ui.expert.terminals.fcff_standard_terminal import FCFFStandardTerminalExpert
+from app.ui.expert.terminals.fcff_normalized_terminal import FCFFNormalizedTerminalExpert
+from app.ui.expert.terminals.fcff_growth_terminal import FCFFGrowthTerminalExpert
+from app.ui.expert.terminals.fcfe_terminal import FCFETerminalExpert
+from app.ui.expert.terminals.ddm_terminal import DDMTerminalExpert
+from app.ui.expert.terminals.rim_bank_terminal import RIMBankTerminalExpert
+from app.ui.expert.terminals.graham_value_terminal import GrahamValueTerminalExpert
 
 
 class AnalyticalTier(IntEnum):
@@ -100,7 +100,7 @@ class ExpertTerminalFactory:
         # TIER 1: DEFENSIVE (Quick Screening)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.GRAHAM: TerminalMetadata(
-            terminal_cls=GrahamValueTerminalTerminalExpert,
+            terminal_cls=GrahamValueTerminalExpert,
             tier=AnalyticalTier.DEFENSIVE,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_DEFENSIVE
@@ -110,13 +110,13 @@ class ExpertTerminalFactory:
         # TIER 2: RELATIVE (Market Comparison)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.RIM: TerminalMetadata(
-            terminal_cls=RIMBankTerminalTerminalExpert,
+            terminal_cls=RIMBankTerminalExpert,
             tier=AnalyticalTier.RELATIVE,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
         ),
         ValuationMethodology.DDM: TerminalMetadata(
-            terminal_cls=DDMTerminalTerminalExpert,
+            terminal_cls=DDMTerminalExpert,
             tier=AnalyticalTier.RELATIVE,
             sort_order=2,
             category_label=SharedTexts.CATEGORY_RELATIVE_SECTORIAL
@@ -126,25 +126,25 @@ class ExpertTerminalFactory:
         # TIER 3: FUNDAMENTAL (Intrinsic Value DCF)
         # ══════════════════════════════════════════════════════════════════
         ValuationMethodology.FCFF_STANDARD: TerminalMetadata(
-            terminal_cls=FCFFStandardTerminalTerminalExpert,
+            terminal_cls=FCFFStandardTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=1,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFF_NORMALIZED: TerminalMetadata(
-            terminal_cls=FCFFNormalizedTerminalTerminalExpert,
+            terminal_cls=FCFFNormalizedTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=2,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFF_GROWTH: TerminalMetadata(
-            terminal_cls=FCFFGrowthTerminalTerminalExpert,
+            terminal_cls=FCFFGrowthTerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=3,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF
         ),
         ValuationMethodology.FCFE: TerminalMetadata(
-            terminal_cls=FCFETerminalTerminalExpert,
+            terminal_cls=FCFETerminalExpert,
             tier=AnalyticalTier.FUNDAMENTAL,
             sort_order=4,
             category_label=SharedTexts.CATEGORY_FUNDAMENTAL_DCF

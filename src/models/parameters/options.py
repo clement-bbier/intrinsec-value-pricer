@@ -12,6 +12,8 @@ from typing import List, Optional, Union, Literal, Annotated
 from pydantic import Field, BaseModel
 from src.models.parameters.ui_bridge import UIKey
 from .common import BaseNormalizedModel
+from ...valuation.resolvers.options import BusinessUnit
+
 
 class BaseMCShocksParameters(BaseNormalizedModel):
     """Universal stochastic foundation."""
@@ -51,7 +53,28 @@ class ScenariosParameters(BaseNormalizedModel):
     enabled: Annotated[bool, UIKey("scenario_enable", scale="raw")] = False
     cases: List[ScenarioParameters] = Field(default_factory=list)
 
+class BacktestParameters(BaseNormalizedModel):
+    """Configuration for historical model validation through backtesting over a 1-10 year lookback window."""
+    enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
+    lookback_years: Annotated[int, UIKey("lookback", scale="raw")] = Field(3, ge=1, le=10)
+
+
+class PeersParameters(BaseNormalizedModel):
+    """Configuration for relative valuation and peer-group triangulation."""
+    enabled: Annotated[bool, UIKey("peer_enable", scale="raw")] = False
+    tickers: Annotated[List[str], UIKey("list")] = Field(default_factory=list)
+
+
+class SOTPParameters(BaseNormalizedModel):
+    """Configuration for Sum-of-the-Parts (conglomerate) valuation."""
+    enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
+    conglomerate_discount: Annotated[Optional[float], UIKey("discount", scale="pct")] = Field(0.0, ge=0, le=1)
+    segments: Annotated[List[BusinessUnit], UIKey("editor")] = Field(default_factory=list)
+
 class ExtensionBundleParameters(BaseModel):
     """Unified container for all optional analytical modules."""
     monte_carlo: MCParameters = Field(default_factory=MCParameters)
     scenarios: ScenariosParameters = Field(default_factory=ScenariosParameters)
+    backtest: BacktestParameters = Field(default_factory=BacktestParameters)
+    peers: PeersParameters = Field(default_factory=PeersParameters)
+    sotp: SOTPParameters = Field(default_factory=SOTPParameters)

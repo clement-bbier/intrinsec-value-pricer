@@ -4,14 +4,21 @@ app/ui/expert/terminals/ddm_terminal.py
 EXPERT TERMINAL — DIVIDEND DISCOUNT MODEL (DDM)
 ===============================================
 Valuation interface based on discounted future dividends.
+Data mapping is automated via DDMParameters and UIBinder.
+
+Pattern: Strategy (Concrete Implementation)
+Architecture: V16 (Metadata-Driven Extraction)
+Style: Numpy docstrings
 """
 
 from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMethodology
+from src.models.parameters.strategies import DDMParameters
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.i18n import SharedTexts
+from app.adapters.ui_binder import UIBinder
 from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years,
@@ -19,9 +26,17 @@ from app.ui.expert.terminals.shared_widgets import (
 )
 
 
-class DDMTerminalTerminalExpert(BaseTerminalExpert):
+class DDMTerminalExpert(BaseTerminalExpert):
     """
-    Expert terminal for the Dividend Discount Model.
+    Expert terminal for the Dividend Discount Model (DDM).
+
+    This interface focuses on capturing the dividend base (D0) and
+    the long-term growth trajectory for income-seeking investors.
+
+    Attributes
+    ----------
+    MODE : ValuationMethodology
+        Set to DDM for dividend-based valuation.
     """
 
     MODE = ValuationMethodology.DDM
@@ -31,44 +46,43 @@ class DDMTerminalTerminalExpert(BaseTerminalExpert):
     # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = False
+    SHOW_SOTP = False  # Irrelevant for pure dividend models
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Narrative LaTeX Formulas ---
-    TERMINAL_VALUE_FORMULA = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
-
-    def render_model_inputs(self) -> Dict[str, Any]:
+    def render_model_inputs(self) -> None:
         """
         Renders specific inputs for the DDM model (Steps 1 & 2).
+
+        Widget keys are mapped to UIKey suffixes defined in
+        DDMParameters to enable automated extraction.
         """
         prefix = self.MODE.name  # "DDM"
 
-        # --- STEP 1: DIVIDEND CASH FLOWS ---
+        # --- STEP 1: DIVIDEND CASH FLOWS (Strategy -> dividend_per_share) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
-
         st.latex(Texts.STEP_1_FORMULA)
 
-        d0_base = st.number_input(
+        st.number_input(
             Texts.INP_BASE,
             value=None,
             format="%.2f",
             help=Texts.HELP_DIVIDEND_BASE,
-            key=f"{prefix}_dividend_base"  # Clé: DDM_dividend_base
+            key=f"{prefix}_div_base"  # Maps to DDMParameters.dividend_per_share
         )
-
         st.divider()
 
-        # --- STEP 2: DIVIDEND DYNAMICS ---
+        # --- STEP 2: DIVIDEND DYNAMICS (Strategy -> projection_years / dividend_growth_rate) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
-            # Ce widget génère la clé : {prefix}_years
-            n_years = widget_projection_years(default=5, key_prefix=prefix)
+            # key_prefix produces {prefix}_years suffix
+            widget_projection_years(default=5, key_prefix=prefix)
+
         with col2:
-            # Ce widget génère la clé : {prefix}_growth_rate
-            g_rate = widget_growth_rate(
+            # key_prefix produces {prefix}_growth_rate suffix
+            widget_growth_rate(
                 label=SharedTexts.INP_GROWTH_G,
                 key_prefix=prefix
             )
@@ -78,20 +92,18 @@ class DDMTerminalTerminalExpert(BaseTerminalExpert):
 
         st.divider()
 
-        return {
-            "dividend_per_share": d0_base,
-            "dividend_growth_rate": g_rate,
-            "projection_years": n_years
-        }
-
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts DDM data from streamlit session_state with precise keys.
+        Automated extraction of DDM-specific strategy data.
+
+        Parameters
+        ----------
+        key_prefix : str
+            The session state prefix (ValuationMode.name).
+
+        Returns
+        -------
+        Dict[str, Any]
+            Raw UI values mapped to DDMParameters fields.
         """
-        # On s'assure que les clés de récupération correspondent
-        # exactement à celles définies dans render_model_inputs et shared_widgets.
-        return {
-            "dividend_per_share": st.session_state.get(f"{key_prefix}_dividend_base"),
-            "dividend_growth_rate": st.session_state.get(f"{key_prefix}_growth_rate"),
-            "projection_years": st.session_state.get(f"{key_prefix}_years")
-        }
+        return UIBinder.pull(DDMParameters, prefix=key_prefix)

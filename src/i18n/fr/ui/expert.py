@@ -22,6 +22,13 @@ class SharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
+    LBL_LOOKBACK = "Recul historique (années)"
+    FORMULA_TV_FCFF_STD = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFF_NORM = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFF_GROWTH = r"TV_n = \frac{Rev_n \times Margin_{target} \times (1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFE = r"TV_n = \frac{FCFE_n(1+g_n)}{k_e - g_n}"
+    FORMULA_TV_DDM = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
+    ERR_VALIDATION = "Erreur de validation"
     INP_EPS_NORM = "BPA (EPS) normalisé ($/action)"
     INP_YIELD_AAA = "Taux de croissance moyen (g) (%)"
     INP_BV_INITIAL = "Valeur Comptable (Equity) (M$)"

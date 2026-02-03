@@ -23,6 +23,11 @@ class ValuationMethodology(str, Enum):
     RIM = "Residual Income Model"
     GRAHAM = "Graham Intrinsic Value"
 
+    @property
+    def is_direct_equity(self) -> bool:
+        """True if the model values equity directly (DDM, RIM, FCFE)."""
+        return self in [ValuationMethodology.DDM, ValuationMethodology.RIM, ValuationMethodology.FCFE]
+
 class TerminalValueMethod(str, Enum):
     """Calculation logic for the residual value beyond the forecast horizon."""
     GORDON_GROWTH = "GORDON_GROWTH"

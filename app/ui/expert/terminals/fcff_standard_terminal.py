@@ -4,8 +4,10 @@ app/ui/expert/terminals/fcff_standard_terminal.py
 EXPERT TERMINAL — FCFF TWO-STAGE STANDARD (CONTINUOUS FLOW)
 ==========================================================
 Implementation of the Entity DCF (FCFF) interface.
-Aligned with FCFFStandardParameters for direct Pydantic injection.
+Data mapping is automated via FCFFStandardParameters and UIBinder.
 
+Pattern: Strategy (Concrete Implementation)
+Architecture: V16 (Metadata-Driven Extraction)
 Style: Numpy docstrings
 """
 
@@ -13,21 +15,24 @@ from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMethodology
+from src.models.parameters.strategies import FCFFStandardParameters
 from src.i18n.fr.ui.expert import FCFFStandardTexts as Texts
+from app.adapters.ui_binder import UIBinder
 from ..base_terminal import BaseTerminalExpert
-from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years
-)
+from app.ui.expert.terminals.shared_widgets import widget_projection_years
 
 
-class FCFFStandardTerminalTerminalExpert(BaseTerminalExpert):
+class FCFFStandardTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for Free Cash Flow to the Firm (FCFF) valuation.
+
+    This terminal focuses on defining the cash flow anchor and the
+    growth trajectory using standard two-stage DCF logic.
 
     Attributes
     ----------
     MODE : ValuationMethodology
-        Set to FCFF_STANDARD for entity-level DCF valuation.
+        Set to FCFF_STANDARD for entity-level valuation.
     """
 
     MODE = ValuationMethodology.FCFF_STANDARD
@@ -41,29 +46,25 @@ class FCFFStandardTerminalTerminalExpert(BaseTerminalExpert):
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Narrative LaTeX Formulas ---
-    TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
-
-    def render_model_inputs(self) -> Dict[str, Any]:
+    def render_model_inputs(self) -> None:
         """
         Renders operational inputs (Steps 1 & 2).
-        Keys are aligned with FCFFStandardParameters fields.
 
-        Returns
-        -------
-        Dict[str, Any]
-            Captured parameters: fcf_anchor, projection_years, growth_rate_p1.
+        Widget keys are mapped to UIKey suffixes defined in
+        FCFFStandardParameters to enable automated extraction.
         """
+        prefix = self.MODE.name
+
         # --- STEP 1: CASH FLOW ANCHOR (Strategy -> fcf_anchor) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
-
         st.latex(Texts.STEP_1_FORMULA)
-        fcf_anchor = st.number_input(
+
+        st.number_input(
             Texts.INP_BASE,
             value=None,
             format="%.0f",
             help=Texts.HELP_BASE,
-            key="fcf_anchor"  # Direct Pydantic Field
+            key=f"{prefix}_fcf_base"  # Maps to FCFFStandardParameters.fcf_anchor
         )
         st.divider()
 
@@ -72,39 +73,32 @@ class FCFFStandardTerminalTerminalExpert(BaseTerminalExpert):
 
         col1, col2 = st.columns(2)
         with col1:
-            # Note: widget_projection_years doit être mis à jour pour accepter 'key' direct
-            # Pour l'instant on force l'alignement via l'extraction
-            n_years = widget_projection_years(default=5, key_prefix="strategy")
+            # key_prefix produces {prefix}_years suffix
+            widget_projection_years(default=5, key_prefix=prefix)
 
         with col2:
-            growth_p1 = st.number_input(
+            st.number_input(
                 Texts.INP_GROWTH_G,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_GROWTH_RATE,
-                key="growth_rate_p1" # Direct Pydantic Field
+                key=f"{prefix}_growth_rate"  # Maps to FCFFStandardParameters.growth_rate_p1
             )
 
         st.divider()
 
-        return {
-            "fcf_anchor": fcf_anchor,
-            "projection_years": n_years,
-            "growth_rate_p1": growth_p1,
-        }
-
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts FCFF-specific data for the 'strategy' block.
+        Automated extraction of FCFF-specific strategy data.
+
+        Parameters
+        ----------
+        key_prefix : str
+            The session state prefix (ValuationMode.name).
 
         Returns
         -------
         Dict[str, Any]
-            Dictionnaire miroir de FCFFStandardParameters.
+            Raw UI values mapped to FCFFStandardParameters fields.
         """
-        return {
-            "mode": self.MODE,
-            "fcf_anchor": st.session_state.get("fcf_anchor"),
-            "growth_rate_p1": st.session_state.get("growth_rate_p1"),
-            "projection_years": st.session_state.get("strategy_years"), # Aligné sur widget_projection_years
-        }
+        return UIBinder.pull(FCFFStandardParameters, prefix=key_prefix)

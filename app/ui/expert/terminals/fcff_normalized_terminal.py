@@ -4,31 +4,41 @@ app/ui/expert/terminals/fcff_normalized_terminal.py
 EXPERT TERMINAL — FCFF NORMALIZED (SMOOTHED FLOW)
 =================================================
 Valuation interface based on smoothed normative flows.
-Aligned with FCFFNormalizedParameters for direct Pydantic injection.
+Data mapping is automated via FCFFNormalizedParameters and UIBinder.
 
-Architecture: ST-3.2 (Enterprise Value)
+Pattern: Strategy (Concrete Implementation)
+Architecture: V16 (Metadata-Driven Extraction)
 Style: Numpy docstrings
 """
 
 from typing import Dict, Any
 import streamlit as st
 
+from app.adapters.ui_binder import UIBinder
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
+from src.models.parameters.strategies import FCFFNormalizedParameters
 from ..base_terminal import BaseTerminalExpert
 from app.ui.expert.terminals.shared_widgets import (
     widget_projection_years
 )
 
 
-class FCFFNormalizedTerminalTerminalExpert(BaseTerminalExpert):
+class FCFFNormalizedTerminalExpert(BaseTerminalExpert):
     """
     Expert terminal for Normalized Free Cash Flow to the Firm (FCFF).
+
+    This terminal focuses on mid-cycle valuation by using smoothed normative
+    flows to avoid distortions from temporary cyclical peaks or troughs.
 
     Attributes
     ----------
     MODE : ValuationMethodology
         Set to FCFF_NORMALIZED for mid-cycle valuation.
+    DISPLAY_NAME : str
+        Human-readable name from i18n.
+    DESCRIPTION : str
+        Brief description from i18n.
     """
 
     MODE = ValuationMethodology.FCFF_NORMALIZED
@@ -42,64 +52,58 @@ class FCFFNormalizedTerminalTerminalExpert(BaseTerminalExpert):
     SHOW_PEER_TRIANGULATION = True
     SHOW_SUBMIT_BUTTON = False
 
-    # --- Narrative LaTeX Formulas ---
-    TERMINAL_VALUE_FORMULA = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
-
-    def render_model_inputs(self) -> Dict[str, Any]:
+    def render_model_inputs(self) -> None:
         """
-        Renders specific inputs for the Normalized FCFF model.
-        Keys are aligned with FCFFNormalizedParameters fields.
+        Renders operational inputs for the Normalized FCFF model.
 
-        Returns
-        -------
-        Dict[str, Any]
-            Captured parameters for the strategy block.
+        Widget keys are mapped to UIKey suffixes defined in
+        FCFFNormalizedParameters to enable automated extraction.
         """
+        prefix = self.MODE.name
+
         # --- STEP 1: NORMATIVE FLOW (Strategy -> fcf_norm) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        fcf_norm = st.number_input(
+
+        st.number_input(
             Texts.INP_BASE,
             value=None,
             format="%.0f",
             help=Texts.HELP_BASE,
-            key="fcf_norm" # Direct Pydantic Field
+            key=f"{prefix}_fcf_norm"  # Maps to FCFFNormalizedParameters.fcf_norm
         )
         st.divider()
 
         # --- STEP 2: GROWTH DYNAMICS (Strategy -> projection_years / cycle_growth_rate) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
+
         col1, col2 = st.columns(2)
         with col1:
-            # Aligné via le préfixe 'strategy' pour donner 'strategy_years'
-            n_years = widget_projection_years(default=5, key_prefix="strategy")
+            # key_prefix produces {prefix}_years suffix
+            widget_projection_years(default=5, key_prefix=prefix)
+
         with col2:
-            cycle_g = st.number_input(
-                Texts.LBL_GROWTH_G, # Ou label spécifique i18n
+            st.number_input(
+                Texts.LBL_GROWTH_G,
                 value=None,
                 format="%.2f",
-                key="cycle_growth_rate" # Direct Pydantic Field
+                key=f"{prefix}_growth_rate"  # Maps to FCFFNormalizedParameters.cycle_growth_rate
             )
 
         st.divider()
-        return {
-            "fcf_norm": fcf_norm,
-            "projection_years": n_years,
-            "cycle_growth_rate": cycle_g
-        }
 
     def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
         """
-        Extracts Normalized FCFF data for the 'strategy' block.
+        Automated extraction of Normalized FCFF strategy data.
+
+        Parameters
+        ----------
+        key_prefix : str
+            The session state prefix (ValuationMode.name).
 
         Returns
         -------
         Dict[str, Any]
-            Dictionnaire miroir de FCFFNormalizedParameters.
+            Raw UI values mapped to FCFFNormalizedParameters fields via UIBinder.
         """
-        return {
-            "mode": self.MODE,
-            "fcf_norm": st.session_state.get("fcf_norm"),
-            "cycle_growth_rate": st.session_state.get("cycle_growth_rate"),
-            "projection_years": st.session_state.get("strategy_years")
-        }
+        return UIBinder.pull(FCFFNormalizedParameters, prefix=key_prefix)

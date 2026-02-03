@@ -95,17 +95,17 @@ class BacktestResolvers(BaseModel):
     enabled: bool = False
     lookback_years: Optional[int] = Field(3, ge=1, le=10)
 
-class SOTPSegment(BaseModel):
+class BusinessUnit(BaseModel):
     """Represents an individual business unit in a SOTP valuation."""
     name: str
-    ev_value: Optional[float] = None
+    entreprise_value: Optional[float] = None
     method: str = "Market"
 
 class SOTPResolvers(BaseModel):
     """Configuration for Sum-of-the-Parts (conglomerate) valuation."""
     enabled: bool = False
     conglomerate_discount: Optional[float] = Field(0.0, ge=0, le=1)
-    segments: List[SOTPSegment] = Field(default_factory=list)
+    segments: List[BusinessUnit] = Field(default_factory=list)
 
 # ==============================================================================
 # 4. THE BUNDLE (Unified Container)
