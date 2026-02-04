@@ -14,13 +14,10 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Any
 
 import yaml
-
-from src.models import MultiplesData
 
 logger = logging.getLogger(__name__)
 
@@ -29,32 +26,6 @@ _CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "sector_multiple
 
 # Internal cache for performance optimization
 _SECTOR_MULTIPLES_CACHE: Optional[Dict[str, Any]] = None
-
-
-@dataclass(frozen=True)
-class SectorFallbackResult:
-    """
-    Encapsulates a sectoral fallback result with full audit traceability.
-
-    Attributes
-    ----------
-    multiples : MultiplesData
-        The standardized valuation multiples (P/E, EV/EBITDA, etc.).
-    is_fallback : bool
-        Flag indicating the data comes from the fallback repository (Degraded Mode).
-    sector_key : str
-        The normalized sector identifier used for lookup.
-    confidence_score : float
-        A score (0.0 to 1.0) representing the reliability of the fallback data.
-    source_description : str
-        Human-readable source description for the UI audit trail.
-    """
-    multiples: MultiplesData
-    is_fallback: bool
-    sector_key: str
-    confidence_score: float
-    source_description: str
-
 
 def _load_sector_multiples() -> Dict[str, Any]:
     """
@@ -111,57 +82,72 @@ def _normalize_sector_key(sector: str) -> str:
     return mapping.get(normalized, "default")
 
 
-def get_sector_multiples(sector: str) -> MultiplesData:
+def _slugify(text: Optional[str]) -> str:
     """
-    Standard accessor for sectoral multiples.
+    Normalizes raw API strings into canonical configuration keys.
+
+    Converts characters like em-dashes, spaces, and hyphens into underscores
+    to match the YAML structure (e.g., 'Software—Infrastructure' -> 'software_infrastructure').
+
+    Parameters
+    ----------
+    text : str, optional
+        The raw string to be normalized.
+
+    Returns
+    -------
+    str
+        The normalized, lowercase, snake_case string. Returns empty string if input is None.
     """
-    result = get_sector_fallback_with_metadata(sector)
-    return result.multiples
+    if not text or not isinstance(text, str):
+        return ""
 
-
-def get_sector_fallback_with_metadata(sector: str) -> SectorFallbackResult:
-    """
-    Retrieves sectoral multiples enriched with audit metadata for Pillar 3/5.
-
-    Architecture: ST-4.1 Degraded Mode Orchestration.
-    """
-    all_multiples = _load_sector_multiples()
-    key = _normalize_sector_key(sector)
-
-    data = all_multiples.get(key, all_multiples.get("default", {}))
-    source = data.get("source", f"Sector fallback: {sector}")
-
-    # Extract metadata for confidence level reporting
-    metadata = all_multiples.get("_metadata", {})
-    confidence = metadata.get("confidence_score", 0.70)
-
-
-
-    multiples = MultiplesData(
-        peers=[],  # Fallback mode does not contain individual peer metrics
-        median_pe=float(data.get("pe_ratio", 0.0) or 0.0),
-        median_ev_ebitda=float(data.get("ev_ebitda", 0.0) or 0.0),
-        median_ev_rev=float(data.get("ev_revenue", 0.0) or 0.0),
-        source=source
-    )
-
-    return SectorFallbackResult(
-        multiples=multiples,
-        is_fallback=True,
-        sector_key=key,
-        confidence_score=confidence,
-        source_description=f"Mode Dégradé : Multiples sectoriels moyens ({source})"
+    # Handle common separators found in financial APIs
+    return (
+        text.lower()
+        .replace("—", "_")  # Long dash
+        .replace("-", "_")  # Hyphen
+        .replace(" ", "_")  # Space
+        .replace("__", "_")  # Clean up double underscores
+        .strip("_")
     )
 
 
-def is_fallback_available() -> bool:
-    """Verifies the availability of the external configuration file."""
-    return _CONFIG_PATH.exists()
-
-
-def get_fallback_metadata() -> Dict[str, Any]:
+def get_sector_data(industry: Optional[str], sector: Optional[str]) -> Dict[str, Any]:
     """
-    Retrieves metadata including versioning and data sources for audit purposes.
+    Retrieves valuation benchmarks using a hierarchical fallback strategy.
+
+    The logic enforces a 'Granular-to-Broad' search order:
+    1. Specific Industry match (e.g., 'semiconductors').
+    2. Macro Sector match (e.g., 'technology').
+    3. Global 'default' fallback if no matches are found.
+
+    Parameters
+    ----------
+    industry : str, optional
+        The specific industry name provided by the data source.
+    sector : str, optional
+        The broad macro-sector name provided by the data source.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing valuation multiples (pe_ratio, ev_ebitda, etc.)
+        and the source metadata.
     """
-    all_multiples = _load_sector_multiples()
-    return all_multiples.get("_metadata", {})
+    all_data = _load_sector_multiples()
+
+    # 1. Primary Attempt: Granular Industry
+    industry_key = _slugify(industry)
+    if industry_key and industry_key in all_data:
+        return all_data[industry_key]
+
+    # 2. Secondary Attempt: Broad Macro Sector
+    sector_key = _slugify(sector)
+    if sector_key and sector_key in all_data:
+        logger.debug(f"[SectorFallback] Industry '{industry}' not found. Falling back to sector '{sector}'.")
+        return all_data[sector_key]
+
+    # 3. Last Resort: Global Market Default
+    logger.warning(f"[SectorFallback] No match for '{industry}/{sector}'. Using global default.")
+    return all_data.get("default", {})

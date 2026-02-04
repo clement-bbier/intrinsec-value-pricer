@@ -59,32 +59,32 @@ GLOBAL_URLS = {
 COUNTRY_CONTEXT: Dict[str, CountryData] = {
     "United States": {
         "tax_rate": 0.21,
-        "risk_free_rate": 0.038,     # T-Bond 10Y Stabilization
-        "market_risk_premium": 0.045, # Normalized US ERP
-        "inflation_rate": 0.024,
+        "risk_free_rate": 0.0425,     # Yield curve shift (Feb 2026)
+        "market_risk_premium": 0.046, # Damodaran Jan 26 update
+        "inflation_rate": 0.027,      # Core sticky inflation
         "rf_ticker": "^TNX",
         "url_central_bank": "https://fred.stlouisfed.org/series/DGS10",
         "url_tax_source": "https://taxfoundation.org/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
     },
     "France": {
-        "tax_rate": 0.250,           # Finance law trajectory
-        "risk_free_rate": 0.029,     # OAT 10Y Jan 2026
+        "tax_rate": 0.361,           # Exceptional contribution for 2026
+        "risk_free_rate": 0.0345,     # OAT 10Y Feb 2026
         "market_risk_premium": 0.053,
-        "inflation_rate": 0.020,
+        "inflation_rate": 0.019,
         "rf_ticker": "FR10YT=RR",
         "url_central_bank": "https://www.banque-france.fr/",
         "url_tax_source": "https://www.economie.gouv.fr/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
     },
     "Germany": {
-        "tax_rate": 0.299,
-        "risk_free_rate": 0.022,     # Bund 10Y
+        "tax_rate": 0.301,           # Statutory trade tax adjustment
+        "risk_free_rate": 0.0289,     # Bund 10Y Feb 2026
         "market_risk_premium": 0.051,
         "inflation_rate": 0.020,
         "rf_ticker": "^GDBR10",
         "url_central_bank": "https://www.bundesbank.de/",
-        "url_tax_source": "https://taxfoundation.org/location/germany/",
+        "url_tax_source": "https://taxfoundation.org/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
     },
     "United Kingdom": {
@@ -108,15 +108,15 @@ COUNTRY_CONTEXT: Dict[str, CountryData] = {
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
     },
     "Japan": {
-        "tax_rate": 0.306,
-        "risk_free_rate": 0.012,     # Exit from near-zero rate environment
+        "tax_rate": 0.354,           # Effective rate with 2026 defense surtax
+        "risk_free_rate": 0.0226,     # Normalized JGB 10Y
         "market_risk_premium": 0.059,
         "inflation_rate": 0.015,
         "rf_ticker": "^JGBS10",
         "url_central_bank": "https://www.mof.go.jp/",
         "url_tax_source": "https://www.nta.go.jp/",
         "url_risk_premium": GLOBAL_URLS["risk_premium"]
-    }
+    },
 }
 
 # Institutional Default fallback

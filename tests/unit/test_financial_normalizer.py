@@ -8,7 +8,7 @@ Couvre la logique de normalisation des données financières brutes.
 import pytest
 from unittest.mock import Mock, patch
 
-from infra.data_providers.financial_normalizer import FinancialDataNormalizer
+from infra.data_providers.yahoo_snapshot_mapper import FinancialDataNormalizer
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from src.models import Company, MultiplesData
 

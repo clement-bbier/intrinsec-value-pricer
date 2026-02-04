@@ -1,37 +1,7 @@
-"""
-infra/data_providers/__init__.py
+from .yahoo_financial_provider import YahooFinancialProvider
+from .base_provider import FinancialDataProvider
 
-Package des fournisseurs de données financières.
-
-Fournisseurs de données - Encapsulation
-Pattern : Facade + Adapter
-Style : Numpy Style docstrings
-
-Ce package expose uniquement la façade YahooFinanceProvider via __all__.
-Les classes internes (YahooRawFetcher, extraction_utils) sont masquées
-pour garantir l'encapsulation et permettre des refactorings internes.
-
-Usage recommandé:
-    from infra.data_providers import YahooFinanceProvider
-
-Usage avancé (non garanti):
-    from infra.data_providers.yahoo_raw_fetcher import YahooRawFetcher
-
-RISQUES FINANCIERS:
-- Le provider est la source de données pour toutes les valorisations
-- Une erreur de mapping peut invalider l'ensemble des calculs
-"""
-
-from __future__ import annotations
-
-# Façade publique (seule interface garantie)
-from .yahoo_provider import YahooFinanceProvider
-
-# Classe de base (pour extension de providers)
-from .base_provider import DataProvider
-
-# API publique garantie
 __all__ = [
-    "YahooFinanceProvider",
-    "DataProvider",
+    "YahooFinancialProvider",
+    "FinancialDataProvider",
 ]
