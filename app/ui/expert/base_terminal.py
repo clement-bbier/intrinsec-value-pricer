@@ -19,6 +19,7 @@ from typing import Optional, Any, Dict
 import streamlit as st
 from pydantic import ValidationError
 
+from infra.data_providers import FinancialDataProvider
 from src.models import (
     ValuationMethodology,
     ValuationRequest,
@@ -63,7 +64,7 @@ class BaseTerminalExpert(ABC):
     SHOW_PEER_TRIANGULATION: bool = True
     SHOW_SUBMIT_BUTTON: bool = False
 
-    def __init__(self, ticker: str):
+    def __init__(self, ticker: str, provider: FinancialDataProvider):
         """
         Initializes the terminal with the target ticker.
 
@@ -73,6 +74,7 @@ class BaseTerminalExpert(ABC):
             The stock ticker symbol.
         """
         self.ticker = ticker
+        self.provider = provider
 
     # ══════════════════════════════════════════════════════════════════════════
     # TEMPLATE METHOD — UI RENDERING
@@ -142,14 +144,12 @@ class BaseTerminalExpert(ABC):
         prefix = self.MODE.name
 
         try:
-            # --- 1. STRATEGY BLOCK (Pillar 3: Model Specific) ---
+            # --- 1. EXTRACTION (Existing logic - The "Ghost") ---
+            # Pulls sparse data from the UI. Fields not filled by the user remain None.
             strategy_params = self._extract_model_inputs_data(prefix)
-
-            # --- 2. COMMON BLOCKS (Pillar 2: Rates & Capital) ---
             rates = FinancialRatesParameters(**UIBinder.pull(FinancialRatesParameters, prefix=prefix))
             capital = CapitalStructureParameters(**UIBinder.pull(CapitalStructureParameters, prefix=f"bridge_{prefix}"))
 
-            # --- 3. EXTENSION BLOCKS (Pillars 4 & 5: Analytical Options) ---
             extensions = ExtensionBundleParameters(
                 monte_carlo=MCParameters(**UIBinder.pull(MCParameters, prefix="mc")),
                 scenarios=ScenariosParameters(**UIBinder.pull(ScenariosParameters, prefix="scenario")),
@@ -158,18 +158,32 @@ class BaseTerminalExpert(ABC):
                 sotp=SOTPParameters(**UIBinder.pull(SOTPParameters, prefix="sotp"))
             )
 
-            # --- 4. FINAL ASSEMBLY (The Global Parameters Bundle) ---
-            params = Parameters(
-                structure=Company(ticker=self.ticker),
+            # Initialize the "Ghost" bundle (contains many Nones)
+            ghost_params = Parameters(
+                structure=Company(ticker=self.ticker),  # Minimum identity
                 common=CommonParameters(rates=rates, capital=capital),
                 strategy=strategy_params,
                 extensions=extensions
             )
 
-            # --- 5. ENVELOPE (The Valuation Trigger) ---
+            # --- 2. ACQUISITION (Infrastructure layer data) ---
+            # Fetch the rich Snapshot (Micro-accounting + Macro-context + Sector fallbacks)
+            snapshot = self.provider.get_company_snapshot(self.ticker)
+
+            if not snapshot:
+                st.warning(f"Market data unavailable for {self.ticker}. Using system fallbacks.")
+
+            # --- 3. RESOLUTION (The Brain - Making the object "Solid") ---
+            # The Resolver arbitrates between User, Provider, and System defaults to fill all Nones.
+            from src.valuation.resolvers.main_resolver import Resolver
+            resolver = Resolver()
+            solid_params = resolver.resolve(ghost_params, snapshot)
+
+            # --- 4. ENVELOPE (The Trigger) ---
+            # Dispatches the fully hydrated instruction to the Backend Engine.
             return ValuationRequest(
                 mode=self.MODE,
-                parameters=params
+                parameters=solid_params  # Object is now 100% populated
             )
 
         except ValidationError as ve:
