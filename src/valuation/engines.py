@@ -33,7 +33,7 @@ from src.models import (
     ValuationResult
 )
 from src.valuation.strategies import ValuationStrategy
-from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+from src.valuation.options.monte_carlo import MonteCarloGenericStrategy
 from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 
 # Registry and Telemetry
@@ -200,7 +200,7 @@ def _apply_triangulation(
 
     if multiples_data and hasattr(multiples_data, "peers") and len(multiples_data.peers) > 0:
         try:
-            from src.valuation.strategies.multiples import MarketMultiplesStrategy
+            from src.valuation.options.multiples import MarketMultiplesStrategy
             rel_strategy = MarketMultiplesStrategy(multiples_data=multiples_data)
             result.multiples_triangulation = rel_strategy.execute(financials, params)
             logger.info(f"[Engine] Triangulation Complete | n={len(multiples_data.peers)}")

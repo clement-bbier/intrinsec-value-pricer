@@ -16,6 +16,8 @@ from datetime import date
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from src.models import CalculationStep
+
 
 # ==============================================================================
 # PILLAR 4: RISK ENGINEERING (Simulation, Scenarios & Backtest)
@@ -30,6 +32,17 @@ class MCResults(BaseModel):
     quantiles: Dict[str, float] = Field(..., description="Key probability points (P10, P50, P90).")
     mean: float = Field(..., description="Arithmetic average of all simulations.")
     std_dev: float = Field(..., description="Standard deviation of the distribution.")
+
+
+class SensitivityResults(BaseModel):
+    """Output of the Sensitivity Analysis (2D Matrix), structure intended for Heatmap visualization."""
+    x_axis_name: str = Field(..., description="Name of the parameter on X axis (e.g. 'WACC').")
+    y_axis_name: str = Field(..., description="Name of the parameter on Y axis (e.g. 'Growth').")
+    x_values: List[float] = Field(..., description="The variation steps for X axis.")
+    y_values: List[float] = Field(..., description="The variation steps for Y axis.")
+    values: List[List[float]] = Field(..., description="2D Array of intrinsic values.")
+    center_value: float = Field(..., description="The value at the center (Base Case).")
+    sensitivity_score: float = Field(0.0, description="Metric of volatility (Spread / Base).")
 
 
 class ScenarioOutcome(BaseModel):
@@ -86,10 +99,15 @@ class PeersResults(BaseModel):
 
 
 class SOTPResults(BaseModel):
-    """Calculated breakdown of a Sum-of-the-Parts valuation."""
+    """
+    Calculated breakdown of a Sum-of-the-Parts valuation.
+    Includes the bridge from Enterprise Value to Equity Value.
+    """
     total_enterprise_value: float = Field(..., description="Sum of all operating segment values.")
     segment_values: Dict[str, float] = Field(..., description="Final value attributed to each segment name.")
-
+    implied_equity_value: float = Field(..., description="Final Equity Value after Bridge.")
+    equity_value_per_share: float = Field(..., description="Implied share price.")
+    sotp_trace: List[CalculationStep] = Field(default_factory=list, description="Glass Box steps.")
 
 # ==============================================================================
 # THE BUNDLE (Unified Container)
@@ -101,6 +119,7 @@ class ExtensionBundleResults(BaseModel):
     Attributes remain None if the corresponding extension was not executed.
     """
     monte_carlo: Optional[MCResults] = None
+    sensitivity: Optional[SensitivityResults] = None
     scenarios: Optional[ScenariosResults] = None
     backtest: Optional[BacktestResults] = None
     peers: Optional[PeersResults] = None

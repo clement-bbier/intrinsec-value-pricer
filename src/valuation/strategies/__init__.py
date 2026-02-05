@@ -25,13 +25,12 @@ from .rim_banks import RIMBankingStrategy
 from .graham_value import GrahamNumberStrategy
 
 # Multiples (pour triangulation)
-from .multiples import MarketMultiplesStrategy
+from src.valuation.options.multiples import MarketMultiplesStrategy
 
 # Classe de base (pour extension)
 from .abstract import ValuationStrategy
 
 # Monte Carlo wrapper (usage interne principalement)
-from .monte_carlo import MonteCarloGenericStrategy
 
 # API publique garantie
 __all__ = [

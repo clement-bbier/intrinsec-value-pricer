@@ -124,7 +124,7 @@ class TestMonteCarloStrategy:
     
     def test_wraps_underlying_strategy(self, sample_financials, sample_params):
         """Monte Carlo wrappe une stratégie sous-jacente."""
-        from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+        from src.valuation.options.monte_carlo import MonteCarloGenericStrategy
         from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         from src.models import ValuationResult
         
@@ -143,7 +143,7 @@ class TestMonteCarloStrategy:
     
     def test_generates_distribution(self, sample_financials, sample_params):
         """Monte Carlo génère une distribution de résultats."""
-        from src.valuation.strategies.monte_carlo import MonteCarloGenericStrategy
+        from src.valuation.options.monte_carlo import MonteCarloGenericStrategy
         from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
         
         sample_params.monte_carlo.enabled = True

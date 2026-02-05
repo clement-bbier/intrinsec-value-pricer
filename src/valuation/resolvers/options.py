@@ -1,120 +1,146 @@
 """
-src/models/params/options.py
+src/valuation/resolvers/options.py
 
-ANALYTICAL EXTENSIONS Resolvers (MASTER ARCHITECTURE)
-====================================================
-Role: Modular overrides for Monte Carlo, Scenarios, Peers, and SOTP.
-Scope: Stochastic shocks, deterministic cases, historical audits, and segment analysis.
-Architecture: Polymorphic Strategy-Aligned Shocks.
-              Factors common volatility Resolvers without polluting Graham with Beta logic.
+EXTENSION RESOLVER — LOGIC LAYER
+================================
+Role: Applies system defaults and fallback logic to optional modules.
+Scope: Logic Only. Consumes 'Parameters' objects.
+Architecture: Service Class pattern (Stateless).
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
-from typing import List, Optional, Union, Literal
-from pydantic import BaseModel, Field
+import logging
 
-# ==============================================================================
-# 1. MONTE CARLO STOCHASTIC SHOCKS (Polymorphic Branching)
-# ==============================================================================
+from src.models.parameters.options import (
+    ExtensionBundleParameters,
+    MCParameters,
+    SensitivityParameters,
+    ScenariosParameters,
+    ScenarioParameters,
+    BacktestParameters,
+    PeersParameters,
+    SOTPParameters
+)
 
-class BaseMCShocksResolvers(BaseModel):
-    """Universal stochastic foundation for all projection models."""
-    growth_volatility: Optional[float] = Field(None, description="Volatility of the FCF/Revenue/Earnings growth rate.")
+from src.config.constants import (
+    MonteCarloDefaults,
+    SensitivityDefaults,
+    BacktestDefaults,
+    SOTPDefaults,
+    ScenarioDefaults,
+    PeerDefaults
+)
 
-class BetaModelMCShocksResolvers(BaseMCShocksResolvers):
-    """Intermediate branch for models requiring Beta/WACC sensitivity (DCF, RIM, DDM)."""
-    beta_volatility: Optional[float] = Field(None, description="Volatility of the systematic risk factor (Beta).")
+logger = logging.getLogger(__name__)
 
-class StandardMCShocksResolvers(BetaModelMCShocksResolvers):
-    """Specific shocks for DCF Standard, DDM, and FCFE models."""
-    type: Literal["standard"] = "standard"
-    fcf_volatility: Optional[float] = Field(None, description="Volatility of the base Cash Flow.")
-    dividend_volatility: Optional[float] = Field(None, description="Volatility of the dividend payout.")
 
-class GrowthMCShocksResolvers(BetaModelMCShocksResolvers):
-    """Specific shocks for Revenue/Margin Growth models."""
-    type: Literal["growth"] = "growth"
-    revenue_volatility: Optional[float] = Field(None, description="Volatility of the top-line revenue.")
-    margin_volatility: Optional[float] = Field(None, description="Volatility of the FCF/EBITDA margin.")
-
-class RIMMCShocksResolvers(BetaModelMCShocksResolvers):
-    """Specific shocks for Residual Income (RIM) models."""
-    type: Literal["rim"] = "rim"
-    roe_volatility: Optional[float] = Field(None, description="Volatility of the Return on Equity.")
-
-class GrahamMCShocksResolvers(BaseMCShocksResolvers):
-    """Specific shocks for Graham screening (Strictly ignores Beta/Market Volatility)."""
-    type: Literal["graham"] = "graham"
-    eps_volatility: Optional[float] = Field(None, description="Volatility of the Normalized EPS.")
-
-# Union for Pydantic type discrimination
-MCShockUnion = Union[StandardMCShocksResolvers, GrowthMCShocksResolvers, RIMMCShocksResolvers, GrahamMCShocksResolvers]
-
-class MCResolvers(BaseModel):
+class ExtensionResolver:
     """
-    Monte Carlo Simulation orchestrator.
-
-    The 'shocks' attribute will automatically adapt its fields based on
-    the selected valuation strategy.
+    Service class responsible for hydrating optional module parameters.
+    Ensures that if a module is enabled, it has valid configuration values.
     """
-    enabled: bool = False
-    iterations: Optional[int] = Field(5000, ge=100, le=50000)
-    shocks: Optional[MCShockUnion] = None
 
-# ==============================================================================
-# 2. DETERMINISTIC SCENARIOS & PEERS
-# ==============================================================================
+    def resolve(self, bundle: ExtensionBundleParameters) -> ExtensionBundleParameters:
+        """
+        Orchestrates the resolution of all extensions.
 
-class ScenarioResolvers(BaseModel):
-    """
-    Represents a single deterministic valuation case.
-    Used for multi-scenario weighting (e.g., Bull, Base, Bear).
-    """
-    name: str
-    probability: Optional[float] = Field(0.33, ge=0, le=1)
-    growth_override: Optional[float] = None
-    margin_override: Optional[float] = None
-    eps_override: Optional[float] = None
+        Parameters
+        ----------
+        bundle : ExtensionBundleParameters
+            The raw input bundle.
 
-class ScenariosResolvers(BaseModel):
-    """Manager for probabilistic weighted scenarios analysis."""
-    enabled: bool = False
-    cases: List[ScenarioResolvers] = Field(default_factory=list)
+        Returns
+        -------
+        ExtensionBundleParameters
+            The hydrated bundle with defaults applied.
+        """
+        # Note: Even though these are static, calling them via self is valid Python syntax
+        # and allows for easier inheritance overriding if needed later.
+        self._resolve_monte_carlo(bundle.monte_carlo)
+        self._resolve_sensitivity(bundle.sensitivity)
+        self._resolve_scenarios(bundle.scenarios)
+        self._resolve_backtest(bundle.backtest)
+        self._resolve_peers(bundle.peers)
+        self._resolve_sotp(bundle.sotp)
 
-class PeersResolvers(BaseModel):
-    """Configuration for relative valuation and peer-group triangulation."""
-    enabled: bool = False
-    tickers: List[str] = Field(default_factory=list)
+        return bundle
 
-# ==============================================================================
-# 3. STRUCTURAL EXTENSIONS (SOTP & BACKTEST)
-# ==============================================================================
+    @staticmethod
+    def _resolve_monte_carlo(params: MCParameters) -> None:
+        """Applies defaults to Monte Carlo simulation settings."""
+        if not params.enabled:
+            return
 
-class BacktestResolvers(BaseModel):
-    """Settings for historical accuracy and model performance tracking."""
-    enabled: bool = False
-    lookback_years: Optional[int] = Field(3, ge=1, le=10)
+        if params.iterations is None:
+            params.iterations = MonteCarloDefaults.DEFAULT_SIMULATIONS
+            logger.debug("[Resolver] MC iterations set to default: %d", params.iterations)
 
-class BusinessUnit(BaseModel):
-    """Represents an individual business unit in a SOTP valuation."""
-    name: str
-    entreprise_value: Optional[float] = None
-    method: str = "Market"
+    @staticmethod
+    def _resolve_sensitivity(params: SensitivityParameters) -> None:
+        """Applies defaults to Sensitivity Analysis (Heatmap) settings."""
+        if not params.enabled:
+            return
 
-class SOTPResolvers(BaseModel):
-    """Configuration for Sum-of-the-Parts (conglomerate) valuation."""
-    enabled: bool = False
-    conglomerate_discount: Optional[float] = Field(0.0, ge=0, le=1)
-    segments: List[BusinessUnit] = Field(default_factory=list)
+        if params.steps is None:
+            params.steps = SensitivityDefaults.DEFAULT_STEPS
 
-# ==============================================================================
-# 4. THE BUNDLE (Unified Container)
-# ==============================================================================
+        if params.wacc_span is None:
+            params.wacc_span = SensitivityDefaults.DEFAULT_WACC_SPAN
 
-class ExtensionBundleResolvers(BaseModel):
-    """Unified container for all optional analytical modules."""
-    monte_carlo: MCResolvers = Field(default_factory=MCResolvers)
-    scenarios: ScenariosResolvers = Field(default_factory=ScenariosResolvers)
-    backtest: BacktestResolvers = Field(default_factory=BacktestResolvers)
-    peers: PeersResolvers = Field(default_factory=PeersResolvers)
-    sotp: SOTPResolvers = Field(default_factory=SOTPResolvers)
+        if params.growth_span is None:
+            params.growth_span = SensitivityDefaults.DEFAULT_GROWTH_SPAN
+
+    @staticmethod
+    def _resolve_scenarios(params: ScenariosParameters) -> None:
+        """
+        Validates scenario configurations.
+        Injects a neutral 'Base Case' if enabled but the list is empty (Safety Net).
+        """
+        if not params.enabled:
+            return
+
+        # Fallback: Si activé mais liste vide -> On injecte un cas unique neutre
+        if not params.cases:
+            logger.info("[Resolver] Scenarios enabled but empty. Injecting default Base Case.")
+            default_case = ScenarioParameters(
+                name=ScenarioDefaults.DEFAULT_CASE_NAME,
+                probability=ScenarioDefaults.DEFAULT_PROBABILITY,
+                growth_override=None,  # Neutre (None respecte la valeur du modèle de base)
+                margin_override=None   # Neutre
+            )
+            params.cases.append(default_case)
+
+    @staticmethod
+    def _resolve_backtest(params: BacktestParameters) -> None:
+        """Applies defaults to Historical Backtesting."""
+        if not params.enabled:
+            return
+
+        if params.lookback_years is None:
+            params.lookback_years = BacktestDefaults.DEFAULT_LOOKBACK_YEARS
+
+    @staticmethod
+    def _resolve_peers(params: PeersParameters) -> None:
+        """Validates Peer Group settings."""
+        if not params.enabled:
+            return
+
+        if not params.tickers:
+            logger.warning("[Resolver] Peer module enabled but no tickers provided.")
+        elif len(params.tickers) < PeerDefaults.MIN_PEERS_REQUIRED:
+            logger.warning(
+                "[Resolver] Peer list size (%d) below recommended minimum (%d).",
+                len(params.tickers),
+                PeerDefaults.MIN_PEERS_REQUIRED
+            )
+
+    @staticmethod
+    def _resolve_sotp(params: SOTPParameters) -> None:
+        """Applies defaults to Sum-of-the-Parts (Conglomerate) settings."""
+        if not params.enabled:
+            return
+
+        if params.conglomerate_discount is None:
+            params.conglomerate_discount = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT

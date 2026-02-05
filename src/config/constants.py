@@ -35,9 +35,20 @@ class MonteCarloDefaults:
     MIN_VALID_RATIO: float = 0.80
     CLAMPING_THRESHOLD: float = 0.10
 
+# ==============================================================================
+# 2. SENSITIVITY ANALYSIS (DETERMINISTIC)
+# ==============================================================================
+
+@dataclass(frozen=True)
+class SensitivityDefaults:
+    """Defaults for the WACC/Growth sensitivity heatmap."""
+    DEFAULT_STEPS: int = 5              # 5x5 Matrix
+    DEFAULT_WACC_SPAN: float = 0.01     # +/- 1.0%
+    DEFAULT_GROWTH_SPAN: float = 0.005  # +/- 0.5%
+    DEFAULT_YIELD_SPAN: float = 0.01    # +/- 1.0% (Graham/RIM)
 
 # ==============================================================================
-# 2. PEERS / MULTIPLES
+# 3. PEERS / MULTIPLES
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -48,9 +59,43 @@ class PeerDefaults:
     API_TIMEOUT_SECONDS: float = 12.0
     MAX_RETRY_ATTEMPTS: int = 1
 
+# ==============================================================================
+# 4. BACKTEST DEFAULTS
+# ==============================================================================
+
+@dataclass(frozen=True)
+class BacktestDefaults:
+    """Defaults for Historical Validation."""
+    DEFAULT_LOOKBACK_YEARS: int = 3
+    MAX_LOOKBACK_YEARS: int = 10
 
 # ==============================================================================
-# 3. AUDIT - VALIDATION THRESHOLDS
+# 5. SOTP DEFAULTS
+# ==============================================================================
+
+@dataclass(frozen=True)
+class SOTPDefaults:
+    """Defaults for Sum-of-the-Parts."""
+    DEFAULT_CONGLOMERATE_DISCOUNT: float = 0.0
+
+
+# ==============================================================================
+# 6. SCENARIO DEFAULTS
+# ==============================================================================
+
+@dataclass(frozen=True)
+class ScenarioDefaults:
+    """Defaults for deterministic scenarios, enforcing a single neutral fallback case to preserve valuation integrity."""
+    # Fallback Values (Safety Net)
+    DEFAULT_CASE_NAME: str = "Base Case"
+    DEFAULT_PROBABILITY: float = 1.0  # 100% ensures mathematical neutrality
+    DEFAULT_GROWTH_ADJUSTMENT: float = 0.0
+    DEFAULT_MARGIN_ADJUSTMENT: float = 0.0
+    STANDARD_LABELS: Tuple[str, str, str] = ("Bear Case", "Base Case", "Bull Case")
+    STANDARD_WEIGHTS: Tuple[float, float, float] = (0.25, 0.50, 0.25)
+
+# ==============================================================================
+# 7. AUDIT - VALIDATION THRESHOLDS
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -71,7 +116,7 @@ class AuditThresholds:
 
 
 # ==============================================================================
-# 4. MACRO & MARKET DEFAULTS (PILLAR 2)
+# 8. MACRO & MARKET DEFAULTS (PILLAR 2)
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -86,7 +131,7 @@ class MacroDefaults:
 
 
 # ==============================================================================
-# 5. MODEL DEFAULTS — ALIGNED WITH PYDANTIC (CRITICAL FOR RESOLVER)
+# 9. MODEL DEFAULTS — ALIGNED WITH PYDANTIC (CRITICAL FOR RESOLVER)
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -127,7 +172,7 @@ class ModelDefaults:
 
 
 # ==============================================================================
-# 6. VALUATION ENGINES TECHNICAL CONSTANTS
+# 10. VALUATION ENGINES TECHNICAL CONSTANTS
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -147,7 +192,7 @@ ValuationEngineDefaults.SPREADS_LARGE_CAP = [
 
 
 # ==============================================================================
-# 7. UI WIDGETS & CONSTRAINTS
+# 11. UI WIDGETS & CONSTRAINTS
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -161,7 +206,7 @@ class UIWidgetDefaults:
 
 
 # ==============================================================================
-# 8. AUDIT WEIGHTS
+# 12. AUDIT WEIGHTS
 # ==============================================================================
 
 class AuditWeights:
@@ -181,7 +226,7 @@ class AuditWeights:
 
 
 # ==============================================================================
-# 9. SYSTEM CONFIGURATION
+# 13. SYSTEM CONFIGURATION
 # ==============================================================================
 
 @dataclass(frozen=True)
@@ -192,7 +237,7 @@ class SystemDefaults:
 
 
 # ==============================================================================
-# 10. LOADING VALIDATION
+# 14. LOADING VALIDATION
 # ==============================================================================
 
 def _validate_constants():
@@ -209,7 +254,11 @@ _validate_constants()
 
 __all__ = [
     "MonteCarloDefaults",
+    "SensitivityDefaults",
+    "ScenarioDefaults",
+    "BacktestDefaults",
     "PeerDefaults",
+    "SOTPDefaults",
     "AuditThresholds",
     "MacroDefaults",
     "ModelDefaults",

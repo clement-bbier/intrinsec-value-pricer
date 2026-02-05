@@ -9,7 +9,7 @@ Architecture : Alignée sur Parameters SSOT (V9.0+).
 import pytest
 from unittest.mock import MagicMock
 
-from src.valuation.sotp_engine import run_sotp_valuation
+from src.valuation.options.sotp_engine import run_sotp_valuation
 from src.models import (
     SOTPParameters, Company, BusinessUnit
 )

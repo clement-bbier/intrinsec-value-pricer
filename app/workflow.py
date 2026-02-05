@@ -64,7 +64,7 @@ from src.models import (
 )
 from src.valuation.engines import run_valuation
 from src.quant_logger import QuantLogger
-from src.valuation.backtest_engine import BacktestEngine
+from src.valuation.options.backtest_engine import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider
 
@@ -152,7 +152,7 @@ def run_workflow(
 
             # 2. Compute implied values using the specific Strategy
             # Senior: Call .execute() to match the strategy interface
-            from src.valuation.strategies.multiples import MarketMultiplesStrategy
+            from src.valuation.options.multiples import MarketMultiplesStrategy
             multiples_engine = MarketMultiplesStrategy(multiples_data=raw_multiples)
             result.multiples_triangulation = multiples_engine.execute(financials, final_params)
 

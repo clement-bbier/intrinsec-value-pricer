@@ -3,9 +3,8 @@ tests/unit/test_multiples_strategy.py
 Validation de la Triangulation avec Mocks financiers robustes.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
-from src.valuation.strategies.multiples import MarketMultiplesStrategy
+from src.valuation.options.multiples import MarketMultiplesStrategy
 from src.models import MultiplesData, PeerMetric
 
 class TestMarketMultiplesStrategy:

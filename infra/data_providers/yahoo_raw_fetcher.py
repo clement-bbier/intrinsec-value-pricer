@@ -38,6 +38,7 @@ class RawFinancialData:
     cash_flow: pd.DataFrame = field(default_factory=pd.DataFrame)
     quarterly_income_stmt: pd.DataFrame = field(default_factory=pd.DataFrame)
     quarterly_cash_flow: pd.DataFrame = field(default_factory=pd.DataFrame)
+    history: pd.DataFrame = field(default_factory=pd.DataFrame)
     is_valid: bool = False
 
 
@@ -106,6 +107,7 @@ class YahooRawFetcher:
                 cash_flow=safe_api_call(lambda: yf_ticker.cash_flow, f"CF:{ticker}"),
                 quarterly_income_stmt=safe_api_call(lambda: yf_ticker.quarterly_income_stmt, f"QIS:{ticker}"),
                 quarterly_cash_flow=safe_api_call(lambda: yf_ticker.quarterly_cash_flow, f"QCF:{ticker}"),
+                history=safe_api_call(lambda: yf_ticker.history(period="10y"), f"Hist:{ticker}"),
                 is_valid=True
             )
 
