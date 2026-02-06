@@ -35,13 +35,24 @@ class TerminalValueMethod(str, Enum):
 
 class ParametersSource(str, Enum):
     """
-    Provenance of a specific parameter value.
-    Used for the 'Glass Box' resolution dance.
+    Provenance of a specific parameter value (Inputs).
+    Used for the 'Ghost Box' resolution dance.
     """
     MANUAL = "USER_INPUT"        # Expert override
     AUTO = "PROVIDER_INPUT"      # Market data provider (Yahoo)
     SYSTEM = "SYSTEM_INPUT"      # Internal fallback or sector benchmark
     EMPTY = None
+
+class VariableSource(str, Enum):
+    """
+    Provenance of a specific variable within a calculation step (Traceability).
+    Matches the logic used in the Library.
+    """
+    MANUAL_OVERRIDE = "MANUAL_OVERRIDE"  # Expert input
+    YAHOO_FINANCE = "YAHOO_FINANCE"  # Data Provider
+    SYSTEM = "SYSTEM"  # Resolver / Internal Logic
+    CALCULATED = "CALCULATED"  # Mathematical Result
+    DEFAULT = "DEFAULT"  # Static Fallback constant
 
 class SOTPMethod(str, Enum):
     """Valuation techniques for segment-based analysis."""

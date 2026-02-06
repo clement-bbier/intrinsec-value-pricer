@@ -23,7 +23,7 @@ from src.models.enums import ParametersSource
 from src.utilities.formatting import format_smart_number
 
 # Centralized i18n imports
-from src.i18n import SOTPTexts, RegistryTexts
+from src.i18n import SOTPTexts, RegistryTexts, KPITexts
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class SOTPRunner:
     3. Execution of the global Equity Bridge to resolve shareholder value.
     """
 
-    @staticmethod  # [CORRECTION 2]
+    @staticmethod
     def execute(params: Parameters) -> Optional[SOTPResults]:
         """
         Runs the SOTP logic using fully hydrated parameters.
@@ -73,15 +73,15 @@ class SOTPRunner:
                 symbol="Σ_EV",
                 value=raw_ev_sum,
                 formatted_value=format_smart_number(raw_ev_sum),
-                source=ParametersSource.MANUAL,  # [CORRECTION 1] Segments are user inputs
-                description="Sum of Segment EVs"
+                source=ParametersSource.MANUAL,  # Segments are user inputs
+                description=SOTPTexts.LBL_RAW_EV_SUM
             ),
             "Disc": VariableInfo(
                 symbol="Disc",
                 value=discount_rate,
                 formatted_value=f"{discount_rate:.1%}",
-                source=ParametersSource.MANUAL,  # [CORRECTION 1]
-                description="Conglomerate Discount"
+                source=ParametersSource.MANUAL,
+                description=SOTPTexts.LBL_DISCOUNT
             )
         }
 
@@ -120,31 +120,36 @@ class SOTPRunner:
                 symbol="EV",
                 value=consolidated_ev,
                 formatted_value=format_smart_number(consolidated_ev),
-                source=ParametersSource.SYSTEM
+                source=ParametersSource.SYSTEM,
+                description=RegistryTexts.DCF_EV_L
             ),
             "Debt": VariableInfo(
                 symbol="Debt",
                 value=debt,
                 formatted_value=format_smart_number(debt),
-                source=ParametersSource.SYSTEM
+                source=ParametersSource.SYSTEM,
+                description=KPITexts.LABEL_DEBT
             ),
             "Cash": VariableInfo(
                 symbol="Cash",
                 value=cash,
                 formatted_value=format_smart_number(cash),
-                source=ParametersSource.SYSTEM
+                source=ParametersSource.SYSTEM,
+                description=KPITexts.LABEL_CASH
             ),
             "Min": VariableInfo(
                 symbol="Min",
                 value=minorities,
                 formatted_value=format_smart_number(minorities),
-                source=ParametersSource.SYSTEM
+                source=ParametersSource.SYSTEM,
+                description=KPITexts.LABEL_MINORITIES
             ),
             "Pens": VariableInfo(
                 symbol="Pens",
                 value=pensions,
                 formatted_value=format_smart_number(pensions),
-                source=ParametersSource.SYSTEM
+                source=ParametersSource.SYSTEM,
+                description=KPITexts.LABEL_PENSIONS
             )
         }
 

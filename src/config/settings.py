@@ -48,6 +48,7 @@ class MonteCarloSimulationConfig:
     default_volatility_beta: float = 0.10
     default_volatility_growth: float = 0.02
     default_volatility_terminal: float = 0.01
+    default_volatility_base_flow: float = 0.05
 
     # Statistical Validity Thresholds
     min_valid_ratio: float = 0.80

@@ -13,7 +13,8 @@ Style: Numpy docstrings.
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from src.models.enums import ParametersSource
+
+from src.models.enums import VariableSource, ParametersSource
 from src.config.constants import ModelDefaults
 from src.utilities.formatting import format_smart_number
 
@@ -26,7 +27,7 @@ class VariableInfo(BaseModel):
     symbol: str = Field(..., description="Mathematical symbol (e.g., 'WACC').")
     value: float
     formatted_value: str = ""
-    source: ParametersSource = ParametersSource.SYSTEM
+    source: VariableSource = VariableSource.SYSTEM
     description: str = ""
     is_overridden: bool = False
     original_value: Optional[float] = None
@@ -34,7 +35,6 @@ class VariableInfo(BaseModel):
     def model_post_init(self, __context: Any) -> None:
         """Delegates formatting to the central utility."""
         if not self.formatted_value:
-            # On utilise l'intelligence de formatting.py
             self.formatted_value = format_smart_number(
                 self.value,
                 is_pct=(abs(self.value) < 1 and self.symbol in ['r', 'g', 'Ke', 'WACC'])
@@ -63,6 +63,7 @@ class CalculationStep(BaseModel):
     result: float = ModelDefaults.DEFAULT_RESULT_VALUE
     unit: str = ""
     interpretation: str = ""
+    source: str = ""
 
     def get_variable(self, symbol: str) -> Optional[VariableInfo]:
         """Retrieves variable metadata by its mathematical symbol."""

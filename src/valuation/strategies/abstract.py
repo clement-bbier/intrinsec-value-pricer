@@ -1,4 +1,4 @@
-"""
+""" A SUPPRIMER
 src/valuation/strategies/abstract.py
 
 ABSTRACT VALUATION STRATEGY BASE

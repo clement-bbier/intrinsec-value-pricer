@@ -20,6 +20,11 @@ from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SensitivityResults
 from src.valuation.strategies.abstract import ValuationStrategy
 
+# Imports centralisés pour i18n et Config
+from src.config.settings import SIMULATION_CONFIG
+from src.config.constants import ModelDefaults
+from src.i18n import QuantTexts
+
 logger = logging.getLogger(__name__)
 
 
@@ -117,8 +122,8 @@ class SensitivityRunner:
         center_val = matrix_values[center_idx][center_idx]
 
         return SensitivityResults(
-            x_axis_name="WACC / Discount Rate",
-            y_axis_name="Terminal Growth / Perpetuity",
+            x_axis_name=QuantTexts.AXIS_WACC,
+            y_axis_name=QuantTexts.AXIS_GROWTH,
             x_values=wacc_steps,
             y_values=list(reversed(growth_steps)),  # Match the visual row order
             values=matrix_values,
@@ -138,12 +143,12 @@ class SensitivityRunner:
         # Ideally, we should pass the 'calculated wacc' from the main result,
         # but params is the input.
         # Simplification: We look at the override or the inputs.
-        return r.wacc_override or 0.085  # Fallback if everything is missing (Unlikely)
+        return r.wacc_override or SIMULATION_CONFIG.default_wacc_fallback
 
     @staticmethod
     def _get_center_growth(params: Parameters) -> float:
         """Extracts the effective Terminal Growth from parameters."""
-        return params.strategy.terminal_value.perpetual_growth_rate or 0.02
+        return params.strategy.terminal_value.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
 
     @staticmethod
     def _apply_wacc(params: Parameters, value: float) -> None:

@@ -1,4 +1,4 @@
-"""
+""" A SUPPRIMER
 src/valuation/pipelines.py
 
 UNIFIED CALCULATION PIPELINE (DRY ARCHITECTURE)

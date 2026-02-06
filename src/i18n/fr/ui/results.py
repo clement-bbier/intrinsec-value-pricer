@@ -206,6 +206,8 @@ class AuditTexts:
 
 class QuantTexts:
     """Textes Pillar 4 — Ingénierie du Risque."""
+    AXIS_WACC = "WACC / Discount Rate"
+    AXIS_GROWTH = "Terminal Growth Rate"
     MC_PROB_ANALYSIS = "Analyse des Probabilités de Marché"
     MC_TITLE = "Simulation de Monte Carlo"
     MC_DOWNSIDE = "Risque de Surévaluation"

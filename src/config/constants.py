@@ -142,6 +142,8 @@ class ModelDefaults:
     Naming corresponds to Pydantic field attributes for easier mapping.
     """
     # --- Pillar 2: Common / Capital Structure ---
+    DEFAULT_RESULT_VALUE: float = 0.0
+    DEFAULT_STEP_ID: int = 0
     DEFAULT_TOTAL_DEBT: float = 0.0
     DEFAULT_CASH_EQUIVALENTS: float = 0.0
     DEFAULT_MINORITY_INTERESTS: float = 0.0
