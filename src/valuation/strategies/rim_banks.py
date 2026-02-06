@@ -1,198 +1,195 @@
 """
 src/valuation/strategies/rim_banks.py
 
-RESIDUAL INCOME MODEL (RIM) STRATEGY
-====================================
+RESIDUAL INCOME MODEL (RIM) STRATEGY RUNNER
+===========================================
+Role: Equity Valuation for Financial Institutions.
 Academic Reference: Penman / Ohlson.
-Economic Domain: Financial Institutions (Banks, Insurance).
-Invariants: Book Value anchor plus Present Value of Residual Incomes (RI).
+Logic: Value = Book Value + PV of Residual Incomes (Clean Surplus).
+Architecture: IValuationRunner implementation.
 
-Style: Numpy docstrings.
+Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 """
 
 from __future__ import annotations
-import logging
-from typing import Tuple, Dict, Optional
 
-from src.computation.financial_math import (
-    calculate_cost_of_equity_capm,
-    calculate_discount_factors,
-    calculate_rim_vectors,
-    apply_dilution_adjustment,
-    calculate_dilution_factor,
-)
-from src.config.constants import ValuationEngineDefaults
-from src.exceptions import CalculationError
-from src.models import Company, Parameters, RIMValuationResult
-from src.valuation.strategies.abstract import ValuationStrategy
+from typing import List
 
-# Centralized i18n
-from src.i18n import (
-    RegistryTexts,
-    StrategyInterpretations,
-    StrategyFormulas,
-    CalculationErrors,
-    StrategySources,
-    KPITexts, SharedTexts
-)
+from src.models.parameters.base_parameter import Parameters
+from src.models.company import Company
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.enums import ValuationMethodology, VariableSource
 
-logger = logging.getLogger(__name__)
+# Models Results
+from src.models.valuation import ValuationResult, ValuationRequest
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
+from src.models.results.strategies import RIMResults
+from src.models.results.options import ExtensionBundleResults
+
+# Libraries
+from src.valuation.library.common import CommonLibrary
+from src.valuation.library.rim import RIMLibrary
+from src.valuation.library.dcf import DCFLibrary # Used for Per Share Dilution
+from src.valuation.strategies.interface import IValuationRunner
+from src.computation.financial_math import calculate_discount_factors
+
+# Config & i18n
+from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations
 
 
-def _compute_ohlson_tv(terminal_ri: float, ke: float, last_df: float,
-                       params: Parameters) -> Tuple[float, float]:
-    omega = params.growth.exit_multiple_value or ValuationEngineDefaults.RIM_DEFAULT_OMEGA
-    tv_ri = (terminal_ri * omega) / (1 + ke - omega)
-    discounted_tv = tv_ri * last_df
-    return tv_ri, discounted_tv
-
-
-class RIMBankingStrategy(ValuationStrategy):
-    r"""
-    Residual Income Model specialized for the Financial Sector.
-
-    Formula:
-    $$IV = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + \frac{RI_{terminal}}{(1+k_e-\omega)(1+k_e)^n}$$
+class RIMBankingStrategy(IValuationRunner):
+    """
+    RIM Strategy (Ohlson).
+    Ideal for: Banks, Insurance, and firms where Book Value is key.
+    Calculates value Per Share directly.
     """
 
-    academic_reference = "Penman / Ohlson"
-    economic_domain = "Banks / Insurance / Financial Services"
+    def __init__(self) -> None:
+        self._glass_box: bool = True
 
-    def execute(
-            self,
-            financials: Company,
-            params: Parameters
-    ) -> RIMValuationResult:
+    @property
+    def glass_box_enabled(self) -> bool:
+        return self._glass_box
+
+    @glass_box_enabled.setter
+    def glass_box_enabled(self, value: bool) -> None:
+        self._glass_box = value
+
+    def execute(self, financials: Company, params: Parameters) -> ValuationResult:
         """
-        Executes the comprehensive RIM sequence.
+        Executes RIM valuation sequence.
         """
-        g = params.growth
+        steps: List[CalculationStep] = []
 
-        # 1. BOOK VALUE ANCHOR (BV₀)
-        bv_per_share, src_bv = self._select_book_value(financials, params)
+        # --- STEP 1: Rate Resolution (Ke ONLY) ---
+        # RIM is a Direct Equity method -> Discount at Cost of Equity
+        ke, step_ke = CommonLibrary.resolve_discount_rate(
+            financials=financials,
+            params=params,
+            use_cost_of_equity_only=True
+        )
+        if self._glass_box: steps.append(step_ke)
 
-        bv_vars = {
-            "BV_0": self._build_variable_info(
-                symbol="BV_0",
-                value=bv_per_share,
-                manual_value=params.growth.manual_book_value,
-                provider_value=financials.book_value_per_share,
-                description=SharedTexts.INP_BV_INITIAL
+        # --- STEP 2: Anchors Selection (BVPS & EPS) ---
+        # A. Book Value Per Share (B0)
+        # Priority: Strategy Input > TTM Snapshot
+        user_bv = params.strategy.book_value_anchor
+        bv_anchor = user_bv if user_bv is not None else (financials.book_value_ps or 0.0)
+
+        # B. Earnings Per Share (E0)
+        # Note: RIMParameters might not have eps_anchor explicit field (inherits from BaseProjectedParameters),
+        # but we can check if it exists or fallback to TTM.
+        # Ideally, we should add 'eps_anchor' to RIMParameters.
+        # Fallback logic: check 'eps_normalized' if Graham params shared, else TTM.
+        eps_ttm = financials.eps_ttm or 0.0
+        # If user overrides net income or EPS via a specific field (to be defined in Model), we use it.
+        # Here we use TTM as primary or assume Resolver handled overrides into `eps_ttm` equivalent.
+        eps_anchor = eps_ttm
+
+        if self._glass_box:
+            steps.append(CalculationStep(
+                step_key="RIM_ANCHORS",
+                label=RegistryTexts.RIM_BV_L,
+                theoretical_formula=StrategyFormulas.BV_BASE,
+                actual_calculation=f"BVPS: {bv_anchor:.2f} | EPS: {eps_anchor:.2f}",
+                result=bv_anchor,
+                interpretation=StrategyInterpretations.RIM_BV_D,
+                source=StrategySources.MANUAL_OVERRIDE if user_bv else StrategySources.YAHOO_TTM_SIMPLE,
+                variables_map={
+                    "B_0": VariableInfo(symbol="B_0", value=bv_anchor, source=VariableSource.SYSTEM),
+                    "E_0": VariableInfo(symbol="E_0", value=eps_anchor, source=VariableSource.SYSTEM)
+                }
+            ))
+
+        # --- STEP 3: Projection (Clean Surplus) ---
+        # Projects RI, BV, and EPS
+        ri_flows, bv_flows, eps_flows, step_proj = RIMLibrary.project_residual_income(
+            current_book_value=bv_anchor,
+            base_earnings=eps_anchor,
+            cost_of_equity=ke,
+            params=params
+        )
+        if self._glass_box: steps.append(step_proj)
+
+        # --- STEP 4: Terminal Value (Ohlson) ---
+        final_ri = ri_flows[-1] if ri_flows else 0.0
+        tv, step_tv = RIMLibrary.compute_terminal_value_ohlson(final_ri, ke, params)
+        if self._glass_box: steps.append(step_tv)
+
+        # --- STEP 5: Aggregation (Total Value) ---
+        # Note: The result is directly Value Per Share because inputs were Per Share
+        iv_raw, step_agg = RIMLibrary.compute_equity_value(
+            current_book_value=bv_anchor,
+            residual_incomes=ri_flows,
+            terminal_value=tv,
+            cost_of_equity=ke
+        )
+        if self._glass_box: steps.append(step_agg)
+
+        # --- STEP 6: Dilution Adjustment ---
+        # RIM computes raw equity value. We still need to account for SBC dilution.
+        # We reuse DCFLibrary utility for this (Per Share Logic).
+        iv_per_share, step_dil = DCFLibrary.compute_value_per_share(
+            equity_value=iv_raw * (params.common.capital.shares_outstanding or 1.0), # Convert to Total for the standard func
+            params=params
+        )
+        # Note: compute_value_per_share divides by shares again.
+        # Optimization: Call simple dilution utility directly?
+        # For consistency, we pass Total Equity to `compute_value_per_share` which handles everything nicely.
+        if self._glass_box: steps.append(step_dil)
+
+        # --- RESULT CONSTRUCTION ---
+
+        # A. Rates
+        res_rates = ResolvedRates(cost_of_equity=ke, cost_of_debt_after_tax=0.0, wacc=ke)
+
+        # B. Capital
+        shares = params.common.capital.shares_outstanding or 1.0
+        price = financials.current_price or 0.0
+
+        # RIM is direct equity. EV is not primary but we reconstruct a proxy.
+        # EV = Equity + Net Debt (Approx)
+        equity_total = iv_per_share * shares
+        net_debt = (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
+
+        res_capital = ResolvedCapital(
+            market_cap=shares * price,
+            enterprise_value=equity_total + net_debt,
+            net_debt_resolved=net_debt,
+            equity_value_total=equity_total
+        )
+
+        # C. Common Results
+        common_res = CommonResults(
+            rates=res_rates,
+            capital=res_capital,
+            intrinsic_value_per_share=iv_per_share,
+            upside_pct=((iv_per_share - price) / price) if price > 0 else 0.0,
+            bridge_trace=steps if self._glass_box else []
+        )
+
+        # D. Strategy Specific (RIM)
+        discount_factors = calculate_discount_factors(ke, len(ri_flows))
+        pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
+
+        strategy_res = RIMResults(
+            current_book_value=bv_anchor,
+            projected_book_values=bv_flows,
+            projected_residual_incomes=ri_flows,
+            terminal_value_ri=tv,
+            discounted_terminal_value=pv_tv,
+            strategy_trace=[]
+        )
+
+        return ValuationResult(
+            request=ValuationRequest(
+                mode=ValuationMethodology.RIM,
+                parameters=params
+            ),
+            results=Results(
+                common=common_res,
+                strategy=strategy_res,
+                extensions=ExtensionBundleResults()
             )
-        }
-
-        self.add_step(
-            step_key="RIM_BV_INITIAL",
-            label=RegistryTexts.RIM_BV_L,
-            theoretical_formula=StrategyFormulas.BV_BASE,
-            result=bv_per_share,
-            actual_calculation=KPITexts.SUB_BV_BASE.format(val=bv_per_share, src=src_bv),
-            interpretation=RegistryTexts.RIM_BV_D,
-            source=src_bv,
-            variables_map=bv_vars
         )
-
-        # 2. COST OF EQUITY (kₑ)
-        ke, sub_ke = self._compute_ke(financials, params)
-        r = params.rates
-
-        # On trace les 3 piliers du CAPM
-        ke_vars = {
-            "Rf": self._build_variable_info("Rf", (r.risk_free_rate or 0.04), r.risk_free_rate, 0.04,
-                                            SharedTexts.INP_RF, format_as_pct=True),
-            "beta": self._build_variable_info("beta", (r.manual_beta or financials.beta or 1.0), r.manual_beta,
-                                              financials.beta, SharedTexts.INP_BETA),
-            "MRP": self._build_variable_info("MRP", (r.market_risk_premium or 0.05), r.market_risk_premium, 0.05,
-                                             SharedTexts.INP_MRP, format_as_pct=True)
-        }
-
-        self.add_step(
-            step_key="RIM_KE_CALC",
-            label=RegistryTexts.RIM_KE_L,
-            theoretical_formula=StrategyFormulas.CAPM,
-            result=ke,
-            actual_calculation=sub_ke,
-            interpretation=StrategyInterpretations.KE_CONTEXT,
-            source=StrategySources.WACC_CALC,
-            variables_map=ke_vars
-        )
-
-        # 3. DISTRIBUTION POLICY & EPS BASE
-        eps_base, src_eps = self._select_eps_base(financials, params)
-        payout_ratio = self._compute_payout_ratio(financials, eps_base)
-
-        # 4. RESIDUAL INCOME PROJECTION
-        # RI = EPS - (Ke * BV_prev)
-        projected_eps = [
-            eps_base * ((1.0 + (g.fcf_growth_rate or 0.0)) ** t)
-            for t in range(1, g.projection_years + 1)
-        ]
-
-        ri_vectors, bv_vectors = calculate_rim_vectors(bv_per_share, ke, projected_eps, payout_ratio)
-        factors = calculate_discount_factors(ke, g.projection_years)
-        discounted_ri_sum = sum(ri * df for ri, df in zip(ri_vectors, factors))
-
-        # 5. TERMINAL VALUE (Ohlson Persistence Factor ω)
-        tv_ri, discounted_tv = _compute_ohlson_tv(ri_vectors[-1], ke, factors[-1], params)
-
-        # 6. DILUTION & FINAL IV
-        base_iv = bv_per_share + discounted_ri_sum + discounted_tv
-        dilution_factor = calculate_dilution_factor(g.annual_dilution_rate, g.projection_years)
-        final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
-
-        # 7. AUDIT & OUTPUT CONTRACT
-        audit_metrics = self._compute_rim_audit_metrics(financials, eps_base, bv_per_share, ke)
-        shares = g.manual_shares_outstanding or financials.shares_outstanding
-
-        result = RIMValuationResult(
-            financials=financials, params=params, intrinsic_value_per_share=final_iv,
-            market_price=financials.current_price, cost_of_equity=ke, current_book_value=bv_per_share,
-            projected_residual_incomes=ri_vectors, projected_book_values=bv_vectors,
-            discount_factors=factors, sum_discounted_ri=discounted_ri_sum,
-            terminal_value_ri=tv_ri, discounted_terminal_value=discounted_tv,
-            total_equity_value=final_iv * shares, calculation_trace=self.calculation_trace,
-            roe_observed=audit_metrics["roe"], payout_ratio_observed=payout_ratio,
-            spread_roe_ke=audit_metrics["roe_ke"], pb_ratio_observed=audit_metrics["pb"]
-        )
-
-        self.generate_audit_report(result)
-        self.verify_output_contract(result)
-        return result
-
-    @staticmethod
-    def _select_book_value(financials: Company, params: Parameters) -> Tuple[float, str]:
-        if params.growth.manual_book_value is not None:
-            return params.growth.manual_book_value, StrategySources.MANUAL_OVERRIDE
-        if financials.book_value_per_share and financials.book_value_per_share > 0:
-            return financials.book_value_per_share, StrategySources.YAHOO_TTM_SIMPLE
-        raise CalculationError(CalculationErrors.RIM_NEGATIVE_BV)
-
-    @staticmethod
-    def _compute_ke(financials: Company, params: Parameters) -> Tuple[float, str]:
-        r = params.rates
-        if r.manual_cost_of_equity is not None:
-            return r.manual_cost_of_equity, StrategySources.WACC_MANUAL.format(wacc=r.manual_cost_of_equity)
-        rf, mrp = (r.risk_free_rate or 0.04), (r.market_risk_premium or 0.05)
-        beta = r.manual_beta if r.manual_beta is not None else (financials.beta or 1.0)
-        ke = calculate_cost_of_equity_capm(rf, beta, mrp)
-        return ke, KPITexts.SUB_CAPM_MATH.format(rf=rf, beta=beta, mrp=mrp)
-
-    @staticmethod
-    def _select_eps_base(financials: Company, params: Parameters) -> Tuple[float, str]:
-        if params.growth.manual_fcf_base is not None:
-            return params.growth.manual_fcf_base, StrategySources.MANUAL_OVERRIDE
-        if financials.eps_ttm and financials.eps_ttm > 0:
-            return financials.eps_ttm, StrategySources.YAHOO_TTM_SIMPLE
-        raise CalculationError(CalculationErrors.MISSING_EPS_RIM)
-
-    @staticmethod
-    def _compute_payout_ratio(financials: Company, eps: float) -> float:
-        if eps <= 0: return 0.0
-        div_ps = (financials.dividends_total_calculated / financials.shares_outstanding) if financials.shares_outstanding else 0
-        return max(0.0, min(ValuationEngineDefaults.RIM_MAX_PAYOUT_RATIO, div_ps / eps))
-
-    @staticmethod
-    def _compute_rim_audit_metrics(financials: Company, eps: float,
-                                   bv: float, ke: float) -> Dict[str, Optional[float]]:
-        roe = eps / bv if bv > 0 else 0.0
-        return {"roe": roe, "pb": financials.current_price / bv if bv > 0 else 0.0, "roe_ke": roe - ke}

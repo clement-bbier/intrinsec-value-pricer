@@ -1,186 +1,198 @@
 """
 src/valuation/strategies/fcfe.py
 
-FREE CASH FLOW TO EQUITY (FCFE) STRATEGY
-========================================
-Academic Reference: Damodaran (Investment Valuation).
-Economic Domain: Leveraged firms / Financial Services.
-Logic: Direct Equity valuation via a Clean Walk of shareholder flows.
+FREE CASH FLOW TO EQUITY (FCFE) STRATEGY RUNNER
+===============================================
+Role: Direct Equity Valuation engine.
+Academic Reference: Damodaran (Category 2: Leveraged Firms / Banks).
+Logic: Discounts flows available to shareholders (after debt service) at Cost of Equity (Ke).
+Architecture: IValuationRunner implementation.
 
-Style: Numpy docstrings.
+Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 """
 
 from __future__ import annotations
 
-import logging
-from typing import Tuple, Dict
+from typing import List
 
-from src.computation.financial_math import calculate_fcfe_reconstruction
-from src.computation.flow_projector import SimpleFlowProjector
-from src.exceptions import CalculationError
-from src.i18n import (
-    CalculationErrors,
-    DiagnosticTexts,
-    KPITexts,
-    RegistryTexts,
-    StrategyFormulas,
-    StrategyInterpretations,
-    StrategySources
-)
-from src.i18n.fr.ui.expert import FCFETexts as Texts
-from src.models import (
-    Company,
-    Parameters,
-    EquityDCFValuationResult,
-    ValuationMethodology
-)
-from src.valuation.pipelines import DCFCalculationPipeline
-from src.valuation.strategies.abstract import ValuationStrategy
+from src.models.parameters.base_parameter import Parameters
+from src.models.company import Company
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.enums import ValuationMethodology, VariableSource
 
-logger = logging.getLogger(__name__)
+# Models Results
+from src.models.valuation import ValuationResult, ValuationRequest
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
+from src.models.results.strategies import FCFEResults
+from src.models.results.options import ExtensionBundleResults
+
+# Libraries
+from src.valuation.library.common import CommonLibrary
+from src.valuation.library.dcf import DCFLibrary
+from src.valuation.strategies.interface import IValuationRunner
+from src.computation.financial_math import calculate_discount_factors
+
+# Config & i18n
+from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations, KPITexts
 
 
-class FCFEStrategy(ValuationStrategy):
+class FCFEStrategy(IValuationRunner):
     """
     FCFE Strategy (Direct Equity).
-
-    Reconstructs the cash flow available to shareholders ($FCFE$) after
-    operating expenses, reinvestment, and net debt servicing.
-
-    Attributes
-    ----------
-    academic_reference : str
-        Damodaran.
-    economic_domain : str
-        Equity Valuation / Leveraged Firms.
+    Ideal for: Financial Services, Highly Leveraged Firms, or Stable Debt Ratio firms.
     """
 
-    academic_reference = "Damodaran"
-    economic_domain = "Equity Valuation / Leveraged Firms"
+    def __init__(self) -> None:
+        self._glass_box: bool = True
 
-    def execute(
-        self,
-        financials: Company,
-        params: Parameters
-    ) -> EquityDCFValuationResult:
+    @property
+    def glass_box_enabled(self) -> bool:
+        return self._glass_box
+
+    @glass_box_enabled.setter
+    def glass_box_enabled(self, value: bool) -> None:
+        self._glass_box = value
+
+    def execute(self, financials: Company, params: Parameters) -> ValuationResult:
         """
-        Executes FCFE valuation via the Unified Pipeline with logical walk tracking.
-
-        Parameters
-        ----------
-        financials : Company
-            Target company financial data.
-        params : Parameters
-            Calculation hypotheses.
-
-        Returns
-        -------
-        EquityDCFValuationResult
-            The intrinsic value result for shareholders.
+        Executes FCFE valuation sequence.
+        Note: Discounts at Ke, not WACC.
         """
-        # 1. SHAREHOLDER FLOW RECONSTRUCTION (Phase 2 - Glass Box Map)
-        ni, adj, nb, fcfe_base, sources_map = self._resolve_fcfe_components(financials, params)
+        steps: List[CalculationStep] = []
 
-        # Financial Guard: Block negative FCFE in Auto mode
-        if params.growth.manual_fcf_base is None and fcfe_base <= 0:
-            raise CalculationError(
-                CalculationErrors.NEGATIVE_FLUX_AUTO.format(
-                    model=RegistryTexts.FCFE_L,
-                    val=fcfe_base
-                )
-            )
-
-        variables = {
-            "NI": self._build_variable_info(
-                "NI", ni, None, financials.net_income_ttm, "Net Income (TTM)"
-            ),
-            "Adj": self._build_variable_info(
-                "Adj", adj, None, adj, "Non-cash Adjustments & CapEx delta"
-            ),
-            "NB": self._build_variable_info(
-                "NB", nb, params.growth.manual_net_borrowing, financials.net_borrowing_ttm,
-                Texts.INP_NET_BORROWING
-            )
-        }
-
-        self.add_step(
-            step_key="FCFE_BASE_SELECTION",
-            label=RegistryTexts.FCFE_BASE_L,
-            theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
-            result=fcfe_base,
-            actual_calculation=KPITexts.SUB_FCFE_WALK.format(
-                ni=ni, adj=adj, nb=nb, total=fcfe_base
-            ),
-            interpretation=StrategyInterpretations.FCFE_LOGIC,
-            source=sources_map["total"],
-            variables_map=variables
-        )
-
-        # 2. PIPELINE EXECUTION (DIRECT EQUITY MODE)
-        pipeline = DCFCalculationPipeline(
-            projector=SimpleFlowProjector(),
-            mode=ValuationMethodology.FCFE,
-            glass_box_enabled=self.glass_box_enabled
-        )
-
-        raw_result = pipeline.run(
-            base_value=fcfe_base,
+        # --- STEP 1: Rate Resolution (Ke ONLY) ---
+        # FCFE requires Cost of Equity, not WACC.
+        ke, step_ke = CommonLibrary.resolve_discount_rate(
             financials=financials,
-            params=params
+            params=params,
+            use_cost_of_equity_only=True # Crucial Flag
+        )
+        if self._glass_box: steps.append(step_ke)
+
+        # --- STEP 2: Anchor Selection ---
+        # The Resolver has already populated 'fcfe_anchor' in FCFEParameters.
+        # This typically comes from: Net Income + D&A - Capex - dWCR + Net Borrowing
+        fcfe_base = params.strategy.fcfe_anchor or 0.0
+
+        if self._glass_box:
+            steps.append(CalculationStep(
+                step_key="FCFE_ANCHOR",
+                label=RegistryTexts.FCFE_BASE_L,
+                theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
+                actual_calculation=f"Starting FCFE: {fcfe_base:,.2f}",
+                result=fcfe_base,
+                interpretation=StrategyInterpretations.FCFE_LOGIC,
+                source=StrategySources.SYSTEM,
+                variables_map={
+                    "FCFE_0": VariableInfo(
+                        symbol="FCFE_0", value=fcfe_base,
+                        source=VariableSource.SYSTEM, description="Base Year Free Cash Flow to Equity"
+                    )
+                }
+            ))
+
+        # --- STEP 3: Projection ---
+        # Checks for manual vector overrides in params
+        manual_vector = getattr(params.strategy, "manual_growth_vector", None)
+
+        if manual_vector and len(manual_vector) > 0:
+            flows, step_proj = DCFLibrary.project_flows_manual(fcfe_base, manual_vector)
+        else:
+            flows, step_proj = DCFLibrary.project_flows_simple(fcfe_base, params)
+
+        if self._glass_box: steps.append(step_proj)
+
+        # --- STEP 4: Terminal Value ---
+        final_flow = flows[-1] if flows else fcfe_base
+        # Important: TV is calculated using Ke, not WACC
+        tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, ke, params)
+        if self._glass_box: steps.append(step_tv)
+
+        # --- STEP 5: Discounting ---
+        # Discount at Ke. Result is PV of Equity (Operating).
+        pv_equity, step_ev = DCFLibrary.compute_discounting(flows, tv, ke)
+        if self._glass_box: steps.append(step_ev)
+
+        # --- STEP 6: Total Equity Value (No Debt Substraction) ---
+        # For FCFE: Total Equity = PV(FCFE) + Non-Operating Assets (Cash)
+        # We DO NOT subtract Debt (it's already serviced in the flows).
+
+        cash = params.common.capital.cash_and_equivalents or 0.0
+        total_equity_value = pv_equity + cash
+
+        if self._glass_box:
+            steps.append(CalculationStep(
+                step_key="FCFE_EQUITY_SUM",
+                label=RegistryTexts.FCFE_EQUITY_VALUE,
+                theoretical_formula="Equity = PV(FCFE) + Cash",
+                actual_calculation=f"{pv_equity:,.0f} + {cash:,.0f}",
+                result=total_equity_value,
+                interpretation="Adding non-operating cash to operating equity value.",
+                source=StrategySources.CALCULATED,
+                variables_map={
+                    "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
+                    "Cash": VariableInfo(symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH)
+                }
+            ))
+
+        # --- STEP 7: Per Share ---
+        iv_per_share, step_iv = DCFLibrary.compute_value_per_share(total_equity_value, params)
+        if self._glass_box: steps.append(step_iv)
+
+        # --- RESULT CONSTRUCTION ---
+
+        # A. Rates
+        res_rates = ResolvedRates(
+            cost_of_equity=ke,
+            cost_of_debt_after_tax=0.0, # Not relevant for discounting FCFE
+            wacc=ke # Effectively acts as the discount rate here
         )
 
-        if not isinstance(raw_result, EquityDCFValuationResult):
-            raise CalculationError(
-                DiagnosticTexts.MODEL_LOGIC_MSG.format(
-                    model=RegistryTexts.FCFE_L,
-                    issue=type(raw_result).__name__
-                )
+        # B. Capital (Reverse engineered for consistency in UI)
+        # We derived Equity directly. EV = Equity + Debt - Cash
+        debt = params.common.capital.total_debt or 0.0
+        implied_ev = total_equity_value + debt - cash
+
+        shares = params.common.capital.shares_outstanding or 1.0
+        res_capital = ResolvedCapital(
+            market_cap=shares * (financials.current_price or 0.0),
+            enterprise_value=implied_ev, # Calculated backwards for FCFE
+            net_debt_resolved=debt - cash,
+            equity_value_total=total_equity_value
+        )
+
+        # C. Common Results
+        common_res = CommonResults(
+            rates=res_rates,
+            capital=res_capital,
+            intrinsic_value_per_share=iv_per_share,
+            upside_pct=((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0,
+            bridge_trace=steps if self._glass_box else []
+        )
+
+        # D. Strategy Specific
+        discount_factors = calculate_discount_factors(ke, len(flows))
+        pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
+
+        strategy_res = FCFEResults(
+            projected_flows=flows,
+            discount_factors=discount_factors,
+            terminal_value=tv,
+            discounted_terminal_value=pv_tv,
+            tv_weight_pct=(pv_tv / pv_equity) if pv_equity > 0 else 0.0,
+            strategy_trace=[],
+            projected_net_borrowing=[] # Not projected in simplified FCFE
+        )
+
+        return ValuationResult(
+            request=ValuationRequest(
+                mode=ValuationMethodology.FCFE,
+                parameters=params
+            ),
+            results=Results(
+                common=common_res,
+                strategy=strategy_res,
+                extensions=ExtensionBundleResults()
             )
-
-        result: EquityDCFValuationResult = raw_result
-
-        # 3. FINALIZATION
-        self._merge_traces(result)
-        self.generate_audit_report(result)
-        self.verify_output_contract(result)
-
-        return result
-
-    @staticmethod
-    def _resolve_fcfe_components(
-        financials: Company,
-        params: Parameters
-    ) -> Tuple[float, float, float, float, Dict[str, str]]:
-        """
-        Resolves FCFE components for a transparent walk.
-
-        Returns
-        -------
-        Tuple[float, float, float, float, Dict[str, str]]
-            (Net Income, Adjustments, Net Borrowing, Total FCFE, Sources Map)
-        """
-        g = params.growth
-        sources = {"total": StrategySources.YAHOO_TTM_SIMPLE}
-
-        # Case A: Direct Analyst Override (La source devient orange Manual)
-        if g.manual_fcf_base is not None:
-            sources["total"] = StrategySources.MANUAL_OVERRIDE
-            return 0.0, 0.0, 0.0, g.manual_fcf_base, sources
-
-        # Case B: Standard Reconstruction Walk
-        ni = financials.net_income_ttm or 0.0
-        nb = (
-            g.manual_net_borrowing
-            if g.manual_net_borrowing is not None
-            else (financials.net_borrowing_ttm or 0.0)
         )
-
-        # Adjustments: FCF (Operating) - Net Income
-        adj = (financials.fcf_last - ni) if financials.fcf_last is not None else 0.0
-
-        fcfe_calculated = calculate_fcfe_reconstruction(ni=ni, adjustments=adj, net_borrowing=nb)
-
-        if fcfe_calculated <= 0:
-            logger.warning("[FCFE] Negative reconstructed flow for %s", financials.ticker)
-
-        return ni, adj, nb, fcfe_calculated, sources

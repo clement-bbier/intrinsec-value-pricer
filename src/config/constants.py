@@ -142,6 +142,9 @@ class ModelDefaults:
     Naming corresponds to Pydantic field attributes for easier mapping.
     """
     # --- Pillar 2: Common / Capital Structure ---
+    DEFAULT_PAYOUT_RATIO: float = 0.50
+    DEFAULT_FCF_MARGIN_TARGET: float = 0.15
+    DEFAULT_REVENUE_GROWTH_START: float = 0.10
     DEFAULT_RESULT_VALUE: float = 0.0
     DEFAULT_STEP_ID: int = 0
     DEFAULT_TOTAL_DEBT: float = 0.0

@@ -49,68 +49,93 @@ class RIMLibrary:
     @staticmethod
     def project_residual_income(
             current_book_value: float,
+            base_earnings: float,
             cost_of_equity: float,
             params: Parameters
     ) -> Tuple[List[float], List[float], List[float], CalculationStep]:
         """
-        Projects Net Income, Book Values, and Residual Incomes based on Clean Surplus.
+        Projects Earnings, Book Values, and Residual Incomes based on Clean Surplus.
 
         Logic:
-          1. Project Net Income (NI) using growth.
+          1. Project Earnings (EPS or Net Income) using growth (Constant or Vector).
           2. Derive Book Value (BV) from Retention (1 - Payout).
-          3. Calculate RI = NI - (BV_prev * Ke).
+          3. Calculate RI = Earnings - (BV_prev * Ke).
+
+        Parameters
+        ----------
+        current_book_value : float
+            Starting Book Value (Total or Per Share).
+        base_earnings : float
+            Starting Earnings (Net Income or EPS) used as anchor.
+        cost_of_equity : float
+            The discount rate (Ke).
+        params : Parameters
+            Contains growth assumptions and payout ratio.
 
         Returns
         -------
         Tuple[List[float], List[float], List[float], CalculationStep]
-            (Residual Incomes, Book Values, Net Incomes, Audit Step).
+            (Residual Incomes, Book Values, Projected Earnings, Audit Step).
         """
         g = params.growth
         s = params.strategy
 
-        # 1. Inputs
-        # Note: Ideally, we project NI based on ROE, but for simplicity/consistency with DCF,
-        # we often project NI directly using growth rate starting from NI_0.
-        ni_base = s.net_income_ttm or 0.0
+        # 1. Inputs Resolution
         g_rate = g.fcf_growth_rate or ModelDefaults.DEFAULT_GROWTH_RATE
         years = g.projection_years or ModelDefaults.DEFAULT_PROJECTION_YEARS
-        payout = s.dividend_payout_ratio if s.dividend_payout_ratio is not None else 0.0
 
-        # 2. Project Net Income Series (Simple Growth)
-        # TODO: Could be refactored to use a shared 'project_series' utility if strictly DRY
-        projected_ni = []
-        current_ni = ni_base
-        for _ in range(years):
-            current_ni *= (1.0 + g_rate)
-            projected_ni.append(current_ni)
+        # Payout Ratio: Critical for Clean Surplus Relation (BV evolution)
+        payout = s.dividend_payout_ratio if s.dividend_payout_ratio is not None else ModelDefaults.DEFAULT_PAYOUT_RATIO
+
+        # 2. Project Earnings Series
+        # In RIM, growth is typically applied to Earnings, which then drive BV accumulation.
+        projected_earnings = []
+        current_earn = base_earnings
+
+        # Check for Manual Growth Vector (Hybrid Mode)
+        # We access the strategy-specific field safely
+        manual_vector = getattr(s, "manual_growth_vector", None)
+
+        for t in range(1, years + 1):
+            if manual_vector and (t - 1) < len(manual_vector):
+                current_g = manual_vector[t - 1]
+            else:
+                current_g = g_rate
+
+            current_earn *= (1.0 + current_g)
+            projected_earnings.append(current_earn)
 
         # 3. Calculate Vectors (RI and BV)
+        # Uses the Clean Surplus relation: BV_t = BV_{t-1} + NI_t - Div_t
         residual_incomes, book_values = calculate_rim_vectors(
             current_bv=current_book_value,
             ke=cost_of_equity,
-            earnings=projected_ni,
+            earnings=projected_earnings,
             payout=payout
         )
 
         # 4. Trace
+        sum_ri = sum(residual_incomes)
+
         variables = {
             "B_0": VariableInfo(
                 symbol="B_0", value=current_book_value,
-                source=VariableSource.SYSTEM, description="Current Book Value (Equity)"
+                source=VariableSource.SYSTEM, description="Current Book Value"
+            ),
+            "E_0": VariableInfo(
+                symbol="E_0", value=base_earnings,
+                source=VariableSource.SYSTEM, description="Base Earnings (EPS/NI)"
             ),
             "Ke": VariableInfo(
                 symbol="Ke", value=cost_of_equity, formatted_value=f"{cost_of_equity:.2%}",
                 source=VariableSource.CALCULATED, description="Cost of Equity"
             ),
-            "Payout": VariableInfo(
+            "p": VariableInfo(
                 symbol="p", value=payout, formatted_value=f"{payout:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE if s.dividend_payout_ratio is not None else VariableSource.DEFAULT,
-                description="Dividend Payout Ratio"
+                description="Payout Ratio"
             )
         }
-
-        # Sum of RI for indicative display
-        sum_ri = sum(residual_incomes)
 
         step = CalculationStep(
             step_key="RIM_PROJ",
@@ -123,7 +148,7 @@ class RIMLibrary:
             variables_map=variables
         )
 
-        return residual_incomes, book_values, projected_ni, step
+        return residual_incomes, book_values, projected_earnings, step
 
     @staticmethod
     def compute_terminal_value_ohlson(
@@ -151,16 +176,12 @@ class RIMLibrary:
             Terminal Value and audit step.
         """
         # Resolve Omega (Persistence)
-        # Default 0.60 implies abnormal returns fade but persist somewhat
-        omega = params.strategy.persistence_factor
-        if omega is None:
-            omega = ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
+        omega = params.strategy.persistence_factor or ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
 
-        # Safety: Omega cannot equal (1 + Ke) to avoid division by zero
-        # In reality, Omega is usually [0, 1].
+        # Safety: Omega cannot equal (1 + Ke)
         denominator = (1.0 + cost_of_equity) - omega
-        if denominator == 0:
-            denominator = 0.001  # Safety clamp
+        if abs(denominator) < 1e-6:
+            denominator = 0.001
 
         tv = (final_ri * omega) / denominator
 
@@ -187,6 +208,7 @@ class RIMLibrary:
             actual_calculation=f"({format_smart_number(final_ri)} × {omega:.2f}) / (1 + {cost_of_equity:.1%} - {omega:.2f})",
             result=tv,
             interpretation=StrategyInterpretations.RIM_PERSISTENCE.format(val=omega),
+            source=StrategySources.CALCULATED,
             variables_map=variables
         )
 

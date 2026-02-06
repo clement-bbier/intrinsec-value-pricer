@@ -8,6 +8,7 @@ class RegistryTexts:
     """Labels et descriptions pedagogiques du registre Glass Box."""
 
     # DCF (Approche Entite - FCFF)
+    FCFE_EQUITY_VALUE = "Valeur Totale des Capitaux Propres"
     AUDIT_TECH_DETAIL_D = "Détail technique du calcul spécifique au modèle."
     VALUE_PER_SHARE_L = "Valeur par action"
     DATE_LABEL = "Date"

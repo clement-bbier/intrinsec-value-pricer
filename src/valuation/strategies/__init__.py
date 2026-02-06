@@ -1,51 +1,48 @@
 """
-Package des stratégies de valorisation.
+src/valuation/strategies/__init__.py
 
-Ce package regroupe toutes les stratégies de valorisation disponibles,
-organisées par approche économique : DCF, modèles actionnariaux,
-modèles spécifiques sectoriels et méthodes relatives.
+VALUATION STRATEGIES PACKAGE
+============================
+Exposes the concrete implementations of the IValuationRunner interface.
+Organized by economic approach: Firm-Level DCF, Equity-Level DCF, and Specific Models.
 
-Usage recommandé:
-    from src.valuation.strategies import StandardFCFFStrategy, FCFEStrategy
+Usage:
+    from src.valuation.strategies import StandardFCFFStrategy, IValuationRunner
 """
 
 from __future__ import annotations
 
-# Stratégies DCF (Firm-Level)
+# The Contract (Interface)
+from .interface import IValuationRunner
+
+# DCF Strategies (Firm-Level)
 from .standard_fcff import StandardFCFFStrategy
 from .fundamental_fcff import FundamentalFCFFStrategy
-from .revenue_growth import RevenueBasedStrategy
+from .revenue_growth_fcff import RevenueGrowthFCFFStrategy
 
-# Stratégies DCF (Equity-Level)
+# DCF Strategies (Equity-Level)
 from .fcfe import FCFEStrategy
 from .ddm import DividendDiscountStrategy
 
-# Autres modèles
+# Other Models (RIM, Graham)
 from .rim_banks import RIMBankingStrategy
 from .graham_value import GrahamNumberStrategy
 
-# Multiples (pour triangulation)
-from src.valuation.options.multiples import MarketMultiplesStrategy
-
-# Classe de base (pour extension)
-from .abstract import ValuationStrategy
-
-# Monte Carlo wrapper (usage interne principalement)
-
-# API publique garantie
+# Public API
 __all__ = [
-    # Stratégies principales (Firm-Level DCF)
+    # Interface
+    "IValuationRunner",
+
+    # Firm-Level DCF
     "StandardFCFFStrategy",
     "FundamentalFCFFStrategy",
-    "RevenueBasedStrategy",
-    # Stratégies Equity-Level
+    "RevenueGrowthFCFFStrategy",
+
+    # Equity-Level
     "FCFEStrategy",
     "DividendDiscountStrategy",
-    # Autres modèles
+
+    # Specific Models
     "RIMBankingStrategy",
     "GrahamNumberStrategy",
-    # Multiples
-    "MarketMultiplesStrategy",
-    # Base class (pour héritage)
-    "ValuationStrategy",
 ]

@@ -137,6 +137,179 @@ class DCFLibrary:
         return flows, step
 
     @staticmethod
+    def project_flows_manual(
+            base_flow: float,
+            growth_vector: List[float]
+    ) -> Tuple[List[float], CalculationStep]:
+        """
+        Projects flows using an explicit year-by-year growth vector provided by an expert.
+
+        Parameters
+        ----------
+        base_flow : float
+            The Year 0 anchor.
+        growth_vector : List[float]
+            The list of growth rates for each year (e.g. [0.10, 0.08, 0.05]).
+
+        Returns
+        -------
+        Tuple[List[float], CalculationStep]
+            The projected flows and the trace.
+        """
+        flows = []
+        current_flow = base_flow
+        years = len(growth_vector)
+
+        # 1. Manual Projection Loop
+        for i, g_rate in enumerate(growth_vector):
+            current_flow *= (1.0 + g_rate)
+            flows.append(current_flow)
+
+        # 2. Trace
+        # We display the average growth in the trace summary for readability
+        avg_growth = sum(growth_vector) / years if years > 0 else 0.0
+
+        variables = {
+            "FCF_0": VariableInfo(
+                symbol="FCF_0", value=base_flow,
+                source=VariableSource.SYSTEM, description="Base Year Flow"
+            ),
+            "n": VariableInfo(
+                symbol="n", value=float(years),
+                source=VariableSource.MANUAL_OVERRIDE, description="Manual Horizon"
+            ),
+            "g_avg": VariableInfo(
+                symbol="g_avg", value=avg_growth, formatted_value=f"{avg_growth:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE, description="Average Custom Growth"
+            )
+        }
+
+        step = CalculationStep(
+            step_key="FCF_PROJ_MANUAL",
+            label=RegistryTexts.DCF_PROJ_L,
+            theoretical_formula=StrategyFormulas.FLOW_PROJECTION,
+            actual_calculation=f"Manual Vector Projection ({years} years)",
+            result=sum(flows),
+            interpretation=f"Projection manuelle experte sur {years} ans (Moyenne: {avg_growth:.1%})",
+            source=StrategySources.MANUAL_OVERRIDE,
+            variables_map=variables
+        )
+
+        return flows, step
+
+    @staticmethod
+    def project_flows_revenue_model(
+            base_revenue: float,
+            current_margin: float,
+            target_margin: float,
+            params: Parameters
+    ) -> Tuple[List[float], List[float], List[float], CalculationStep]:
+        """
+        Projects FCF based on Revenue Growth and Margin Convergence.
+
+        Logic:
+          1. Rev(t) projected via Linear Fade-Down growth (or Manual Vector).
+          2. Margin(t) converges linearly from Current -> Target.
+          3. FCF(t) = Rev(t) * Margin(t).
+
+        Parameters
+        ----------
+        base_revenue : float
+            The Year 0 Revenue anchor.
+        current_margin : float
+            The TTM FCF Margin (FCF / Revenue).
+        target_margin : float
+            The normative target margin at year N.
+        params : Parameters
+            Contains strategy-specific inputs (revenue_growth_rate, target_fcf_margin).
+
+        Returns
+        -------
+        Tuple[List[float], List[float], List[float], CalculationStep]
+            (FCF Flows, Projected Revenues, Projected Margins, Trace)
+        """
+        # 1. Setup Parameters
+        # params.strategy contains specific overrides for this model
+        # Using getattr to safely access strategy-specific fields that exist in FCFFGrowthParameters
+        strat_params = params.strategy
+
+        g_start = getattr(strat_params, "revenue_growth_rate", None) or ModelDefaults.DEFAULT_GROWTH_RATE
+        g_term = params.growth.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
+        years = params.growth.projection_years or ModelDefaults.DEFAULT_PROJECTION_YEARS
+
+        # Check for Manual Vector (Hybrid Mode)
+        manual_vector = getattr(strat_params, "manual_growth_vector", None)
+
+        revenues = []
+        margins = []
+        fcfs = []
+
+        current_rev = base_revenue
+
+        # 2. Projection Loop
+        for t in range(1, years + 1):
+            # A. Revenue Growth Logic
+            if manual_vector and (t-1) < len(manual_vector):
+                current_g = manual_vector[t-1]
+            else:
+                # Linear Fade Down
+                if years > 1:
+                    alpha = (t - 1) / (years - 1)
+                    current_g = g_start * (1 - alpha) + g_term * alpha
+                else:
+                    current_g = g_start
+
+            current_rev *= (1.0 + current_g)
+            revenues.append(current_rev)
+
+            # B. Margin Convergence Logic
+            # Linear interpolation: Margin_0 -> Margin_Target
+            if years > 0:
+                progress = t / years
+                current_m = current_margin * (1 - progress) + target_margin * progress
+            else:
+                current_m = target_margin
+
+            margins.append(current_m)
+
+            # C. FCF Calculation
+            fcfs.append(current_rev * current_m)
+
+        # 3. Trace
+        variables = {
+            "Rev_0": VariableInfo(
+                symbol="Rev_0", value=base_revenue,
+                source=VariableSource.SYSTEM, description="Base Revenue"
+            ),
+            "M_0": VariableInfo(
+                symbol="M_0", value=current_margin, formatted_value=f"{current_margin:.1%}",
+                source=VariableSource.CALCULATED, description="Current FCF Margin"
+            ),
+            "M_target": VariableInfo(
+                symbol="M_n", value=target_margin, formatted_value=f"{target_margin:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE if getattr(strat_params, "target_fcf_margin", None) else VariableSource.DEFAULT,
+                description="Target FCF Margin"
+            ),
+            "g_rev": VariableInfo(
+                symbol="g_rev", value=g_start, formatted_value=f"{g_start:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE, description="Initial Revenue Growth"
+            )
+        }
+
+        step = CalculationStep(
+            step_key="REV_MARGIN_CONV",
+            label=RegistryTexts.GROWTH_MARGIN_L,
+            theoretical_formula=StrategyFormulas.GROWTH_MARGIN_CONV,
+            actual_calculation=f"Revenue Growth ({g_start:.1%}->{g_term:.1%}) & Margin ({current_margin:.1%}->{target_margin:.1%})",
+            result=sum(fcfs),
+            interpretation=StrategyInterpretations.GROWTH_MARGIN,
+            source=StrategySources.CALCULATED,
+            variables_map=variables
+        )
+
+        return fcfs, revenues, margins, step
+
+    @staticmethod
     def compute_terminal_value(
         final_flow: float,
         discount_rate: float,
@@ -220,6 +393,20 @@ class DCFLibrary:
     ) -> Tuple[float, CalculationStep]:
         """
         Calculates the Enterprise Value (NPV of Flows + PV of TV).
+
+        Parameters
+        ----------
+        flows : List[float]
+            The projected cash flows.
+        terminal_value : float
+            The terminal value at year N.
+        discount_rate : float
+            The WACC or Cost of Equity.
+
+        Returns
+        -------
+        Tuple[float, CalculationStep]
+            Total Enterprise Value and the audit step.
         """
         # 1. Discount Factors
         years_count = len(flows)
@@ -268,6 +455,18 @@ class DCFLibrary:
     ) -> Tuple[float, CalculationStep]:
         """
         Calculates final price per share, applying SBC dilution adjustment if needed.
+
+        Parameters
+        ----------
+        equity_value : float
+            The Total Equity Value.
+        params : Parameters
+            Contains shares outstanding and dilution parameters.
+
+        Returns
+        -------
+        Tuple[float, CalculationStep]
+            Final price per share and the audit step.
         """
         # 1. Shares Outstanding
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING

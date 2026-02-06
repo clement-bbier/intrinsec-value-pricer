@@ -8,7 +8,7 @@ Architecture: Inherits from BaseNormalizedModel for automatic scaling.
 """
 
 from __future__ import annotations
-from typing import Optional, Literal, Union, Annotated
+from typing import Optional, Literal, Union, Annotated, List
 from pydantic import Field
 from src.models.enums import ValuationMethodology, TerminalValueMethod
 from src.models.parameters.ui_bridge import UIKey
@@ -23,6 +23,7 @@ class TerminalValueParameters(BaseNormalizedModel):
 class BaseProjectedParameters(BaseNormalizedModel):
     """Mixin for models requiring a discrete projection period."""
     projection_years: Annotated[Optional[int], UIKey("years", scale="raw")] = Field(None, ge=1, le=50)
+    manual_growth_vector: Annotated[Optional[List[float]], UIKey("growth_vector", scale="pct")] = None
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
 
 class FCFFStandardParameters(BaseProjectedParameters):

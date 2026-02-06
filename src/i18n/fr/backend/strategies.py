@@ -9,6 +9,7 @@ class StrategySources:
     """
     Descriptions of data sources used in calculations.
     """
+    SYSTEM = "SYSTEM_INPUT"
     FORMULA = "Formule Standardisée"
     CAPM_CALC = "Modèle d'Évaluation des Actifs Financiers (MEDAF / CAPM)"
     CALCULATED = "Moteur de calcul interne (Standard Institutionnel)"
@@ -132,6 +133,7 @@ class StrategyInterpretations:
     """
 
     # DCF & Abstract
+    RIM_BV_D = "Valeur des capitaux propres par action au début de la projection."
     GRAHAM_INT = "Formule révisée de Benjamin Graham (1974) intégrant le taux sans risque corporate (AAA Yield) comme coût d'opportunité."
     RIM_FINAL = "Agrégation de la Valeur Comptable Initiale, de la Somme des Surplus actualisés et de la Valeur Terminale de persistance."
     RIM_PERSISTENCE = r"Modélisation de la décroissance des surprofits anormaux avec un facteur de persistance Oméga de {val:.2f}."
