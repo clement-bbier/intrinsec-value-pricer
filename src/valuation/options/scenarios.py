@@ -18,7 +18,7 @@ from typing import List, Optional
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
 from src.models.results.options import ScenariosResults, ScenarioOutcome
-from src.valuation.strategies.abstract import ValuationStrategy
+from src.valuation.strategies.interface import IValuationRunner
 from src.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class ScenariosRunner:
     Executes multiple deterministic valuation runs based on scenario overrides.
     """
 
-    def __init__(self, strategy: ValuationStrategy):
+    def __init__(self, strategy: IValuationRunner):
         self.strategy = strategy
 
     def execute(self, params: Parameters, financials: Company) -> Optional[ScenariosResults]:

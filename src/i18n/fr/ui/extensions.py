@@ -44,6 +44,8 @@ class PeersTexts:
 
 class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""
+    FORMULA_BRIDGE = r"Equity = EV - Debt + Cash - Min - Pens"
+    FORMULA_CONSOLIDATION = r"EV_{Total} = \left( \sum EV_{segments} \right) \times (1 - \text{Discount})"
     NO_SOTP_FOUND = "Aucun segment défini pour l'analyse SOTP."
     LABEL_HOLDING_DISCOUNT = "Décote holding"
     TITLE = "Analyse Sum-Of-The-Parts (SOTP)"
@@ -53,12 +55,12 @@ class SOTPTexts:
     LBL_SEGMENT_NAME = "Nom du Segment"
     LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV)"
     LBL_SEGMENT_METHOD = "Methode de Valorisation"
-    LBL_DISCOUNT = "Décote de Conglomérat (%)"
+    LBL_DISCOUNT = "Décote de Conglomérat appliquée (%)"
     LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise (EV)"
     LBL_EQUITY_VALUE = "Valeur des Fonds Propres"
     LBL_BU_DETAILS = "Detail des Business Units"
     LBL_SEGMENT_COUNT = "Nombre de segments"
-    LBL_RAW_EV_SUM = "Somme brute EV"
+    LBL_RAW_EV_SUM = "Somme brute des Valeurs d'Entreprise sectorielles"
     LBL_SEGMENT_REVENUE = "Revenu du Segment"
 
     METHOD_DCF = "DCF (Flux actualises)"
@@ -67,8 +69,8 @@ class SOTPTexts:
 
     HELP_SOTP = "La valeur totale est la somme des EV de chaque segment moins la dette nette globale."
     DESC_WATERFALL = "Decomposition de la valeur par Business Unit"
-    INTERP_CONSOLIDATION = "Valeur d'entreprise consolidée pour {count} segments apres décote."
-    STEP_LABEL_CONSOLIDATION = "Consolidation Sum-Of-The-Parts"
+    INTERP_CONSOLIDATION = r"Agrégation de {count} segments opérationnels avec ajustement de holding."
+    STEP_LABEL_CONSOLIDATION = "Consolidation & Décote Holding"
     DESC_SOTP_VALUATION = "Segmentation de la valeur d'entreprise par divisions opérationnelles."
 
     # Titres et sous-titres

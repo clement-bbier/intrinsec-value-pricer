@@ -19,7 +19,7 @@ from typing import List, Optional
 from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SOTPResults
 from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import ParametersSource
+from src.models.enums import VariableSource  # [CORRECTION] Bon Enum pour VariableInfo
 from src.utilities.formatting import format_smart_number
 
 # Centralized i18n imports
@@ -68,19 +68,20 @@ class SOTPRunner:
         consolidated_ev = raw_ev_sum * (1.0 - discount_rate)
 
         # Build Variable Map for Glass Box
+        # [CORRECTION] Utilisation stricte de VariableSource
         step1_vars = {
             "Σ_EV": VariableInfo(
                 symbol="Σ_EV",
                 value=raw_ev_sum,
                 formatted_value=format_smart_number(raw_ev_sum),
-                source=ParametersSource.MANUAL,  # Segments are user inputs
+                source=VariableSource.MANUAL_OVERRIDE,  # Segments are user inputs
                 description=SOTPTexts.LBL_RAW_EV_SUM
             ),
             "Disc": VariableInfo(
                 symbol="Disc",
                 value=discount_rate,
                 formatted_value=f"{discount_rate:.1%}",
-                source=ParametersSource.MANUAL,
+                source=VariableSource.MANUAL_OVERRIDE,
                 description=SOTPTexts.LBL_DISCOUNT
             )
         }
@@ -89,7 +90,7 @@ class SOTPRunner:
             step_id=1,
             step_key="SOTP_EV_CONSOLIDATION",
             label=SOTPTexts.STEP_LABEL_CONSOLIDATION,
-            theoretical_formula=r"EV_{Total} = \left( \sum EV_{segments} \right) \times (1 - \text{Discount})",
+            theoretical_formula=SOTPTexts.FORMULA_CONSOLIDATION, # [CORRECTION] i18n
             actual_calculation=f"{format_smart_number(raw_ev_sum)} × (1 - {discount_rate:.1%})",
             result=consolidated_ev,
             unit="currency",
@@ -113,42 +114,42 @@ class SOTPRunner:
         equity_value = consolidated_ev - debt + cash - minorities - pensions
         per_share_value = equity_value / shares if shares > 0 else 0.0
 
-        # Note: For source tracking, we assume SYSTEM (Resolver result) unless we want to trace deeper.
-        # Using ParametersSource.AUTO/SYSTEM is safer than hardcoding "Yahoo".
+        # Note: For source tracking, we use SYSTEM (Resolver result).
+        # [CORRECTION] Utilisation stricte de VariableSource
         step2_vars = {
             "EV": VariableInfo(
                 symbol="EV",
                 value=consolidated_ev,
                 formatted_value=format_smart_number(consolidated_ev),
-                source=ParametersSource.SYSTEM,
+                source=VariableSource.CALCULATED, # It comes from Step 1
                 description=RegistryTexts.DCF_EV_L
             ),
             "Debt": VariableInfo(
                 symbol="Debt",
                 value=debt,
                 formatted_value=format_smart_number(debt),
-                source=ParametersSource.SYSTEM,
+                source=VariableSource.SYSTEM,
                 description=KPITexts.LABEL_DEBT
             ),
             "Cash": VariableInfo(
                 symbol="Cash",
                 value=cash,
                 formatted_value=format_smart_number(cash),
-                source=ParametersSource.SYSTEM,
+                source=VariableSource.SYSTEM,
                 description=KPITexts.LABEL_CASH
             ),
             "Min": VariableInfo(
                 symbol="Min",
                 value=minorities,
                 formatted_value=format_smart_number(minorities),
-                source=ParametersSource.SYSTEM,
+                source=VariableSource.SYSTEM,
                 description=KPITexts.LABEL_MINORITIES
             ),
             "Pens": VariableInfo(
                 symbol="Pens",
                 value=pensions,
                 formatted_value=format_smart_number(pensions),
-                source=ParametersSource.SYSTEM,
+                source=VariableSource.SYSTEM,
                 description=KPITexts.LABEL_PENSIONS
             )
         }
@@ -157,7 +158,7 @@ class SOTPRunner:
             step_id=2,
             step_key="SOTP_EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
-            theoretical_formula=r"Equity = EV - Debt + Cash - Min - Pens",
+            theoretical_formula=SOTPTexts.FORMULA_BRIDGE, # [CORRECTION] i18n
             actual_calculation=(
                 f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
                 f"{format_smart_number(cash)} ..."

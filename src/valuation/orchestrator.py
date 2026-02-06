@@ -1,22 +1,26 @@
 """
-src/valuation/engines.py
+src/valuation/orchestrator.py
 
 UNIFIED VALUATION ENGINE — STRATEGY ORCHESTRATOR
-===============================================
-Role: Orchestrates financial strategies, Monte Carlo injection, and institutional auditing.
-Architecture: Strategy Pattern with Dynamic Wrapping (ST-1.2 Compliance).
+================================================
+Role: Orchestrates financial strategies, Risk Analysis, and Market Extensions.
+Architecture: Strategy Pattern with Extension Hooks (V18).
 Resiliency: Strict boundary for mathematical and system exceptions.
 
 Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 import traceback
-from typing import Optional, Dict, Type
+from typing import Optional
 
+# Config & Constants
+from src.config.constants import ValuationEngineDefaults
 from src.i18n import DiagnosticTexts
-from src.config.constants import TechnicalDefaults
+
+# Exceptions
 from src.exceptions import (
     ValuationException,
     DiagnosticEvent,
@@ -25,31 +29,36 @@ from src.exceptions import (
     CalculationError,
     ModelDivergenceError
 )
-from src.models import (
-    ValuationRequest,
-    ValuationMethodology,
-    Company,
-    Parameters,
-    ValuationResult
-)
-from src.valuation.strategies import ValuationStrategy
-from src.valuation.options.monte_carlo import MonteCarloGenericStrategy
-from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 
-# Registry and Telemetry
-from src.valuation.registry import get_strategy
+# Models (Explicit imports to avoid circular dependency issues)
+from src.models.valuation import ValuationResult, ValuationRequest
+from src.models.company import Company
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFFStandardParameters
+from src.models.enums import ValuationMethodology
+
+# Core Interfaces & Registry
+from src.valuation.strategies.interface import IValuationRunner
+from src.valuation.registry import StrategyRegistry
+
+# Extension Runners
+from src.valuation.options.monte_carlo import MonteCarloRunner
+from src.valuation.options.sensitivity import SensitivityRunner
+from src.valuation.options.sotp import SOTPRunner
+from src.valuation.options.peers import PeersRunner
+
+# Logging
 from src.quant_logger import QuantLogger, LogDomain
 
 logger = logging.getLogger(__name__)
 
-# Targeted mathematical error boundary for stochastic stability
+# Targeted mathematical error boundary
 VALUATION_ERRORS = (
     CalculationError,
     ModelDivergenceError,
     ValueError,
     ZeroDivisionError
 )
-
 
 # ==============================================================================
 # 1. ENGINE ORCHESTRATION
@@ -61,10 +70,13 @@ def run_valuation(
     params: Parameters
 ) -> ValuationResult:
     """
-    Executes the unified valuation lifecycle and triggers the institutional audit.
+    Executes the unified valuation lifecycle.
 
-    This function acts as the Strategy Router, determining whether to run a
-    deterministic model or a probabilistic Monte Carlo simulation.
+    Flow:
+    1. Resolve Strategy Runner (Factory).
+    2. Execute Main Deterministic Valuation (Core Intrinsic Value).
+    3. Execute Extensions (Risk, SOTP, Peers).
+    4. Log and Return.
 
     Parameters
     ----------
@@ -73,46 +85,43 @@ def run_valuation(
     financials : Company
         Unified financial data container.
     params : Parameters
-        Validated parameters (Rates, Growth, Monte Carlo).
+        Validated parameters.
 
     Returns
     -------
     ValuationResult
-        The final audited result, including Glass Box traces and audit scores.
+        The final result including core value and optional extension outputs.
     """
     logger.info(f"[Engine] Initializing {request.mode.value} for {request.ticker}")
 
     # A. Strategy Resolution via Registry
-    strategy_cls = get_strategy(request.mode)
+    # -----------------------------------
+    strategy_cls = StrategyRegistry.get_strategy_cls(request.mode)
     if not strategy_cls:
         raise _raise_unknown_strategy(request.mode)
 
-    # B. Monte Carlo Injection (Stochastic Wrapping)
-    # Checks if MC is enabled in params AND supported by the specific mode
-    use_mc = params.monte_carlo.enabled and request.mode.supports_monte_carlo
-    strategy = (
-        MonteCarloGenericStrategy(strategy_cls=strategy_cls, glass_box_enabled=True)
-        if use_mc else strategy_cls()
-    )
+    # Instantiate the stateless runner (Must implement IValuationRunner)
+    runner: IValuationRunner = strategy_cls()
 
     try:
-        # C. Financial Algorithm Execution
-        result = strategy.execute(financials, params)
+        # B. Financial Algorithm Execution (Deterministic Base Case)
+        # ----------------------------------------------------------
+        # This computes the "Intrinsic Value" (Pillar 1 & 2)
+        result = runner.execute(financials, params)
 
-        # D. Lineage Traceability: Context Injection
+        # C. Inject Context (Traceability)
+        # --------------------------------
         _inject_context(result, request)
 
-        # E. Relative Analysis: Market Multiples Triangulation (Pillar 5)
-        _apply_triangulation(result, request, financials, params)
+        # D. Execute Extensions (Pillars 4 & 5 + New Pillar 3 Benchmarking)
+        # -----------------------------------------------------------------
+        # Includes Monte Carlo, Sensitivity, SOTP, and Peers Triangulation
+        _run_extensions(runner, result, financials, params, request)
 
-        # F. Institutional Audit Engine (Lazy Import to prevent circularity)
-        from infra.auditing.audit_engine import AuditEngine
-        result.audit_report = AuditEngine.compute_audit(result)
-
-        # G. SOLID Contract Validation
-        strategy.verify_output_contract(result)
-
-        _log_final_status(request, result)
+        # E. Final Validation & Logging
+        # -----------------------------
+        # No more "Audit Score". We validate the calculation integrity only.
+        _log_final_status(request, result, financials)
 
         return result
 
@@ -130,39 +139,142 @@ def run_valuation(
 
 
 # ==============================================================================
-# 2. QUANT SOLVERS (REVERSE DCF)
+# 2. EXTENSION ORCHESTRATION
+# ==============================================================================
+
+def _run_extensions(
+    runner: IValuationRunner,
+    result: ValuationResult,
+    financials: Company,
+    params: Parameters,
+    request: ValuationRequest
+) -> None:
+    """
+    Orchestrates the execution of optional modules based on Parameters.
+    Populates the 'result.results.extensions' bundle.
+
+    Parameters
+    ----------
+    runner : IValuationRunner
+        The active strategy runner (needed for MC/Sensitivity).
+    result : ValuationResult
+        The result object to populate with extensions.
+    financials : Company
+        Financial data.
+    params : Parameters
+        Configuration parameters.
+    request : ValuationRequest
+        Original request (for accessing option payloads like Peers Data).
+    """
+    ext_params = params.extensions
+    ext_results = result.results.extensions
+
+    # 1. Sum-of-the-Parts (SOTP) - Pillar 5
+    if ext_params.sotp.enabled:
+        # SOTPRunner.execute is static and standalone
+        ext_results.sotp = SOTPRunner.execute(params)
+
+    # 2. Peers Triangulation (Market Positioning - Pillar 3/5)
+    # This runs the relative valuation logic to populate the benchmark view.
+    # We retrieve the multiples data that was fetched alongside the financials.
+    multiples_data = request.options.get("multiples_data") if request.options else None
+
+    if ext_params.peers.enabled and multiples_data:
+        try:
+            # PeersRunner compares Target vs Competitors
+            ext_results.peers = PeersRunner.execute(financials, multiples_data)
+        except Exception as e:
+            logger.warning(f"[Engine] Peers triangulation skipped: {e}")
+
+    # 3. Monte Carlo Simulation (Risk Analysis - Pillar 4)
+    if ext_params.monte_carlo.enabled:
+        # We disable Glass Box for the simulation to improve performance
+        original_gb_state = runner.glass_box_enabled
+        runner.glass_box_enabled = False
+
+        try:
+            # MonteCarloRunner is instantiated with the runner strategy
+            mc_engine = MonteCarloRunner(strategy=runner)
+            ext_results.monte_carlo = mc_engine.execute(params, financials)
+        finally:
+            # Restore state
+            runner.glass_box_enabled = original_gb_state
+
+    # 4. Sensitivity Analysis (Risk Analysis - Pillar 4)
+    if ext_params.sensitivity.enabled:
+        original_gb_state = runner.glass_box_enabled
+        runner.glass_box_enabled = False
+
+        try:
+            # SensitivityRunner must be instantiated with the strategy runner
+            sensi_engine = SensitivityRunner(strategy=runner)
+            # Call execute with named parameters matching definition
+            ext_results.sensitivity = sensi_engine.execute(base_params=params, financials=financials)
+        finally:
+            runner.glass_box_enabled = original_gb_state
+
+
+# ==============================================================================
+# 3. QUANT SOLVERS (REVERSE DCF)
 # ==============================================================================
 
 def run_reverse_dcf(
     financials: Company,
     params: Parameters,
     market_price: float,
-    max_iterations: int = 50
+    max_iterations: int = ValuationEngineDefaults.MAX_ITERATIONS
 ) -> Optional[float]:
     """
     Calculates the Implied Growth Rate (g) using the Bisection method.
+    Solves for g such that IV(g) ~= Price_market.
 
-    Solves for $g$ such that $IV(g) \approx Price_{market}$.
+    Parameters
+    ----------
+    financials : Company
+        Financial data.
+    params : Parameters
+        Base parameters to solve from.
+    market_price : float
+        The target price to match.
+    max_iterations : int, optional
+        Solver limit, by default ValuationEngineDefaults.MAX_ITERATIONS.
+
+    Returns
+    -------
+    Optional[float]
+        The implied growth rate, or None if convergence fails.
     """
     if market_price <= 0:
         return None
 
-    # Search bounds from technical constants
-    low = TechnicalDefaults.REVERSE_DCF_LOW_BOUND
-    high = TechnicalDefaults.REVERSE_DCF_HIGH_BOUND
-    strategy = FundamentalFCFFStrategy(glass_box_enabled=False)
+    # Use the Standard FCFF Strategy for solving
+    # Explicit import to avoid circular dependency at top level
+    from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
+
+    strategy = StandardFCFFStrategy()
+    strategy.glass_box_enabled = False
+
+    # Create a working copy of parameters
+    test_params = params.model_copy(deep=True)
+
+    # Ensure we are modifying the right parameter type
+    if not isinstance(test_params.strategy, FCFFStandardParameters):
+        return None
+
+    low = ValuationEngineDefaults.REVERSE_DCF_LOW_BOUND
+    high = ValuationEngineDefaults.REVERSE_DCF_HIGH_BOUND
 
     for _ in range(max_iterations):
         mid = (low + high) / 2.0
-        test_params = params.model_copy(deep=True)
-        test_params.growth.fcf_growth_rate = mid
+
+        # Inject test growth
+        test_params.strategy.growth_rate_p1 = mid
 
         try:
             res = strategy.execute(financials, test_params)
-            iv = res.intrinsic_value_per_share
+            iv = res.results.common.intrinsic_value_per_share
 
-            # Check for convergence threshold
-            if abs(iv - market_price) < TechnicalDefaults.VALUATION_CONVERGENCE_THRESHOLD:
+            if abs(iv - market_price) < ValuationEngineDefaults.CONVERGENCE_TOLERANCE:
                 return mid
 
             if iv < market_price:
@@ -170,56 +282,41 @@ def run_reverse_dcf(
             else:
                 high = mid
         except VALUATION_ERRORS:
-            # If a bound creates mathematical divergence, tighten the search
+            # Convergence failure protection (e.g. infinite growth)
             high = mid
 
     return None
 
 
-
 # ==============================================================================
-# 3. INTERNAL HELPERS
+# 4. INTERNAL HELPERS & ERROR HANDLING
 # ==============================================================================
 
 def _inject_context(result: ValuationResult, request: ValuationRequest) -> None:
-    """Injects the original request into the result for i18n and audit traceability."""
-    try:
-        result.request = request
-    except (AttributeError, TypeError):
-        # Fallback for frozen/read-only models
-        object.__setattr__(result, "request", request)
+    """Injects the original request into the result."""
+    result.request = request
 
-def _apply_triangulation(
-    result: ValuationResult,
+def _log_final_status(
     request: ValuationRequest,
-    financials: Company,
-    params: Parameters
+    result: ValuationResult,
+    financials: Company
 ) -> None:
-    """Handles optional Pillar 5 triangulation via market peer multiples."""
-    multiples_data = request.options.get("multiples_data")
-
-    if multiples_data and hasattr(multiples_data, "peers") and len(multiples_data.peers) > 0:
-        try:
-            from src.valuation.options.multiples import MarketMultiplesStrategy
-            rel_strategy = MarketMultiplesStrategy(multiples_data=multiples_data)
-            result.multiples_triangulation = rel_strategy.execute(financials, params)
-            logger.info(f"[Engine] Triangulation Complete | n={len(multiples_data.peers)}")
-        except VALUATION_ERRORS as e:
-            logger.warning(f"[Engine] Triangulation failed (non-critical): {str(e)}")
-            result.multiples_triangulation = None
-
-def _log_final_status(request: ValuationRequest, result: ValuationResult) -> None:
     """Signals successful completion to the QuantLogger."""
-    score = result.audit_report.global_score if result.audit_report else 0.0
-    logger.info(f"[Engine] Valuation Complete | audit_score={score:.1f}")
+    logger.info(f"[Engine] Valuation Complete for {request.ticker}")
 
+    # Extract computed values for logging
+    iv = result.results.common.intrinsic_value_per_share
+    upside = result.results.common.upside_pct
+    market_price = financials.current_price or 0.0
+
+    # Log Success.
     QuantLogger.log_success(
         ticker=request.ticker,
         mode=request.mode.value,
-        iv=result.intrinsic_value_per_share,
-        audit_score=score,
-        market_price=result.market_price,
-        upside=result.upside_pct
+        iv=iv,
+        audit_score=0.0, # Placeholder, legacy field kept for logger compatibility
+        market_price=market_price,
+        upside=upside
     )
 
 def _raise_unknown_strategy(mode: ValuationMethodology) -> ValuationException:
@@ -249,17 +346,3 @@ def _handle_system_crash(e: Exception) -> ValuationException:
         technical_detail=traceback.format_exc(),
         remediation_hint=DiagnosticTexts.STRATEGY_CRASH_HINT
     ))
-
-def _build_legacy_registry() -> Dict[ValuationMethodology, Type[ValuationStrategy]]:
-    """
-    Builds the correspondence table for backward compatibility.
-    Required for unit tests.
-    """
-    from src.valuation.registry import StrategyRegistry
-    return {
-        mode: meta.strategy_cls
-        for mode, meta in StrategyRegistry.get_all_modes().items()
-    }
-
-# Used by router
-STRATEGY_REGISTRY = _build_legacy_registry()

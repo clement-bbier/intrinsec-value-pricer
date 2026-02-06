@@ -3,27 +3,22 @@ src/valuation/registry.py
 
 CENTRALIZED VALUATION STRATEGY REGISTRY
 =======================================
-Role: Singleton registry for mapping analytical modes to strategies and auditors.
+Role: Singleton registry for mapping analytical modes to strategies.
 Pattern: Registry with Decorator-based Auto-Discovery.
-Architecture: Decouples strategy execution from UI and Audit layers.
+Architecture: Decouples strategy execution from UI layers.
 
 Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
-# Standard and Framework logging
 import logging
 from dataclasses import dataclass
-from typing import Dict, Type, Optional, Callable, TYPE_CHECKING
+from typing import Dict, Type, Optional, Callable
 
-# Core models and i18n requirements
 from src.models import ValuationMethodology
 from src.i18n import RegistryTexts
-
-if TYPE_CHECKING:
-    from src.valuation.strategies.abstract import ValuationStrategy
-    from infra.auditing.auditors import IValuationAuditor
+from src.valuation.strategies.interface import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
@@ -37,56 +32,24 @@ class StrategyMetadata:
     ----------
     mode : ValuationMethodology
         Unique identifier for the valuation methodology.
-    strategy_cls : Type[ValuationStrategy]
+    strategy_cls : Type[IValuationRunner]
         The class implementing the specific valuation algorithm.
-    auditor_cls_name : str, default "DCFAuditor"
-        The string name of the associated auditor class for lazy resolution.
     ui_renderer_name : str, optional
         The identifier for the specialized UI renderer in the Expert Terminal.
     display_name : str, optional
         The localized (i18n) label displayed in the application.
     """
     mode: ValuationMethodology
-    strategy_cls: Type[ValuationStrategy]
-    auditor_cls_name: str = "DCFAuditor"
+    strategy_cls: Type[IValuationRunner]
     ui_renderer_name: Optional[str] = None
     display_name: Optional[str] = None
-
-    def get_auditor_cls(self) -> Type[IValuationAuditor]:
-        """
-        Dynamically resolves and imports the auditor class.
-
-        This lazy-loading mechanism prevents circular dependencies between
-        the engine and the auditing infrastructure.
-
-        Returns
-        -------
-        Type[IValuationAuditor]
-            The resolved auditor class.
-        """
-        from infra.auditing.auditors import (
-            DCFAuditor, RIMAuditor, GrahamAuditor,
-            StandardValuationAuditor, FCFEAuditor, DDMAuditor
-        )
-
-        mapping = {
-            "DCFAuditor": DCFAuditor,
-            "RIMAuditor": RIMAuditor,
-            "GrahamAuditor": GrahamAuditor,
-            "FCFEAuditor": FCFEAuditor,
-            "DDMAuditor": DDMAuditor,
-            "StandardValuationAuditor": StandardValuationAuditor,
-        }
-
-        return mapping.get(self.auditor_cls_name, StandardValuationAuditor)
 
 
 class StrategyRegistry:
     """
     Global Singleton Registry for valuation methodologies.
 
-    Manages the lifecycle and centralized access to financial strategies,
-    audit pillars, and UI components.
+    Manages the lifecycle and centralized access to financial strategies.
     """
 
     _instance: Optional[StrategyRegistry] = None
@@ -102,8 +65,7 @@ class StrategyRegistry:
     def register(
         cls,
         mode: ValuationMethodology,
-        strategy_cls: Type[ValuationStrategy],
-        auditor_cls_name: str = "DCFAuditor",
+        strategy_cls: Type[IValuationRunner],
         ui_renderer_name: Optional[str] = None,
         display_name: Optional[str] = None
     ) -> None:
@@ -113,7 +75,6 @@ class StrategyRegistry:
         metadata = StrategyMetadata(
             mode=mode,
             strategy_cls=strategy_cls,
-            auditor_cls_name=auditor_cls_name,
             ui_renderer_name=ui_renderer_name,
             display_name=display_name or mode.value
         )
@@ -121,18 +82,10 @@ class StrategyRegistry:
         logger.debug("[Registry] Strategy registered | mode=%s", mode.value)
 
     @classmethod
-    def get_strategy_cls(cls, mode: ValuationMethodology) -> Optional[Type[ValuationStrategy]]:
+    def get_strategy_cls(cls, mode: ValuationMethodology) -> Optional[Type[IValuationRunner]]:
         """Retrieves the calculation class for a specific mode."""
         metadata = cls._strategies.get(mode)
         return metadata.strategy_cls if metadata else None
-
-    @classmethod
-    def get_auditor_cls(cls, mode: ValuationMethodology) -> Type[IValuationAuditor]:
-        """Retrieves the audit class associated with the mode."""
-        from infra.auditing.auditors import StandardValuationAuditor
-
-        metadata = cls._strategies.get(mode)
-        return metadata.get_auditor_cls() if metadata else StandardValuationAuditor
 
     @classmethod
     def get_ui_renderer_name(cls, mode: ValuationMethodology) -> Optional[str]:
@@ -163,39 +116,28 @@ class StrategyRegistry:
 
 def register_strategy(
     mode: ValuationMethodology,
-    auditor: str = "DCFAuditor",
     ui_renderer: Optional[str] = None,
     display_name: Optional[str] = None
-) -> Callable[[Type[ValuationStrategy]], Type[ValuationStrategy]]:
+) -> Callable[[Type[IValuationRunner]], Type[IValuationRunner]]:
     """
     Decorator for automated registration of valuation strategies.
-
-    Injects the class into the StrategyRegistry and tags the class for introspection.
     """
-    def decorator(cls: Type[ValuationStrategy]) -> Type[ValuationStrategy]:
+    def decorator(cls: Type[IValuationRunner]) -> Type[IValuationRunner]:
         StrategyRegistry.register(
             mode=mode,
             strategy_cls=cls,
-            auditor_cls_name=auditor,
             ui_renderer_name=ui_renderer,
             display_name=display_name
         )
-        # Tagging for runtime introspection
         setattr(cls, "_registered_mode", mode)
         return cls
 
     return decorator
 
 
-def get_strategy(mode: ValuationMethodology) -> Optional[Type[ValuationStrategy]]:
+def get_strategy(mode: ValuationMethodology) -> Optional[Type[IValuationRunner]]:
     """Simplified facade for accessing strategy classes."""
     return StrategyRegistry.get_strategy_cls(mode)
-
-
-def get_auditor(mode: ValuationMethodology) -> IValuationAuditor:
-    """Instantiates the institutional auditor associated with the mode."""
-    target_auditor_cls = StrategyRegistry.get_auditor_cls(mode)
-    return target_auditor_cls()
 
 
 def get_all_strategies() -> Dict[ValuationMethodology, StrategyMetadata]:
@@ -207,16 +149,16 @@ def get_display_names() -> Dict[ValuationMethodology, str]:
     """Simplified access to localized i18n label mapping."""
     return StrategyRegistry.get_display_names_map()
 
+
 def _register_all_strategies() -> None:
     """
     Bootstrap function using the CORRECT physical filenames from the filesystem.
-
-    This alignment resolves the 'ImportError' by matching the 'ls -R' structure.
     """
     # 1. Corrected Imports based on the actual ./src/valuation/strategies/ directory
+    # Note: 'RevenueBasedStrategy' was renamed to 'RevenueGrowthFCFFStrategy' in previous steps
     from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
     from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
-    from src.valuation.strategies.revenue_growth import RevenueBasedStrategy
+    from src.valuation.strategies.revenue_growth_fcff import RevenueGrowthFCFFStrategy
     from src.valuation.strategies.fcfe import FCFEStrategy
     from src.valuation.strategies.ddm import DividendDiscountStrategy
     from src.valuation.strategies.rim_banks import RIMBankingStrategy
@@ -239,7 +181,7 @@ def _register_all_strategies() -> None:
 
     StrategyRegistry.register(
         mode=ValuationMethodology.FCFF_GROWTH,
-        strategy_cls=RevenueBasedStrategy,
+        strategy_cls=RevenueGrowthFCFFStrategy,
         ui_renderer_name="render_expert_fcff_growth",
         display_name=RegistryTexts.FCFF_GROWTH_L
     )
@@ -248,7 +190,6 @@ def _register_all_strategies() -> None:
     StrategyRegistry.register(
         mode=ValuationMethodology.FCFE,
         strategy_cls=FCFEStrategy,
-        auditor_cls_name="FCFEAuditor",
         ui_renderer_name="render_expert_fcfe",
         display_name=RegistryTexts.FCFE_L
     )
@@ -256,7 +197,6 @@ def _register_all_strategies() -> None:
     StrategyRegistry.register(
         mode=ValuationMethodology.DDM,
         strategy_cls=DividendDiscountStrategy,
-        auditor_cls_name="DDMAuditor",
         ui_renderer_name="render_expert_ddm",
         display_name=RegistryTexts.DDM_L
     )
@@ -265,7 +205,6 @@ def _register_all_strategies() -> None:
     StrategyRegistry.register(
         mode=ValuationMethodology.RIM,
         strategy_cls=RIMBankingStrategy,
-        auditor_cls_name="RIMAuditor",
         ui_renderer_name="render_expert_rim",
         display_name=RegistryTexts.RIM_IV_L
     )
@@ -273,7 +212,6 @@ def _register_all_strategies() -> None:
     StrategyRegistry.register(
         mode=ValuationMethodology.GRAHAM,
         strategy_cls=GrahamNumberStrategy,
-        auditor_cls_name="GrahamAuditor",
         ui_renderer_name="render_expert_graham",
         display_name=RegistryTexts.GRAHAM_IV_L
     )

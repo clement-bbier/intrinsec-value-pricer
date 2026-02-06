@@ -185,6 +185,8 @@ class ValuationEngineDefaults:
     """Numerical solver settings and credit rating spreads."""
     MAX_ITERATIONS: int = 50
     CONVERGENCE_TOLERANCE: float = 1e-6
+    REVERSE_DCF_LOW_BOUND: float = -0.50
+    REVERSE_DCF_HIGH_BOUND: float = 1.00
 
     # Credit Rating Spreads (ICR-based) for Cost of Debt synthetic calculation
     SPREADS_LARGE_CAP: List[Tuple[float, float]] = None # Initialized in __post_init__ or below

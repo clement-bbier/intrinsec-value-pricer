@@ -18,7 +18,7 @@ from typing import List, Any
 from src.exceptions import CalculationError, ModelDivergenceError
 from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SensitivityResults
-from src.valuation.strategies.abstract import ValuationStrategy
+from src.valuation.strategies.interface import IValuationRunner
 
 # Imports centralisés pour i18n et Config
 from src.config.settings import SIMULATION_CONFIG
@@ -33,7 +33,7 @@ class SensitivityRunner:
     Orchestrates the generation of the Sensitivity Matrix.
     """
 
-    def __init__(self, strategy: ValuationStrategy):
+    def __init__(self, strategy: IValuationRunner):
         """
         Parameters
         ----------
