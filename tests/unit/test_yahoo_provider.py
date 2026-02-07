@@ -13,8 +13,8 @@ from infra.data_providers.yahoo_provider import (
     YahooFinanceProvider,
     DataProviderStatus
 )
-from src.models import Company, Parameters, MultiplesData
-from src.exceptions import TickerNotFoundError
+from src.models import Company, MultiplesData
+from src.core.exceptions import TickerNotFoundError
 
 
 class TestDataProviderStatus:

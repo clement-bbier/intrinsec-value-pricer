@@ -19,7 +19,7 @@ from src.computation.financial_math import (
     calculate_price_from_ev_multiple,
     calculate_triangulated_price
 )
-from src.exceptions import CalculationError
+from src.core.exceptions import CalculationError
 
 
 # ==============================================================================
@@ -155,7 +155,7 @@ def test_financial_math_100_percent_coverage(sample_financials, sample_params):
         calculate_fcfe_base, calculate_sustainable_growth,
         calculate_rim_vectors, compute_proportions
     )
-    from src.exceptions import CalculationError
+    from src.core.exceptions import CalculationError
 
     # Ligne 79 & 85 (Exceptions P/E)
     with pytest.raises(CalculationError):

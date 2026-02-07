@@ -22,7 +22,7 @@ from typing import Tuple
 from src.models.parameters.base_parameter import Parameters
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import VariableSource
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 
 # Atomic Math Imports
 from src.computation.financial_math import calculate_graham_1974_value

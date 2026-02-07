@@ -13,7 +13,7 @@ import streamlit as st
 
 from src.models import CalculationStep, VariableInfo, VariableSource
 from src.i18n import KPITexts, CommonTexts, AuditTexts
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from app.ui.components.ui_glass_box_registry import get_step_metadata
 
 # ============================================================================

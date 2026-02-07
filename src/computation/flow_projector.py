@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 # i18n Imports for UI-facing elements
 from src.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts, SharedTexts
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from src.config.constants import GrowthCalculationDefaults
 from src.models import VariableInfo, VariableSource
 
@@ -107,7 +107,7 @@ class FlowProjector(ABC):
         if is_pct:
             formatted = f"{value:.2%}"
         else:
-            from src.utilities.formatting import format_smart_number
+            from src.core.formatting import format_smart_number
             formatted = format_smart_number(value)
 
         return VariableInfo(

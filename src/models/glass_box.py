@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.models.enums import VariableSource, ParametersSource
 from src.config.constants import ModelDefaults
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 
 
 class VariableInfo(BaseModel):

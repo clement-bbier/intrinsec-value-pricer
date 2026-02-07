@@ -14,10 +14,9 @@ from src.models import ValuationResult, ValuationMethodology
 from src.i18n import (
     KPITexts,
     DDMTexts,
-    RegistryTexts,
-    AuditTexts
+    RegistryTexts
 )
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from app.ui.results.base_result import ResultTabBase
 
 class InputsSummaryTab(ResultTabBase):

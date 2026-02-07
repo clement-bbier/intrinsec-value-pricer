@@ -1,5 +1,5 @@
 import pytest
-from src.exceptions import CalculationError
+from src.core.exceptions import CalculationError
 # CORRECTION : On pointe vers le nouveau module
 from src.computation.financial_math import calculate_terminal_value_gordon, calculate_wacc
 

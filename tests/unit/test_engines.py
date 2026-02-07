@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 from unittest.mock import patch, MagicMock
-from typing import Dict, Any
 
 from src.models import Parameters, ValuationMethodology, ParametersSource
 
@@ -315,7 +314,7 @@ class TestErrorHandling:
 
     def test_handle_calculation_error(self):
         from src.valuation.engines import _handle_calculation_error
-        from src.exceptions import CalculationError
+        from src.core.exceptions import CalculationError
         err = _handle_calculation_error(CalculationError("Error"))
         assert err is not None
 

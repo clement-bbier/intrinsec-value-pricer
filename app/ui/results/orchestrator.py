@@ -20,7 +20,7 @@ import streamlit as st
 
 from src.models import ValuationResult, ValuationMethodology
 from src.i18n import UIMessages, KPITexts, AuditTexts
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from .base_result import ResultTabBase
 
 # --- CORE PILLARS ---

@@ -1,6 +1,6 @@
 import pytest
 from src.computation.financial_math import calculate_historical_share_growth, calculate_dilution_factor
-from src.diagnostics import DiagnosticRegistry
+from src.core.diagnostics import DiagnosticRegistry
 
 
 def test_sbc_math_precision():

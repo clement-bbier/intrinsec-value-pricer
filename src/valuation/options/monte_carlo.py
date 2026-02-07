@@ -36,7 +36,7 @@ from src.computation.statistics import (
 from src.config.constants import MonteCarloDefaults, ModelDefaults, MacroDefaults
 
 # Exceptions
-from src.exceptions import (
+from src.core.exceptions import (
     CalculationError,
     ModelDivergenceError
 )

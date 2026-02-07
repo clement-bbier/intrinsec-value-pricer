@@ -139,7 +139,7 @@ class TestAutoModeErrorHandling:
         """Paramètres extrêmes sont gérés sans crash."""
         from src.valuation.engines import run_valuation
         from src.models import ValuationRequest, ValuationMethodology, ParametersSource
-        from src.exceptions import CalculationError, ValuationException
+        from src.core.exceptions import CalculationError, ValuationException
         
         # Paramètres extrêmes mais valides
         sample_params.growth.perpetual_growth_rate = 0.001  # Très faible

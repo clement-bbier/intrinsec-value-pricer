@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 # DT-001/002: Internal i18n imports for UI-facing error messages
 from src.i18n import CalculationErrors, StrategySources
-from src.exceptions import CalculationError
+from src.core.exceptions import CalculationError
 from src.models import Company, Parameters
 from src.config.constants import ValuationEngineDefaults, TechnicalDefaults, MacroDefaults
 

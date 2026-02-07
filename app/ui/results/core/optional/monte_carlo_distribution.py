@@ -12,7 +12,7 @@ import streamlit as st
 
 from src.models import ValuationResult
 from src.i18n import QuantTexts, KPITexts, AuditTexts
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from app.ui.results.base_result import ResultTabBase
 from app.ui.components.ui_charts import display_simulation_chart
 

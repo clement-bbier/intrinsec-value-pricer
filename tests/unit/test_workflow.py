@@ -9,8 +9,6 @@ Standard: Pydantic V2 Compatible & SOLID compliant.
 """
 
 import pytest
-import numpy as np
-from datetime import date
 from unittest.mock import Mock, patch, MagicMock, ANY
 from app.workflow import (
     run_workflow,
@@ -18,7 +16,6 @@ from app.workflow import (
     map_request_to_params,
     compute_scenario_impact,
     _orchestrate_backtesting,
-    _log_monte_carlo_performance,
     _display_diagnostic_message,
     _create_crash_diagnostic
 )
@@ -27,8 +24,8 @@ from src.models import (
     ValuationResult, Parameters, ScenarioSynthesis,
     ScenarioResult, BacktestResult, HistoricalPoint, Company
 )
-from src.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
-from src.exceptions import ValuationException
+from src.core.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
+from src.core.exceptions import ValuationException
 
 TARGET = 'app.workflow'
 

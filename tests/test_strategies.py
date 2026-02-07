@@ -2,7 +2,7 @@ import pytest
 from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 from src.valuation.options.monte_carlo import MonteCarloGenericStrategy
-from src.exceptions import CalculationError
+from src.core.exceptions import CalculationError
 from src.i18n import CalculationErrors
 
 def test_standard_strategy_execution(sample_financials, sample_params):

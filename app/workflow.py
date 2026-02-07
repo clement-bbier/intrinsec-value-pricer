@@ -50,8 +50,8 @@ import numpy as np
 # Interface and i18n imports
 from src.interfaces import IResultRenderer, NullResultRenderer
 from src.i18n import WorkflowTexts, DiagnosticTexts
-from src.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
-from src.exceptions import ValuationException
+from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
+from src.core.exceptions import ValuationException
 from src.models import (
     Parameters,
     ParametersSource,
@@ -63,7 +63,7 @@ from src.models import (
     HistoricalPoint
 )
 from src.valuation.engines import run_valuation
-from src.quant_logger import QuantLogger
+from src.core.quant_logger import QuantLogger
 from src.valuation.options.backtest_engine import BacktestEngine
 from infra.data_providers.yahoo_provider import YahooFinanceProvider
 from infra.macro.yahoo_macro_provider import YahooMacroProvider

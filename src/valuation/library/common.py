@@ -19,7 +19,7 @@ from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import VariableSource
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 
 # Atomic imports for pure math
 from src.computation.financial_math import (

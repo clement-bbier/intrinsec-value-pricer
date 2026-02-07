@@ -7,7 +7,6 @@ Ils PEUVENT évoluer si l'implémentation interne change.
 """
 
 import pytest
-import math
 
 
 class TestGordonGrowthModel:
@@ -30,7 +29,7 @@ class TestGordonGrowthModel:
     def test_raises_when_wacc_equals_g(self):
         """Doit lever une erreur si WACC = g (division par zéro)."""
         from src.computation.financial_math import calculate_terminal_value_gordon
-        from src.exceptions import CalculationError
+        from src.core.exceptions import CalculationError
         
         with pytest.raises(CalculationError, match="Convergence impossible"):
             calculate_terminal_value_gordon(100, 0.05, 0.05)
@@ -38,7 +37,7 @@ class TestGordonGrowthModel:
     def test_raises_when_g_greater_than_wacc(self):
         """Doit lever une erreur si g > WACC (modèle diverge)."""
         from src.computation.financial_math import calculate_terminal_value_gordon
-        from src.exceptions import CalculationError
+        from src.core.exceptions import CalculationError
         
         with pytest.raises(CalculationError):
             calculate_terminal_value_gordon(100, 0.03, 0.05)

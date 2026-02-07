@@ -9,7 +9,7 @@ Coverage Target: 100% of src/utilities/formatting.py.
 
 import pytest
 import numpy as np
-from src.utilities.formatting import format_smart_number, get_delta_color, format_audit_score
+from src.core.formatting import format_smart_number, get_delta_color, format_audit_score
 from src.i18n import CommonTexts
 
 class TestSmartNumberFormatting:

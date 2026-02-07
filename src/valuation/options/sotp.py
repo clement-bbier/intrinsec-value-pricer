@@ -20,7 +20,7 @@ from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SOTPResults
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import VariableSource  # [CORRECTION] Bon Enum pour VariableInfo
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 
 # Centralized i18n imports
 from src.i18n import SOTPTexts, RegistryTexts, KPITexts

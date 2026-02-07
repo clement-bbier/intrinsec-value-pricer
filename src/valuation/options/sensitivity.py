@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from typing import List, Any
 
-from src.exceptions import CalculationError, ModelDivergenceError
+from src.core.exceptions import CalculationError, ModelDivergenceError
 from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SensitivityResults
 from src.valuation.strategies.interface import IValuationRunner

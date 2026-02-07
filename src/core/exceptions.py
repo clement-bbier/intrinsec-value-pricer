@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from src.diagnostics import (
+from src.core.diagnostics import (
     DiagnosticEvent,
     SeverityLevel,
     DiagnosticDomain,

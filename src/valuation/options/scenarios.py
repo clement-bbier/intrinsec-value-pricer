@@ -19,7 +19,7 @@ from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
 from src.models.results.options import ScenariosResults, ScenarioOutcome
 from src.valuation.strategies.interface import IValuationRunner
-from src.exceptions import CalculationError
+from src.core.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
 

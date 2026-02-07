@@ -9,7 +9,7 @@ Architecture: Senior Institution Grade (Streamlined).
 import streamlit as st
 from src.models import ValuationResult
 from src.i18n import KPITexts, TooltipsTexts
-from src.utilities.formatting import format_smart_number
+from src.core.formatting import format_smart_number
 from app.ui.components.ui_kpis import atom_kpi_metric
 
 def render_valuation_summary_cards(result: ValuationResult):
