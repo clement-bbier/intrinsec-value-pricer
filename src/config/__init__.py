@@ -1,41 +1,62 @@
 """
-core/config/
-Module de configuration centralisée.
+src/config/__init__.py
 
-Résolution DT-010/011/012/013
-Rôle : Centraliser toutes les constantes et seuils du système.
-
-Contenu :
-- constants.py : Constantes globales (Monte Carlo, limites, etc.)
-- thresholds.py : Seuils d'audit et de validation
-
-Usage :
-    from src.config import AuditThresholds, MonteCarloConfig, PeerConfig
+CONFIGURATION MODULE EXPORTS
+============================
+Exposes centralized constants, system defaults, and validation thresholds.
 """
 
 from src.config.constants import (
-    # Monte Carlo
     MonteCarloDefaults,
-
-    # Peers / Multiples
+    SensitivityDefaults,
+    ScenarioDefaults,
+    BacktestDefaults,
     PeerDefaults,
-
-    # Audit
-    AuditThresholds,
-    AuditPenalties,
-    AuditWeights,
-
-    # Général
+    SOTPDefaults,
+    ValidationThresholds,
+    MacroDefaults,
+    ModelDefaults,
+    ValuationEngineDefaults,
+    UIWidgetDefaults,
     SystemDefaults,
-    TechnicalDefaults,
+)
+
+from src.config.settings import (
+    SIMULATION_CONFIG,
+    VALIDATION_CONFIG,
+    SYSTEM_CONFIG,
+    VALUATION_CONFIG,
+    get_config,
+)
+
+from src.config.sector_multiples import (
+    SECTORS,
+    SECTOR_METADATA,
 )
 
 __all__ = [
+    # Constants & Defaults
     "MonteCarloDefaults",
+    "SensitivityDefaults",
+    "ScenarioDefaults",
+    "BacktestDefaults",
     "PeerDefaults",
-    "AuditThresholds",
-    "AuditPenalties",
-    "AuditWeights",
+    "SOTPDefaults",
+    "ValidationThresholds",
+    "MacroDefaults",
+    "ModelDefaults",
+    "ValuationEngineDefaults",
+    "UIWidgetDefaults",
     "SystemDefaults",
-    "TechnicalDefaults",
+
+    # Config Objects
+    "SIMULATION_CONFIG",
+    "VALIDATION_CONFIG",
+    "SYSTEM_CONFIG",
+    "VALUATION_CONFIG",
+    "get_config",
+
+    # Sector multiples
+    "SECTORS",
+    "SECTOR_METADATA"
 ]
