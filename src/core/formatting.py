@@ -1,5 +1,5 @@
 """
-src/utilities/formatting.py
+src/core/formatting.py
 
 INSTITUTIONAL FORMATTING UTILITIES
 ==================================
@@ -13,49 +13,76 @@ that magnitudes are immediately recognizable by the analyst.
 """
 
 from __future__ import annotations
-import numpy as np
+
+import math
 from typing import Optional, Union
-from src.i18n import CommonTexts
+
+# Standard Institutional Colors (Tailwind CSS Palette)
+COLOR_POSITIVE = "#22C55E"  # Green-500
+COLOR_NEGATIVE = "#EF4444"  # Red-500
+COLOR_NEUTRAL = "#808080"   # Gray-500
 
 
 def format_smart_number(
-        val: Optional[Union[float, int]],
-        currency: str = "",
-        is_pct: bool = False,
-        decimals: int = 2
+    val: Optional[Union[float, int]],
+    currency: str = "",
+    is_pct: bool = False,
+    decimals: int = 2
 ) -> str:
-    """Institutional Bloomberg-style formatting."""
-    import math
+    """
+    Applies institutional Bloomberg-style formatting to numeric values.
+    Handles large magnitudes (M, B, T) automatically.
 
+    Parameters
+    ----------
+    val : float | int | None
+        The numeric value to format.
+    currency : str, optional
+        The currency symbol to append (e.g., "USD", "EUR").
+    is_pct : bool, default=False
+        If True, formats as a percentage (e.g., 0.05 -> "5.00%").
+    decimals : int, default=2
+        Number of decimal places to display.
+
+    Returns
+    -------
+    str
+        The formatted string (e.g., "1.50B USD" or "5.20%").
+    """
     # 1. Handling Nulls/NaNs safely
-    if val is None or (isinstance(val, float) and math.isnan(val)):
-        return "CommonTexts.VALUE_NOT_AVAILABLE"
+    if val is None:
+        return "-"
 
-    # 2. Percentage Case (prioritary)
+    if isinstance(val, float) and math.isnan(val):
+        return "-"
+
+    # 2. Percentage Case (priority)
     if is_pct:
         return f"{val:.{decimals}%}"
 
     abs_val = abs(val)
     suffix = ""
-    scaled_val = val
+    scaled_val = float(val)
 
-    # 3. Institutional Scaling
+    # 3. Institutional Scaling logic
     if abs_val >= 1e12:
-        scaled_val, suffix = val / 1e12, "T"
+        scaled_val = val / 1e12
+        suffix = "T"
     elif abs_val >= 1e9:
-        scaled_val, suffix = val / 1e9, "B"
+        scaled_val = val / 1e9
+        suffix = "B"
     elif abs_val >= 1e6:
-        scaled_val, suffix = val / 1e6, "M"
+        scaled_val = val / 1e6
+        suffix = "M"
 
-    # 4. Final assembly with non-breaking space
-    formatted = f"{scaled_val:,.{decimals}f}"
+    # 4. Final assembly
+    # Using comma as thousand separator for the scaled number
+    formatted_number = f"{scaled_val:,.{decimals}f}{suffix}"
 
-    # Construction propre : [Nombre][Suffixe] [Devise]
-    result = f"{formatted}{suffix}"
     if currency:
-        result += f" {currency.strip()}"
+        return f"{formatted_number} {currency.strip()}"
 
-    return result.strip()
+    return formatted_number
 
 
 def get_delta_color(val: float, inverse: bool = False) -> str:
@@ -63,35 +90,27 @@ def get_delta_color(val: float, inverse: bool = False) -> str:
     Returns the hex color code based on a numeric delta.
 
     Standard: Green for positive, Red for negative.
-    Used for Upside/Downside rendering in the Golden Header.
+    Used for Upside/Downside rendering in executive summaries.
 
     Parameters
     ----------
     val : float
         The value to evaluate (usually a percentage delta).
     inverse : bool, default=False
-        If True, reverses the logic (useful for Cost/Risk metrics like WACC).
+        If True, reverses the logic (useful for Cost/Risk metrics like WACC
+        where a higher value is negative).
+
+    Returns
+    -------
+    str
+        Hex color code (e.g., "#22C55E").
     """
     if val == 0:
-        return "#808080"  # Gray
+        return COLOR_NEUTRAL
 
     is_positive = val > 0
+
     if inverse:
         is_positive = not is_positive
 
-    return "#22C55E" if is_positive else "#EF4444"  # Tailwind Green-500 / Red-500
-
-def format_audit_score(score: float) -> str:
-    """
-    Formats an audit score (0-100) with its institutional rank.
-    Maps numeric reliability to qualitative grades used in buy-side reports.
-
-    Example: "85.5/100 (A)"
-    """
-    rank = "F"
-    if score >= 90: rank = "AAA"
-    elif score >= 80: rank = "A"
-    elif score >= 70: rank = "B"
-    elif score >= 50: rank = "C"
-
-    return f"{score:.1f}/100 ({rank})"
+    return COLOR_POSITIVE if is_positive else COLOR_NEGATIVE

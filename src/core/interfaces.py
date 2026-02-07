@@ -1,34 +1,25 @@
 """
-src/interfaces/ui_handlers.py
+src/core/interfaces.py
 
-ABSTRACT UI INTERFACES (DT-017 Resolution)
-==========================================
-Role: Defines abstract contracts for UI communication.
-Pattern: Strategy + Null Object (GoF).
-Style: Numpy Style docstrings.
-
-Responsibility:
-    Decouples src/ (Financial Core) from app/ (Streamlit UI).
-    Interfaces are defined here; concrete implementations reside in app/adapters/.
-
-Financial Impact:
------------------
-None. These interfaces manage presentation and status reporting only;
-they do not affect intrinsic value calculations.
+ABSTRACT CORE INTERFACES
+========================
+Role: Defines abstract contracts for system-wide components.
+Pattern: Strategy + Null Object.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, Protocol, TYPE_CHECKING
+from typing import Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.models import ValuationResult
+    from src.models.valuation import ValuationResult
     from types import TracebackType
 
 
 # ==============================================================================
-# 1. STRUCTURAL PROTOCOLS (Prevention of Circular Dependencies)
+# 1. DATA PROVIDER PROTOCOL
 # ==============================================================================
 
 class DataProviderProtocol(Protocol):
@@ -45,18 +36,22 @@ class DataProviderProtocol(Protocol):
         ----------
         ticker : str
             The stock symbol to resolve.
+
+        Returns
+        -------
+        str
+            The legal company name.
         """
-        ...
+        pass
 
 
 # ==============================================================================
-# 2. PROGRESS HANDLER INTERFACE (DT-017)
+# 2. PROGRESS HANDLER INTERFACE
 # ==============================================================================
 
 class IUIProgressHandler(ABC):
     """
     Interface for UI progress management.
-
     Defines the contract for status indicators across Streamlit, CLI, or Tests.
     """
 
@@ -68,9 +63,14 @@ class IUIProgressHandler(ABC):
         Parameters
         ----------
         label : str
-            Localized title for the operation (i18n).
+            Title for the operation.
+
+        Returns
+        -------
+        IUIProgressHandler
+            The handler instance for chaining.
         """
-        ...
+        pass
 
     @abstractmethod
     def update_status(self, message: str) -> None:
@@ -80,23 +80,35 @@ class IUIProgressHandler(ABC):
         Parameters
         ----------
         message : str
-            Localized progress description.
+            Progress description.
         """
-        ...
+        pass
 
     @abstractmethod
     def complete_status(self, label: str, state: str = "complete") -> None:
         """
         Finalizes the status indicator as successful.
+
+        Parameters
+        ----------
+        label : str
+            The label of the completed task.
+        state : str, optional
+            The completion state (default is "complete").
         """
-        ...
+        pass
 
     @abstractmethod
     def error_status(self, label: str) -> None:
         """
         Marks the status indicator as failed.
+
+        Parameters
+        ----------
+        label : str
+            The label of the failed task.
         """
-        ...
+        pass
 
     def __enter__(self) -> IUIProgressHandler:
         return self
@@ -114,8 +126,7 @@ class IUIProgressHandler(ABC):
 class NullProgressHandler(IUIProgressHandler):
     """
     Null Object implementation for Headless or Unit Test environments.
-
-    Functions as a no-op handler that satisfies the interface contract.
+    Functions as a no-op handler.
     """
 
     def start_status(self, label: str) -> NullProgressHandler:
@@ -132,27 +143,26 @@ class NullProgressHandler(IUIProgressHandler):
 
 
 # ==============================================================================
-# 3. RESULT RENDERER INTERFACE (DT-016)
+# 3. RESULT RENDERER INTERFACE
 # ==============================================================================
 
 class IResultRenderer(ABC):
     """
     Interface for rendering valuation results.
-
-    Decouples the logic orchestrator (workflow.py) from visual components.
+    Decouples the logic orchestrator from visual components.
     """
 
     @abstractmethod
     def render_executive_summary(self, result: ValuationResult) -> None:
         """
-        Displays the high-level executive summary (Golden Header).
+        Displays the high-level executive summary.
 
         Parameters
         ----------
         result : ValuationResult
             The comprehensive valuation result object.
         """
-        ...
+        pass
 
     @abstractmethod
     def render_results(
@@ -163,33 +173,17 @@ class IResultRenderer(ABC):
         """
         Renders the complete multi-pillar results view.
 
-        Standard Rendering Entry Point (ST 1.2 Naming Blueprint).
-
         Parameters
         ----------
         result : ValuationResult
             Result container to visualize.
-        provider : DataProviderProtocol, optional
+        provider : DataProviderProtocol | None, optional
             Optional provider for supplemental metadata.
         """
-        ...
+        pass
 
     @abstractmethod
-    def display_valuation_details(
-        self,
-        result: ValuationResult,
-        provider: DataProviderProtocol
-    ) -> None:
-        """
-        Renders granular valuation details.
-
-        .. deprecated:: 2.0
-            Use :meth:`render_results` instead.
-        """
-        ...
-
-    @abstractmethod
-    def display_error(self, message: str, details: Optional[str] = None) -> None:
+    def display_error(self, message: str, details: str | None = None) -> None:
         """
         Communicates a business or system error to the user.
 
@@ -197,40 +191,7 @@ class IResultRenderer(ABC):
         ----------
         message : str
             Primary error notification.
-        details : str, optional
+        details : str | None, optional
             Technical stack trace or diagnostic details.
         """
-        ...
-
-
-class NullResultRenderer(IResultRenderer):
-    """
-    Null Object implementation for Test Scenarios.
-
-    Captures result objects internally for assertion checks without
-    triggering UI components.
-    """
-
-    def __init__(self) -> None:
-        self.last_result: ValuationResult | None = None
-        self.last_error: str | None = None
-
-    def render_executive_summary(self, result: ValuationResult) -> None:
-        self.last_result = result
-
-    def render_results(
-        self,
-        result: ValuationResult,
-        provider: DataProviderProtocol | None = None
-    ) -> None:
-        self.last_result = result
-
-    def display_valuation_details(
-        self,
-        result: ValuationResult,
-        provider: DataProviderProtocol
-    ) -> None:
-        self.render_results(result, provider)
-
-    def display_error(self, message: str, details: Optional[str] = None) -> None:
-        self.last_error = message
+        pass

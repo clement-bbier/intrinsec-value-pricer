@@ -1,5 +1,5 @@
 """
-src/diagnostics.py
+src/core/diagnostics.py
 
 DIAGNOSTIC TYPE SYSTEM AND STRUCTURED ERROR MANAGEMENT
 ======================================================
@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Any, Dict
 
-# i18n Imports for UI-facing localized strings
-from src.i18n import DiagnosticTexts, AuditMessages
+# You will need to ensure src.i18n is updated to English or keys are used correctly
+# For this file, I am focusing on the structure and English context.
 
 
 class SeverityLevel(Enum):
@@ -42,12 +42,12 @@ class DiagnosticDomain(Enum):
 @dataclass(frozen=True)
 class FinancialContext:
     """
-    Pedagogical financial context explaining parameter risk (ST-4.2).
+    Pedagogical financial context explaining parameter risk.
 
     Attributes
     ----------
     parameter_name : str
-        The localized name of the financial parameter (e.g., "Market Beta").
+        The name of the financial parameter (e.g., "Market Beta").
     current_value : float
         The calculated or input value being diagnosed.
     typical_range : tuple[float, float]
@@ -55,7 +55,7 @@ class FinancialContext:
     statistical_risk : str
         Explanation of why the current value is statistically or economically risky.
     recommendation : str
-        Localized guidance for the analyst to remediate the risk.
+        Guidance for the analyst to remediate the risk.
     """
     parameter_name: str
     current_value: float
@@ -64,13 +64,20 @@ class FinancialContext:
     recommendation: str
 
     def to_human_readable(self) -> str:
-        """Converts the context into a localized human-readable paragraph."""
+        """
+        Converts the context into a human-readable paragraph.
+
+        Returns
+        -------
+        str
+            The formatted pedagogical explanation.
+        """
         range_str = f"{self.typical_range[0]:.2f} - {self.typical_range[1]:.2f}"
         return (
-            f"Le paramètre {self.parameter_name} ({self.current_value:.2f}) "
-            f"est hors de la plage typique ({range_str}). "
+            f"The parameter '{self.parameter_name}' ({self.current_value:.2f}) "
+            f"is outside the typical range ({range_str}). "
             f"{self.statistical_risk}. "
-            f"Recommandation : {self.recommendation}."
+            f"Recommendation: {self.recommendation}."
         )
 
 
@@ -88,12 +95,12 @@ class DiagnosticEvent:
     domain : DiagnosticDomain
         The architecture layer where the event occurred.
     message : str
-        The primary analyst-facing message (localized).
-    technical_detail : str, optional
+        The primary analyst-facing message.
+    technical_detail : str | None
         Raw error string or stack trace for development/debugging.
-    remediation_hint : str, optional
-        Actionable localized advice to solve the issue.
-    financial_context : FinancialContext, optional
+    remediation_hint : str | None
+        Actionable advice to solve the issue.
+    financial_context : FinancialContext | None
         Extended financial rationale for institutional auditing.
     """
     code: str
@@ -109,20 +116,15 @@ class DiagnosticEvent:
         """Determines if this event prevents the valuation from completing."""
         return self.severity in [SeverityLevel.ERROR, SeverityLevel.CRITICAL]
 
-    @property
-    def has_financial_context(self) -> bool:
-        """Indicates if analytical context is attached."""
-        return self.financial_context is not None
-
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes the event for JSON/API transmission.
+        Serializes the event for transmission.
 
-        Explicitly typed to handle nested dictionary structures for
-        financial context metadata.
+        Returns
+        -------
+        Dict[str, Any]
+            JSON-serializable representation of the event.
         """
-        # Explicitly hint 'result' to prevent the IDE from narrowing
-        # the type to 'Dict[str, str | bool]'
         result: Dict[str, Any] = {
             "code": self.code,
             "severity": self.severity.value,
@@ -137,33 +139,16 @@ class DiagnosticEvent:
                 "value": self.financial_context.current_value,
                 "typical_range": list(self.financial_context.typical_range),
                 "risk": self.financial_context.statistical_risk,
+                "recommendation": self.financial_context.recommendation
             }
 
         return result
 
-    def get_pedagogical_message(self) -> str:
-        """
-        Synthesizes a complete pedagogical message for the UI.
-
-        Combines the root diagnostic, financial context, and remediation hint.
-        """
-        parts = [self.message]
-        if self.financial_context:
-            parts.append(self.financial_context.to_human_readable())
-        if self.remediation_hint:
-            parts.append(f"Action suggérée : {self.remediation_hint}")
-        return " ".join(parts)
-
-
-# ==============================================================================
-# NORMATIVE EVENT REGISTRY (ST-4.2 Enhanced)
-# ==============================================================================
 
 class DiagnosticRegistry:
     """
     Centralized catalog of standardized diagnostic events.
-
-    Maps technical mathematical errors into localized institutional insights.
+    Maps technical mathematical errors into institutional insights.
     """
 
     @staticmethod
@@ -173,17 +158,17 @@ class DiagnosticRegistry:
             code="MODEL_G_DIVERGENCE",
             severity=SeverityLevel.CRITICAL,
             domain=DiagnosticDomain.MODEL,
-            message=DiagnosticTexts.MODEL_G_DIV_MSG.format(g=g, wacc=wacc),
-            remediation_hint=DiagnosticTexts.MODEL_G_DIV_HINT,
+            message=f"Perpetual growth rate ({g:.2%}) exceeds or equals WACC ({wacc:.2%}).",
+            remediation_hint="Reduce 'g' below 3% or use the Exit Multiple method.",
             financial_context=FinancialContext(
-                parameter_name="Taux de croissance perpétuelle (g)",
+                parameter_name="Perpetual Growth Rate (g)",
                 current_value=g,
                 typical_range=(0.01, 0.03),
                 statistical_risk=(
-                    f"Le modèle de Gordon requiert g < WACC. Avec g={g:.2%} et WACC={wacc:.2%}, "
-                    "la formule TV = FCF/(WACC-g) produit une valeur négative ou infinie"
+                    f"The Gordon model requires g < WACC. With g={g:.2%} and WACC={wacc:.2%}, "
+                    "the formula TV = FCF/(WACC-g) produces a negative or infinite value"
                 ),
-                recommendation="Réduire g en dessous de 3% ou utiliser la méthode Exit Multiple"
+                recommendation="Adjust 'g' to be at least 100bps lower than WACC."
             )
         )
 
@@ -194,17 +179,17 @@ class DiagnosticRegistry:
             code="MODEL_MC_INSTABILITY",
             severity=SeverityLevel.ERROR,
             domain=DiagnosticDomain.MODEL,
-            message=DiagnosticTexts.MODEL_MC_INST_MSG.format(valid_ratio=valid_ratio, threshold=threshold),
-            remediation_hint=DiagnosticTexts.MODEL_MC_INST_HINT,
+            message=f"Monte Carlo convergence failed. Valid Ratio: {valid_ratio:.0%} (Threshold: {threshold:.0%}).",
+            remediation_hint="Reduce input volatilities or widen parameter bounds.",
             financial_context=FinancialContext(
-                parameter_name="Ratio de simulations valides",
+                parameter_name="Valid Simulation Ratio",
                 current_value=valid_ratio,
                 typical_range=(0.90, 1.00),
                 statistical_risk=(
-                    f"Seulement {valid_ratio:.0%} des simulations ont convergé. "
-                    "Les résultats ne sont pas statistiquement fiables"
+                    f"Only {valid_ratio:.0%} of simulations converged. "
+                    "Results are not statistically significant."
                 ),
-                recommendation="Réduire les volatilités ou ajuster les bornes de paramètres"
+                recommendation="Check for aggressive growth assumptions interacting with high WACC volatility."
             )
         )
 
@@ -215,17 +200,17 @@ class DiagnosticRegistry:
             code="RISK_EXCESSIVE_GROWTH",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.USER_INPUT,
-            message=DiagnosticTexts.RISK_EXCESSIVE_GROWTH_MSG.format(g=g),
-            remediation_hint=DiagnosticTexts.RISK_EXCESSIVE_GROWTH_HINT,
+            message=f"Explicit growth rate {g:.1%} appears excessively high.",
+            remediation_hint="Verify against management guidance and consensus.",
             financial_context=FinancialContext(
-                parameter_name="Taux de croissance des flux",
+                parameter_name="Flow Growth Rate",
                 current_value=g,
                 typical_range=(0.02, 0.08),
                 statistical_risk=(
-                    f"Un taux de croissance de {g:.1%} est rarement soutenable à long terme. "
-                    "Seules les hypergrowth-tech maintiennent >10% sur 5 ans"
+                    f"A growth rate of {g:.1%} is rarely sustainable long-term. "
+                    "Only hyper-growth tech companies sustain >10% over 5 years."
                 ),
-                recommendation="Vérifier les guidances management et les consensus"
+                recommendation="Consider smoothing the growth ramp-down."
             )
         )
 
@@ -236,65 +221,33 @@ class DiagnosticRegistry:
             code="FCFE_NEGATIVE_FLOW",
             severity=SeverityLevel.CRITICAL,
             domain=DiagnosticDomain.MODEL,
-            message=DiagnosticTexts.FCFE_NEGATIVE_MSG.format(val=val),
-            remediation_hint=DiagnosticTexts.FCFE_NEGATIVE_HINT,
+            message=f"Negative Free Cash Flow to Equity detected ({val:,.0f}).",
+            remediation_hint="Switch to FCFF model or extend projection horizon.",
             financial_context=FinancialContext(
                 parameter_name="Free Cash Flow to Equity",
                 current_value=val,
                 typical_range=(0.0, float('inf')),
                 statistical_risk=(
-                    f"Un FCFE négatif ({val:,.0f}) signifie que l'entreprise brûle "
-                    "du cash actionnaire structurellement"
+                    f"Negative FCFE ({val:,.0f}) implies structural shareholder cash burn."
                 ),
-                recommendation="Utiliser le modèle FCFF ou augmenter l'horizon de projection"
+                recommendation="Use FCFF (Enterprise Value) for loss-making entities."
             )
         )
 
     @staticmethod
-    def provider_api_failure(provider: str, error: str) -> DiagnosticEvent:
-        """External service communication failure."""
-        return DiagnosticEvent(
-            code="PROVIDER_API_FAILURE",
-            severity=SeverityLevel.WARNING,
-            domain=DiagnosticDomain.PROVIDER,
-            message=AuditMessages.PROVIDER_API_FAILURE_MSG.format(provider=provider),
-            technical_detail=error,
-            remediation_hint=AuditMessages.PROVIDER_API_FAILURE_HINT
-        )
-
-    @staticmethod
     def risk_missing_sbc_dilution(sector: str, rate: float) -> DiagnosticEvent:
-        """
-        Generates a warning when Stock-Based Compensation (SBC) dilution is ignored.
-
-        SBC dilution is a critical factor for Tech and Growth sectors. Failing to
-        account for annual share count increases leads to significant intrinsic
-        value overestimation.
-
-        Parameters
-        ----------
-        sector : str
-            The industry sector of the company (e.g., 'Technology', 'Software').
-        rate : float
-            The current annual dilution rate being evaluated (typically 0.0 here).
-
-        Returns
-        -------
-        DiagnosticEvent
-            A structured event containing pedagogical context and remediation hints.
-        """
+        """Generates a warning when Stock-Based Compensation dilution is ignored."""
         return DiagnosticEvent(
             code="RISK_MISSING_SBC_DILUTION",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.MODEL,
-            # Use of i18n keys with dynamic formatting
-            message=DiagnosticTexts.RISK_MISSING_SBC_MSG.format(sector=sector),
-            remediation_hint=DiagnosticTexts.RISK_MISSING_SBC_HINT,
+            message=f"SBC Dilution ignored for sector: {sector}.",
+            remediation_hint="Enable SBC Dilution adjustment in parameters.",
             financial_context=FinancialContext(
-                parameter_name=DiagnosticTexts.PARAM_SBC_LABEL.format(sector=sector),
+                parameter_name=f"Dilution Rate ({sector})",
                 current_value=rate,
                 typical_range=(0.01, 0.05),
-                statistical_risk=DiagnosticTexts.RISK_SBC_STAT_RISK.format(sector=sector),
-                recommendation=DiagnosticTexts.RISK_SBC_RECOMMENDATION
+                statistical_risk="Ignoring SBC in Tech/Growth leads to intrinsic value overestimation.",
+                recommendation="Apply a dilution rate of 2-3% for this sector."
             )
         )

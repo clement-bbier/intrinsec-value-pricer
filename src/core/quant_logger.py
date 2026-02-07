@@ -1,5 +1,5 @@
 """
-src/quant_logger.py
+src/core/quant_logger.py
 
 QUANTLOGGER — INSTITUTIONAL STANDARDIZED LOGGING
 ================================================
@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import functools
 from datetime import datetime
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Callable, TypeVar, Union, Optional
 from enum import Enum
 
 # Type variable for preserving function signatures in decorators
@@ -97,10 +97,12 @@ class QuantLogger:
                 continue
 
             # Smart context-aware formatting
+            formatted: str
             if isinstance(value, float):
-                if any(x in key.lower() for x in ["score", "ratio", "accuracy"]):
+                key_lower = key.lower()
+                if any(x in key_lower for x in ["score", "ratio", "accuracy", "percent", "pct"]):
                     formatted = f"{value:.1f}%"
-                elif any(x in key.lower() for x in ["rate", "growth", "spread", "yield"]):
+                elif any(x in key_lower for x in ["rate", "growth", "spread", "yield"]):
                     formatted = f"{value:.2%}"
                 elif abs(value) >= 1e9:
                     formatted = f"{value/1e9:,.2f}B"
@@ -108,8 +110,6 @@ class QuantLogger:
                     formatted = f"{value/1e6:,.2f}M"
                 else:
                     formatted = f"{value:,.2f}"
-            elif isinstance(value, (datetime, str)):
-                formatted = str(value)
             else:
                 formatted = str(value)
 
@@ -166,26 +166,6 @@ class QuantLogger:
         _logger.info(msg)
 
     @classmethod
-    def log_degraded_mode(
-        cls,
-        ticker: str,
-        reason: str,
-        fallback: str,
-        confidence: float = 0.0
-    ) -> None:
-        """Logs ST-4.1 Degraded Mode activation."""
-        msg = cls._format_message(
-            LogDomain.PROVIDER,
-            LogLevel.WARNING,
-            ticker,
-            status="DEGRADED_MODE",
-            reason=reason,
-            fallback_source=fallback,
-            confidence_score=confidence
-        )
-        _logger.warning(msg)
-
-    @classmethod
     def log_error(
         cls,
         ticker: str,
@@ -204,41 +184,17 @@ class QuantLogger:
         )
         _logger.error(msg)
 
-    @classmethod
-    def log_monte_carlo(
-            cls,
-            ticker: str,
-            simulations: int,
-            valid_ratio: float,
-            p50: float,
-            p10: float,
-            p90: float
-    ) -> None:
-        """Logs stochastic metrics to quantitative logs."""
-        msg = cls._format_message(
-            LogDomain.MONTE_CARLO,
-            LogLevel.INFO,
-            ticker,
-            total_simulations=simulations,
-            success_rate=valid_ratio,
-            median_iv=p50,
-            percentile_10=p10,
-            percentile_90=p90
-        )
-        _logger.info(msg)
-
 
 def log_valuation(func: F) -> F:
     """
     Decorator for automated valuation lifecycle telemetry.
-
     Captures duration, ticker resolution, and success/failure states.
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = datetime.now()
 
-        # Ticker resolution logic from request object
+        # Ticker resolution logic
         ticker = "N/A"
         if args and hasattr(args[0], 'ticker'):
             ticker = args[0].ticker
@@ -248,15 +204,27 @@ def log_valuation(func: F) -> F:
         try:
             result = func(*args, **kwargs)
 
-            # Extract metrics if result follows ValuationResult contract
+            # Check if it's a valid result object before logging success
             if hasattr(result, 'intrinsic_value_per_share'):
                 duration = int((datetime.now() - start_time).total_seconds() * 1000)
+
+                # Safe attribute access
+                audit_score = None
+                if hasattr(result, 'audit_report') and result.audit_report:
+                    audit_score = result.audit_report.global_score
+
+                mode_val = "UNKNOWN"
+                if hasattr(result, 'mode') and hasattr(result.mode, 'value'):
+                    mode_val = result.mode.value
+
+                upside_val = getattr(result, 'upside_pct', None)
+
                 QuantLogger.log_success(
                     ticker=ticker,
-                    mode=result.mode.value if hasattr(result, 'mode') else "UNKNOWN",
+                    mode=mode_val,
                     iv=result.intrinsic_value_per_share,
-                    audit_score=result.audit_report.global_score if result.audit_report else None,
-                    upside=result.upside_pct,
+                    audit_score=audit_score,
+                    upside=upside_val,
                     duration_ms=duration
                 )
 
