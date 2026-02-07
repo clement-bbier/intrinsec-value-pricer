@@ -133,8 +133,18 @@ class MacroDefaults:
 
 
 # ==============================================================================
-# 8. MODEL DEFAULTS
+# 8. MODEL & CALCULATION DEFAULTS
 # ==============================================================================
+
+@dataclass(frozen=True)
+class GrowthCalculationDefaults:
+    """
+    Defaults specific to the flow projection engines (Growth/Margin modes).
+    Used by flow_projector.py.
+    """
+    DEFAULT_FCF_MARGIN_TARGET: float = 0.15
+    DEFAULT_REVENUE_GROWTH_START: float = 0.10
+
 
 @dataclass(frozen=True)
 class ModelDefaults:
@@ -183,18 +193,57 @@ class ModelDefaults:
 
 @dataclass(frozen=True)
 class ValuationEngineDefaults:
-    """Numerical solver settings and credit rating spreads."""
+    """
+    Numerical solver settings and credit rating spreads (Damodaran).
+    """
+
     MAX_ITERATIONS: int = 50
     CONVERGENCE_TOLERANCE: float = 1e-6
     REVERSE_DCF_LOW_BOUND: float = -0.50
     REVERSE_DCF_HIGH_BOUND: float = 1.00
 
-    # Credit Rating Spreads (ICR-based) for Cost of Debt synthetic calculation
+    MAX_DILUTION_CLAMPING: float = 0.10
+
+    # --- Credit Rating Spreads (ICR-based) ---
     # Format: List of (ICR Threshold, Spread)
+    # Logic: If ICR > Threshold, use Spread. Order: Descending Threshold.
+
+    # Large Cap (> $5B)
     SPREADS_LARGE_CAP: List[Tuple[float, float]] = field(default_factory=lambda: [
-        (8.5, 0.0045), (6.5, 0.0060), (5.5, 0.0077), (4.25, 0.0085),
-        (3.0, 0.0095), (2.5, 0.0120), (2.25, 0.0155), (2.0, 0.0183),
-        (-999, 0.2000)
+        (8.5, 0.0069),  # AAA
+        (6.5, 0.0085),  # AA
+        (5.5, 0.0107),  # A+
+        (4.25, 0.0118),  # A
+        (3.0, 0.0133),  # A-
+        (2.5, 0.0171),  # BBB
+        (2.25, 0.0216),  # BB+
+        (2.0, 0.0270),  # BB
+        (1.75, 0.0387),  # B+
+        (1.5, 0.0522),  # B
+        (1.25, 0.0810),  # B-
+        (0.8, 0.1116),  # CCC
+        (0.65, 0.1575),  # CC
+        (0.2, 0.1750),  # C
+        (-999, 0.2000)  # D (Default)
+    ])
+
+    # Small/Mid Cap (< $5B) - Higher risk premiums for same coverage
+    SPREADS_SMALL_MID_CAP: List[Tuple[float, float]] = field(default_factory=lambda: [
+        (12.5, 0.0069),  # AAA
+        (9.5, 0.0085),  # AA
+        (7.5, 0.0107),  # A+
+        (6.0, 0.0118),  # A
+        (4.5, 0.0133),  # A-
+        (4.0, 0.0171),  # BBB
+        (3.5, 0.0216),  # BB+
+        (3.0, 0.0270),  # BB
+        (2.5, 0.0387),  # B+
+        (2.0, 0.0522),  # B
+        (1.5, 0.0810),  # B-
+        (1.25, 0.1116),  # CCC
+        (0.8, 0.1575),  # CC
+        (0.5, 0.1750),  # C
+        (-999, 0.2000)  # D
     ])
 
 

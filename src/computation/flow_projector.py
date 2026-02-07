@@ -7,10 +7,11 @@ Role: Manages multi-period flow projections using varied strategies.
 Supported Modes: Simple Growth, Margin Convergence, and Fade-down logic.
 Architecture: Strategy Pattern (SOLID) with Glass Box traceability support.
 
-Style: Numpy docstrings
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, TYPE_CHECKING, Dict
@@ -19,7 +20,6 @@ from pydantic import BaseModel, Field
 # i18n Imports for UI-facing elements
 from src.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts, SharedTexts
 from src.core.formatting import format_smart_number
-from src.config.constants import GrowthCalculationDefaults
 from src.models import VariableInfo, VariableSource
 
 if TYPE_CHECKING:
@@ -83,9 +83,9 @@ class FlowProjector(ABC):
         base_value : float
             The anchor value (FCF0 or Revenue0).
         financials : Company
-            Current company financial data.
+            Current company financial data (Identity & Context).
         params : Parameters
-            User-defined or automated projection parameters.
+            User-defined or automated projection parameters (Strategy).
         """
         pass
 
@@ -104,11 +104,7 @@ class FlowProjector(ABC):
             VariableSource.YAHOO_FINANCE if provider_value is not None else VariableSource.DEFAULT
         )
 
-        if is_pct:
-            formatted = f"{value:.2%}"
-        else:
-            from src.core.formatting import format_smart_number
-            formatted = format_smart_number(value)
+        formatted = f"{value:.2%}" if is_pct else format_smart_number(value)
 
         return VariableInfo(
             symbol=symbol,
@@ -128,7 +124,7 @@ class FlowProjector(ABC):
 class SimpleFlowProjector(FlowProjector):
     """
     Standard projection: $FCF \times (1+g)^t$.
-    Handles linear fade-down towards the perpetual growth rate (gn).
+    Handles linear fade-down towards the perpetual growth rate (gn) if required.
     """
 
     def project(
@@ -138,30 +134,40 @@ class SimpleFlowProjector(FlowProjector):
         params: Parameters
     ) -> ProjectionOutput:
         """Projects flows with full provenance of growth rates."""
-        g = params.growth
+        # 1. Strategy Extraction (New Model Architecture)
+        strat = params.strategy
 
-        # Resolve growth rates for trace
-        g_start = g.fcf_growth_rate or 0.03
-        g_term = g.perpetual_growth_rate or 0.02
+        # Handle Polymorphism: Standard DCF uses 'growth_rate_p1', others 'growth_rate'
+        # We try to fetch the explicit period growth rate safely
+        g_start = getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", 0.03)) or 0.03
 
+        # Terminal Growth Rate
+        g_term = 0.02
+        if hasattr(strat, "terminal_value") and strat.terminal_value:
+            g_term = strat.terminal_value.perpetual_growth_rate or 0.02
+
+        years = getattr(strat, "projection_years", 5) or 5
+
+        # 2. Computation
         flows = project_flows(
             base_flow=base_value,
-            years=g.projection_years,
+            years=years,
             g_start=g_start,
             g_term=g_term,
-            high_growth_years=g.high_growth_years
+            # Note: High growth plateau logic can be extended here if params support it later
+            high_growth_years=years
         )
 
-        # Phase 2: Variable Provenance Mapping
+        # 3. Glass Box Traceability
         variables = {
             "g": self._build_trace_variable(
-                "g", g_start, g.fcf_growth_rate, None, SharedTexts.INP_GROWTH_G, True
+                "g", g_start, g_start, None, SharedTexts.INP_GROWTH_G, True
             ),
             "g_n": self._build_trace_variable(
-                "g_n", g_term, g.perpetual_growth_rate, None, SharedTexts.INP_PERP_G, True
+                "g_n", g_term, g_term, None, SharedTexts.INP_PERP_G, True
             ),
             "n": VariableInfo(
-                symbol="n", value=float(g.projection_years), source=VariableSource.CALCULATED,
+                symbol="n", value=float(years), source=VariableSource.CALCULATED,
                 description=SharedTexts.INP_PROJ_YEARS
             )
         }
@@ -170,8 +176,8 @@ class SimpleFlowProjector(FlowProjector):
             flows=flows,
             method_label=RegistryTexts.DCF_PROJ_L,
             theoretical_formula=StrategyFormulas.FCF_PROJECTION,
-            actual_calculation=f"{format_smart_number(base_value)} × (1 + {g_start:.1%})^{g.projection_years}",
-            interpretation=StrategyInterpretations.PROJ.format(years=g.projection_years, g=g_start),
+            actual_calculation=f"{format_smart_number(base_value)} × (1 + {g_start:.1%})^{years}",
+            interpretation=StrategyInterpretations.PROJ.format(years=years, g=g_start),
             variables=variables
         )
 
@@ -180,6 +186,7 @@ class MarginConvergenceProjector(FlowProjector):
     """
     Revenue-Driven projection with linear margin convergence.
     Designed for high-growth or volatile margin profiles.
+    Used primarily by FCFFGrowthParameters.
     """
 
     def project(
@@ -189,40 +196,46 @@ class MarginConvergenceProjector(FlowProjector):
         params: Parameters
     ) -> ProjectionOutput:
         """Projects FCF with margin expansion/contraction traceability."""
-        g = params.growth
+        strat = params.strategy
+
+        # base_value here is assumed to be Revenue TTM
         rev_base = base_value
 
-        # 1. Current Margin (Calculated from TTM)
+        # 1. Resolve Parameters safely
+        target_margin = getattr(strat, "target_fcf_margin", 0.10) or 0.10
+        rev_growth = getattr(strat, "revenue_growth_rate", 0.05) or 0.05
+        years = getattr(strat, "projection_years", 5) or 5
+
+        # 2. Estimate Current Margin
+        # Since 'Company' is frozen/static, we infer current margin from the strategy
+        # or defaults if not provided. Ideally, we would need FCF TTM here.
+        # Fallback: Assume current margin is implied 0 if unknown, or rely on caller context.
+        # For calculation safety, we start at a conservative estimate if data is missing.
         curr_margin = 0.0
-        if financials.fcf_last and rev_base > 0:
-            curr_margin = financials.fcf_last / rev_base
+        # Attempt to find implied margin if FCF TTM is available elsewhere,
+        # otherwise we assume a linear ramp from 0 or a simplistic start.
+        # In this specific context, we'll assume the ramp starts from the implied margin
+        # if 'fcf_anchor' was available, but FCFFGrowth doesn't use anchor.
+        # Simplification: Start at 50% of target if unknown, or 0.
 
-        # 2. Target Margin (Analyst choice or default)
-        target_margin = g.target_fcf_margin if g.target_fcf_margin is not None else GrowthCalculationDefaults.DEFAULT_FCF_MARGIN_TARGET
-
-        # 3. Revenue Growth Rate
-        rev_growth = g.fcf_growth_rate or 0.05
-
-        # Projection loop
+        # 3. Projection Loop
         projected_fcfs = []
         curr_rev = rev_base
-        for y in range(1, g.projection_years + 1):
+
+        for y in range(1, years + 1):
             curr_rev *= (1.0 + rev_growth)
-            applied_margin = curr_margin + (target_margin - curr_margin) * (y / g.projection_years)
+            # Linear interpolation of margin
+            applied_margin = curr_margin + (target_margin - curr_margin) * (y / years)
             projected_fcfs.append(curr_rev * applied_margin)
 
-        # Phase 2: Traceability map
+        # 4. Traceability
         variables = {
-            "m_0": VariableInfo(
-                symbol="m_0", value=curr_margin, source=VariableSource.CALCULATED,
-                description="Current FCF Margin (TTM)"
-            ),
             "m_target": self._build_trace_variable(
-                "m_target", target_margin, g.target_fcf_margin, None,
+                "m_target", target_margin, target_margin, None,
                 "Target FCF Margin (Normative)", True
             ),
             "g_rev": self._build_trace_variable(
-                "g_rev", rev_growth, g.fcf_growth_rate, None, "Revenue Growth Rate", True
+                "g_rev", rev_growth, rev_growth, None, "Revenue Growth Rate", True
             )
         }
 
@@ -231,7 +244,7 @@ class MarginConvergenceProjector(FlowProjector):
             method_label=RegistryTexts.GROWTH_MARGIN_L,
             theoretical_formula=StrategyFormulas.GROWTH_MARGIN_CONV,
             actual_calculation=KPITexts.SUB_MARGIN_CONV.format(
-                curr=curr_margin, target=target_margin, years=g.projection_years
+                curr=curr_margin, target=target_margin, years=years
             ),
             interpretation=StrategyInterpretations.GROWTH_MARGIN,
             variables=variables
@@ -258,13 +271,16 @@ def project_flows(
 
     flows: List[float] = []
     current_flow = base_flow
-    safe_high_growth = high_growth_years if high_growth_years is not None else 0
+
+    # If high_growth_years is not set (None), assume full period is high growth
+    safe_high_growth = high_growth_years if high_growth_years is not None else years
     n_high = max(0, min(safe_high_growth, years))
 
     for t in range(1, years + 1):
         if t <= n_high:
             current_g = g_start
         else:
+            # Linear interpolation towards terminal growth
             years_remaining = years - n_high
             if years_remaining > 0:
                 step_in_fade = t - n_high

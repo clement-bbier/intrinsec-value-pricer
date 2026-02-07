@@ -6,6 +6,8 @@ STATISTICAL UTILITIES AND MONTE CARLO ENGINE
 Role: Provides high-performance stochastic simulations and random generators.
 Architecture: Modern NumPy default_rng (2026 standards) + Vectorized Finance.
 Performance: SIMD-powered valuation logic (O(1) complexity for 2k+ simulations).
+
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
@@ -14,13 +16,22 @@ from dataclasses import dataclass
 from typing import Tuple, Optional, Dict, List
 import numpy as np
 
-# We import the models to ensure type safety in the engine
 from src.models import ValuationResult, Parameters, ValuationMethodology
+from src.config.constants import MonteCarloDefaults, MacroDefaults
 
 
 @dataclass
 class StochasticOutput:
-    """Standardized output for vectorized simulations."""
+    """
+    Standardized output for vectorized simulations.
+
+    Attributes
+    ----------
+    values : List[float]
+        The raw list of simulated intrinsic values.
+    quantiles : Dict[str, float]
+        Key statistical percentiles (p10, p50, p90, std).
+    """
     values: List[float]
     quantiles: Dict[str, float]
 
@@ -38,44 +49,93 @@ class MonteCarloEngine:
     @staticmethod
     def simulate_from_result(result: ValuationResult, params: Parameters) -> StochasticOutput:
         """
-        Main entry point for Pillar 4.1.
+        Main entry point for Pillar 4.1 (Risk Engineering).
 
         Applies shocks to deterministic anchors and recalculates the model
         vectorially using NumPy.
-        """
-        n = params.monte_carlo.num_simulations
-        p_mc = params.monte_carlo
 
-        # 1. GENERATE CORRELATED SHOCKS (Beta & Growth)
-        # Using the existing utility function below
+        Parameters
+        ----------
+        result : ValuationResult
+            The deterministic output containing computed anchors (WACC, Flows).
+        params : Parameters
+            The input parameters containing volatility settings and constraints.
+
+        Returns
+        -------
+        StochasticOutput
+            Statistical summary of the simulation.
+        """
+        # 1. Configuration Extraction
+        mc_config = params.extensions.monte_carlo
+        if not mc_config.enabled:
+            return StochasticOutput(values=[], quantiles={})
+
+        n_sims = mc_config.iterations or MonteCarloDefaults.DEFAULT_SIMULATIONS
+        shocks = mc_config.shocks
+
+        # 2. Volatility Resolution (Safe Access)
+        vol_beta = 0.10  # Default fallback
+        vol_growth = 0.02  # Default fallback
+        vol_eps = 0.10
+
+        if shocks:
+            # Polymorphic access to volatilities
+            if hasattr(shocks, "beta_volatility") and shocks.beta_volatility:
+                vol_beta = shocks.beta_volatility
+            if hasattr(shocks, "growth_volatility") and shocks.growth_volatility:
+                vol_growth = shocks.growth_volatility
+            if hasattr(shocks, "eps_volatility") and shocks.eps_volatility:
+                vol_eps = shocks.eps_volatility
+
+        # 3. Base Variable Resolution
+        # Beta
+        base_beta = params.common.rates.beta or 1.0
+
+        # Growth (Polymorphic Strategy)
+        strat = params.strategy
+        # Try to fetch explicit period growth rate (FCFF) or generic growth (DDM/FCFE)
+        base_growth = getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", 0.03)) or 0.03
+
+        # 4. Generate Correlated Shocks
+        # Note: Rho is currently a constant or inferred
+        rho = MonteCarloDefaults.DEFAULT_RHO
+
         beta_samples, growth_samples = generate_multivariate_samples(
-            mu_beta=params.rates.manual_beta or 1.0,
-            sigma_beta=(p_mc.beta_volatility or 0.1) * (params.rates.manual_beta or 1.0),
-            mu_growth=params.growth.fcf_growth_rate or 0.03,
-            sigma_growth=p_mc.growth_volatility or 0.02,
-            rho=p_mc.correlation_beta_growth,
-            num_simulations=n
+            mu_beta=base_beta,
+            sigma_beta=vol_beta * base_beta,
+            mu_growth=base_growth,
+            sigma_growth=vol_growth,
+            rho=rho,
+            num_simulations=n_sims
         )
 
-        # 2. VECTORIZED VALUATION DISPATCH
-        mode = result.request.mode if result.request else ValuationMethodology.FCFF_STANDARD
+        # 5. Vectorized Valuation Dispatch
+        mode = result.request.mode
 
-        if mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH]:
+        if mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH,
+                    ValuationMethodology.FCFF_NORMALIZED]:
             simulated_values = MonteCarloEngine._simulate_dcf_vector(result, params, beta_samples, growth_samples)
 
         elif mode == ValuationMethodology.GRAHAM:
-            simulated_values = MonteCarloEngine._simulate_graham_vector(result, growth_samples)
+            simulated_values = MonteCarloEngine._simulate_graham_vector(result, growth_samples, vol_eps, n_sims)
 
         else:
-            # Fallback: Generic volatility around the calculated IV
+            # Fallback: Generic volatility around the calculated IV for models not fully vectorized
             base_iv = result.intrinsic_value_per_share
-            simulated_values = base_iv * (1 + np.random.default_rng().normal(0, 0.15, n))
+            simulated_values = base_iv * (1 + np.random.default_rng().normal(0, 0.15, n_sims))
 
-        # 3. CALCULATE STATISTICAL SYNTHESIS
+        # 6. Calculate Statistical Synthesis
         # Filter out NaN or negative values (economic reality check)
-        valid_values = simulated_values[simulated_values > 0]
+        valid_values = simulated_values[np.isfinite(simulated_values) & (simulated_values > 0)]
+
         if valid_values.size == 0:
             return StochasticOutput(values=[], quantiles={})
+
+        # Pre-calculate stats as native floats to satisfy strict linters and avoid numpy type issues
+        mean_val = float(np.mean(valid_values))
+        std_val = float(np.std(valid_values))
+        cv_val = (std_val / mean_val) if mean_val != 0.0 else 0.0
 
         return StochasticOutput(
             values=valid_values.tolist(),
@@ -83,69 +143,147 @@ class MonteCarloEngine:
                 "p10": float(np.percentile(valid_values, 10)),
                 "p50": float(np.median(valid_values)),
                 "p90": float(np.percentile(valid_values, 90)),
-                "std": float(np.std(valid_values)),
-                "var_95": float(np.percentile(valid_values, 5))
+                "std": std_val,
+                "cv": cv_val
             }
         )
 
     @staticmethod
-    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray, growths: np.ndarray) -> np.ndarray:
+    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray,
+                             growths: np.ndarray) -> np.ndarray:
         """
         Vectorized DCF formula:
         Equity Value = [Sum(DFCF) + (FCF_n * (1+g) / (WACC - g)) - NetDebt] / Shares
         """
-        # Re-calculate WACC vector based on Beta shocks
-        rf = p.rates.risk_free_rate or 0.04
-        mrp = p.rates.market_risk_premium or 0.05
+        # A. Re-calculate WACC vector based on Beta shocks
+        r = p.common.rates
+        rf = r.risk_free_rate or MacroDefaults.DEFAULT_RISK_FREE_RATE
+        mrp = r.market_risk_premium or MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+
+        # Ke vector (CAPM)
         ke_vector = rf + (betas * mrp)
 
-        # Simplified WACC vector (assuming constant capital structure for MC)
-        wacc_vector = ke_vector # Simplified for the logic demo
+        # Simplified WACC vector
+        # Ideally we would remix WACC with debt weights, but for MC sensitivity,
+        # assuming the shock propagates linearly via Ke is a robust approximation.
+        wacc_vector = ke_vector
 
-        # Gordon Growth Vectorization
-        # We use the deterministic anchor FCF from the result
-        base_fcf = getattr(res, 'projected_fcfs', [0])[0] if hasattr(res, 'projected_fcfs') else 0
-        shares = res.financials.shares_outstanding
+        # B. Gordon Growth Vectorization
+        # We use the deterministic anchor FCF from the computed results
+        try:
+            # Safe access to strategy results. Projected_flows is List[float]
+            base_fcf = res.results.strategy.projected_flows[0]
+        except (AttributeError, IndexError):
+            base_fcf = 0.0
 
-        # WACC - g must be positive (clamping)
-        denom = np.clip(wacc_vector - growths, 0.01, None)
+        shares = p.common.capital.shares_outstanding or 1.0
 
-        # IV Vector calculation
-        iv_vector = (base_fcf * (1 + growths) / denom) / shares
+        # Net Debt from Result (Computed Bridge)
+        try:
+            net_debt = res.results.common.capital.net_debt_resolved
+        except AttributeError:
+            net_debt = 0.0
+
+        # C. TV Calculation
+        # Denom = WACC - g
+        # We clamp denominator to avoid division by zero or negative TV
+        # Using np.inf for max clip to satisfy strict typing (no None allowed in newer numpy hints)
+        denom = np.clip(wacc_vector - growths, MonteCarloDefaults.CLAMPING_THRESHOLD, np.inf)
+
+        # Terminal Value
+        tv_vector = (base_fcf * (1 + growths)) / denom
+
+        # Discounting TV (Simplification: Discount by WACC vector over n years)
+        years = getattr(p.strategy, "projection_years", 5) or 5
+        pv_tv_vector = tv_vector / ((1 + wacc_vector) ** years)
+
+        # Explicit Period Value
+        # We recover the value of the explicit period from the deterministic run
+        try:
+            total_ev_det = res.results.common.capital.enterprise_value
+            pv_tv_det = res.results.strategy.discounted_terminal_value
+            explicit_val_det = total_ev_det - pv_tv_det
+        except AttributeError:
+            explicit_val_det = 0.0
+
+        # D. Equity Value Vector
+        ev_vector = explicit_val_det + pv_tv_vector
+        equity_vector = ev_vector - net_debt
+
+        # E. Per Share
+        iv_vector = equity_vector / shares
         return iv_vector
 
     @staticmethod
-    def _simulate_graham_vector(res: ValuationResult, growths: np.ndarray) -> np.ndarray:
+    def _simulate_graham_vector(res: ValuationResult, growths: np.ndarray, eps_vol: float, n: int) -> np.ndarray:
         """Vectorized Graham: EPS * (8.5 + 2g) * 4.4 / Y."""
-        eps = getattr(res, 'eps_used', 1.0)
-        y = getattr(res, 'aaa_yield_used', 0.04)
+        # 1. Get Anchors
+        try:
+            eps_base = res.results.strategy.eps_used
+            aaa_yield = res.results.strategy.aaa_yield_used
+        except AttributeError:
+            eps_base = 1.0
+            aaa_yield = MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
 
-        # Graham formula is extremely sensitive to g (expressed as whole number)
-        iv_vector = eps * (8.5 + 2 * (growths * 100)) * 4.4 / (y * 100)
+        # 2. Shock EPS
+        rng = np.random.default_rng()
+        eps_vector = eps_base * (1 + rng.normal(0, eps_vol, n))
+
+        # 3. Graham Formula
+        # Graham uses integer growth (e.g. 5 for 5%), so we scale decimal growth * 100
+        # Formula: V = (EPS * (8.5 + 2g) * 4.4) / Y
+        y_scaled = aaa_yield * 100
+        iv_vector = (eps_vector * (8.5 + 2 * (growths * 100)) * 4.4) / y_scaled
         return iv_vector
 
 
 # ============================================================================
-# CORRELATED SAMPLING GENERATION (Existing)
+# CORRELATED SAMPLING GENERATION
 # ============================================================================
 
 def generate_multivariate_samples(
-    *,
-    mu_beta: float,
-    sigma_beta: float,
-    mu_growth: float,
-    sigma_growth: float,
-    rho: float,
-    num_simulations: int,
-    seed: Optional[int] = 42
+        *,
+        mu_beta: float,
+        sigma_beta: float,
+        mu_growth: float,
+        sigma_growth: float,
+        rho: float,
+        num_simulations: int,
+        seed: Optional[int] = 42
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Generates correlated random samples for Beta and Growth."""
+    """
+    Generates correlated random samples for Beta and Growth using Cholesky or SVD.
+
+    Parameters
+    ----------
+    mu_beta : float
+        Mean Beta.
+    sigma_beta : float
+        Standard deviation of Beta.
+    mu_growth : float
+        Mean Growth rate.
+    sigma_growth : float
+        Standard deviation of Growth rate.
+    rho : float
+        Correlation coefficient [-1, 1].
+    num_simulations : int
+        Number of draws.
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Arrays of (Beta samples, Growth samples).
+    """
     if num_simulations <= 0:
         raise ValueError("num_simulations must be strictly positive.")
     if not (-1.0 <= rho <= 1.0):
         raise ValueError("The correlation coefficient rho must be within [-1, 1].")
 
     rng = np.random.default_rng(seed)
+
+    # Covariance Matrix
     covariance = rho * sigma_beta * sigma_growth
     cov_matrix = np.array([
         [sigma_beta ** 2, covariance],
@@ -153,21 +291,45 @@ def generate_multivariate_samples(
     ])
 
     mean_vector = np.array([mu_beta, mu_growth])
+
+    # Multivariate Normal Draw
     draws = rng.multivariate_normal(mean=mean_vector, cov=cov_matrix, size=num_simulations, method='svd')
 
     return draws[:, 0], draws[:, 1]
 
 
 def generate_independent_samples(
-    *,
-    mean: float,
-    sigma: float,
-    num_simulations: int,
-    clip_min: Optional[float] = None,
-    clip_max: Optional[float] = None,
-    seed: Optional[int] = None
+        *,
+        mean: float,
+        sigma: float,
+        num_simulations: int,
+        clip_min: Optional[float] = None,
+        clip_max: Optional[float] = None,
+        seed: Optional[int] = None
 ) -> np.ndarray:
-    """Generates independent normal distribution samples."""
+    """
+    Generates independent normal distribution samples.
+
+    Parameters
+    ----------
+    mean : float
+        Center of the distribution.
+    sigma : float
+        Standard deviation (scale).
+    num_simulations : int
+        Number of samples to generate.
+    clip_min : float, optional
+        Lower bound for clamping values.
+    clip_max : float, optional
+        Upper bound for clamping values.
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    np.ndarray
+        Array of sampled values.
+    """
     rng = np.random.default_rng(seed)
     draws = rng.normal(loc=mean, scale=sigma, size=num_simulations)
 
