@@ -6,11 +6,10 @@ GLASS BOX TRACEABILITY MODELS
 Role: Data structures for comprehensive valuation step tracking.
 Scope: Supports financial auditing, pedagogical rendering, and variable lineage.
 Architecture: Pydantic V2 containers for traceable calculation chains.
-
-Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 

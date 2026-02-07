@@ -1,10 +1,11 @@
 """
-src/models/parameters/ui_bridge.py
+src/models/parameters/input_metadata.py
 
-UI BINDING BRIDGE — Metadata for Model-UI synchronization.
-==========================================================
+UI BINDING METADATA
+===================
 Role: Defines the annotations used to link Pydantic fields to Streamlit keys.
 Scope: Domain Layer (No UI dependencies).
+Style: Numpy docstrings.
 """
 
 from dataclasses import dataclass
@@ -18,16 +19,19 @@ class UIKey:
     """
     Metadata container for UI field mapping.
 
+    Acts as a bridge between the rigorous Pydantic domain models and the
+    stateful, flat structure of the Streamlit interface.
+
     Attributes
     ----------
     suffix : str
-        The unique part of the Streamlit session_state key.
+        The unique identifier suffix used in the Streamlit session_state key.
     scale : UIScale, optional
-        The mathematical scale of the input.
-        - "pct": Human percentage (5.0) to be normalized (0.05).
-        - "million": Scaled from millions to absolute units.
+        The mathematical transformation to apply to the input.
+        - "Pct": Converts human-readable percentages (e.g., 5.0) to decimal (0.05).
+        - "million": Scales input from millions (e.g., 100) to absolute units (100,000,000).
         - "raw": No transformation applied.
-        Default is "raw".
+        The default is "raw".
     """
     suffix: str
     scale: UIScale = "raw"

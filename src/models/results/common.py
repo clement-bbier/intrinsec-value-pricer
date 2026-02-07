@@ -6,39 +6,74 @@ UNIVERSAL VALUATION OUTPUTS (PURE CALCULATION)
 Role: Stores ONLY the generated values from the resolution engines.
 Scope: Calculated WACC, Bridge Totals, and Final Synthesis.
 Architecture: Pydantic V2. Zero redundancy with Parameters or Company.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from src.models.glass_box import CalculationStep
 
+
 class ResolvedRates(BaseModel):
-    """Calculated financial outcomes for the discounting environment."""
-    # Ces valeurs sont des RÉSULTATS car elles sont issues de la "danse" (WACC/Ke)
+    """
+    Calculated financial outcomes for the discounting environment.
+
+    Attributes
+    ----------
+    cost_of_equity : float
+        Calculated Cost of Equity (Ke) via CAPM or Build-Up.
+    cost_of_debt_after_tax : float
+        Effective Cost of Debt (Kd) after applying the tax shield.
+    wacc : float
+        Weighted Average Cost of Capital used for discounting FCFF.
+    corporate_aaa_yield : float | None
+        The benchmark yield used for Graham valuation (if applicable).
+    """
     cost_of_equity: float = Field(..., description="Calculated Ke (CAPM result).")
     cost_of_debt_after_tax: float = Field(..., description="Resolved Kd after tax shield.")
     wacc: float = Field(..., description="Final WACC result.")
-
-    # Graham specific yield (if resolved from market)
     corporate_aaa_yield: Optional[float] = None
 
+
 class ResolvedCapital(BaseModel):
-    """The numeric outcomes of the Equity Bridge calculation."""
-    # On ne stocke que les TOTAUX calculés.
-    # Les briques (dette, cash) sont dans Company/Parameters.
+    """
+    The numeric outcomes of the Equity Bridge calculation.
+
+    Attributes
+    ----------
+    market_cap : float
+        Market Capitalization (Price x Shares) used as a witness.
+    enterprise_value : float
+        The core Operating Value derived from the DCF/Model.
+    net_debt_resolved : float
+        Calculated Net Debt (Total Debt - Cash & Equivalents).
+    equity_value_total : float
+        Final Intrinsic Equity Value (Enterprise Value - Net Debt).
+    """
     market_cap: float = Field(..., description="Price x Shares (Market Witness).")
     enterprise_value: float = Field(..., description="Operating value result from the engine.")
     net_debt_resolved: float = Field(..., description="Calculated Net Debt (Total Debt - Cash).")
     equity_value_total: float = Field(..., description="Final Intrinsic Equity Value.")
 
+
 class CommonResults(BaseModel):
     """
     Main container for shared valuation outputs.
 
-    To display the bridge details (Minorities, etc.), the UI uses:
-    1. bridge_trace (for values used)
-    2. result.params (for inputs/overrides)
+    Attributes
+    ----------
+    rates : ResolvedRates
+        The WACC and discount rates used in the model.
+    capital : ResolvedCapital
+        The bridge from Enterprise Value to Equity Value.
+    intrinsic_value_per_share : float
+        The final value per share (Equity Value / Shares Outstanding).
+    upside_pct : float
+        The potential upside vs market price (expressed as a decimal, e.g., 0.15 for 15%).
+    bridge_trace : List[CalculationStep]
+        The step-by-step audit trail of the Equity Bridge calculation.
     """
     rates: ResolvedRates
     capital: ResolvedCapital

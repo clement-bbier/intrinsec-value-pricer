@@ -4,7 +4,7 @@ infra/macro/default_macro_provider.py
 
 from src.models.company import CompanySnapshot
 from .base_macro_provider import MacroDataProvider
-from infra.ref_data.country_matrix import get_country_context  #
+from infra.ref_data.country_matrix import get_country_context
 
 
 class DefaultMacroProvider(MacroDataProvider):
@@ -13,10 +13,10 @@ class DefaultMacroProvider(MacroDataProvider):
     """
 
     def hydrate_macro_data(self, snapshot: CompanySnapshot) -> CompanySnapshot:
-        # 1. Résolution du contexte pays via ta matrice
+        # 1. Resolve country context using the local matrix
         context = get_country_context(snapshot.country)
 
-        # 2. Injection directe dans le Snapshot (Pas de calcul ici)
+        # 2. Direct injection into the Snapshot (No calculation here)
         snapshot.risk_free_rate = context.get("risk_free_rate")
         snapshot.market_risk_premium = context.get("market_risk_premium")
         snapshot.tax_rate = context.get("tax_rate")

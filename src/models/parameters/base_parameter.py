@@ -1,16 +1,16 @@
 """
-src/models/params/base_parameter.py
+src/models/parameters/base_parameter.py
 
-ROOT PARAMETERS CONTAINER (THE INPUT BUNDLE)
-============================================
+ROOT PARAMETERS CONTAINER
+=========================
 Role: Central orchestrator for all valuation inputs.
 Scope: Aggregates Identity, Common Levers, Strategy, and Extensions.
-Architecture: Pydantic V2. This is the primary object passed to Calculation Engines.
-
+Architecture: Pydantic V2.
 Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from src.models.company import Company
@@ -23,8 +23,20 @@ class Parameters(BaseModel):
     """
     Unified container for a complete valuation session's inputs.
 
-    This model follows the 'Ghost Architecture' where fields start as None
-    to allow for a traceable resolution between User, Provider, and Fallback.
+    This model follows the 'Ghost Architecture': fields start as None
+    to allow for a traceable resolution between User inputs, Provider data,
+    and Defaults.
+
+    Attributes
+    ----------
+    structure : Company
+        Static company identity and market witness price (Ticker, Name, Price).
+    common : CommonParameters
+        Universal inputs for WACC (Rates) and Equity Bridge (Debt/Cash) calculation.
+    strategy : StrategyUnionParameters
+        Specific inputs for the selected valuation model (Polymorphic).
+    extensions : ExtensionBundleParameters
+        Configuration for Monte Carlo, Scenarios, Peers, and SOTP.
     """
 
     # --- Pillar 1: Identity (Frozen/Static) ---
@@ -40,7 +52,7 @@ class Parameters(BaseModel):
 
     # --- Pillar 3: Methodology (The Core Strategy) ---
     strategy: StrategyUnionParameters = Field(
-        description="Specific inputs for the selected valuation model (e.g., DCF, Graham)."
+        description="Specific inputs for the selected valuation model."
     )
 
     # --- Pillar 4: Analytical Options (Optional Modules) ---

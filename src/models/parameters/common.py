@@ -5,61 +5,75 @@ UNIVERSAL VALUATION LEVERS
 ==========================
 Role: Shared input parameters for financial rates and capital structure.
 Architecture: Pydantic V2 with automated scaling via BaseNormalizedModel.
-Note: Fixed Pylance "special object" error by removing redundant @classmethod.
+Style: Numpy docstrings.
 """
 
 from __future__ import annotations
-from typing import Optional, Annotated, Any
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
-from src.models.parameters.ui_bridge import UIKey
+from typing import Optional, Annotated, Any
+from pydantic import BaseModel, Field, model_validator
+
+from src.models.parameters.input_metadata import UIKey
+
 
 class BaseNormalizedModel(BaseModel):
     """
     Base class providing automated scaling based on UIKey metadata.
 
-    This class introspects field annotations to apply percentages
-    or millions scaling before Pydantic validation.
+    Introspects field annotations to automatically apply percentage (100x)
+    or magnitude (1M x) scaling before validation occurs.
     """
-    @classmethod
-    @field_validator("*", mode="before")
-    def _apply_ui_scaling(cls, v: Any, info: ValidationInfo) -> Any:
-        """
-        Applies mathematical scaling based on UIKey 'scale' attribute.
 
-        Note: Implicitly a class method in Pydantic V2.
+    @model_validator(mode="before") # noqa
+    @classmethod
+    def apply_ui_scaling(cls, data: Any) -> Any:
+        """
+        Global pre-validator that scales inputs based on UIKey annotations.
+
+        This runs once for the whole model, satisfying both Pydantic V2
+        requirements and IDE static analysis (valid classmethod).
 
         Parameters
         ----------
-        v : Any
-            The raw value to be scaled.
-        info : ValidationInfo
-            Pydantic context containing the field name.
+        data : Any
+            The raw input dictionary.
 
         Returns
         -------
         Any
-            Scaled value (e.g., 5.0 -> 0.05 for pct).
+            The dictionary with scaled values.
         """
-        if v is None or not isinstance(v, (int, float)):
-            return v
+        if not isinstance(data, dict):
+            return data
 
-        field_def = cls.model_fields.get(info.field_name)
-        if not field_def:
-            return v
+        # Iterate over inputs to find fields needing scaling
+        for field_name, value in data.items():
+            # Skip empty or non-numeric values
+            if value is None or not isinstance(value, (int, float)):
+                continue
 
-        # Extract UIKey from Annotated metadata
-        ui_meta = next((m for m in field_def.metadata if isinstance(m, UIKey)), None)
-        if not ui_meta:
-            return v
+            # Retrieve field definition from the Pydantic model
+            field_def = cls.model_fields.get(field_name)
+            if not field_def:
+                continue
 
-        if ui_meta.scale == "pct":
-            # Guard: only divide if value is human-readable (>1 or <-1)
-            return v / 100.0 if abs(v) > 1.0 else v
-        elif ui_meta.scale == "million":
-            return v * 1_000_000.0
+            # Look for UIKey in the metadata
+            ui_meta = next((m for m in field_def.metadata if isinstance(m, UIKey)), None)
+            if not ui_meta:
+                continue
 
-        return v
+            # Apply scaling logic
+            if ui_meta.scale == "pct":
+                # Logic: If user types "5", they mean 5%. If "0.05", it stays 0.05.
+                if abs(value) > 1.0:
+                    data[field_name] = value / 100.0
+
+            elif ui_meta.scale == "million":
+                # Logic: 100 (entered as M) -> 100,000,000
+                data[field_name] = value * 1_000_000.0
+
+        return data
+
 
 class FinancialRatesParameters(BaseNormalizedModel):
     """
@@ -67,12 +81,18 @@ class FinancialRatesParameters(BaseNormalizedModel):
 
     Attributes
     ----------
-    risk_free_rate : float, optional
+    risk_free_rate : float | None
         The theoretical rate of return of an investment with zero risk.
-    market_risk_premium : float, optional
-        Difference between expected market return and risk-free rate.
-    beta : float, optional
-        Measure of a stock's volatility in relation to the market.
+    market_risk_premium : float | None
+        The excess return expected from the market portfolio over the risk-free rate.
+    beta : float | None
+        A measure of the stock's volatility in relation to the overall market.
+    cost_of_debt : float | None
+        The effective rate that a company pays on its debt (Pre-tax).
+    tax_rate : float | None
+        The marginal corporate tax rate used to calculate the tax shield.
+    corporate_aaa_yield : float | None
+        The benchmark yield for high-grade corporate bonds (used in Graham formulas).
     """
     risk_free_rate: Annotated[Optional[float], UIKey("rf", scale="pct")] = None
     market_risk_premium: Annotated[Optional[float], UIKey("mrp", scale="pct")] = None
@@ -81,16 +101,25 @@ class FinancialRatesParameters(BaseNormalizedModel):
     tax_rate: Annotated[Optional[float], UIKey("tax", scale="pct")] = None
     corporate_aaa_yield: Annotated[Optional[float], UIKey("yield_aaa", scale="pct")] = None
 
+
 class CapitalStructureParameters(BaseNormalizedModel):
     """
     Universal balance sheet and equity bridge components.
 
     Attributes
     ----------
-    total_debt : float, optional
-        Total interest-bearing liabilities in absolute units.
-    shares_outstanding : float, optional
-        Total number of shares for per-share calculation.
+    total_debt : float | None
+        Total interest-bearing liabilities (Short + Long Term).
+    cash_and_equivalents : float | None
+        Liquid assets available to offset debt (Cash, Marketable Securities).
+    minority_interests : float | None
+        Value of the portion of subsidiaries not owned by the parent company.
+    pension_provisions : float | None
+        Unfunded pension obligations treated as debt-equivalents.
+    shares_outstanding : float | None
+        Total number of shares used to calculate per-share intrinsic value.
+    annual_dilution_rate : float | None
+        Expected annual increase in share count due to SBC (Stock-Based Compensation).
     """
     total_debt: Annotated[Optional[float], UIKey("debt", scale="million")] = None
     cash_and_equivalents: Annotated[Optional[float], UIKey("cash", scale="million")] = None
@@ -99,7 +128,17 @@ class CapitalStructureParameters(BaseNormalizedModel):
     shares_outstanding: Annotated[Optional[float], UIKey("shares", scale="million")] = None
     annual_dilution_rate: Annotated[Optional[float], UIKey("sbc_rate", scale="pct")] = None
 
+
 class CommonParameters(BaseModel):
-    """Main container for shared valuation inputs."""
+    """
+    Main container for shared valuation inputs.
+
+    Attributes
+    ----------
+    rates : FinancialRatesParameters
+        Discounting and WACC components.
+    capital : CapitalStructureParameters
+        Equity bridge and share count components.
+    """
     rates: FinancialRatesParameters = Field(default_factory=FinancialRatesParameters)
     capital: CapitalStructureParameters = Field(default_factory=CapitalStructureParameters)

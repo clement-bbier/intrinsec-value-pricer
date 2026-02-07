@@ -14,9 +14,12 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
 
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict
+
+from src.models.enums import CompanySector
 
 class Company(BaseModel):
     """
@@ -25,16 +28,33 @@ class Company(BaseModel):
     This class is stored in Parameters.structure. It contains only
     descriptive metadata used for UI display and audit reports,
     ensuring no calculation data is duplicated.
+
+    Attributes
+    ----------
+    ticker : str
+        Stock symbol (e.g., "AAPL").
+    name : str
+        Legal entity name.
+    sector : CompanySector
+        GICS sector classification used for industry multiples fallback.
+    current_price : float
+        Current share price (Reference Witness).
     """
     model_config = ConfigDict(frozen=True)
 
     ticker: str
-    name: Optional[str] = None
-    sector: Optional[str] = None
+    name: str = "Unknown Entity"
+    sector: CompanySector = Field(default=CompanySector.UNKNOWN)
     industry: Optional[str] = None
     country: Optional[str] = None
-    currency: Optional[str] = None
-    current_price: Optional[float] = None
+    currency: str = "USD"
+    current_price: float = Field(default=0.0, ge=0)
+    last_update: datetime = Field(default_factory=datetime.now)
+
+    @property
+    def display_name(self) -> str:
+        """Returns a formatted label 'Ticker - Name'."""
+        return f"{self.ticker} - {self.name}"
 
 
 class CompanySnapshot(BaseModel):
@@ -79,8 +99,7 @@ class CompanySnapshot(BaseModel):
     sector_ev_ebitda_fallback: Optional[float] = None
     sector_ev_rev_fallback: Optional[float] = None
 
-    # --- 3. Raw Macro Context (Macro) ---
-    # Aggregated from MacroProvider to provide a single source for the Resolver
+    # --- 4. Raw Macro Context (Macro) ---
     risk_free_rate: Optional[float] = None
     market_risk_premium: Optional[float] = None
     tax_rate: Optional[float] = None

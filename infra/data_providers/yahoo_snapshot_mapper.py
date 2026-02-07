@@ -66,18 +66,15 @@ class YahooSnapshotMapper:
         bs = raw.balance_sheet
         snapshot.total_debt = extract_most_recent_value(bs, DEBT_KEYS)
         snapshot.cash_and_equivalents = extract_most_recent_value(bs, ["Cash And Cash Equivalents"])
-        snapshot.minority_interests = extract_most_recent_value(bs, ["Minority Interest"])  # Crucial
-        snapshot.pension_provisions = extract_most_recent_value(bs, ["Long Term Provisions"])  # Crucial
+        snapshot.minority_interests = extract_most_recent_value(bs, ["Minority Interest"])
+        snapshot.pension_provisions = extract_most_recent_value(bs, ["Long Term Provisions"])
         snapshot.shares_outstanding = float(info.get("sharesOutstanding") or 1.0)
-        snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"])  # Pour Kd
+        snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"]) # For Cost of Debt
 
         # TTM Reconstruction (Pillar 3)
-        snapshot.revenue_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"]) or info.get(
-            "totalRevenue")
-        snapshot.ebit_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"]) or info.get(
-            "operatingCashflow")
-        snapshot.net_income_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"]) or info.get(
-            "netIncomeToCommon")
+        snapshot.revenue_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"]) or info.get("totalRevenue")
+        snapshot.ebit_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"]) or info.get("operatingCashflow")
+        snapshot.net_income_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"]) or info.get("netIncomeToCommon")
 
         ocf = self._sum_last_4_quarters(raw.quarterly_cash_flow, OCF_KEYS)
         capex = self._sum_last_4_quarters(raw.quarterly_cash_flow, CAPEX_KEYS)

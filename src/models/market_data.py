@@ -6,11 +6,11 @@ MARKET DATA MODELS
 Role: Containers for external market data, peer groups, and multiples.
 Scope: Used by PeersRunner for relative valuation triangulation.
 Architecture: Pydantic V2 DTOs.
-
 Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -18,6 +18,19 @@ from pydantic import BaseModel, Field
 class PeerMetric(BaseModel):
     """
     Represents a single peer in the comparative analysis.
+
+    Attributes
+    ----------
+    ticker : str
+        Stock symbol.
+    company_name : str | None
+        Legal name of the peer company.
+    pe_ratio : float | None
+        Price to Earnings ratio.
+    ev_ebitda : float | None
+        Enterprise Value to EBITDA ratio.
+    ev_revenue : float | None
+        Enterprise Value to Revenue ratio.
     """
     ticker: str
     company_name: Optional[str] = None

@@ -18,7 +18,7 @@ from src.models.company import CompanySnapshot
 from infra.macro.base_macro_provider import MacroDataProvider
 from .yahoo_raw_fetcher import YahooRawFetcher
 from .yahoo_snapshot_mapper import YahooSnapshotMapper
-from ..ref_data.sector_fallback import get_sector_data
+from infra.ref_data.sector_fallback import get_sector_data
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +46,12 @@ def _get_cached_snapshot(
         snapshot = _mapper.map_to_snapshot(raw_data)
 
         # 3. Sector Fallback Enrichment (Knowledge Base)
-        s_data = get_sector_data(snapshot.sector, snapshot.sector)
-        snapshot.sector_pe_fallback = s_data.get("pe_ratio")
-        snapshot.sector_ev_ebitda_fallback = s_data.get("ev_ebitda")
-        snapshot.sector_ev_rev_fallback = s_data.get("ev_revenue")
+        # Note: s_data is now a strongly typed SectorBenchmarks object (not a dict)
+        s_data = get_sector_data(snapshot.industry, snapshot.sector)
+
+        snapshot.sector_pe_fallback = s_data.pe_ratio
+        snapshot.sector_ev_ebitda_fallback = s_data.ev_ebitda
+        snapshot.sector_ev_rev_fallback = s_data.ev_revenue
 
         # 4. Macro Hydration
         return _macro_provider.hydrate_macro_data(snapshot)
@@ -62,8 +64,6 @@ def _get_cached_snapshot(
 class YahooFinancialProvider(FinancialDataProvider):
     """
     Orchestrates the data acquisition pipeline.
-
-    This class is now PEP 8 compliant and IDE-friendly.
     """
 
     def __init__(self, macro_provider: MacroDataProvider):
