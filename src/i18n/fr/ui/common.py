@@ -40,6 +40,8 @@ class CommonTexts:
     AUTO_VALUE_IGNORED = "Valeur auto ignorée"
     INTERPRETATION_LABEL = "Note d'analyse"
 
+    CURRENCY = "Devise"
+
     SOURCE_LABELS = {
         VariableSource.YAHOO_FINANCE: "Yahoo Finance",
         VariableSource.MACRO_PROVIDER: "Données Macro",
@@ -150,3 +152,4 @@ class UIMessages:
     PDF_SUCCESS = "Le rapport est prêt pour l'archivage."
     PDF_UNAVAILABLE = "Module d'exportation non détecté sur l'instance courante."
     PDF_ERROR = "Erreur lors de la génération du flux PDF."
+

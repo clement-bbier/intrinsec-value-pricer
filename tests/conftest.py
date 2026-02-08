@@ -1,220 +1,87 @@
 """
 tests/conftest.py
-Fixtures partagées pour toute la suite de tests.
 
-Ces fixtures fournissent des données de test réutilisables.
-Elles sont automatiquement disponibles dans tous les fichiers de test.
+SHARED TEST FIXTURES
+====================
+Role: Provides distinct reusable data objects for testing.
+Scope: Global (available to all tests automatically).
 """
 
 import pytest
-from src.models import (
-    Company,
-    Parameters,
-    CoreRateParameters,
-    GrowthParameters,
-    MonteCarloParameters,
-    ValuationMethodology,
-    ParametersSource,
-    ValuationRequest,
-    SOTPParameters,
-    ScenarioParameters,
-)
-import streamlit as st
+from datetime import datetime
 
-st.cache_data = lambda **kwargs: lambda f: f
-st.cache_resource = lambda **kwargs: lambda f: f
-
-# =============================================================================
-# FIXTURES DE DONNÉES FINANCIÈRES
-# =============================================================================
+from src.models.company import Company, CompanySnapshot
+from src.models.valuation import ValuationRequest
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFFStandardParameters
+from src.models.enums import ValuationMethodology, CompanySector
 
 @pytest.fixture
-def sample_financials():
-    """
-    Fixture de données financières complètes pour les tests.
-
-    Représente une entreprise Tech typique avec :
-    - Prix actuel : 100 USD
-    - Market Cap : 100M USD
-    - FCF : 10M USD (yield 10%)
-    - Levier modéré (20M dette)
-    """
+def mock_apple_identity():
+    """Returns a basic identity for Apple Inc."""
     return Company(
-        ticker="TEST",
+        ticker="AAPL",
+        name="Apple Inc.",
+        sector=CompanySector.TECHNOLOGY,
+        current_price=150.0,
         currency="USD",
+        last_update=datetime.now()
+    )
+
+@pytest.fixture
+def mock_apple_snapshot():
+    """
+    A 'Golden Dataset' representing a robust, profitable tech company.
+    Based on rough 2023 figures for realism.
+    """
+    return CompanySnapshot(
+        ticker="AAPL",
+        name="Apple Inc.",
         sector="Technology",
-        industry="Software",
-        country="United States",
-        current_price=100.0,
-        shares_outstanding=1_000_000,
-        total_debt=20_000_000,
-        cash_and_equivalents=5_000_000,
-        interest_expense=1_000_000,
+        current_price=150.0,
+
+        # Balance Sheet (Micro)
+        total_debt=120_000.0,          # $120B
+        cash_and_equivalents=50_000.0, # $50B
+        shares_outstanding=16_000.0,   # 16B shares
+
+        # Income Statement (Micro)
+        revenue_ttm=380_000.0,         # $380B
+        ebit_ttm=110_000.0,            # $110B
+        net_income_ttm=95_000.0,       # $95B
+        interest_expense=3_000.0,      # $3B
+
+        # Cash Flow (Micro)
+        fcf_ttm=100_000.0,             # $100B
+        capex_ttm=10_000.0,            # $10B
+
+        # Macro / Market
         beta=1.2,
-        fcf_last=10_000_000,
-        fcf_fundamental_smoothed=9_500_000,
-        # Champs optionnels pour tests Graham/DDM/RIM
-        # Note: Noms de champs selon le modèle réel
-        eps_ttm=5.0,
-        book_value_per_share=30.0,
-        dividend_share=2.0,  # Pas dividend_per_share
-        revenue_ttm=100_000_000,
-        net_income_ttm=15_000_000,
+        risk_free_rate=0.04,           # 4%
+        market_risk_premium=0.05,      # 5%
+        tax_rate=0.21                  # 21%
     )
 
-
 @pytest.fixture
-def sample_financials_minimal():
-    """Fixture avec le minimum de données requis."""
-    return Company(
-        ticker="MIN",
-        currency="USD",
-        current_price=50.0,
-        shares_outstanding=500_000,
-    )
-
-
-@pytest.fixture
-def sample_financials_bank():
-    """Fixture pour tests de valorisation bancaire (RIM)."""
-    return Company(
-        ticker="BANK",
-        currency="USD",
-        sector="Financial Services",
-        industry="Banks",
-        country="United States",
-        current_price=45.0,
-        shares_outstanding=2_000_000,
-        total_debt=0,  # Les banques ont une structure différente
-        cash_and_equivalents=100_000_000,
-        beta=1.1,
-        eps_ttm=4.5,
-        book_value_per_share=40.0,
-        net_income_ttm=9_000_000,
-    )
-
-
-# =============================================================================
-# FIXTURES DE PARAMÈTRES
-# =============================================================================
-
-@pytest.fixture
-def sample_params():
+def fcff_request_standard(mock_apple_identity):
     """
-    Fixture de paramètres DCF standard.
-
-    Architecture segmentée V9.0+ avec :
-    - Rf = 4%, MRP = 5% → Ke ≈ 10%
-    - Croissance FCF = 5%, g terminal = 2%
-    - Monte Carlo désactivé
+    A valid request for a Standard FCFF Valuation.
     """
-    return Parameters(
-        rates=CoreRateParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.05,
-            cost_of_debt=0.06,
-            tax_rate=0.25
-        ),
-        growth=GrowthParameters(
-            fcf_growth_rate=0.05,
-            perpetual_growth_rate=0.02,
-            projection_years=5,
-            annual_dilution_rate=0.02
-        ),
-        monte_carlo=MonteCarloParameters(
-            enabled=False
-        ),
-        sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
-    )
-
-
-@pytest.fixture
-def sample_params_monte_carlo():
-    """Fixture avec Monte Carlo activé (petit échantillon pour tests)."""
-    return Parameters(
-        rates=CoreRateParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.05,
-        ),
-        growth=GrowthParameters(
-            fcf_growth_rate=0.05,
-            perpetual_growth_rate=0.02,
-            projection_years=5,
-        ),
-        monte_carlo=MonteCarloParameters(
-            enabled=True,
-            num_simulations=100,  # Petit pour tests rapides
-        ),
-        sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
-    )
-
-
-@pytest.fixture
-def sample_params_pessimistic():
-    """Fixture de paramètres pessimistes."""
-    return Parameters(
-        rates=CoreRateParameters(
-            risk_free_rate=0.05,
-            market_risk_premium=0.07,  # MRP élevé
-            cost_of_debt=0.08,
-            tax_rate=0.30,
-        ),
-        growth=GrowthParameters(
-            fcf_growth_rate=0.02,  # Croissance faible
-            perpetual_growth_rate=0.01,
-            projection_years=5,
-        ),
-        monte_carlo=MonteCarloParameters(enabled=False),
-        sotp=SOTPParameters(enabled=False),
-        scenarios=ScenarioParameters(enabled=False),
-    )
-
-
-# =============================================================================
-# FIXTURES DE REQUÊTES
-# =============================================================================
-
-@pytest.fixture
-def sample_request_auto(sample_params):
-    """Requête de valorisation mode Auto."""
-    return ValuationRequest(
-        ticker="TEST",
+    # 1. Create Empty Strategy Params (Ghost)
+    strategy_params = FCFFStandardParameters(
         projection_years=5,
-        mode=ValuationMethodology.FCFF_STANDARD,
-        input_source=ParametersSource.AUTO,
-        params=sample_params,
+        growth_rate_p1=0.05, # 5% growth override
     )
 
+    # 2. Bundle into global Parameters
+    params = Parameters(
+        structure=mock_apple_identity,
+        strategy=strategy_params
+        # Extensions are default (None/False)
+    )
 
-@pytest.fixture
-def sample_request_expert(sample_params):
-    """Requête de valorisation mode Expert."""
+    # 3. Wrap in Request
     return ValuationRequest(
-        ticker="TEST",
-        projection_years=5,
         mode=ValuationMethodology.FCFF_STANDARD,
-        input_source=ParametersSource.MANUAL,
-        params=sample_params,
+        parameters=params
     )
-
-
-# =============================================================================
-# FIXTURES UTILITAIRES
-# =============================================================================
-
-@pytest.fixture
-def all_valuation_modes():
-    """Liste de tous les modes de valorisation."""
-    return list(ValuationMethodology)
-
-
-@pytest.fixture
-def dcf_modes():
-    """Modes DCF uniquement."""
-    return [
-        ValuationMethodology.FCFF_STANDARD,
-        ValuationMethodology.FCFF_NORMALIZED,
-        ValuationMethodology.FCFF_GROWTH,
-    ]

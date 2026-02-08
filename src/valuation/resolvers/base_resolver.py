@@ -122,36 +122,46 @@ class Resolver:
         """
         strat = params.strategy
 
+        # --- FCFF STANDARD ---
         if isinstance(strat, FCFFStandardParameters):
+            # Le FCFF Standard a besoin du FCF TTM comme point de départ
             strat.fcf_anchor = self._pick(strat.fcf_anchor, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
-            strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, 0.0)
-            strat.capex_ttm = self._pick(strat.capex_ttm, snap.capex_ttm, 0.0)
+            # Il n'utilise PAS ebit_ttm ni capex_ttm directement dans les paramètres de la stratégie
+            # (Ces données servent au WACC qui est déjà résolu dans _resolve_common)
 
+        # --- FCFF NORMALIZED ---
         elif isinstance(strat, FCFFNormalizedParameters):
-            # Normalization logic often requires complex averaging, here we pick provided or default
+            # Besoin du FCF lissé (ou TTM par défaut)
             strat.fcf_norm = self._pick(strat.fcf_norm, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
-            strat.ebit_norm = self._pick(strat.ebit_norm, snap.ebit_ttm, 0.0)
+            # Idem, pas d'EBIT norm ici
 
+        # --- FCFF GROWTH (Top-Down) ---
         elif isinstance(strat, FCFFGrowthParameters):
+            # Lui a besoin du CA pour projeter les marges
             strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, 0.0)
-            strat.ebitda_ttm = self._pick(strat.ebitda_ttm, snap.ebitda_ttm, 0.0)
+            # Et de l'EBITDA/EBIT pour la marge initiale
+            if hasattr(strat, 'ebit_ttm'):
+                 strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, 0.0)
 
+        # --- DDM ---
         elif isinstance(strat, DDMParameters):
             strat.dividend_per_share = self._pick(strat.dividend_per_share, snap.dividend_share, ModelDefaults.DEFAULT_DIVIDEND_PS)
             strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
 
+        # --- RIM (Banks) ---
         elif isinstance(strat, RIMParameters):
             strat.book_value_anchor = self._pick(strat.book_value_anchor, snap.book_value_ps, ModelDefaults.DEFAULT_BOOK_VALUE_PS)
             strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, 0.0)
             strat.persistence_factor = self._pick(strat.persistence_factor, None, ModelDefaults.DEFAULT_PERSISTENCE_FACTOR)
 
+        # --- FCFE ---
         elif isinstance(strat, FCFEParameters):
             strat.fcfe_anchor = self._pick(strat.fcfe_anchor, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
             strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
 
+        # --- GRAHAM ---
         elif isinstance(strat, GrahamParameters):
             strat.eps_normalized = self._pick(strat.eps_normalized, snap.eps_ttm, ModelDefaults.DEFAULT_EPS_TTM)
-            strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, 0.0)
 
     @staticmethod
     def _pick(user_val: Optional[Any], provider_val: Optional[Any], fallback: Any) -> Any:

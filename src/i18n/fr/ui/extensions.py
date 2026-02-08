@@ -90,3 +90,8 @@ class SOTPTexts:
     METRIC_NET_VALUE = "Valeur Nette SOTP"
 
     LBL_SEGMENT_CONTRIBUTION = "Contribution"
+
+class ExtensionTexts:
+    TITLE = "Extensions & Analyses"
+    MONTE_CARLO = "Simulation Monte Carlo"
+    SENSITIVITY = "Analyse de Sensibilité"

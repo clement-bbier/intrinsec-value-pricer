@@ -65,6 +65,9 @@ class CompanySnapshot(BaseModel):
     and Macro (Market) data. It is used exclusively as a bridge between
     Data Providers and the Resolver.
     """
+
+    model_config = ConfigDict(extra='ignore', arbitrary_types_allowed=True)
+
     # --- 1. Identity Trace ---
     ticker: str
     name: Optional[str] = None
@@ -93,6 +96,7 @@ class CompanySnapshot(BaseModel):
     dividend_share: Optional[float] = None
     book_value_ps: Optional[float] = None
     beta: Optional[float] = None
+    capex_ttm: Optional[float] = None
 
     # --- 3. Knowledge Base Fallbacks ---
     sector_pe_fallback: Optional[float] = None

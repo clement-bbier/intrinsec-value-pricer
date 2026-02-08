@@ -19,3 +19,6 @@ class SidebarTexts:
     SOURCE_AUTO = "Standard (via Yahoo Finance)"
     SOURCE_EXPERT = "Approfondi (Paramétrage Manuel)"
     SOURCE_OPTIONS = [SOURCE_AUTO, SOURCE_EXPERT]
+
+    SETTINGS = "Paramètres"
+    DATA_SOURCE = "Source de données"

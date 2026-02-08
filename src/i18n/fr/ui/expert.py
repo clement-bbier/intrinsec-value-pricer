@@ -343,3 +343,8 @@ class DDMTexts(SharedTexts):
     STEP_2_TITLE = "#### Étape 2 : Dynamique de Croissance"
     STEP_2_DESC = "Projection de la croissance du dividende (g) sur l'horizon explicite."
     NOTE_DDM_SGR = "Note : Le taux de croissance soutenable (SGR) peut être estimé par : ROE × (1 - Payout)."
+
+class ExpertTexts:
+    TITLE = "Mode Expert"
+    SUBTITLE = "Configuration avancée des paramètres"
+

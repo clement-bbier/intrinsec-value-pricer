@@ -266,3 +266,7 @@ class ChartTexts:
     SIM_AXIS_Y = "Densité de Probabilité"
     SENS_TITLE = "Sensibilité WACC / Croissance"
     CORREL_CAPTION = "Matrice de Corrélation des Inputs"
+
+class ResultsTexts:
+    TITLE = "Résultats de Valorisation"
+    VALUATION_SUMMARY = "Synthèse"

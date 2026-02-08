@@ -1,24 +1,30 @@
 """
 src/i18n/fr/backend/models.py
-Textes i18n pour les modèles de données du domaine financier.
-
-Centralise toutes les chaînes de caractères utilisées dans les modèles Pydantic
-(labels, messages de validation, descriptions) pour faciliter l'internationalisation.
 """
-
 from dataclasses import dataclass
-
 
 @dataclass(frozen=True)
 class ModelValidationTexts:
-    """Messages de validation pour les modèles de données."""
-
     SCENARIO_PROBABILITIES_SUM_ERROR: str = (
         "La somme des probabilités (Bull+Base+Bear) doit être égale à 1.0."
     )
 
-
-# Instance globale pour faciliter les imports
 MODEL_VALIDATION_TEXTS = ModelValidationTexts()
 
-__all__ = ["ModelValidationTexts", "MODEL_VALIDATION_TEXTS"]
+class ModelTexts:
+    DEFAULT_NAME = "Entité Inconnue"
+
+class KPITexts:
+    LABEL_DEBT = "Dette Totale"
+    LABEL_CASH = "Trésorerie & Équivalents"
+    LABEL_MINORITIES = "Intérêts Minoritaires"
+    LABEL_PENSIONS = "Provisions pour Retraites"
+    LABEL_EQUITY = "Valeur des Capitaux Propres"
+
+class SOTPTexts:
+    """Textes spécifiques à la méthode Somme des Parties."""
+    TITLE = "Analyse Somme des Parties (SOTP)"
+    SEGMENT_VALUATION = "Valorisation par Segment"
+    IMPLIED_EV = "Valeur d'Entreprise Implicite"
+    CONGLOMERATE_DISCOUNT = "Décote de Conglomérat"
+    SUM_OF_PARTS = "Somme des Parties"

@@ -1,81 +1,46 @@
 """
-core/i18n/fr/
-Textes en francais.
-
-Structure :
-- ui/       : Textes visibles dans l'interface
-- backend/  : Textes internes (logs, erreurs, audit)
+src/i18n/fr/__init__.py
 """
-
-# UI
-from src.i18n.fr.ui import (
-    CommonTexts,
-    SidebarTexts,
-    OnboardingTexts,
-    FeedbackMessages,
-    LegalTexts,
-    TooltipsTexts,
-    UIMessages,
-    SharedTexts,
+from src.i18n.fr.backend import (
+    BenchmarkTexts,
+    CalculationErrors,
+    DiagnosticTexts,
+    ModelTexts,
     KPITexts,
-    QuantTexts,
-    MarketTexts,
-    AuditTexts,
-    ChartTexts,
     SOTPTexts,
-    SOTPTexts,
-    BacktestTexts,
-    ScenarioTexts,
-    PillarLabels,
-    DDMTexts
+    RegistryTexts,
+    StrategyFormulas,
+    StrategyInterpretations,
+    StrategySources,
+    SharedTexts,
+    WorkflowTexts
 )
 
-# Backend
-from src.i18n.fr.backend import (
-    WorkflowTexts,
-    DiagnosticTexts,
-    StrategySources,
-    StrategyInterpretations,
-    StrategyFormulas,
-    CalculationErrors,
-    AuditCategories,
-    AuditMessages,
-    AuditEngineTexts,
-    RegistryTexts,
-    ModelValidationTexts,
-    MODEL_VALIDATION_TEXTS,
+from src.i18n.fr.ui import (
+    CommonTexts,
+    ExpertTexts,
+    ExtensionTexts,
+    ResultsTexts,
+    SidebarTexts
 )
 
 __all__ = [
-    # UI
-    "CommonTexts",
-    "SidebarTexts",
-    "OnboardingTexts",
-    "FeedbackMessages",
-    "LegalTexts",
-    "TooltipsTexts",
-    "UIMessages",
-    "SharedTexts",
-    "KPITexts",
-    "AuditTexts",
-    "ChartTexts",
-    "SOTPTexts",
-    "SOTPTexts",
-    "BacktestTexts",
-    "ScenarioTexts",
-    "PillarLabels",
-    "QuantTexts",
-    "MarketTexts",
-    "DDMTexts",
-    # Backend
-    "WorkflowTexts",
-    "DiagnosticTexts",
-    "StrategySources",
-    "StrategyInterpretations",
-    "StrategyFormulas",
+    "BenchmarkTexts",
     "CalculationErrors",
-    "AuditCategories",
-    "AuditMessages",
-    "AuditEngineTexts",
+    "DiagnosticTexts",
+    "ModelTexts",
+    "KPITexts",
+    "SOTPTexts",
     "RegistryTexts",
+    "StrategyFormulas",
+    "StrategyInterpretations",
+    "StrategySources",
+    "SharedTexts",
+    "WorkflowTexts",
+
+    "CommonTexts",
+    "ExpertTexts",
+    "ExtensionTexts",
+    "ResultsTexts",
+    "SidebarTexts"
 ]

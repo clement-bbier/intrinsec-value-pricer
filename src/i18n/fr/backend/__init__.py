@@ -1,41 +1,32 @@
 """
-core/i18n/fr/backend/
-Textes internes (logs, erreurs, audit).
+src/i18n/fr/backend/__init__.py
 """
+# 1. Benchmark (Le remplaçant)
+from src.i18n.fr.backend.benchmark import BenchmarkTexts
 
+# 2. Core Modules (Les survivants)
+from src.i18n.fr.backend.errors import CalculationErrors, DiagnosticTexts
+from src.i18n.fr.backend.models import ModelTexts, KPITexts, SOTPTexts
+from src.i18n.fr.backend.registry import RegistryTexts
+from src.i18n.fr.backend.strategies import (
+    StrategyFormulas,
+    StrategyInterpretations,
+    StrategySources,
+    SharedTexts
+)
 from src.i18n.fr.backend.workflow import WorkflowTexts
 
-from src.i18n.fr.backend.errors import (
-    DiagnosticTexts,
-    CalculationErrors,
-)
-
-from src.i18n.fr.backend.audit import (
-    AuditCategories,
-    AuditMessages,
-    AuditEngineTexts,
-)
-
-from src.i18n.fr.backend.strategies import (
-    StrategySources,
-    StrategyInterpretations,
-    StrategyFormulas,
-)
-
-from src.i18n.fr.backend.registry import RegistryTexts
-from src.i18n.fr.backend.models import ModelValidationTexts, MODEL_VALIDATION_TEXTS
-
 __all__ = [
-    "WorkflowTexts",
-    "DiagnosticTexts",
+    "BenchmarkTexts",
     "CalculationErrors",
-    "AuditCategories",
-    "AuditMessages",
-    "AuditEngineTexts",
-    "StrategySources",
-    "StrategyInterpretations",
-    "StrategyFormulas",
+    "DiagnosticTexts",
+    "ModelTexts",
+    "KPITexts",
+    "SOTPTexts",
     "RegistryTexts",
-    "ModelValidationTexts",
-    "MODEL_VALIDATION_TEXTS",
+    "StrategyFormulas",
+    "StrategyInterpretations",
+    "StrategySources",
+    "SharedTexts",
+    "WorkflowTexts"
 ]

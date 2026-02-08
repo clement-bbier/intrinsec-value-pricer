@@ -1,184 +1,52 @@
 """
 tests/integration/test_valuation_pipeline.py
-Tests d'Intégration — Pipeline de Valorisation Complet
 
-Ces tests vérifient que les composants fonctionnent ensemble :
-Strategy → Result → Audit → Output
+INTEGRATION TEST: FULL PIPELINE
+===============================
+Role: Verifies the end-to-end execution of the Orchestrator.
+Scope: Hydration -> Strategy -> Results.
 """
 
-import pytest
+from src.valuation.orchestrator import ValuationOrchestrator
+from src.models.valuation import ValuationResult
+from src.models.results.strategies import FCFFStandardResults
 
 
-class TestFullValuationPipeline:
-    """Tests du pipeline complet de valorisation."""
-    
-    def test_fcff_standard_full_pipeline(self, sample_financials, sample_params):
-        """Pipeline complet FCFF Standard."""
-        from src.valuation.engines import run_valuation
-        from src.models import (
-            ValuationRequest, ValuationMethodology, ParametersSource, ValuationResult
+class TestValuationPipeline:
+
+    def test_fcff_standard_execution_success(self, fcff_request_standard, mock_apple_snapshot):
+        """
+        Scenario: Nominal case for Apple Inc. using Standard FCFF.
+        Expected: A populated ValuationResult with positive Intrinsic Value.
+        """
+        # 1. Initialize Orchestrator
+        orchestrator = ValuationOrchestrator()
+
+        # 2. Run Pipeline
+        result = orchestrator.run(
+            request=fcff_request_standard,
+            snapshot=mock_apple_snapshot
         )
-        
-        request = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.AUTO,
-        )
-        
-        result = run_valuation(request, sample_financials, sample_params)
-        
-        # Vérifications pipeline
+
+        # 3. Assert Envelope Structure
         assert isinstance(result, ValuationResult)
-        assert result.intrinsic_value_per_share > 0
-        assert result.request is not None
-        assert result.audit_report is not None
-        assert result.audit_report.global_score >= 0
-    
-    def test_all_modes_complete_pipeline(self, sample_financials, sample_params):
-        """Tous les modes passent par le pipeline complet."""
-        from src.valuation.engines import run_valuation
-        from src.models import (
-            ValuationRequest, ValuationMethodology, ParametersSource
-        )
-        
-        # Note: On utilise les fixtures avec les bons noms de champs
-        # sample_financials a déjà eps_ttm, book_value_per_share, etc.
-        
-        modes_to_test = [
-            ValuationMethodology.FCFF_STANDARD,
-            ValuationMethodology.FCFF_NORMALIZED,
-            ValuationMethodology.FCFF_GROWTH,
-            ValuationMethodology.GRAHAM,
-        ]
-        
-        for mode in modes_to_test:
-            request = ValuationRequest(
-                ticker="TEST",
-                projection_years=5,
-                mode=mode,
-                input_source=ParametersSource.AUTO,
-            )
-            
-            try:
-                result = run_valuation(request, sample_financials, sample_params)
-                
-                assert result is not None, f"{mode}: Résultat None"
-                assert result.audit_report is not None, f"{mode}: Audit manquant"
-                
-            except Exception as e:
-                pytest.fail(f"Pipeline échoué pour {mode}: {str(e)}")
+        assert result.request.mode == fcff_request_standard.mode
 
+        # 4. Assert Hydration (Resolver worked?)
+        # WACC should be calculated (around 10% given beta 1.2, rf 4%, mrp 5%)
+        # Ke = 4 + 1.2*5 = 10%. WACC roughly similar as debt is low.
+        wacc = result.results.common.rates.wacc
+        assert 0.08 < wacc < 0.12, f"WACC {wacc} seems unrealistic for this dataset"
 
-class TestAuditAfterValuation:
-    """Tests de l'audit intégré au pipeline."""
-    
-    def test_audit_report_has_score(self, sample_financials, sample_params):
-        """Le rapport d'audit contient un score global."""
-        from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
-        
-        request = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.AUTO,
-        )
-        
-        result = run_valuation(request, sample_financials, sample_params)
-        
-        assert result.audit_report.global_score >= 0
-        assert result.audit_report.global_score <= 100
-    
-    def test_audit_report_has_rating(self, sample_financials, sample_params):
-        """Le rapport d'audit contient une notation."""
-        from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
-        
-        request = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.AUTO,
-        )
-        
-        result = run_valuation(request, sample_financials, sample_params)
-        
-        assert result.audit_report.rating in ["AAA", "AA", "BBB", "BB", "C"]
-    
-    def test_manual_mode_affects_audit_weights(self, sample_financials, sample_params):
-        """Le mode MANUAL change les pondérations d'audit."""
-        from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
-        
-        # Mode AUTO
-        request_auto = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.AUTO,
-        )
-        result_auto = run_valuation(request_auto, sample_financials, sample_params)
-        
-        # Mode MANUAL
-        request_manual = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.MANUAL,
-        )
-        result_manual = run_valuation(request_manual, sample_financials, sample_params)
-        
-        # Les modes d'audit doivent être différents
-        assert result_auto.audit_report.audit_mode == ParametersSource.AUTO
-        assert result_manual.audit_report.audit_mode == ParametersSource.MANUAL
+        # 5. Assert Core Value
+        iv = result.results.common.intrinsic_value_per_share
+        assert iv > 0, "Intrinsic Value should be positive for profitable Apple mock"
 
+        # Check Upside calculation
+        assert result.upside_pct is not None
 
-class TestGlassBoxIntegration:
-    """Tests du mode Glass Box intégré."""
-    
-    def test_glass_box_generates_calculation_trace(self, sample_financials, sample_params):
-        """Le mode Glass Box génère des étapes de calcul."""
-        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
-        
-        strategy = StandardFCFFStrategy(glass_box_enabled=True)
-        result = strategy.execute(sample_financials, sample_params)
-        
-        # Le champ s'appelle calculation_trace, pas calculation_steps
-        assert result.calculation_trace is not None
-        assert len(result.calculation_trace) > 0
-    
-    def test_calculation_trace_has_labels(self, sample_financials, sample_params):
-        """Chaque étape de calcul a un label."""
-        from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
-        
-        strategy = StandardFCFFStrategy(glass_box_enabled=True)
-        result = strategy.execute(sample_financials, sample_params)
-        
-        for step in result.calculation_trace:
-            # CalculationStep a step_label ou step_name
-            assert hasattr(step, "step_label") or hasattr(step, "step_name") or hasattr(step, "label")
-
-
-class TestMonteCarloIntegration:
-    """Tests de l'intégration Monte Carlo."""
-    
-    def test_monte_carlo_with_engine(self, sample_financials, sample_params):
-        """Monte Carlo fonctionne via le moteur principal."""
-        from src.valuation.engines import run_valuation
-        from src.models import ValuationRequest, ValuationMethodology, ParametersSource
-        
-        sample_params.monte_carlo.enabled = True
-        sample_params.monte_carlo.num_simulations = 100
-        
-        request = ValuationRequest(
-            ticker="TEST",
-            projection_years=5,
-            mode=ValuationMethodology.FCFF_STANDARD,
-            input_source=ParametersSource.AUTO,
-        )
-        
-        result = run_valuation(request, sample_financials, sample_params)
-        
-        assert result is not None
-        assert result.intrinsic_value_per_share > 0
+        # 6. Assert Strategy Specifics
+        strat_res = result.results.strategy
+        assert isinstance(strat_res, FCFFStandardResults)
+        assert len(strat_res.projected_flows) == 5
+        assert strat_res.terminal_value > 0
