@@ -26,6 +26,7 @@ class ValuationMethodology(str, Enum):
 
 class TerminalValueMethod(str, Enum):
     """Method used to calculate the value beyond the projection horizon."""
+    GORDON_GROWTH = None
     PERPETUAL_GROWTH = "Perpetual Growth"
     EXIT_MULTIPLE = "Exit Multiple"
 

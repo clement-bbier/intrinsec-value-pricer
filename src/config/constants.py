@@ -153,6 +153,7 @@ class ModelDefaults:
     Naming corresponds to Pydantic field attributes.
     """
     # Capital Structure
+    DEFAULT_WACC = None
     DEFAULT_PAYOUT_RATIO: float = 0.50
     DEFAULT_FCF_MARGIN_TARGET: float = 0.15
     DEFAULT_REVENUE_GROWTH_START: float = 0.10

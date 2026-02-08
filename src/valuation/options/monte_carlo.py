@@ -1,272 +1,155 @@
-"""
-src/valuation/options/monte_carlo.py
-
-MONTE CARLO RUNNER
-==================
-Role: Probabilistic Risk Analysis.
-Logic: Wraps the deterministic strategy to run N simulations across a correlated risk matrix.
-Architecture: Runner Pattern (Visitor).
-
-Style: Numpy docstrings.
-"""
-
 from __future__ import annotations
-
 import logging
 import numpy as np
-from typing import Dict, List, Tuple, Optional
+from typing import Optional
 
-from src.config.settings import MonteCarloSimulationConfig
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
 from src.models.results.options import MCResults
-from src.models.enums import TerminalValueMethod
-
-# Interfaces
 from src.valuation.strategies.interface import IValuationRunner
-
-# Math & Stats
 from src.computation.financial_math import calculate_cost_of_equity_capm
-from src.computation.statistics import (
-    generate_independent_samples,
-    generate_multivariate_samples,
-)
+from src.computation.statistics import generate_independent_samples, generate_multivariate_samples
 
-# Config
 from src.config.constants import MonteCarloDefaults, ModelDefaults, MacroDefaults
-
-# Exceptions
-from src.core.exceptions import (
-    CalculationError,
-    ModelDivergenceError
-)
+from src.core.exceptions import CalculationError, ModelDivergenceError
 
 logger = logging.getLogger(__name__)
 
-# Errors to catch during the loop
-VALUATION_ERRORS = (
-    CalculationError,
-    ModelDivergenceError,
-    ValueError,
-    ZeroDivisionError,
-    AttributeError
-)
-
-
 class MonteCarloRunner:
-    """
-    Orchestrates the stochastic simulation lifecycle.
-    """
+    """Orchestrates the stochastic simulation lifecycle."""
 
     def __init__(self, strategy: IValuationRunner):
-        """
-        Parameters
-        ----------
-        strategy : IValuationRunner
-            The deterministic engine instance to be simulated.
-        """
         self.strategy = strategy
 
     def execute(self, params: Parameters, financials: Company) -> Optional[MCResults]:
-        """
-        Runs the N simulations.
-
-        Parameters
-        ----------
-        params : Parameters
-            Configuration containing simulation settings and shocks.
-        financials : Company
-            Financial data of the target.
-
-        Returns
-        -------
-        Optional[MCResults]
-            Statistical results of the simulation, or None if disabled.
-        """
         mc_cfg = params.extensions.monte_carlo
-
-        if not mc_cfg.enabled:
+        if not mc_cfg or not mc_cfg.enabled:
             return None
 
         num_simulations = mc_cfg.iterations or MonteCarloDefaults.DEFAULT_SIMULATIONS
 
         # 1. Economic Clamping Reference (WACC Guardrail)
-        # We estimate WACC once to establish the ceiling for growth (g < WACC)
+        # We need a stable discount rate to cap terminal growth (g < WACC).
+        r = params.common.rates
+
         try:
-            r = params.common.rates
-            rf = r.risk_free_rate or MacroDefaults.DEFAULT_RISK_FREE_RATE
-            beta = r.beta or ModelDefaults.DEFAULT_BETA
-            mrp = r.market_risk_premium or MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+            if r.wacc_override:
+                base_wacc = r.wacc_override
+            elif r.manual_cost_of_equity:
+                base_wacc = r.manual_cost_of_equity
+            else:
+                rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+                beta = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
+                mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
 
-            base_ke = calculate_cost_of_equity_capm(rf, beta, mrp)
-            base_wacc = base_ke  # Approximation safe for clamping if Debt info missing
+                base_wacc = calculate_cost_of_equity_capm(rf, beta, mrp)
 
-        except VALUATION_ERRORS:
-            # Fallback only on specific expected failures (Math, Missing Data)
-            base_wacc = MonteCarloSimulationConfig.default_wacc_fallback
+            if base_wacc <= 0:
+                base_wacc = ModelDefaults.DEFAULT_WACC
 
-        # 2. Correlated Sampling
+        except (ArithmeticError, TypeError, ValueError) as e:
+            logger.warning(f"Failed to calculate base WACC for MC clamping, using default: {e}")
+            base_wacc = ModelDefaults.DEFAULT_WACC
+
+        # 2. Sampling
         betas, growths, terminal_growths, base_flows = self._generate_samples(
             financials, params, num_simulations, base_wacc
         )
 
-        # 3. Main Simulation Loop
+        # 3. Execution
         sim_values = self._run_simulations(
-            self.strategy, financials, params, betas, growths, terminal_growths, base_flows, num_simulations
+            financials, params, betas, growths, terminal_growths, base_flows, num_simulations
         )
 
-        # 4. Statistics
-        if not sim_values:
-            return None
-
-        quantiles = self._compute_quantiles(sim_values)
+        if not sim_values: return None
 
         return MCResults(
             simulation_values=sim_values,
-            quantiles=quantiles,
+            quantiles={
+                "P10": float(np.percentile(sim_values, 10)),
+                "P50": float(np.percentile(sim_values, 50)),
+                "P90": float(np.percentile(sim_values, 90))
+            },
             mean=float(np.mean(sim_values)),
             std_dev=float(np.std(sim_values))
         )
 
     @staticmethod
-    def _generate_samples(
-        financials: Company,
-        params: Parameters,
-        num_simulations: int,
-        base_wacc: float
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Generates correlated stochastic input vectors.
-        """
-        mc_shocks = params.extensions.monte_carlo.shocks
-        g_params = params.strategy.terminal_value
+    def _generate_samples(financials, params, num_sims, base_wacc):
+        shocks = params.extensions.monte_carlo.shocks
 
-        # --- A. Extract Volatilities (Default Safety Values) ---
-        sig_b = 0.10   # Beta Volatility
-        sig_g = 0.015  # Growth Volatility
-        sig_gn = 0.005 # Terminal Growth Volatility
-        sig_y0 = 0.05  # Base Flow Volatility
+        # Volatilities extraction
+        sig_b = getattr(shocks, 'beta_volatility', 0.10) or 0.10
+        sig_g = getattr(shocks, 'growth_volatility', 0.015) or 0.015
+        sig_gn = 0.005
+        sig_y0 = 0.05 # Default flow vol
 
-        # Dynamic extraction from polymorphic shocks
-        if mc_shocks:
-            if hasattr(mc_shocks, 'beta_volatility') and mc_shocks.beta_volatility:
-                sig_b = mc_shocks.beta_volatility
-            if hasattr(mc_shocks, 'growth_volatility') and mc_shocks.growth_volatility:
-                sig_g = mc_shocks.growth_volatility
+        # Mean Growth extraction based on strategy mode
+        mu_growth = ModelDefaults.DEFAULT_GROWTH_RATE
+        st = params.strategy
+        if hasattr(st, 'growth_rate_p1'): mu_growth = st.growth_rate_p1 or mu_growth
+        elif hasattr(st, 'growth_rate'): mu_growth = st.growth_rate or mu_growth
+        elif hasattr(st, 'revenue_growth_rate'): mu_growth = st.revenue_growth_rate or mu_growth
 
-            # Polymorphic field for Flow volatility (FCF or EPS)
-            if hasattr(mc_shocks, 'fcf_volatility') and mc_shocks.fcf_volatility:
-                 sig_y0 = mc_shocks.fcf_volatility
-            elif hasattr(mc_shocks, 'eps_volatility') and mc_shocks.eps_volatility:
-                 sig_y0 = mc_shocks.eps_volatility
-
-        # --- B. Determine Mean Growth ---
-        # We target the common 'fcf_growth_rate' located in params.growth
-        mu_growth = params.growth.fcf_growth_rate or ModelDefaults.DEFAULT_GROWTH_RATE
-
-        # --- C. Terminal Growth Volatility ---
-        if g_params.method != TerminalValueMethod.GORDON_GROWTH:
-            sig_gn = 0.0
-
-        # --- 1. Correlated Beta/Growth Sampling ---
         betas, growths = generate_multivariate_samples(
-            mu_beta=financials.beta or ModelDefaults.DEFAULT_BETA,
+            mu_beta=params.common.rates.beta or financials.beta or 1.0,
             sigma_beta=sig_b,
             mu_growth=mu_growth,
             sigma_growth=sig_g,
             rho=MonteCarloDefaults.DEFAULT_RHO,
-            num_simulations=num_simulations
+            num_simulations=num_sims
         )
 
-        # --- 2. Terminal Growth Sampling (Clipped) ---
-        # Ensures g < WACC - 1.5% to prevent explosion
-        max_g = max(0.0, base_wacc - 0.015)
+        mean_gn = ModelDefaults.DEFAULT_TERMINAL_GROWTH
+        if hasattr(st, 'terminal_value'):
+            mean_gn = st.terminal_value.perpetual_growth_rate or mean_gn
 
         terminal_growths = generate_independent_samples(
-            mean=g_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH,
+            mean=mean_gn,
             sigma=sig_gn,
-            num_simulations=num_simulations,
+            num_simulations=num_sims,
             clip_min=0.0,
-            clip_max=max_g
+            clip_max=max(0.0, base_wacc - 0.01)
         )
 
-        # --- 3. Base Flow Disturbance (Y0) ---
-        # Multiplier centered on 1.0
-        base_flows = np.random.normal(1.0, sig_y0, num_simulations)
-
+        base_flows = np.random.normal(1.0, sig_y0, num_sims)
         return betas, growths, terminal_growths, base_flows
 
-    @staticmethod
-    def _run_simulations(
-        runner: IValuationRunner,
-        financials: Company,
-        params: Parameters,
-        betas: np.ndarray,
-        growths: np.ndarray,
-        terminal_growths: np.ndarray,
-        base_flows: np.ndarray,
-        num_simulations: int
-    ) -> List[float]:
-        """
-        High-performance computation loop.
-        """
+    def _run_simulations(self, financials, params, betas, growths, t_growths, flows, num_sims):
         sim_values = []
+        self.strategy.glass_box_enabled = False
 
-        # Disable Glass Box for speed
-        runner.glass_box_enabled = False
-
-        for i in range(num_simulations):
+        for i in range(num_sims):
             try:
-                # 1. Clone Parameters (Deep Copy)
                 s_par = params.model_copy(deep=True)
-
-                # 2. Apply Beta Shock (Common Rates)
-                # We overwrite the 'manual_beta' field to force the resolver to take it
+                st = s_par.strategy
+                
+                # Apply Shocks
                 s_par.common.rates.beta = float(betas[i])
+                
+                # Growth Dispatch
+                g_val = float(growths[i])
+                if hasattr(st, 'growth_rate_p1'): st.growth_rate_p1 = g_val
+                elif hasattr(st, 'growth_rate'): st.growth_rate = g_val
+                elif hasattr(st, 'revenue_growth_rate'): st.revenue_growth_rate = g_val
+                elif hasattr(st, 'growth_estimate'): st.growth_estimate = g_val
 
-                # 3. Apply Growth Shocks
-                # We target the shared growth container
-                s_par.growth.fcf_growth_rate = float(growths[i])
+                # Terminal Value Dispatch
+                if hasattr(st, 'terminal_value'):
+                    st.terminal_value.perpetual_growth_rate = float(t_growths[i])
 
-                # Terminal Growth
-                if s_par.strategy.terminal_value:
-                    s_par.strategy.terminal_value.perpetual_growth_rate = float(terminal_growths[i])
+                # Anchor Flow Dispatch
+                f_val = float(flows[i])
+                if hasattr(st, 'fcf_anchor') and st.fcf_anchor: st.fcf_anchor *= f_val
+                elif hasattr(st, 'revenue_ttm') and st.revenue_ttm: st.revenue_ttm *= f_val
+                elif hasattr(st, 'eps_normalized') and st.eps_normalized: st.eps_normalized *= f_val
 
-                # 4. Apply Base Flow Shock (Y0)
-                # We check which anchor is active in the strategy parameters and scale it
-                factor = float(base_flows[i])
-
-                # Strategies typically store anchor in 'strategy' parameters (e.g. fcf_anchor)
-                if hasattr(s_par.strategy, 'fcf_anchor') and s_par.strategy.fcf_anchor:
-                    s_par.strategy.fcf_anchor *= factor
-                elif hasattr(s_par.strategy, 'dividend_per_share') and s_par.strategy.dividend_per_share:
-                    s_par.strategy.dividend_per_share *= factor
-                elif hasattr(s_par.strategy, 'fcfe_anchor') and s_par.strategy.fcfe_anchor:
-                    s_par.strategy.fcfe_anchor *= factor
-                elif hasattr(s_par.strategy, 'eps_normalized') and s_par.strategy.eps_normalized:
-                    s_par.strategy.eps_normalized *= factor
-
-                # 5. Execute
-                result = runner.execute(financials, s_par)
-                iv = result.results.common.intrinsic_value_per_share
-
-                # 6. Sanity Filter
-                if 0.0 < iv < 1_000_000: # Simple guardrail
+                res = self.strategy.execute(financials, s_par)
+                iv = res.results.common.intrinsic_value_per_share
+                if 0 < iv < 1_000_000:
                     sim_values.append(iv)
-
-            except VALUATION_ERRORS:
+            except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
                 continue
 
-        # Re-enable Audit
-        runner.glass_box_enabled = True
-
+        self.strategy.glass_box_enabled = True
         return sim_values
-
-    @staticmethod
-    def _compute_quantiles(sim_values: List[float]) -> Dict[str, float]:
-        """Calculates standard distribution statistics."""
-        return {
-            "P10": float(np.percentile(sim_values, 10)),
-            "P50": float(np.percentile(sim_values, 50)),
-            "P90": float(np.percentile(sim_values, 90))
-        }

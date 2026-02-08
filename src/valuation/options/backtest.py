@@ -19,7 +19,6 @@ from typing import Optional
 import pandas as pd
 
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
-from src.i18n import DiagnosticTexts
 
 logger = logging.getLogger(__name__)
 
@@ -36,48 +35,33 @@ class BacktestRunner:
     def isolate_fiscal_year(raw_data: RawFinancialData, target_year: int) -> Optional[RawFinancialData]:
         """
         Creates a Point-in-Time snapshot of RawFinancialData for a specific fiscal year.
-
-        Parameters
-        ----------
-        raw_data : RawFinancialData
-            The full multi-year raw dataset from the provider.
-        target_year : int
-            The fiscal year to isolate (e.g., 2023).
-
-        Returns
-        -------
-        Optional[RawFinancialData]
-            A "frozen" object containing only data columns up to the target year.
         """
-        logger.debug("[Backtest] Attempting Point-in-Time isolation for FY %s", target_year)
+        logger.debug("[Backtest] Isolation FY %s pour %s", target_year, raw_data.ticker)
 
-        # 1. Isolate specific fiscal year columns in financial statements
+        # 1. Statements Isolation
         frozen_bs = BacktestRunner._filter_df_by_year(raw_data.balance_sheet, target_year)
         frozen_is = BacktestRunner._filter_df_by_year(raw_data.income_stmt, target_year)
         frozen_cf = BacktestRunner._filter_df_by_year(raw_data.cash_flow, target_year)
 
-        # Validation: Ensure all core statements are available for the target year
         if frozen_bs is None or frozen_is is None or frozen_cf is None:
-            logger.warning(
-                DiagnosticTexts.DATA_FIELD_MISSING_YEAR.format(
-                    ticker=raw_data.ticker, field="Financial Statements", year=target_year
-                )
-            )
             return None
 
-        # 2. Construct the "Frozen" object
-        # The isolated columns are injected as the primary dataset (TTM)
+        # 2. History Isolation (Sécurité contre le Look-ahead bias)
+        # On ne garde que les prix JUSQU'AU 31/12 de l'année cible.
+        frozen_history = raw_data.history.copy()
+        if not frozen_history.empty:
+            # On tronque tout ce qui est strictement supérieur à l'année cible
+            frozen_history = frozen_history[frozen_history.index.year <= target_year]
+
         return RawFinancialData(
             ticker=raw_data.ticker,
-            info=raw_data.info.copy(),  # Metadata remains valid
+            info=raw_data.info.copy(),
             balance_sheet=frozen_bs,
             income_stmt=frozen_is,
             cash_flow=frozen_cf,
-            quarterly_income_stmt=pd.DataFrame(),  # Quarterly data ignored for annual backtesting
+            quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
-            # [CORRECTION] We keep the full history in the snapshot to allow
-            # the validator to check the price at the END of that target year.
-            history=raw_data.history,
+            history=frozen_history,
             is_valid=True
         )
 
