@@ -30,6 +30,7 @@ from src.models.results.options import ExtensionBundleResults
 
 # Libraries (DRY Logic)
 from src.valuation.library.graham import GrahamLibrary
+# CORRECTIF 1: On utilise IValuationRunner pour la cohérence avec standard_fcff.py
 from src.valuation.strategies.interface import IValuationRunner
 
 # Config & i18n
@@ -72,19 +73,21 @@ class GrahamNumberStrategy(IValuationRunner):
 
         # --- RESULT RECONSTRUCTION ---
         # We need to extract the inputs used to populate the Audit/Results object.
-        # Ideally, we trust the Resolver to have populated params.strategy and params.common.
 
+        # Shortcuts for readability
         s = params.strategy
         r = params.common.rates
-        g_param = params.growth
+
+        # CORRECTIF 2: Suppression de 'g_param = params.growth' qui n'existe PAS.
+        # La croissance est gérée via la stratégie ou les defaults.
 
         # 1. Inputs Extraction (for Audit Traceability)
         # Note: We fallback to defaults to ensure safety if params are partial
-        eps_used = s.eps_normalized or s.eps_normalized or financials.eps_ttm or 0.0
+        eps_used = s.eps_normalized or financials.eps_ttm or 0.0
 
         # Growth: Graham uses a specific growth estimate or the generic one
-        # The Library uses params.growth.fcf_growth_rate, so we mirror that here
-        growth_used = s.growth_estimate if s.growth_estimate is not None else (g_param.fcf_growth_rate or ModelDefaults.DEFAULT_GROWTH_RATE)
+        # CORRECTIF 3: Accès direct propre sans passer par un objet 'growth' inexistant
+        growth_used = s.growth_estimate if s.growth_estimate is not None else ModelDefaults.DEFAULT_GROWTH_RATE
 
         # Yield: Critical part of the 1974 formula
         aaa_yield = r.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
@@ -126,7 +129,7 @@ class GrahamNumberStrategy(IValuationRunner):
         common_res = CommonResults(
             rates=res_rates,
             capital=res_capital,
-            intrinsic_value_per_share=iv_per_share,
+            intrinsic_value_per_share=iv_per_share, # CORRECTIF 4: Pydantic recevra bien la valeur ici
             upside_pct=((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0,
             bridge_trace=steps if self._glass_box else []
         )
