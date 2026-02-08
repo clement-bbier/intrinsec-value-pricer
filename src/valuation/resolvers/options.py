@@ -6,7 +6,6 @@ EXTENSION RESOLVER — LOGIC LAYER
 Role: Applies system defaults and fallback logic to optional modules.
 Scope: Logic Only. Consumes 'Parameters' objects.
 Architecture: Service Class pattern (Stateless).
-
 Style: Numpy docstrings.
 """
 
@@ -56,8 +55,6 @@ class ExtensionResolver:
         ExtensionBundleParameters
             The hydrated bundle with defaults applied.
         """
-        # Note: Even though these are static, calling them via self is valid Python syntax
-        # and allows for easier inheritance overriding if needed later.
         self._resolve_monte_carlo(bundle.monte_carlo)
         self._resolve_sensitivity(bundle.sensitivity)
         self._resolve_scenarios(bundle.scenarios)
@@ -75,7 +72,6 @@ class ExtensionResolver:
 
         if params.iterations is None:
             params.iterations = MonteCarloDefaults.DEFAULT_SIMULATIONS
-            logger.debug("[Resolver] MC iterations set to default: %d", params.iterations)
 
     @staticmethod
     def _resolve_sensitivity(params: SensitivityParameters) -> None:
@@ -101,14 +97,14 @@ class ExtensionResolver:
         if not params.enabled:
             return
 
-        # Fallback: Si activé mais liste vide -> On injecte un cas unique neutre
+        # Fallback: If enabled but list is empty -> Inject neutral Base Case
         if not params.cases:
             logger.info("[Resolver] Scenarios enabled but empty. Injecting default Base Case.")
             default_case = ScenarioParameters(
                 name=ScenarioDefaults.DEFAULT_CASE_NAME,
                 probability=ScenarioDefaults.DEFAULT_PROBABILITY,
-                growth_override=None,  # Neutre (None respecte la valeur du modèle de base)
-                margin_override=None   # Neutre
+                growth_override=None,  # None respects the base model value
+                margin_override=None
             )
             params.cases.append(default_case)
 
@@ -130,7 +126,7 @@ class ExtensionResolver:
         if not params.tickers:
             logger.warning("[Resolver] Peer module enabled but no tickers provided.")
         elif len(params.tickers) < PeerDefaults.MIN_PEERS_REQUIRED:
-            logger.warning(
+            logger.debug(
                 "[Resolver] Peer list size (%d) below recommended minimum (%d).",
                 len(params.tickers),
                 PeerDefaults.MIN_PEERS_REQUIRED

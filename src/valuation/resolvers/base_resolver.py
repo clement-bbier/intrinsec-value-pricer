@@ -1,5 +1,5 @@
 """
-src/valuation/resolvers/main_resolver.py
+src/valuation/resolvers/base_resolver.py
 
 CENTRAL DATA RESOLVER — THE GHOST HYDRATOR
 ==========================================
@@ -17,8 +17,13 @@ from typing import Any, Optional
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company, CompanySnapshot
 from src.models.parameters.strategies import (
-    FCFFStandardParameters, DDMParameters, RIMParameters,
-    FCFEParameters, GrahamParameters
+    FCFFStandardParameters,
+    FCFFNormalizedParameters,
+    FCFFGrowthParameters,
+    DDMParameters,
+    RIMParameters,
+    FCFEParameters,
+    GrahamParameters
 )
 from src.config.constants import ModelDefaults, MacroDefaults
 
@@ -48,6 +53,8 @@ class Resolver:
         Parameters
             A fully hydrated Parameters object ready for calculations.
         """
+        logger.debug(f"[Resolver] Starting hydration for {ghost.structure.ticker}")
+
         # 1. Resolve Identity (Pillar 1)
         ghost.structure = self._resolve_identity(ghost.structure, snap)
 
@@ -62,7 +69,11 @@ class Resolver:
 
     @staticmethod
     def _resolve_identity(identity: Company, snap: CompanySnapshot) -> Company:
-        """Hydrates Pillar 1 descriptive metadata using User-First logic."""
+        """
+        Hydrates Pillar 1 descriptive metadata using User-First logic.
+
+        Note: Identity is immutable during calculation, but vital for reporting.
+        """
         return Company(
             ticker=identity.ticker,
             name=identity.name or snap.name or "Unknown Entity",
@@ -74,7 +85,10 @@ class Resolver:
         )
 
     def _resolve_common(self, params: Parameters, snap: CompanySnapshot) -> None:
-        """Resolves Pillar 2: Universal financial levers (Rates & Capital)."""
+        """
+        Resolves Pillar 2: Universal financial levers (Rates & Capital).
+        Modifies params in-place.
+        """
         cap = params.common.capital
         rates = params.common.rates
 
@@ -84,6 +98,8 @@ class Resolver:
         cap.minority_interests = self._pick(cap.minority_interests, snap.minority_interests, ModelDefaults.DEFAULT_MINORITY_INTERESTS)
         cap.pension_provisions = self._pick(cap.pension_provisions, snap.pension_provisions, ModelDefaults.DEFAULT_PENSION_PROVISIONS)
         cap.shares_outstanding = self._pick(cap.shares_outstanding, snap.shares_outstanding, ModelDefaults.DEFAULT_SHARES_OUTSTANDING)
+
+        # Dilution is rarely in provider data, usually a System Default or User Override
         cap.annual_dilution_rate = self._pick(cap.annual_dilution_rate, None, ModelDefaults.DEFAULT_ANNUAL_DILUTION_RATE)
 
         # --- Rates & Risk ---
@@ -92,44 +108,79 @@ class Resolver:
         rates.beta = self._pick(rates.beta, snap.beta, ModelDefaults.DEFAULT_BETA)
         rates.tax_rate = self._pick(rates.tax_rate, snap.tax_rate, MacroDefaults.DEFAULT_TAX_RATE)
 
-        # AAA Yield logic for Graham specifically
+        # AAA Yield logic (Specific to Graham, but stored in common rates for consistency)
         rates.corporate_aaa_yield = self._pick(rates.corporate_aaa_yield, snap.corporate_aaa_yield, MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD)
 
-        # Implied Cost of Debt (Kd) if not provided by User
+        # Implied Cost of Debt (Kd) calculation if not provided by User
         if rates.cost_of_debt is None:
             rates.cost_of_debt = self._calculate_synthetic_kd(snap, rates.risk_free_rate)
 
     def _resolve_strategy(self, params: Parameters, snap: CompanySnapshot) -> None:
-        """Injects model-specific anchors (TTM data) for Pillar 3."""
+        """
+        Injects model-specific anchors (TTM data) for Pillar 3.
+        Auto-detects the strategy type to apply the correct logic.
+        """
         strat = params.strategy
 
         if isinstance(strat, FCFFStandardParameters):
             strat.fcf_anchor = self._pick(strat.fcf_anchor, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
+            strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, 0.0)
+            strat.capex_ttm = self._pick(strat.capex_ttm, snap.capex_ttm, 0.0)
+
+        elif isinstance(strat, FCFFNormalizedParameters):
+            # Normalization logic often requires complex averaging, here we pick provided or default
+            strat.fcf_norm = self._pick(strat.fcf_norm, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
+            strat.ebit_norm = self._pick(strat.ebit_norm, snap.ebit_ttm, 0.0)
+
+        elif isinstance(strat, FCFFGrowthParameters):
+            strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, 0.0)
+            strat.ebitda_ttm = self._pick(strat.ebitda_ttm, snap.ebitda_ttm, 0.0)
 
         elif isinstance(strat, DDMParameters):
             strat.dividend_per_share = self._pick(strat.dividend_per_share, snap.dividend_share, ModelDefaults.DEFAULT_DIVIDEND_PS)
+            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
 
         elif isinstance(strat, RIMParameters):
             strat.book_value_anchor = self._pick(strat.book_value_anchor, snap.book_value_ps, ModelDefaults.DEFAULT_BOOK_VALUE_PS)
+            strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, 0.0)
             strat.persistence_factor = self._pick(strat.persistence_factor, None, ModelDefaults.DEFAULT_PERSISTENCE_FACTOR)
 
         elif isinstance(strat, FCFEParameters):
             strat.fcfe_anchor = self._pick(strat.fcfe_anchor, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
+            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
 
         elif isinstance(strat, GrahamParameters):
             strat.eps_normalized = self._pick(strat.eps_normalized, snap.eps_ttm, ModelDefaults.DEFAULT_EPS_TTM)
+            strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, 0.0)
 
     @staticmethod
     def _pick(user_val: Optional[Any], provider_val: Optional[Any], fallback: Any) -> Any:
-        """Enforces the 'USER > PROVIDER > SYSTEM' priority chain."""
+        """
+        Enforces the 'USER > PROVIDER > SYSTEM' priority chain.
+
+        Returns
+        -------
+        Any
+            The first non-None value found in the chain.
+        """
         if user_val is not None:
             return user_val
         return provider_val if provider_val is not None else fallback
 
     @staticmethod
     def _calculate_synthetic_kd(snap: CompanySnapshot, rf: float) -> float:
-        """Calculates an implied cost of debt (Kd)."""
+        """
+        Calculates an implied cost of debt (Kd).
+
+        Logic: Interest Expense / Total Debt.
+        Fallback: Risk Free Rate + 200bps spread if data is missing or invalid.
+        """
+        # Safety check against zero division or missing data
         if snap.total_debt and snap.total_debt > 0 and snap.interest_expense:
-            return abs(snap.interest_expense) / snap.total_debt
-        # Fallback to Rf + 200bps spread
+            implied_kd = abs(snap.interest_expense) / snap.total_debt
+            # Cap realistic boundaries (e.g., Kd shouldn't be 50% or 0.1%)
+            if 0.01 < implied_kd < 0.20:
+                return implied_kd
+
+        # Fallback spread
         return rf + 0.02
