@@ -1,56 +1,33 @@
 """
 src/valuation/strategies/interface.py
 
-VALUATION STRATEGY INTERFACE
-============================
-Role: Defines the contract that all Valuation Runners must implement.
-Architecture: Abstract Base Class (ABC).
-Scope: Core Engines (FCFF, RIM, Graham) and future extensions.
+STRATEGY INTERFACE CONTRACT
+===========================
+Role: Defines the strict blueprint for all valuation strategies (DCF, Graham, etc.).
+Architecture: Strategy Pattern.
 """
 
-from __future__ import annotations
 from abc import ABC, abstractmethod
+from src.models.valuation import ValuationResult, ValuationRequest
 
-from src.models.parameters.base_parameter import Parameters
-from src.models.company import Company
-from src.models.valuation import ValuationResult
-
-
-class IValuationRunner(ABC):
+class IValuationStrategy(ABC):
     """
-    Contract for a Valuation Engine Runner.
-
-    Every strategy (Standard DCF, Growth DCF, RIM, etc.) must implement
-    this execute method to be compatible with the Orchestrator.
+    Abstract Base Class enforcing the structure of a Valuation Strategy.
     """
 
     @abstractmethod
-    def execute(self, financials: Company, params: Parameters) -> ValuationResult:
+    def execute(self, request: ValuationRequest) -> ValuationResult:
         """
-        Runs the valuation logic.
+        Runs the full valuation logic for a specific strategy.
 
         Parameters
         ----------
-        financials : Company
-            The static identity and market data of the target.
-        params : Parameters
-            The fully resolved configuration (Growth, Rates, Margins).
+        request : ValuationRequest
+            The input container with Parameters and Company data.
 
         Returns
         -------
         ValuationResult
-            The complete valuation package (Price, Trace, Sensitivity).
+            The fully computed result with audit trails.
         """
-        pass
-
-    @property
-    @abstractmethod
-    def glass_box_enabled(self) -> bool:
-        """Indicates if the runner should generate detailed audit trails."""
-        pass
-
-    @glass_box_enabled.setter
-    @abstractmethod
-    def glass_box_enabled(self, value: bool) -> None:
-        """Enables or disables audit trail generation (e.g. for Monte Carlo speed)."""
         pass

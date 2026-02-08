@@ -55,45 +55,23 @@ class RIMLibrary:
     ) -> Tuple[List[float], List[float], List[float], CalculationStep]:
         """
         Projects Earnings, Book Values, and Residual Incomes based on Clean Surplus.
-
-        Logic:
-          1. Project Earnings (EPS or Net Income) using growth (Constant or Vector).
-          2. Derive Book Value (BV) from Retention (1 - Payout).
-          3. Calculate RI = Earnings - (BV_prev * Ke).
-
-        Parameters
-        ----------
-        current_book_value : float
-            Starting Book Value (Total or Per Share).
-        base_earnings : float
-            Starting Earnings (Net Income or EPS) used as anchor.
-        cost_of_equity : float
-            The discount rate (Ke).
-        params : Parameters
-            Contains growth assumptions and payout ratio.
-
-        Returns
-        -------
-        Tuple[List[float], List[float], List[float], CalculationStep]
-            (Residual Incomes, Book Values, Projected Earnings, Audit Step).
         """
-        g = params.growth
         s = params.strategy
 
-        # 1. Inputs Resolution
-        g_rate = g.fcf_growth_rate or ModelDefaults.DEFAULT_GROWTH_RATE
-        years = g.projection_years or ModelDefaults.DEFAULT_PROJECTION_YEARS
+        # 1. Inputs Resolution (From Strategy)
+        # RIM implies growth on earnings to drive book value
+        # We try to fetch 'growth_rate' or default
+        g_rate = getattr(s, "growth_rate", None) or ModelDefaults.DEFAULT_GROWTH_RATE
+        years = getattr(s, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
 
-        # Payout Ratio: Critical for Clean Surplus Relation (BV evolution)
-        payout = s.dividend_payout_ratio if s.dividend_payout_ratio is not None else ModelDefaults.DEFAULT_PAYOUT_RATIO
+        # Payout Ratio: Critical for Clean Surplus
+        # Note: DDMParameters has dividend_payout_ratio, checking existence
+        payout = getattr(s, "dividend_payout_ratio", None) or ModelDefaults.DEFAULT_PAYOUT_RATIO
 
         # 2. Project Earnings Series
-        # In RIM, growth is typically applied to Earnings, which then drive BV accumulation.
         projected_earnings = []
         current_earn = base_earnings
 
-        # Check for Manual Growth Vector (Hybrid Mode)
-        # We access the strategy-specific field safely
         manual_vector = getattr(s, "manual_growth_vector", None)
 
         for t in range(1, years + 1):
@@ -106,7 +84,6 @@ class RIMLibrary:
             projected_earnings.append(current_earn)
 
         # 3. Calculate Vectors (RI and BV)
-        # Uses the Clean Surplus relation: BV_t = BV_{t-1} + NI_t - Div_t
         residual_incomes, book_values = calculate_rim_vectors(
             current_bv=current_book_value,
             ke=cost_of_equity,
@@ -132,7 +109,7 @@ class RIMLibrary:
             ),
             "p": VariableInfo(
                 symbol="p", value=payout, formatted_value=f"{payout:.1%}",
-                source=VariableSource.MANUAL_OVERRIDE if s.dividend_payout_ratio is not None else VariableSource.DEFAULT,
+                source=VariableSource.MANUAL_OVERRIDE,
                 description="Payout Ratio"
             )
         }
@@ -156,27 +133,10 @@ class RIMLibrary:
             cost_of_equity: float,
             params: Parameters
     ) -> Tuple[float, CalculationStep]:
-        """
-        Calculates Terminal Value using the Ohlson Model with Persistence Factor (omega).
+        """Calculates Terminal Value using the Ohlson Model with Persistence Factor (omega)."""
 
-        Formula: TV = (RI_n * ω) / (1 + Ke - ω)
-
-        Parameters
-        ----------
-        final_ri : float
-            Residual Income in the last explicit year.
-        cost_of_equity : float
-            Cost of Equity (Ke).
-        params : Parameters
-            Contains persistence factor (omega).
-
-        Returns
-        -------
-        Tuple[float, CalculationStep]
-            Terminal Value and audit step.
-        """
-        # Resolve Omega (Persistence)
-        omega = params.strategy.persistence_factor or ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
+        # Access Persistence Factor from RIMParameters
+        omega = getattr(params.strategy, "persistence_factor", None) or ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
 
         # Safety: Omega cannot equal (1 + Ke)
         denominator = (1.0 + cost_of_equity) - omega
@@ -192,7 +152,7 @@ class RIMLibrary:
             ),
             "ω": VariableInfo(
                 symbol="ω", value=omega, formatted_value=f"{omega:.2f}",
-                source=VariableSource.MANUAL_OVERRIDE if params.strategy.persistence_factor else VariableSource.DEFAULT,
+                source=VariableSource.MANUAL_OVERRIDE,
                 description="Ohlson Persistence Factor"
             ),
             "Ke": VariableInfo(
@@ -221,11 +181,7 @@ class RIMLibrary:
             terminal_value: float,
             cost_of_equity: float
     ) -> Tuple[float, CalculationStep]:
-        """
-        Aggregates components to find Total Equity Value.
-
-        Formula: V = B_0 + Sum(PV(RI)) + PV(TV)
-        """
+        """Aggregates components to find Total Equity Value."""
         # 1. Discount Factors
         factors = calculate_discount_factors(cost_of_equity, len(residual_incomes))
 
@@ -239,18 +195,9 @@ class RIMLibrary:
         total_equity = current_book_value + pv_ri + pv_tv
 
         variables = {
-            "B_0": VariableInfo(
-                symbol="B_0", value=current_book_value, formatted_value=format_smart_number(current_book_value),
-                source=VariableSource.SYSTEM
-            ),
-            "ΣPV_RI": VariableInfo(
-                symbol="ΣPV_RI", value=pv_ri, formatted_value=format_smart_number(pv_ri),
-                source=VariableSource.CALCULATED, description="PV of Explicit Residual Incomes"
-            ),
-            "PV_TV": VariableInfo(
-                symbol="PV_TV", value=pv_tv, formatted_value=format_smart_number(pv_tv),
-                source=VariableSource.CALCULATED, description="PV of Terminal Value"
-            )
+            "B_0": VariableInfo(symbol="B_0", value=current_book_value, formatted_value=format_smart_number(current_book_value), source=VariableSource.SYSTEM),
+            "ΣPV_RI": VariableInfo(symbol="ΣPV_RI", value=pv_ri, formatted_value=format_smart_number(pv_ri), source=VariableSource.CALCULATED),
+            "PV_TV": VariableInfo(symbol="PV_TV", value=pv_tv, formatted_value=format_smart_number(pv_tv), source=VariableSource.CALCULATED)
         }
 
         step = CalculationStep(

@@ -59,15 +59,13 @@ class GrahamLibrary:
         s = params.strategy
 
         # 1. Resolve Inputs
-        eps = s.eps_normalized or s.eps_ttm or 0.0
+        # s is polymorphic, but we assume it's GrahamParameters here
+        eps = getattr(s, "eps_normalized", None) or 0.0
 
-        # Graham formula expects growth as an integer (e.g., 10 for 10%),
-        # but our math function handles the conversion from decimal if needed.
-        # Let's check 'financial_math.py': It takes decimal and does (growth_rate * 100).
-        g_decimal = params.growth.fcf_growth_rate or ModelDefaults.DEFAULT_GROWTH_RATE
+        # Fix: Access growth_estimate from strategy, not params.growth
+        g_decimal = getattr(s, "growth_estimate", None) or ModelDefaults.DEFAULT_GROWTH_RATE
 
         # Bond Yield (Y)
-        # Use corporate AAA yield if provided in macro, else default
         aaa_yield = params.common.rates.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
 
         # 2. Calculation
@@ -81,7 +79,7 @@ class GrahamLibrary:
             ),
             "g": VariableInfo(
                 symbol="g", value=g_decimal, formatted_value=f"{g_decimal:.1%}",
-                source=VariableSource.MANUAL_OVERRIDE if params.growth.fcf_growth_rate else VariableSource.DEFAULT,
+                source=VariableSource.MANUAL_OVERRIDE,
                 description="Expected Growth Rate"
             ),
             "Y": VariableInfo(

@@ -89,7 +89,6 @@ def get_sector_data(industry: Optional[str], sector: Optional[str]) -> SectorBen
 
     # 2. Secondary Attempt: Broad Macro Sector
     sector_key = _slugify(sector)
-    # Check normalized keys if direct slug fails
     if sector_key not in SECTORS:
         sector_key = _normalize_sector_key(sector or "")
 
