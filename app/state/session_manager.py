@@ -11,8 +11,7 @@ Standards:
 - NumPy style docstrings.
 """
 
-import streamlit as st
-from app.state.store import AppState, get_state
+from app.state.store import get_state
 
 
 class SessionManager:
@@ -31,26 +30,24 @@ class SessionManager:
         Bootstraps the session state on application startup.
 
         This method must be called at the very top of `main.py`.
-        It ensures that `st.session_state.app_state` exists before any view is rendered.
+        It delegates to `get_state()` which already handles the singleton
+        creation, avoiding double-initialization.
         """
-        if "initialized" not in st.session_state:
-            # 1. Instantiate the Single Source of Truth
-            st.session_state.app_state = AppState()
-
-            # 2. Flag as initialized to prevent overwriting on reruns
-            st.session_state.initialized = True
+        # Delegate to the single source of truth — get_state() creates
+        # the AppState if it doesn't exist yet.
+        get_state()
 
     @staticmethod
     def reset_valuation() -> None:
         """
         Clears previous calculation results to force a fresh state.
 
-        Typically triggered when the user modifies the Ticker or the Valuation Methodology.
-        Triggers a `st.rerun()` to refresh the UI immediately.
+        Typically triggered when the user modifies the Ticker or the Valuation
+        Methodology. Does NOT call st.rerun() — the caller is responsible
+        for controlling the rerun flow to prevent infinite loops.
         """
         state = get_state()
         state.clear_results()
-        st.rerun()
 
     @staticmethod
     def set_error(message: str) -> None:
@@ -61,6 +58,7 @@ class SessionManager:
         ----------
         message : str
             The localized error message to display to the user.
+            Pass None to clear the error.
         """
         state = get_state()
-        state.error_message = message
+        state.error_message = message if message else None

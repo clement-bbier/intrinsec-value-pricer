@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import time
 
+from src.models import Parameters
 from src.models.valuation import ValuationRequest, ValuationResult
 from src.models.company import CompanySnapshot
 
@@ -34,6 +35,7 @@ from src.valuation.options.monte_carlo import MonteCarloRunner
 from src.valuation.options.sensitivity import SensitivityRunner
 from src.valuation.options.scenarios import ScenariosRunner
 from src.valuation.options.sotp import SOTPRunner
+from src.valuation.strategies import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +112,11 @@ class ValuationOrchestrator:
             raise CalculationError(f"Internal Engine Failure: {str(e)}") #
 
     @staticmethod
-    def _process_extensions(base_result: ValuationResult, strategy_runner: any, params: any) -> None:
+    def _process_extensions(
+            base_result: ValuationResult,
+            strategy_runner: IValuationRunner,
+            params: Parameters
+    ) -> None:
         """
         Executes enabled analytical modules and attaches results to the envelope.
         """

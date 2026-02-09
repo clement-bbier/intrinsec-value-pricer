@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from src.i18n import CalculationErrors, StrategySources
 from src.core.exceptions import CalculationError
 from src.models import Company, Parameters
-from src.config.constants import ValuationEngineDefaults, MacroDefaults
+from src.config.constants import ValuationEngineDefaults, MacroDefaults, ModelDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -310,25 +310,25 @@ def apply_dilution_adjustment(price : float, dilution_factor: float) -> float:
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     r"""
-    Standard Capital Asset Pricing Model (CAPM).
+    Calculates Cost of Equity using the Capital Asset Pricing Model (CAPM).
 
-    $$k_e = R_f + \beta \times MRP$$
+    $$K_e = R_f + \beta \times MRP$$
 
     Parameters
     ----------
     rf : float
         Risk-free rate.
     beta : float
-        Systemic risk coefficient.
+        Equity beta coefficient.
     mrp : float
-        Market Risk Premium (Equity Risk Premium).
+        Market risk premium.
 
     Returns
     -------
     float
-        The calculated cost of equity.
+        The cost of equity.
     """
-    return rf + (beta * mrp)
+    return rf + beta * mrp
 
 def unlever_beta(beta_levered: float, tax_rate: float, debt_equity_ratio: float) -> float:
     r"""
@@ -393,12 +393,10 @@ def calculate_cost_of_equity(params: Parameters) -> float:
         The resolved cost of equity.
     """
     r = params.common.rates
-    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
-    mrp = r.market_risk_premium if r.market_risk_premium is not None else 0.05
-    beta = r.beta if r.beta is not None else 1.0 # Financials beta moved or used here
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+    mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+    beta = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
 
-    # Note: If manual override existed in previous model, check where it is stored now.
-    # Assuming params.common.rates IS the manual override container.
     return calculate_cost_of_equity_capm(rf, beta, mrp)
 
 def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float],
@@ -467,8 +465,8 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     ke = calculate_cost_of_equity(params)
 
     # 2. Calculate Kd
-    tax = r.tax_rate if r.tax_rate is not None else 0.25
-    rf = r.risk_free_rate if r.risk_free_rate is not None else 0.04
+    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
 
     # Check for manual cost of debt override, else synthetic
     if r.cost_of_debt is not None:
@@ -476,12 +474,14 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     else:
         # Need market cap for table selection
         mcap = financials.current_price * (c.shares_outstanding or 1.0)
+
+        # Extract EBIT and Interest from the Company identity if available
+        # Fallback to 0.0 triggers the A-rated proxy spread (safe default)
+        ebit = getattr(financials, 'ebit_ttm', None) or 0.0
+        interest = getattr(financials, 'interest_expense', None) or 0.0
+
         kd_gross = calculate_synthetic_cost_of_debt(
-            rf,
-            # Note: We need EBIT/Interest. Assuming they are in snapshot or passed safely.
-            # In new Parameters model, these might need to be fetched from CompanySnapshot or calculated.
-            # For now using generic placeholder access if not in params.
-            0.0, 0.0, mcap
+            rf, ebit, interest, mcap
         )
 
     kd_net = kd_gross * (1.0 - tax)
@@ -504,7 +504,7 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         weight_debt=wd,
         wacc=wacc_raw,
         method=StrategySources.WACC_MARKET,
-        beta_used=r.beta if r.beta else 1.0,
+        beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
         beta_adjusted=False
     )
 

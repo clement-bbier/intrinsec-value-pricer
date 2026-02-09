@@ -150,12 +150,18 @@ def get_display_names() -> Dict[ValuationMethodology, str]:
     return StrategyRegistry.get_display_names_map()
 
 
+_REGISTRY_INITIALIZED = False
+
+
 def _register_all_strategies() -> None:
     """
     Bootstrap function using the CORRECT physical filenames from the filesystem.
+    Guarded against double-registration during Streamlit hot-reload.
     """
-    # 1. Corrected Imports based on the actual ./src/valuation/strategies/ directory
-    # Note: 'RevenueBasedStrategy' was renamed to 'RevenueGrowthFCFFStrategy' in previous steps
+    global _REGISTRY_INITIALIZED
+    if _REGISTRY_INITIALIZED:
+        return
+
     from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
     from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
     from src.valuation.strategies.revenue_growth_fcff import RevenueGrowthFCFFStrategy
@@ -216,9 +222,10 @@ def _register_all_strategies() -> None:
         display_name=RegistryTexts.GRAHAM_IV_L
     )
 
+    _REGISTRY_INITIALIZED = True
     count = len(StrategyRegistry.get_all_modes())
     logger.info("[Registry] %d Strategies loaded successfully.", count)
 
 
-# Initialization on module load
+# Initialization on module load (guarded)
 _register_all_strategies()

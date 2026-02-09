@@ -72,6 +72,19 @@ class AppState:
         self.technical_cache.clear()
         self.error_message = None
 
+    def set_result(self, result: ValuationResult) -> None:
+        """
+        Stores a successful valuation result and clears error state.
+
+        Parameters
+        ----------
+        result : ValuationResult
+            The completed valuation output.
+        """
+        self.last_result = result
+        self.should_run_valuation = False
+        self.error_message = None
+
 
 def get_state() -> AppState:
     """

@@ -19,6 +19,7 @@ from app.state.store import get_state
 from app.state.session_manager import SessionManager
 from app.controllers.app_controller import AppController
 from src.models.enums import ValuationMethodology
+from src.valuation.registry import get_display_names
 from src.i18n import CommonTexts, SidebarTexts
 
 
@@ -38,34 +39,42 @@ def render_sidebar():
         # --- 2. IDENTITY (TICKER) ---
         st.markdown(f"### {SidebarTexts.SEC_1_COMPANY}")
 
-        # We use a callback to reset results if the ticker changes
-        new_ticker = st.text_input(
-            SidebarTexts.TICKER_LABEL,
-            value=state.ticker,
-            help="Enter a valid Yahoo Finance ticker (e.g. AAPL, MSFT, ^GSPC)."
-        ).upper().strip()
+        # Use st.form to prevent rerun on every keystroke (debounce)
+        with st.form("ticker_form", clear_on_submit=False):
+            new_ticker = st.text_input(
+                SidebarTexts.TICKER_LABEL,
+                value=state.ticker,
+                help="Enter a valid Yahoo Finance ticker (e.g. AAPL, MSFT, ^GSPC)."
+            ).upper().strip()
 
-        if new_ticker != state.ticker:
+            ticker_submitted = st.form_submit_button(
+                "✓ Confirm Ticker",
+                use_container_width=True
+            )
+
+        if ticker_submitted and new_ticker and new_ticker != state.ticker:
             state.ticker = new_ticker
             SessionManager.reset_valuation()
+            st.rerun()
 
         # --- 3. METHODOLOGY ---
         st.markdown(f"### {SidebarTexts.SEC_2_METHODOLOGY}")
 
-        # Create a mapping for display labels
-        # Note: In a real app, use i18n for keys. Here using raw Enums for simplicity.
+        # Use i18n display names from the Registry instead of raw enum values
+        display_names = get_display_names()
         method_options = list(ValuationMethodology)
 
         selected_method = st.selectbox(
             SidebarTexts.METHOD_LABEL,
             options=method_options,
             index=method_options.index(state.selected_methodology),
-            format_func=lambda x: x.value  # Could use a dedicated i18n mapper here
+            format_func=lambda x: display_names.get(x, x.value)
         )
 
         if selected_method != state.selected_methodology:
             state.selected_methodology = selected_method
             SessionManager.reset_valuation()
+            st.rerun()
 
         # --- 4. MODE SWITCH (Auto vs Expert) ---
         st.divider()
@@ -79,7 +88,6 @@ def render_sidebar():
 
         if is_expert != state.is_expert_mode:
             state.is_expert_mode = is_expert
-            # We don't necessarily reset valuation here, but it's safer UI behavior
             st.rerun()
 
         # --- 5. EXECUTION ---
@@ -94,5 +102,5 @@ def render_sidebar():
             AppController.handle_run_analysis()
 
         # --- FOOTER ---
-        st.markdown("---")
+        st.divider()
         st.caption(f"{CommonTexts.PROJECT_BADGE} | {CommonTexts.AUTHOR_NAME}")

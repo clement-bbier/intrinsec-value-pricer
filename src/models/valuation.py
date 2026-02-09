@@ -59,7 +59,7 @@ class ValuationResult(BaseModel):
         market_price = self.request.parameters.structure.current_price
         iv = self.results.common.intrinsic_value_per_share
 
-        if market_price and market_price > 0:
+        if market_price and market_price > 0 and iv is not None:
             self.upside_pct = (iv - market_price) / market_price
         else:
-            self.upside_pct = 0.0
+            self.upside_pct = None  # Explicitly unknown

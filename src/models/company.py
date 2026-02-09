@@ -16,7 +16,7 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field, ConfigDict
 
 from src.models.enums import CompanySector
@@ -49,7 +49,7 @@ class Company(BaseModel):
     country: Optional[str] = None
     currency: str = "USD"
     current_price: float = Field(default=0.0, ge=0)
-    last_update: datetime = Field(default_factory=datetime.now)
+    last_update: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def display_name(self) -> str:

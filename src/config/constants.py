@@ -9,7 +9,7 @@ Architecture: Mix of Dataclasses (for config objects) and Static Classes (for lo
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Tuple
 
 # ==============================================================================
 # 1. MONTE CARLO SIMULATION
@@ -168,6 +168,7 @@ class ValuationEngineDefaults:
     """
     Static constants for the valuation engine.
     NOT a dataclass, so attributes are accessible without instantiation.
+    All mutable containers are frozen via tuple conversion.
     """
 
     MAX_ITERATIONS: int = 50
@@ -177,46 +178,46 @@ class ValuationEngineDefaults:
     MAX_DILUTION_CLAMPING: float = 0.10
 
     # --- Credit Rating Spreads (ICR-based) ---
-    # Converted to DICT for O(1) Lookup in financial_math.py
+    # Stored as tuples of (threshold, spread) sorted descending by threshold
+    # for sequential iteration in financial_math.py
 
     # Large Cap (> $5B)
-    SPREADS_LARGE_CAP: Dict[float, float] = {
-        8.5: 0.0069,   # AAA
-        6.5: 0.0085,   # AA
-        5.5: 0.0107,   # A+
-        4.25: 0.0118,  # A
-        3.0: 0.0133,   # A-
-        2.5: 0.0171,   # BBB
-        2.25: 0.0216,  # BB+
-        2.0: 0.0270,   # BB
-        1.75: 0.0387,  # B+
-        1.5: 0.0522,   # B
-        1.25: 0.0810,  # B-
-        0.8: 0.1116,   # CCC
-        0.65: 0.1575,  # CC
-        0.2: 0.1750,   # C
-        -999.0: 0.2000 # D (Default)
-    }
+    SPREADS_LARGE_CAP: tuple = (
+        (8.5, 0.0069),    # AAA
+        (6.5, 0.0085),    # AA
+        (5.5, 0.0107),    # A+
+        (4.25, 0.0118),   # A
+        (3.0, 0.0133),    # A-
+        (2.5, 0.0171),    # BBB
+        (2.25, 0.0216),   # BB+
+        (2.0, 0.0270),    # BB
+        (1.75, 0.0387),   # B+
+        (1.5, 0.0522),    # B
+        (1.25, 0.0810),   # B-
+        (0.8, 0.1116),    # CCC
+        (0.65, 0.1575),   # CC
+        (0.2, 0.1750),    # C
+        (-999.0, 0.2000), # D (Default)
+    )
 
     # Small/Mid Cap (< $5B)
-    SPREADS_SMALL_MID_CAP: Dict[float, float] = {
-        12.5: 0.0069,
-        9.5: 0.0085,
-        7.5: 0.0107,
-        6.0: 0.0118,
-        4.5: 0.0133,
-        4.0: 0.0171,
-        3.5: 0.0216,
-        3.0: 0.0270,
-        2.5: 0.0387,
-        2.0: 0.0522,
-        1.5: 0.0810,
-        1.25: 0.1116,
-        0.8: 0.1575,
-        0.5: 0.1750,
-        -999.0: 0.2000
-    }
-
+    SPREADS_SMALL_MID_CAP: tuple = (
+        (12.5, 0.0069),
+        (9.5, 0.0085),
+        (7.5, 0.0107),
+        (6.0, 0.0118),
+        (4.5, 0.0133),
+        (4.0, 0.0171),
+        (3.5, 0.0216),
+        (3.0, 0.0270),
+        (2.5, 0.0387),
+        (2.0, 0.0522),
+        (1.5, 0.0810),
+        (1.25, 0.1116),
+        (0.8, 0.1575),
+        (0.5, 0.1750),
+        (-999.0, 0.2000),
+    )
 
 # ==============================================================================
 # 10. UI WIDGETS

@@ -57,7 +57,7 @@ def main() -> None:
     if state.error_message:
         st.error(state.error_message)
         if st.button("Dismiss Error"):
-            SessionManager.set_error("")
+            state.error_message = ""
             st.rerun()
 
     # Priority 2: Results Dashboard (Pillars 0 to 5)
