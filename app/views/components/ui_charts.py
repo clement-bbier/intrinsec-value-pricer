@@ -8,7 +8,7 @@ Architecture: Stateless View Components.
 
 from __future__ import annotations
 import logging
-from typing import List, Optional, Callable, Dict
+from typing import List, Optional, Callable, Dict, Any
 
 import altair as alt
 import numpy as np
@@ -435,3 +435,57 @@ def display_sector_comparison_chart(
     )
 
     st.altair_chart(chart)
+
+# ============================================================================
+# 7. SCENARIO ANALYSIS (NEW)
+# ============================================================================
+
+@st.fragment
+def display_scenario_comparison_chart(
+    scenarios_data: List[Dict[str, Any]],
+    market_price: float,
+    currency: str
+) -> None:
+    """
+    Renders a bar chart comparing Bull/Base/Bear scenarios against Market Price.
+    """
+    if not scenarios_data:
+        return
+
+    df_chart = pd.DataFrame(scenarios_data)
+
+    # Base Chart: Scenario Bars
+    # Note: Using QuantTexts for tooltips
+    bars = alt.Chart(df_chart).mark_bar().encode(
+        x=alt.X('Scenario:N', title=None, sort=None),  # Keep provided order
+        y=alt.Y('Value:Q', title=f"Value ({currency})"),
+        color=alt.Color('Color:N', scale=None, legend=None),
+        tooltip=[
+            alt.Tooltip('Scenario', title=QuantTexts.COL_SCENARIO),
+            alt.Tooltip('Value', title=QuantTexts.COL_VALUE_PER_SHARE, format=',.2f'),
+            alt.Tooltip('Upside', title=QuantTexts.COL_UPSIDE, format='.1%')
+        ]
+    )
+
+    # Reference Rule: Market Price
+    rule = alt.Chart(pd.DataFrame({'y': [market_price]})).mark_rule(
+        color='#2563eb',  # Institutional blue
+        strokeDash=[5, 5]
+    ).encode(y='y')
+
+    # Text label for Market Price line
+    text_rule = rule.mark_text(
+        align='left',
+        dx=5,
+        dy=-5,
+        text=f"Price: {market_price:.2f}",
+        color='#2563eb'
+    )
+
+    # Chart composition
+    final_chart = (bars + rule + text_rule).properties(
+        height=250,
+        width='container'
+    )
+
+    st.altair_chart(final_chart, use_container_width=True)

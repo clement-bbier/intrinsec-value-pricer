@@ -1,112 +1,74 @@
 """
-app/ui/results/optional/risk_engineering.py
+app/views/results/pillars/risk_engineering.py
 
 PILLAR 4 — RISK ENGINEERING (HUB)
 =================================
 Role: Unifies stochastic simulation (Monte Carlo), deterministic scenarios,
-and historical backtesting into a single risk management interface.
+sensitivity analysis, and historical backtesting into a single risk management interface.
 Architecture: ST-4.2 Compliant Hub & Spokes logic.
 """
 
 from typing import Any
 import streamlit as st
 
-from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
 from src.models import ValuationResult
 from src.i18n import PillarLabels, QuantTexts, BacktestTexts
-from app.ui.results.base_result import ResultTabBase
 
 # Internal rendering engines (Spokes)
+# Note: These components use static methods (_render, _is_visible)
 from app.views.results.pillars.monte_carlo_distribution import MonteCarloDistributionTab
+from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
 from app.views.results.pillars.scenario_analysis import ScenarioAnalysisTab
 from app.views.results.pillars.historical_backtest import HistoricalBacktestTab
-from app.views.components.ui_charts import display_backtest_convergence_chart
 
 
-class RiskEngineeringTab(ResultTabBase):
+def render_risk_analysis(result: ValuationResult, **kwargs: Any) -> None:
     """
-    Pillar 4: Risk Engineering Hub.
+    Renders Pillar 4: Risk Engineering Hub.
 
-    This component coordinates the dynamic display of risk mitigation and
-    validation blocks. It ensures a streamlined layout by removing redundant
-    headers and activating real-time data integration for risk analysis.
+    This function coordinates the dynamic display of risk mitigation and
+    validation blocks. It acts as a controller, checking the visibility
+    of each sub-component (Monte Carlo, Scenarios, Backtest) and rendering
+    them sequentially if active.
+
+    Parameters
+    ----------
+    result : ValuationResult
+        The complete valuation result object containing risk data.
+    **kwargs : Any
+        Additional rendering context (e.g., cached MC statistics).
     """
 
-    TAB_ID = "risk_engineering"
-    LABEL = PillarLabels.PILLAR_4_RISK
-    ORDER = 4
-    IS_CORE = True
+    # --- 1. PILLAR HEADER (Institutional Standard) ---
+    st.header(PillarLabels.PILLAR_4_RISK)
+    st.caption(QuantTexts.MC_AUDIT_STOCH)
+    st.divider()
 
-    def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Renders risk components with visual cleanup and logical sequencing.
+    # --- 2. MONTE CARLO BLOCK (Stochastic Simulation) ---
+    # The Hub delegates rendering to the Spoke if the simulation is active.
+    if MonteCarloDistributionTab.is_visible(result):
+        MonteCarloDistributionTab.render(result, **kwargs)
+        st.divider()
 
-        Parameters
-        ----------
-        result : ValuationResult
-            The complete valuation result object containing risk data.
-        **kwargs : Any
-            Additional rendering context (e.g., cached MC statistics).
-        """
+    # --- 3. SENSITIVITY BLOCK (Variable Impact) ---
+    # Renders the WACC/Growth heatmap if sensitivity analysis was requested.
+    if SensitivityAnalysisTab.is_visible(result):
+        SensitivityAnalysisTab.render(result, **kwargs)
+        st.divider()
 
-        # --- 1. PILLAR HEADER (Institutional Standard) ---
-        st.markdown(f"### {PillarLabels.PILLAR_4_RISK}")
-        st.caption(QuantTexts.MC_AUDIT_STOCH)
-        st.write("")
+    # --- 4. SCENARIO BLOCK (Deterministic Convictions) ---
+    # Renders Bull/Bear cases and weighted expectations.
+    if ScenarioAnalysisTab.is_visible(result):
+        ScenarioAnalysisTab.render(result, **kwargs)
+        st.divider()
 
-        # --- 2. MONTE CARLO BLOCK (Stochastic Simulation) ---
-        # Component manages its own internal rendering and visibility
-        mc_tab = MonteCarloDistributionTab()
-        if mc_tab.is_visible(result):
-            mc_tab.render(result, **kwargs)
-            st.divider()
-
-        sensi = SensitivityAnalysisTab()
-        if sensi.is_visible(result):
-            sensi.render(result, **kwargs)
-            st.divider()
-
-        # --- 3. SCENARIO BLOCK (Deterministic Convictions) ---
-        sc_tab = ScenarioAnalysisTab()
-        if sc_tab.is_visible(result):
-            st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
-            sc_tab.render(result, **kwargs)
-            st.divider()
-
-        # --- 4. BACKTESTING BLOCK (Historical Validation) ---
+    # --- 5. BACKTESTING BLOCK (Historical Validation) ---
+    # Renders the convergence chart and accuracy metrics.
+    if HistoricalBacktestTab.is_visible(result):
+        HistoricalBacktestTab.render(result, **kwargs)
+    else:
+        # Educational fallback message if historical data is missing (e.g., recent IPO)
+        # Only show if other risk modules are active to avoid an empty tab,
+        # or implies this is the end of the risk section.
         st.markdown(f"#### {BacktestTexts.TITLE}")
-
-        # Direct rendering of convergence chart if historical data is available
-        if result.backtest_report and result.backtest_report.points:
-            # Displays the Predicted vs Actual visual alignment
-            display_backtest_convergence_chart(
-                ticker=result.financials.ticker,
-                backtest_report=result.backtest_report,
-                currency=result.financials.currency
-            )
-            # Render specialized accuracy metrics (MAE, Alpha)
-            bt_tab = HistoricalBacktestTab()
-            bt_tab.render(result, **kwargs)
-        else:
-            # Educational fallback message if historical data is missing (e.g., recent IPO)
-            st.info(BacktestTexts.HELP_BACKTEST)
-
-    def is_visible(self, result: ValuationResult) -> bool:
-        """
-        Determines if the risk hub should be displayed.
-
-        The tab is visible if any risk tool is activated (MC, Scenarios)
-        or if historical backtest data has been successfully generated.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            The result object to inspect for active risk modules.
-
-        Returns
-        -------
-        bool
-            True if at least one risk component is active or has data.
-        """
-        p = result.params
-        return p.monte_carlo.enabled or p.scenarios.enabled or p.backtest.enabled
+        st.info(BacktestTexts.HELP_BACKTEST)

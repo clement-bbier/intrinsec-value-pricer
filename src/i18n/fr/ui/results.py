@@ -254,13 +254,29 @@ class BenchmarkTexts:
     PIOTROSKI_MSG_STABLE = "Fondamentaux moyens. Profil standard."
     PIOTROSKI_MSG_WEAK = "Fondamentaux de faible qualité. Profil risqué."
 
+
 class QuantTexts:
     """Textes Pillar 4 — Ingénierie du Risque (Monte Carlo & Scenarios)."""
-    # Monte Carlo
+
+    # --- Analyse de Sensibilité (Heatmap) ---
+    SENS_TITLE = "Matrice de Sensibilité"
+    LBL_SENS_SCORE = "Score de Stabilité"
+    HELP_SENS_SCORE = (
+        "Indicateur de robustesse (0-100). Mesure l'impact des variations "
+        "d'inputs sur la valorisation. < 15 : Stable | > 30 : Critique."
+    )
+
+    # Statuts du score
+    SENS_STABLE = "Modèle Robuste"
+    SENS_VOLATILE = "Volatilité Modérée"
+    SENS_CRITICAL = "Instabilité Critique"
+
+    # --- Monte Carlo ---
     MC_TITLE = "Simulation de Monte Carlo"
     MC_PROB_ANALYSIS = "Analyse des Probabilités de Marché"
     MC_DOWNSIDE = "Risque de Surévaluation"
     MC_PROB_UNDERVALUATION = "Probabilité de Sous-évaluation"
+    MC_PROB_OVERVALUATION = "Probabilité de Sur-évaluation"
     MC_MEDIAN = "Valeur Médiane"
     MC_VAR = "VaR (95%)"
     MC_VOLATILITY = "Écart-type (σ)"
@@ -272,36 +288,67 @@ class QuantTexts:
     # Phrases dynamiques
     MC_CONFIG_SUB = r"Moteur stochastique : {sims} itérations | σ(β): {sig_b:.1%} | σ(g): {sig_g:.1%} | ρ: {rho:.2f}"
     MC_FILTER_SUB = r"Intervalle de confiance 80% ({valid}/{total} valides)"
-    MC_SENS_SUB = "P50 Neutre (rho=0) : {p50_n:,.2f} | P50 de Base (rho=-0.3) : {p50_b:,.2f}"
+    MC_SENS_SUB = r"P50 Neutre (rho=0) : {p50_n:,.2f} | P50 de Base (rho=-0.3) : {p50_b:,.2f}"
     CONFIDENCE_INTERVAL = "Intervalle de confiance"
 
-    # Scenarios
-    SCENARIO_TITLE = "Analyse des scénarios"
+    # --- Scenarios ---
+    SCENARIO_TITLE = "Analyse des Scénarios"
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
     COL_SCENARIO = "SCÉNARIO"
     COL_PROBABILITY = "PROBABILITÉ"
-    COL_GROWTH = "CROISSANCE"
-    COL_MARGIN_FCF = "MARGE"
-    COL_VALUE_PER_SHARE = "VALEUR"
-    COL_UPSIDE = "UPSIDE"
+    COL_GROWTH = "CROISSANCE (g)"
+    COL_MARGIN_FCF = "MARGE FCF"
+    COL_VALUE_PER_SHARE = "VALEUR / ACTION"
+    COL_UPSIDE = "POTENTIEL"
 
-    # Axes Heatmap (Sensibilité)
+    # Axes Heatmap (Référence textuelle)
     AXIS_WACC = "WACC / Taux d'Actualisation"
     AXIS_GROWTH = "Taux de Croissance Terminale (g)"
+
+    # Backtest Metrics (Ajout pour cohérence si manquant)
+    LABEL_HIT_RATE = "Taux de Succès"
+    LABEL_MAE = "Erreur Absolue Moyenne"
+    BACKTEST_INTERPRETATION = "Comparaison de la valeur intrinsèque historique vs prix réel."
+    MSG_SENS_NO_DATA = "Données de sensibilité insuffisantes pour l'affichage."
 
 
 class BacktestTexts:
     """Textes pour le module de Backtesting Historique (Pillar 4 extension)."""
+
+    # Titres & Descriptions
     TITLE = "Validation Historique (Backtest)"
+    HELP_BACKTEST = (
+        "Simulation rétrospective du modèle sur les exercices passés pour vérifier sa capacité prédictive. "
+        "Compare la valeur intrinsèque théorique calculée (IV) face au prix réel du marché à cette date."
+    )
+
+    # Messages
+    NO_BACKTEST_FOUND = "Données historiques insuffisantes pour générer un audit de performance."
+    INTERPRETATION = "Une convergence historique élevée renforce la fiabilité des projections futures."
+
+    # Labels Graphiques (Longs - pour Altair/Plotly)
     LABEL_HIST_IV = "Valeur Intrinsèque Calculée"
     LABEL_REAL_PRICE = "Prix Réel Historique"
 
-    NO_BACKTEST_FOUND = "Données historiques insuffisantes pour générer un audit de performance."
-    LABEL_HIT_RATE = "Taux de succès (Hit Rate)"
-    LABEL_MAE = "Erreur Moyenne (MAE)"
-    INTERPRETATION = "Une convergence historique élevée renforce la fiabilité des projections futures."
+    # Labels Tableaux (Courts - pour Column Config)
+    LBL_HIST_IV = "Valeur Calc."
+    LBL_REAL_PRICE = "Prix Réel"
+    LBL_PERIODS = "Périodes Testées"
+    LBL_DATE = "Date Val."
+    LBL_ERROR_GAP = "Écart (%)"
 
+    # KPIs & Métriques
+    METRIC_ACCURACY = "Précision du Modèle"
+    LABEL_HIT_RATE = "Taux de Succès (Hit Rate)"
+    LABEL_MAE = "Erreur Moyenne (MAE)"
+
+    # Grades & Résultats
+    GRADE_A = "Excellente"
+    GRADE_B = "Moyenne"
+
+    # Section
+    SEC_RESULTS = "Détail des Écarts Historiques"
 
 class MarketTexts:
     """Textes Pillar 5 — Analyse de Marché (Peers & Multiples)."""
@@ -349,12 +396,18 @@ class SOTPTexts:
 
 class ChartTexts:
     """Libellés pour les graphiques (Plotly/Altair)."""
-    PRICE_HISTORY_TITLE = "Historique : {ticker}"
-    SIM_AXIS_X = r"Valeur Intrinsèque ({currency})"
-    SIM_AXIS_Y = "Fréquence"
-    SENS_TITLE = "Modèle Intrinsèque (DCF/RIM)"
-    CORREL_CAPTION = "Matrice de Corrélation des Inputs"
 
+    # Axes Standards
+    AXIS_WACC = "WACC / Coût du Capital (%)"
+    AXIS_GROWTH = "Croissance Terminale - g (%)"
+
+    # Titres & Légendes
+    PRICE_HISTORY_TITLE = r"Historique : {ticker}"
+    SIM_AXIS_X = r"Valeur Intrinsèque ({currency})"
+    SIM_AXIS_Y = "Fréquence (Densité)"
+    SENS_TITLE = "Modèle Intrinsèque (DCF/RIM)"
+    CORREL_CAPTION = "Matrice de Corrélation des Inputs (WACC vs Growth)"
+    TOOLTIP_VALUATION = "Valorisation"
 
 class RegistryTexts:
     """Textes pour les métadonnées du Glass Box (Registry)."""

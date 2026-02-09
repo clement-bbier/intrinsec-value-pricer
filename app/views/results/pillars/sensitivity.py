@@ -1,6 +1,5 @@
 """
 app/views/results/pillars/sensitivity.py
-
 PILLAR 4 — SUB-COMPONENT: SENSITIVITY ANALYSIS (HEATMAP)
 ========================================================
 Role: Visualization of the valuation elasticity vs WACC/Growth.
@@ -8,106 +7,134 @@ Architecture: Injectable Spoke.
 Style: Institutional Heatmap with conditional formatting.
 """
 
-from typing import Any
+from typing import Any, List, Dict, Literal
 import pandas as pd
 import altair as alt
 import streamlit as st
 
 from src.models import ValuationResult
-from src.i18n import SharedTexts, KPITexts
+from src.i18n import QuantTexts, ChartTexts
 from src.core.formatting import format_smart_number
-from app.views.results.base_result import ResultTabBase
 from app.views.components.ui_kpis import atom_kpi_metric
 
-
-class SensitivityAnalysisTab(ResultTabBase):
+class SensitivityAnalysisTab:
     """
     Rendering component for the 2D Sensitivity Matrix (WACC vs Growth).
+    Architecture: Stateless Component.
     """
 
-    TAB_ID = "sensitivity_analysis"
-    LABEL = "Sensibilité"
-    ORDER = 4
-    IS_CORE = False
+    @staticmethod
+    def is_visible(result: ValuationResult) -> bool:
+        """Visible only if sensitivity data is computed and available."""
+        return (
+            result.params.extensions.sensitivity.enabled
+            and result.results.extensions.sensitivity is not None
+        )
 
-    def is_visible(self, result: ValuationResult) -> bool:
-        """Visible only if sensitivity data is computed."""
-        return (result.results.extensions.sensitivity is not None)
-
-    def render(self, result: ValuationResult, **kwargs: Any) -> None:
+    @staticmethod
+    def render(result: ValuationResult, **_kwargs: Any) -> None:
         """
         Renders the WACC/Growth heatmap and volatility metrics.
+        Note: **_kwargs is present for signature compatibility but unused.
         """
         data = result.results.extensions.sensitivity
         if not data:
             return
 
-        currency = result.financials.currency
-
         # --- 1. HEADER & SCORE ---
-        st.markdown(SharedTexts.SEC_SENSITIVITY)
+        st.markdown(f"#### {QuantTexts.SENS_TITLE}")
 
-        # Volatility Score Display
+        # Volatility Score Logic
         score = data.sensitivity_score
-        score_delta = "Stable" if score < 15 else ("Volatile" if score < 30 else "Critique")
-        score_color = "normal" if score < 15 else ("off" if score < 30 else "inverse")
+
+        # Explicit typing to satisfy the Linter regarding atom_kpi_metric signature
+        score_color: Literal["green", "orange", "red"]
+        score_delta: str
+
+        # Interpretation: <15 Stable (Green), <30 Volatile (Orange), >30 Critical (Red)
+        if score < 15:
+            score_delta = getattr(QuantTexts, 'SENS_STABLE', "Stable")
+            score_color = "green"
+        elif score < 30:
+            score_delta = getattr(QuantTexts, 'SENS_VOLATILE', "Volatile")
+            score_color = "orange"
+        else:
+            score_delta = getattr(QuantTexts, 'SENS_CRITICAL', "Critique")
+            score_color = "red"
 
         col_kpi, col_chart = st.columns([1, 3])
 
         with col_kpi:
             atom_kpi_metric(
-                label=SharedTexts.LBL_SENS_SCORE,
+                label=QuantTexts.LBL_SENS_SCORE,
                 value=f"{score:.1f}",
                 delta=score_delta,
                 delta_color=score_color,
-                help_text=SharedTexts.HELP_SENS_SCORE
+                help_text=QuantTexts.HELP_SENS_SCORE
             )
+
+            # Safe access to axis names
+            x_name = data.x_axis_name or ChartTexts.AXIS_WACC
+            y_name = data.y_axis_name or ChartTexts.AXIS_GROWTH
+
             st.info(f"""
-            **Axe X :** {SharedTexts.LBL_SENS_X}
-            **Axe Y :** {SharedTexts.LBL_SENS_Y}
+            **Axe X :** {x_name}
+            **Axe Y :** {y_name}
             """)
 
         # --- 2. HEATMAP CONSTRUCTION (Altair) ---
         with col_chart:
-            # Transformation des données pour Altair (Format Long)
-            # data.matrix est une liste de listes [row][col]
-            # data.rows = growth steps (Y)
-            # data.cols = wacc steps (X)
+            # Data Transformation: Matrix -> Long Format DataFrame for Altair
+            heatmap_data: List[Dict[str, Any]] = []
 
-            heatmap_data = []
-            for i, g_val in enumerate(data.rows):
-                for j, wacc_val in enumerate(data.cols):
-                    val = data.matrix[i][j]
-                    heatmap_data.append({
-                        "g": f"{g_val:.1%}",
-                        "wacc": f"{wacc_val:.1%}",
-                        "value": round(val, 2),
-                        "label": format_smart_number(val)
-                    })
+            # data.values is List[List[float]] -> [row][col]
+            for i, y_val in enumerate(data.y_values):
+                for j, x_val in enumerate(data.x_values):
+                    try:
+                        val = data.values[i][j]
+                        heatmap_data.append({
+                            "y_axis": f"{y_val:.2%}", # Growth
+                            "x_axis": f"{x_val:.2%}", # WACC
+                            "value": val,
+                            "label": format_smart_number(val)
+                        })
+                    except IndexError:
+                        continue
 
             df = pd.DataFrame(heatmap_data)
 
+            if df.empty:
+                st.warning(getattr(QuantTexts, 'MSG_SENS_NO_DATA', "Données insuffisantes."))
+                return
+
             # Base Chart
             base = alt.Chart(df).encode(
-                x=alt.X('wacc:O', title=SharedTexts.LBL_SENS_X),
-                y=alt.Y('g:O', title=SharedTexts.LBL_SENS_Y)
+                x=alt.X('x_axis:O', title=None),
+                y=alt.Y('y_axis:O', title=None)
             )
 
             # Heatmap Rectangles
             heatmap = base.mark_rect().encode(
-                color=alt.Color('value:Q', scale=alt.Scale(scheme='yellowgreenblue'), legend=None),
+                color=alt.Color(
+                    'value:Q',
+                    scale=alt.Scale(scheme='yellowgreenblue'),
+                    legend=None
+                ),
                 tooltip=[
-                    alt.Tooltip('wacc', title=SharedTexts.LBL_SENS_X),
-                    alt.Tooltip('g', title=SharedTexts.LBL_SENS_Y),
-                    alt.Tooltip('label', title='Valorisation')
+                    alt.Tooltip('x_axis', title=x_name),
+                    alt.Tooltip('y_axis', title=y_name),
+                    alt.Tooltip('label', title=getattr(ChartTexts, 'TOOLTIP_VALUATION', 'Valorisation'))
                 ]
             )
 
+            # Pre-calculate mean for the condition to avoid Type Error in Altair expr
+            mean_val = float(df['value'].mean())
+
             # Text Labels over Rectangles
-            text = base.mark_text(baseline='middle').encode(
+            text = base.mark_text(baseline='middle', fontSize=10).encode(
                 text='label:N',
                 color=alt.condition(
-                    alt.datum.value > df['value'].mean(),
+                    alt.datum.value > mean_val,  # Clean scalar comparison
                     alt.value('white'),
                     alt.value('black')
                 )
@@ -115,7 +142,13 @@ class SensitivityAnalysisTab(ResultTabBase):
 
             final_chart = (heatmap + text).properties(
                 height=350,
-                width='container'
+                width='container',
+                title=alt.TitleParams(
+                    text=QuantTexts.SENS_TITLE,
+                    subtitle=ChartTexts.CORREL_CAPTION,
+                    anchor='start',
+                    fontSize=14
+                )
             )
 
             st.altair_chart(final_chart, use_container_width=True)

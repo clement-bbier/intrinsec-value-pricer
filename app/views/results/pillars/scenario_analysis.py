@@ -1,81 +1,98 @@
 """
-app/ui/results/optional/scenario_analysis.py
-
+app/views/results/pillars/scenario_analysis.py
 PILLAR 4 — SUB-COMPONENT: DETERMINISTIC SCENARIO ANALYSIS
 =========================================================
 Role: Bull/Base/Bear comparison and mathematical expectation calculation.
 Architecture: Injectable Grade-A component.
 """
 
-from typing import Any
+from typing import Any, Literal
 import streamlit as st
 import pandas as pd
 
 from src.models import ValuationResult
 from src.i18n import QuantTexts, KPITexts
 from src.core.formatting import format_smart_number
-from app.ui.results.base_result import ResultTabBase
 from app.views.components.ui_kpis import atom_kpi_metric
+from app.views.components.ui_charts import display_scenario_comparison_chart
 
-class ScenarioAnalysisTab(ResultTabBase):
+class ScenarioAnalysisTab:
     """
     Rendering component for multi-scenario analysis.
     Typically integrated vertically within the RiskEngineering tab.
+    Architecture: Stateless Component.
     """
 
-    TAB_ID = "scenario_analysis"
-    LABEL = KPITexts.TAB_SCENARIOS
-    ORDER = 4
-    IS_CORE = False
-
-    def is_visible(self, result: ValuationResult) -> bool:
+    @staticmethod
+    def is_visible(result: ValuationResult) -> bool:
         """Visible only if the scenario engine generated variants."""
-        return result.params.scenarios.enabled
+        # Vérification de l'activation ET de la présence des résultats
+        if not result.params.extensions.scenarios.enabled:
+            return False
+        return result.results.extensions.scenarios is not None
 
-    def render(self, result: ValuationResult, **kwargs: Any) -> None:
+    @staticmethod
+    def render(result: ValuationResult, **_kwargs: Any) -> None:
         """
-        Renders the scenario synthesis with comparative table and weighted expectation.
+        Renders the scenario synthesis with comparative chart, table and weighted expectation.
+        Note: _kwargs is strictly typed but unused.
         """
-        synthesis = result.scenario_synthesis
+        # Accès sécurisé aux résultats
+        scenarios_res = result.results.extensions.scenarios
+        if not scenarios_res:
+            return
+
         currency = result.financials.currency
-        market_price = result.market_price
+        market_price = result.market_price or 0.0
 
-        # --- SECTION HEADER (Standardized ####) ---
+        # --- SECTION HEADER ---
         st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
+
+        # --- 1. VISUAL COMPARISON (CHART VIA UI_CHARTS) ---
+        # Préparation des données pour le composant UI générique
+        chart_data = []
+        for variant in scenarios_res.outcomes:
+             chart_data.append({
+                "Scenario": variant.label,
+                "Value": variant.intrinsic_value,
+                "Upside": variant.upside_pct,
+                "Color": "green" if variant.upside_pct > 0 else "red"
+            })
+
+        # Appel au moteur de visualisation (DRY / SoC)
+        display_scenario_comparison_chart(
+            scenarios_data=chart_data,
+            market_price=market_price,
+            currency=currency
+        )
+
         st.write("")
 
-        # --- 1. COMPARATIVE TABLE (DETAILED VIEW) ---
-
+        # --- 2. COMPARATIVE TABLE (DETAILED VIEW) ---
         with st.container(border=True):
-            data = []
-            for variant in synthesis.variants:
-                # Calculate scenario-specific upside/downside
-                upside = (variant.intrinsic_value / market_price - 1) if market_price > 0 else 0
-
-                data.append({
-                    QuantTexts.COL_SCENARIO: variant.label.upper(),
+            table_data = []
+            for variant in scenarios_res.outcomes:
+                table_data.append({
+                    QuantTexts.COL_SCENARIO: variant.label,
                     QuantTexts.COL_PROBABILITY: variant.probability,
-                    QuantTexts.COL_GROWTH: variant.growth_used,
-                    QuantTexts.COL_MARGIN_FCF: variant.margin_used if variant.margin_used else 0.0,
                     QuantTexts.COL_VALUE_PER_SHARE: variant.intrinsic_value,
-                    QuantTexts.COL_UPSIDE: upside
+                    QuantTexts.COL_UPSIDE: variant.upside_pct
                 })
 
-            df = pd.DataFrame(data)
+            df = pd.DataFrame(table_data)
 
             # Institutional Column Configuration
             column_config = {
+                QuantTexts.COL_SCENARIO: st.column_config.TextColumn(width="medium"),
                 QuantTexts.COL_PROBABILITY: st.column_config.NumberColumn(format="%.0f%%"),
-                QuantTexts.COL_GROWTH: st.column_config.NumberColumn(format="%.2f%%"),
-                QuantTexts.COL_MARGIN_FCF: st.column_config.NumberColumn(format="%.2f%%"),
                 QuantTexts.COL_VALUE_PER_SHARE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
                 QuantTexts.COL_UPSIDE: st.column_config.ProgressColumn(
                     label=QuantTexts.COL_UPSIDE,
                     format="%.1%+",
-                    min_value=-1.0,
-                    max_value=1.0,
-                    color="blue"
+                    min_value=-0.5,
+                    max_value=0.5,
+                    color="blue" # Le bleu est neutre, le signe +/- indique le sens
                 )
             }
 
@@ -83,11 +100,11 @@ class ScenarioAnalysisTab(ResultTabBase):
                 df,
                 hide_index=True,
                 column_config=column_config,
-                width="stretch"
+                use_container_width=True
             )
 
-        # --- 2. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
-        expected_val = synthesis.expected_value
+        # --- 3. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
+        expected_val = scenarios_res.expected_intrinsic_value
         if expected_val > 0:
             st.write("")
             with st.container(border=True):
@@ -104,14 +121,14 @@ class ScenarioAnalysisTab(ResultTabBase):
                 with col_upside:
                     # Weighted Potential (Expected Upside)
                     weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
+
+                    # Typage explicite pour satisfaire le linter
+                    color_delta: Literal["normal", "inverse"] = "normal" if weighted_upside > 0 else "inverse"
+
                     atom_kpi_metric(
                         label=QuantTexts.METRIC_WEIGHTED_UPSIDE,
                         value=f"{weighted_upside:+.1%}",
                         delta=f"{weighted_upside:+.1%}",
-                        delta_color="normal" if weighted_upside > 0 else "inverse",
+                        delta_color=color_delta,
                         help_text=KPITexts.HELP_MOS
                     )
-
-    def get_display_label(self) -> str:
-        """Returns the localized tab label from i18n."""
-        return self.LABEL
