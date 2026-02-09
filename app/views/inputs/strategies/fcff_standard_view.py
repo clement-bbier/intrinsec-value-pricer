@@ -19,7 +19,7 @@ from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_projection_years
 
 
-class FCFFStandardTerminalExpert(BaseStrategyView):
+class FCFFStandardView(BaseStrategyView):
     """
     Expert view for Free Cash Flow to the Firm (FCFF) valuation.
 

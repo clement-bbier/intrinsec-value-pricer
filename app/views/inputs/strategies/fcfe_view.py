@@ -22,7 +22,7 @@ from app.views.inputs.strategies.shared_widgets import (
 )
 
 
-class FCFETerminalExpert(BaseStrategyView):
+class FCFEView(BaseStrategyView):
     """
     Expert view for shareholder cash flow valuation (FCFE).
 

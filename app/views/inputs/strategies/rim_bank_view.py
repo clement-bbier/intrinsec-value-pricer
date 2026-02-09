@@ -22,7 +22,7 @@ from app.views.inputs.strategies.shared_widgets import (
 )
 
 
-class RIMBankTerminalExpert(BaseStrategyView):
+class RIMBankView(BaseStrategyView):
     """
     Expert view for the Residual Income Model (Ohlson Model).
 

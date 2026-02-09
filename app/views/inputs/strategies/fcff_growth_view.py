@@ -19,7 +19,7 @@ from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_projection_years
 
 
-class FCFFGrowthTerminalExpert(BaseStrategyView):
+class FCFFGrowthView(BaseStrategyView):
     """
     Expert view for the Revenue-Driven FCFF model.
 

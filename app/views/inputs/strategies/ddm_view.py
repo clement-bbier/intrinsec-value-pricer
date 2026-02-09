@@ -23,7 +23,7 @@ from app.views.inputs.strategies.shared_widgets import (
 )
 
 
-class DDMTerminalExpert(BaseStrategyView):
+class DDMView(BaseStrategyView):
     """
     Expert view for the Dividend Discount Model (DDM).
 

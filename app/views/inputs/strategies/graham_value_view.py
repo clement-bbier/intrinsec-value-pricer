@@ -18,7 +18,7 @@ from src.i18n.fr.ui.expert import GrahamTexts as Texts
 from app.views.inputs.base_strategy import BaseStrategyView
 
 
-class GrahamValueTerminalExpert(BaseStrategyView):
+class GrahamValueView(BaseStrategyView):
     """
     Expert view for Benjamin Graham's intrinsic value formula.
 

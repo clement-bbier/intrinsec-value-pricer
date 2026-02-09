@@ -9,13 +9,13 @@ import streamlit as st
 from app.state.store import get_state
 from src.models.enums import ValuationMethodology
 
-from app.views.inputs.strategies.fcff_standard_view import FCFFStandardTerminalExpert
-from app.views.inputs.strategies.fcff_normalized_view import FCFFNormalizedTerminalExpert
-from app.views.inputs.strategies.fcff_growth_view import FCFFGrowthTerminalExpert
-from app.views.inputs.strategies.fcfe_view import FCFETerminalExpert
-from app.views.inputs.strategies.ddm_view import DDMTerminalExpert
-from app.views.inputs.strategies.rim_bank_view import RIMBankTerminalExpert
-from app.views.inputs.strategies.graham_value_view import GrahamValueTerminalExpert
+from app.views.inputs.strategies.fcff_standard_view import FCFFStandardView
+from app.views.inputs.strategies.fcff_normalized_view import FCFFNormalizedView
+from app.views.inputs.strategies.fcff_growth_view import FCFFGrowthView
+from app.views.inputs.strategies.fcfe_view import FCFEView
+from app.views.inputs.strategies.ddm_view import DDMView
+from app.views.inputs.strategies.rim_bank_view import RIMBankView
+from app.views.inputs.strategies.graham_value_view import GrahamValueView
 
 def render_expert_form():
     """
@@ -27,19 +27,19 @@ def render_expert_form():
 
     # Factory Logic (Simple Dispatch)
     if method == ValuationMethodology.FCFF_STANDARD:
-        view = FCFFStandardTerminalExpert(ticker=ticker)
+        view = FCFFStandardView(ticker=ticker)
     elif method == ValuationMethodology.FCFF_NORMALIZED:
-        view = FCFFNormalizedTerminalExpert(ticker=ticker)
+        view = FCFFNormalizedView(ticker=ticker)
     elif method == ValuationMethodology.FCFF_GROWTH:
-        view = FCFFGrowthTerminalExpert(ticker=ticker)
+        view = FCFFGrowthView(ticker=ticker)
     elif method == ValuationMethodology.FCFE:
-        view = FCFETerminalExpert(ticker=ticker)
+        view = FCFEView(ticker=ticker)
     elif method == ValuationMethodology.DDM:
-        view = DDMTerminalExpert(ticker=ticker)
+        view = DDMView(ticker=ticker)
     elif method == ValuationMethodology.RIM:
-        view = RIMBankTerminalExpert(ticker=ticker)
+        view = RIMBankView(ticker=ticker)
     elif method == ValuationMethodology.GRAHAM:
-        view = GrahamValueTerminalExpert(ticker=ticker)
+        view = GrahamValueView(ticker=ticker)
     else:
         st.error(f"View not implemented for: {method}")
         return

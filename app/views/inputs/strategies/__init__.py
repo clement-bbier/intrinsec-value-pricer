@@ -1,0 +1,23 @@
+"""
+app/views/inputs/strategies/__init__.py
+Index des vues de stratégies de valorisation.
+"""
+
+from .ddm_view import DDMView
+from .fcfe_view import FCFEView
+from .fcff_standard_view import FCFFStandardView
+from .fcff_growth_view import FCFFGrowthView
+from .fcff_normalized_view import FCFFNormalizedView
+from .rim_bank_view import RIMBankView
+from .graham_value_view import GrahamValueView
+
+# Mapping pour la factory
+STRATEGY_VIEW_MAP = {
+    "DDM": DDMView,
+    "FCFE": FCFEView,
+    "FCFF_STANDARD": FCFFStandardView,
+    "FCFF_GROWTH": FCFFGrowthView,
+    "FCFF_NORMALIZED": FCFFNormalizedView,
+    "RIM_BANK": RIMBankView,
+    "GRAHAM": GrahamValueView
+}

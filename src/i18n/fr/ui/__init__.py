@@ -1,31 +1,38 @@
 """
 src/i18n/fr/ui/__init__.py
-UI TRANSLATIONS (FRENCH)
+Point d'entrée des traductions de l'interface utilisateur.
 """
 
-from src.i18n.fr.ui.common import CommonTexts, LegalTexts
-from src.i18n.fr.ui.expert import ExpertTexts
-from src.i18n.fr.ui.extensions import ExtensionTexts, PeersTexts
-from src.i18n.fr.ui.results import ResultsTexts, KPITexts, QuantTexts, ChartTexts, BacktestTexts, PillarLabels, InputLabels, SOTPTexts, RegistryTexts, StrategyFormulas, BenchmarkTexts, MarketTexts
-from src.i18n.fr.ui.sidebar import SidebarTexts
+from .common import CommonTexts, LegalTexts
+from .results import (
+    ResultsTexts,
+    KPITexts,
+    QuantTexts,
+    ChartTexts,
+    BacktestTexts,
+    PillarLabels,
+    InputLabels,
+    SOTPTexts,
+    MarketTexts
+)
+from .expert import ExpertTexts
+from .extensions import ExtensionTexts, PeersTexts
+from .sidebar import SidebarTexts
 
 __all__ = [
     "CommonTexts",
-    "ExpertTexts",
-    "ExtensionTexts",
-    "ResultsTexts",
-    "SidebarTexts",
     "LegalTexts",
+    "ResultsTexts",
     "KPITexts",
     "QuantTexts",
-    "BacktestTexts",
     "ChartTexts",
+    "BacktestTexts",
     "PillarLabels",
     "InputLabels",
     "SOTPTexts",
-    "RegistryTexts",
-    "StrategyFormulas",
-    "BenchmarkTexts",
     "MarketTexts",
-    "PeersTexts"
+    "ExpertTexts",
+    "ExtensionTexts",
+    "PeersTexts",
+    "SidebarTexts"
 ]

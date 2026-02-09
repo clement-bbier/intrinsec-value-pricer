@@ -21,7 +21,7 @@ from app.views.inputs.strategies.shared_widgets import (
 )
 
 
-class FCFFNormalizedTerminalExpert(BaseStrategyView):
+class FCFFNormalizedView(BaseStrategyView):
     """
     Expert view for Normalized Free Cash Flow to the Firm (FCFF).
 
