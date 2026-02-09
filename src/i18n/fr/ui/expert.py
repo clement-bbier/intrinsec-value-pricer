@@ -282,40 +282,78 @@ class FCFFGrowthTexts(SharedTexts):
 
 
 class RIMTexts(SharedTexts):
+    """
+    Textes spécifiques pour le Modèle à Revenu Résiduel (RIM / Ohlson).
+    Idéal pour les financières (Banques, Assurances) où la Book Value est centrale.
+    """
     TITLE = "Revenu Résiduel (RIM)"
-    DESCRIPTION = "Valorisation par la Valeur Comptable brute et la persistance des profits anormaux (Ohlson Model)."
-    STEP_1_TITLE = "#### Étape 1 : Ancrage Bilanciel (BV₀)"
-    STEP_1_DESC = "Saisie des fonds propres comptables et du bénéfice net servant de socle au modèle."
-    STEP_1_FORMULA = r"P = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \cdot BV_{t-1})}{(1+k_e)^t} + TV_{RI}"
-    INP_BV_INITIAL = "Valeur Comptable (Equity) (M$)"
-    HELP_BV_INITIAL = "Capitaux propres comptables initiaux servant d'ancrage fondamental au modèle."
-    INP_NI_TTM = "Résultat Net normatif (M$)"
-    HELP_NI_TTM = "Bénéfice net actuel servant à déterminer le profit résiduel de départ."
-    STEP_2_TITLE = "#### Étape 2 : Profits Résiduels & Persistance"
-    STEP_2_DESC = "Estimation de la dynamique des résultats futurs et du facteur de persistance ω."
-    HELP_GROWTH = "Taux de croissance projeté des profits anormaux avant la phase de persistance."
+    DESCRIPTION = "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance de la création de valeur (ROE > Ke)."
+
+    # --- ÉTAPE 1 : ANCRAGE BILANCIEL ---
+    STEP_1_TITLE = "#### Étape 1 : Ancrage Bilanciel (Book Value)"
+    STEP_1_DESC = "Définition du socle de capitaux propres et de la capacité bénéficiaire actuelle."
+
+    # Formule RIM canonique
+    STEP_1_FORMULA = r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{NI_t - (k_e \times BV_{t-1})}{(1+k_e)^t} + TV"
+
+    # Inputs Principaux (Utilisés par rim_bank_view.py)
+    INP_BV_BASE = "Valeur Comptable (Book Value) (M$)"
+    HELP_BV_BASE = "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
+
+    # Inputs Secondaires (Pour d'éventuelles variantes ou affichages détaillés)
+    INP_BV_INITIAL = "Valeur Comptable Initiale (BV₀)"
+    HELP_BV_INITIAL = "Montant des capitaux propres comptables servant d'ancrage fondamental au modèle."
+
+    INP_NI_TTM = "Résultat Net Normatif (M$)"
+    HELP_NI_TTM = "Bénéfice net récurrent (Net Income) servant à déterminer le profit résiduel initial."
+
+    # --- ÉTAPE 2 : DYNAMIQUE & PERSISTANCE ---
+    STEP_2_TITLE = "#### Étape 2 : Persistance des Profits Anormaux"
+    STEP_2_DESC = "Estimation de la durée pendant laquelle l'entreprise génère un rendement supérieur à son coût du capital (Facteur Omega)."
+
+    HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
+
+    # Sections Logiques (Headers de regroupement)
     SEC_1_RIM_BASE = "1. Ancrage Comptable"
-    SEC_2_PROJ_RIM = "2. Projection du RI"
+    SEC_2_PROJ_RIM = "2. Projection & Atténuation (Omega)"
 
 
 class GrahamTexts(SharedTexts):
+    """
+    Textes spécifiques pour la méthode de Valorisation Intrinsèque de Graham.
+    """
     TITLE = "Nombre de Graham (Screening)"
     DESCRIPTION = "Formule de Benjamin Graham révisée (1974) pour l'évaluation sécuritaire des bénéfices."
+
+    # --- ÉTAPE 1 : CAPACITÉ BÉNÉFICIAIRE ---
     STEP_1_TITLE = "#### Étape 1 : Capacité Bénéficiaire & Croissance"
-    STEP_1_DESC = "Saisie du bénéfice par action normalisé et de la croissance prévisionnelle."
+    STEP_1_DESC = "Saisie du bénéfice par action normalisé et de la croissance prévisionnelle conservatrice."
     STEP_1_FORMULA = r"V = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}"
+
+    # Inputs EPS
+    INP_EPS = "BPA (EPS) Normalisé ($)"
+    HELP_EPS = "Bénéfice par action lissé (moyenne 3-5 ans) ou TTM ajusté des éléments exceptionnels pour refléter la capacité bénéficiaire réelle."
+
+    # Alias pour compatibilité interne (si utilisé ailleurs)
     INP_EPS_NORM = "BPA (EPS) normalisé ($/action)"
     HELP_EPS_NORM = "Bénéfice par action moyen ou TTM ajusté des éléments exceptionnels."
+
+    # Inputs Croissance
+    INP_GROWTH = "Croissance Attendue (g) (%)"
     INP_GROWTH_G = "Croissance attendue g (%)"
-    HELP_GROWTH_LT = "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années."
+    HELP_GROWTH_LT = "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
+
+    # --- ÉTAPE 2 : CONDITIONS DE MARCHÉ ---
     STEP_2_TITLE = "#### Étape 2 : Conditions de Marché"
     STEP_2_DESC = "Paramètres du rendement obligataire corporate et de la fiscalité."
-    INP_YIELD_AAA = "Rendement Obligataire AAA (Y) (%)"
-    HELP_YIELD_AAA = "Rendement actuel des obligations d'entreprises de haute qualité (taux sans risque ajusté)."
-    INP_TAX = "Taux d'imposition (%)"
-    HELP_TAX = "Taux effectif moyen d'imposition attendu pour la société."
-    NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au multiple d'une entreprise à croissance nulle."
 
+    INP_YIELD_AAA = "Rendement Obligataire AAA (Y) (%)"
+    HELP_YIELD_AAA = "Rendement actuel des obligations d'entreprises de haute qualité (référence vs 4.4% historique)."
+
+    INP_TAX = "Taux d'imposition Effectif (%)"
+    HELP_TAX = "Taux effectif moyen d'imposition attendu pour la société."
+
+    NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au P/E d'une entreprise à croissance nulle. Le facteur 4.4 représente le rendement AAA historique de référence."
 
 class FCFETexts(SharedTexts):
     TITLE = "Flux de Trésorerie Actionnaires (FCFE)"

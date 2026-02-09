@@ -1,32 +1,30 @@
 """
-app/ui/expert/terminals/fcfe_terminal.py
+app/views/inputs/strategies/fcfe_view.py
 
-EXPERT TERMINAL — FREE CASH FLOW TO EQUITY (FCFE)
-=================================================
+EXPERT VIEW — FREE CASH FLOW TO EQUITY (FCFE)
+=============================================
 Implementation of the direct equity valuation interface.
-Data mapping is automated via FCFEParameters and UIBinder.
+Role: Renders inputs for FCFE Anchor and Net Borrowing.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
-from app.adapters.ui_binder import UIBinder
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.i18n import SharedTexts
-from src.models.parameters.strategies import FCFEParameters
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import (
     widget_projection_years
 )
 
-class FCFETerminalExpert(BaseTerminalExpert):
+
+class FCFETerminalExpert(BaseStrategyView):
     """
-    Expert terminal for shareholder cash flow valuation (FCFE).
+    Expert view for shareholder cash flow valuation (FCFE).
 
     The FCFE model values equity directly by discounting residual
     cash flows after debt service at the cost of equity (Ke).
@@ -35,10 +33,6 @@ class FCFETerminalExpert(BaseTerminalExpert):
     ----------
     MODE : ValuationMethodology
         Set to FCFE for direct equity valuation.
-    DISPLAY_NAME : str
-        Human-readable name from i18n.
-    DESCRIPTION : str
-        Brief description from i18n.
     """
 
     MODE = ValuationMethodology.FCFE
@@ -50,14 +44,11 @@ class FCFETerminalExpert(BaseTerminalExpert):
     SHOW_SCENARIOS = True
     SHOW_SOTP = False  # Usually irrelevant for specific equity flows
     SHOW_PEER_TRIANGULATION = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
         Renders operational inputs for the FCFE model.
-
-        Widget keys are mapped to UIKey suffixes defined in
-        FCFEParameters to enable automated extraction.
+        Writes directly to st.session_state for the Controller to pick up.
         """
         prefix = self.MODE.name
 
@@ -104,19 +95,3 @@ class FCFETerminalExpert(BaseTerminalExpert):
             )
 
         st.divider()
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of FCFE-specific strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to FCFEParameters fields via UIBinder.
-        """
-        return UIBinder.pull(FCFEParameters, prefix=key_prefix)

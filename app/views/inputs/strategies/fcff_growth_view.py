@@ -1,30 +1,27 @@
 """
-app/ui/expert/terminals/fcff_growth_terminal.py
+app/views/inputs/strategies/fcff_growth_view.py
 
-EXPERT TERMINAL — FCFF REVENUE-DRIVEN (GROWTH & MARGIN)
-======================================================
+EXPERT VIEW — FCFF REVENUE-DRIVEN (GROWTH & MARGIN)
+===================================================
 Valuation interface based on revenue growth and margin convergence.
-Data mapping is automated via FCFFGrowthParameters and UIBinder.
+Role: Renders inputs for Revenue, Growth Rate, and Target Margin.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMethodology
-from src.models.parameters.strategies import FCFFGrowthParameters
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
-from app.adapters.ui_binder import UIBinder
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_projection_years
 
 
-class FCFFGrowthTerminalExpert(BaseTerminalExpert):
+class FCFFGrowthTerminalExpert(BaseStrategyView):
     """
-    Expert terminal for the Revenue-Driven FCFF model.
+    Expert view for the Revenue-Driven FCFF model.
 
     This interface guides the analyst in projecting top-line growth
     and target margin convergence to derive future cash flows.
@@ -44,14 +41,11 @@ class FCFFGrowthTerminalExpert(BaseTerminalExpert):
     SHOW_SCENARIOS = True
     SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
         Renders specific inputs for the Revenue-Driven FCFF model.
-
-        Widget keys are mapped to UIKey suffixes defined in
-        FCFFGrowthParameters to enable automated extraction.
+        Writes directly to st.session_state for the Controller to pick up.
         """
         prefix = self.MODE.name
 
@@ -95,19 +89,3 @@ class FCFFGrowthTerminalExpert(BaseTerminalExpert):
             )
 
         st.divider()
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of FCFF Growth strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to FCFFGrowthParameters fields.
-        """
-        return UIBinder.pull(FCFFGrowthParameters, prefix=key_prefix)

@@ -11,6 +11,7 @@ Architecture: ST-4.2 Compliant Hub & Spokes logic.
 from typing import Any
 import streamlit as st
 
+from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
 from src.models import ValuationResult
 from src.i18n import PillarLabels, QuantTexts, BacktestTexts
 from app.ui.results.base_result import ResultTabBase
@@ -58,6 +59,11 @@ class RiskEngineeringTab(ResultTabBase):
         mc_tab = MonteCarloDistributionTab()
         if mc_tab.is_visible(result):
             mc_tab.render(result, **kwargs)
+            st.divider()
+
+        sensi = SensitivityAnalysisTab()
+        if sensi.is_visible(result):
+            sensi.render(result, **kwargs)
             st.divider()
 
         # --- 3. SCENARIO BLOCK (Deterministic Convictions) ---

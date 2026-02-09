@@ -135,9 +135,143 @@ class StrategyInterpretations:
 
 class SharedTexts:
     """
-    Common inputs labels used across multiple terminals/strategies.
-    Used for variable descriptions in calculation steps.
+    SOCLE COMMUN - Centralise l'intégralité des labels, messages et formules
+    utilisés par les terminaux experts et les widgets de saisie.
+    Version : Finance de Marché (Institutionnel)
     """
-    INP_PROJ_YEARS = "Années de projection"
+
+    # ==========================================================================
+    # 1. INPUTS GÉNÉRIQUES (WIDGETS PARTAGÉS)
+    # ==========================================================================
+    INP_PROJ_YEARS = "Années de projection (Horizon explicite)"
+    HELP_PROJ_YEARS = "Durée de la période de prévision explicite avant calcul de la Valeur Terminale (généralement 5 à 10 ans)."
+
+    INP_GROWTH_G = "Croissance perpétuelle (g)"
+    HELP_GROWTH_RATE = "Taux de croissance à l'infini (borné par le taux sans risque pour cohérence économique)."
+
     INP_PERP_G = "Croissance perpétuelle (g)"
-    INP_SHARES = "Actions en circulation"
+
+    INP_SHARES = "Actions en circulation (Millions)"
+
+    INP_OMEGA = "Facteur de Persistance (ω)"
+    HELP_OMEGA = "Détermine la vitesse à laquelle le rendement excédentaire (ROIC - WACC) converge vers zéro (Modèle Ohlson)."
+
+    # ==========================================================================
+    # 2. SECTION ACTUALISATION (DISCOUNT RATES)
+    # ==========================================================================
+    SEC_3_CAPITAL = "#### Étape 3 : Coût du Capital & Risque"
+    SEC_3_DESC = "Définition des paramètres d'actualisation (WACC/Ke) et de la structure du capital cible."
+
+    LBL_DISCOUNT = "Paramètres d'Actualisation"
+
+    # Inputs Taux
+    INP_RF = "Taux Sans Risque (Rf)"
+    INP_BETA = "Bêta du Titre (β)"
+    INP_MRP = "Prime de Risque Marché (ERP)"
+    INP_KD = "Coût de la Dette avant impôt (Kd)"
+    INP_TAX = "Taux d'Imposition Effectif (Tax)"
+
+    # Structure Capital
+    INP_PRICE_WEIGHTS = "Pondération de la Dette (%)"
+    HELP_PRICE_WEIGHTS = "Ratio Dette Nette / (Dette Nette + Capitalisation). Si 0, structure 100% Equity."
+
+    # Formules (LaTeX)
+    FORMULA_CAPITAL_KE = r"K_e = R_f + \beta \times (R_m - R_f)"
+    FORMULA_CAPITAL_WACC = r"WACC = K_e \times \frac{E}{V} + K_d (1-t) \times \frac{D}{V}"
+
+    # ==========================================================================
+    # 3. SECTION VALEUR TERMINALE (TERMINAL VALUE)
+    # ==========================================================================
+    SEC_4_TERMINAL = "#### Étape 4 : Valeur Terminale (TV)"
+    SEC_4_DESC = "Méthodologie de calcul de la valeur au-delà de l'horizon explicite."
+
+    RADIO_TV_METHOD = "Méthode de Sortie"
+    TV_GORDON = "Croissance Perpétuelle (Gordon-Shapiro)"
+    TV_EXIT = "Multiple de Sortie (Exit Multiple)"
+
+    INP_EXIT_MULT = "Multiple de Sortie (x)"
+
+    # Formules TV (LaTeX) - Spécifiques par modèle
+    FORMULA_TV_GORDON = r"TV_n = \frac{Flow_{n+1}}{r - g}"
+    FORMULA_TV_EXIT = r"TV_n = Metric_n \times Multiple"
+
+    FORMULA_TV_FCFF_STD = r"TV_n = \frac{FCF_n \times (1+g)}{WACC - g}"
+    FORMULA_TV_FCFF_NORM = r"TV_n = \frac{FCF_{norm} \times (1+g)}{WACC - g}"
+    FORMULA_TV_FCFF_GROWTH = r"TV_n = \frac{Revenue_n \times Margin_{target} \times (1+g)}{WACC - g}"
+    FORMULA_TV_FCFE = r"TV_n = \frac{FCFE_n \times (1+g)}{K_e - g}"
+    FORMULA_TV_DDM = r"TV_n = \frac{D_n \times (1+g)}{K_e - g}"
+    FORMULA_TV_RIM = r"TV_n = \frac{RI_n \times \omega}{1 + k_e - \omega}"
+
+    # ==========================================================================
+    # 4. SECTION EQUITY BRIDGE (PONT EV -> EQUITY)
+    # ==========================================================================
+    SEC_5_BRIDGE = "#### Étape 5 : Pont vers la Valeur des Fonds Propres (Equity Bridge)"
+    SEC_5_DESC = "Ajustements du bilan pour passer de la Valeur d'Entreprise (EV) à la Valeur Intrinsèque des actions."
+
+    INP_DEBT = "Dette Financière Totale (M$)"
+    INP_CASH = "Trésorerie & Équivalents (M$)"
+    INP_MINORITIES = "Intérêts Minoritaires (M$)"
+    INP_PENSIONS = "Engagements de Retraite (M$)"
+    INP_SBC_DILUTION = "Dilution annuelle SBC (%)"
+
+    # Formules Bridge (LaTeX)
+    FORMULA_BRIDGE = r"Equity = EV - \text{Dette Nette} - \text{Intérêts Min.} - \text{Retraites}"
+    FORMULA_BRIDGE_SIMPLE = r"Equity = \sum PV(Flux) + PV(TV)"
+
+    # ==========================================================================
+    # 5. EXTENSION : MONTE CARLO (RISK)
+    # ==========================================================================
+    SEC_6_MC = "#### Extension : Simulation Monte Carlo"
+
+    MC_CALIBRATION = "Calibrage des Volatilités (σ)"
+    MC_ITERATIONS = "Nombre d'itérations"
+
+    # Labels Volatilité (Inputs)
+    MC_VOL_BASE_FLOW = "Volatilité Flux de Base (σ)"
+    MC_VOL_G = "Volatilité Croissance (σ)"
+    MC_VOL_BETA = "Volatilité Bêta (σ)"
+    LBL_VOL_EXIT_M = "Volatilité Multiple Sortie (σ)"
+
+    # Labels Spécifiques (Dynamic Override)
+    MC_VOL_EPS = "Volatilité BPA (σ)"  # Graham
+    MC_VOL_NI = "Volatilité Résultat Net (σ)"  # RIM
+    MC_VOL_DIV = "Volatilité Dividende (σ)"  # DDM
+
+    # ==========================================================================
+    # 6. EXTENSION : ANALYSE DE SCÉNARIOS
+    # ==========================================================================
+    SEC_8_SCENARIOS = "#### Extension : Scénarios Déterministes"
+    INP_SCENARIO_ENABLE = "Activer l'Analyse de Scénarios (Bull/Base/Bear)"
+
+    INP_SCENARIO_PROBA = "Probabilité (%)"
+    INP_SCENARIO_GROWTH = "Croissance Ajustée (g)"
+    INP_SCENARIO_MARGIN = "Marge Cible (%)"
+
+    # ==========================================================================
+    # 7. EXTENSION : PEERS (RELATIVE VALUATION)
+    # ==========================================================================
+    SEC_7_PEERS = "#### Extension : Comparables (Peers)"
+    LBL_PEER_ENABLE = "Activer la triangulation par les multiples"
+    INP_MANUAL_PEERS = "Liste de tickers manuels (séparés par des virgules)"
+
+    # ==========================================================================
+    # 8. EXTENSION : SOTP (SUM OF THE PARTS)
+    # ==========================================================================
+    SEC_9_SOTP = "#### Extension : Somme des Parties (SOTP)"
+    LBL_SOTP_ENABLE = "Activer la décomposition par segments"
+
+    # ==========================================================================
+    # 9. EXTENSION : BACKTEST (HISTORICAL)
+    # ==========================================================================
+    SEC_10_BACKTEST = "#### Extension : Backtesting Historique"
+    LBL_BACKTEST_ENABLE = "Activer la validation historique"
+    LBL_LOOKBACK = "Profondeur d'analyse (Années)"
+
+    # ==========================================================================
+    # 10. EXTENSION : SENSIBILITÉ (HEATMAP)
+    # ==========================================================================
+    SEC_SENSITIVITY = "#### Extension : Matrice de Sensibilité"
+    LBL_SENS_X = "Coût du Capital (WACC/Ke)"
+    LBL_SENS_Y = "Croissance Terminale (g)"
+    LBL_SENS_SCORE = "Score de Volatilité"
+    HELP_SENS_SCORE = "Mesure de la dispersion des valorisations autour du cas central. Un score élevé indique une forte instabilité du modèle."

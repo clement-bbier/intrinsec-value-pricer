@@ -1,30 +1,27 @@
 """
-app/ui/expert/terminals/fcff_standard_terminal.py
+app/views/inputs/strategies/fcff_standard_view.py
 
-EXPERT TERMINAL — FCFF TWO-STAGE STANDARD (CONTINUOUS FLOW)
-==========================================================
+EXPERT VIEW — FCFF TWO-STAGE STANDARD
+=====================================
 Implementation of the Entity DCF (FCFF) interface.
-Data mapping is automated via FCFFStandardParameters and UIBinder.
+Role: Renders inputs for FCF Anchor and Growth Trajectory.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMethodology
-from src.models.parameters.strategies import FCFFStandardParameters
 from src.i18n.fr.ui.expert import FCFFStandardTexts as Texts
-from app.adapters.ui_binder import UIBinder
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_projection_years
 
 
-class FCFFStandardTerminalExpert(BaseTerminalExpert):
+class FCFFStandardTerminalExpert(BaseStrategyView):
     """
-    Expert terminal for Free Cash Flow to the Firm (FCFF) valuation.
+    Expert view for Free Cash Flow to the Firm (FCFF) valuation.
 
     This terminal focuses on defining the cash flow anchor and the
     growth trajectory using standard two-stage DCF logic.
@@ -44,14 +41,11 @@ class FCFFStandardTerminalExpert(BaseTerminalExpert):
     SHOW_SCENARIOS = True
     SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
-        Renders operational inputs (Steps 1 & 2).
-
-        Widget keys are mapped to UIKey suffixes defined in
-        FCFFStandardParameters to enable automated extraction.
+        Renders operational inputs for the Standard FCFF model.
+        Writes directly to st.session_state.
         """
         prefix = self.MODE.name
 
@@ -86,19 +80,3 @@ class FCFFStandardTerminalExpert(BaseTerminalExpert):
             )
 
         st.divider()
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of FCFF-specific strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to FCFFStandardParameters fields.
-        """
-        return UIBinder.pull(FCFFStandardParameters, prefix=key_prefix)

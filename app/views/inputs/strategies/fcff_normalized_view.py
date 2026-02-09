@@ -1,32 +1,29 @@
 """
-app/ui/expert/terminals/fcff_normalized_terminal.py
+app/views/inputs/strategies/fcff_normalized_view.py
 
-EXPERT TERMINAL — FCFF NORMALIZED (SMOOTHED FLOW)
-=================================================
+EXPERT VIEW — FCFF NORMALIZED (SMOOTHED FLOW)
+=============================================
 Valuation interface based on smoothed normative flows.
-Data mapping is automated via FCFFNormalizedParameters and UIBinder.
+Role: Renders inputs for Normalized FCF and Cycle Growth.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
-from app.adapters.ui_binder import UIBinder
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
-from src.models.parameters.strategies import FCFFNormalizedParameters
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import (
     widget_projection_years
 )
 
 
-class FCFFNormalizedTerminalExpert(BaseTerminalExpert):
+class FCFFNormalizedTerminalExpert(BaseStrategyView):
     """
-    Expert terminal for Normalized Free Cash Flow to the Firm (FCFF).
+    Expert view for Normalized Free Cash Flow to the Firm (FCFF).
 
     This terminal focuses on mid-cycle valuation by using smoothed normative
     flows to avoid distortions from temporary cyclical peaks or troughs.
@@ -35,10 +32,6 @@ class FCFFNormalizedTerminalExpert(BaseTerminalExpert):
     ----------
     MODE : ValuationMethodology
         Set to FCFF_NORMALIZED for mid-cycle valuation.
-    DISPLAY_NAME : str
-        Human-readable name from i18n.
-    DESCRIPTION : str
-        Brief description from i18n.
     """
 
     MODE = ValuationMethodology.FCFF_NORMALIZED
@@ -50,18 +43,15 @@ class FCFFNormalizedTerminalExpert(BaseTerminalExpert):
     SHOW_SCENARIOS = True
     SHOW_SOTP = True
     SHOW_PEER_TRIANGULATION = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
-        Renders operational inputs for the Normalized FCFF model.
-
-        Widget keys are mapped to UIKey suffixes defined in
-        FCFFNormalizedParameters to enable automated extraction.
+        Renders specific inputs for the Normalized FCFF model.
+        Writes directly to st.session_state for the Controller.
         """
         prefix = self.MODE.name
 
-        # --- STEP 1: NORMATIVE FLOW (Strategy -> fcf_norm) ---
+        # --- STEP 1: NORMALIZED ANCHOR (Strategy -> fcf_norm) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
 
@@ -91,19 +81,3 @@ class FCFFNormalizedTerminalExpert(BaseTerminalExpert):
             )
 
         st.divider()
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of Normalized FCFF strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to FCFFNormalizedParameters fields via UIBinder.
-        """
-        return UIBinder.pull(FCFFNormalizedParameters, prefix=key_prefix)

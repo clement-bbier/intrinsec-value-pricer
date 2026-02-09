@@ -1,30 +1,26 @@
 """
-app/ui/expert/terminals/graham_value_terminal.py
+app/views/inputs/strategies/graham_value_view.py
 
-EXPERT TERMINAL — GRAHAM INTRINSIC VALUE (QUANT REVISED)
-========================================================
-Defensive screening formula (Revised 1974) enhanced with
-a stochastic approach for earnings volatility.
-Data mapping is automated via GrahamParameters and UIBinder.
+EXPERT VIEW — GRAHAM INTRINSIC VALUE (QUANT REVISED)
+====================================================
+Defensive screening formula (Revised 1974).
+Role: Renders inputs for EPS, Growth, and Bond Yields.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
-from app.adapters.ui_binder import UIBinder
 from src.models import ValuationMethodology
 from src.i18n.fr.ui.expert import GrahamTexts as Texts
-from src.models.parameters.strategies import GrahamParameters
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 
 
-class GrahamValueTerminalExpert(BaseTerminalExpert):
+class GrahamValueTerminalExpert(BaseStrategyView):
     """
-    Expert terminal for Benjamin Graham's intrinsic value formula.
+    Expert view for Benjamin Graham's intrinsic value formula.
 
     This terminal implements the revised 1974 formula, focusing on normalized
     earnings and long-term growth estimates for defensive screening.
@@ -33,10 +29,6 @@ class GrahamValueTerminalExpert(BaseTerminalExpert):
     ----------
     MODE : ValuationMethodology
         Set to GRAHAM for defensive value investing.
-    DISPLAY_NAME : str
-        Human-readable name from i18n.
-    DESCRIPTION : str
-        Brief description from i18n.
     """
 
     MODE = ValuationMethodology.GRAHAM
@@ -44,45 +36,41 @@ class GrahamValueTerminalExpert(BaseTerminalExpert):
     DESCRIPTION = Texts.DESCRIPTION
 
     # --- UI Pipeline Configuration ---
-    # Standard discount and terminal sections are hidden as Graham uses fixed rates.
-    SHOW_DISCOUNT_SECTION = False
-    SHOW_TERMINAL_SECTION = False
-    SHOW_BRIDGE_SECTION = False
-
+    SHOW_DISCOUNT_SECTION = False  # Graham uses specific Yields, not WACC
+    SHOW_TERMINAL_SECTION = False  # The formula is self-contained
+    SHOW_BRIDGE_SECTION = False    # Graham gives Price per Share directly
     SHOW_MONTE_CARLO = True
-    SHOW_SCENARIOS = True
+    SHOW_SCENARIOS = False
     SHOW_SOTP = False
     SHOW_PEER_TRIANGULATION = False
-    SHOW_BACKTEST = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
-        Renders operational inputs for the Graham model.
+        Renders specific inputs for the Graham Formula.
 
-        Widget keys are mapped to UIKey suffixes defined in
-        GrahamParameters and FinancialRatesParameters to enable
-        automated extraction.
+        Note:
+        - EPS & Growth map to Strategy Parameters (Prefix: GRAHAM_).
+        - Yield & Tax map to Common Parameters (No Prefix, Global Keys).
         """
         prefix = self.MODE.name
 
-        # --- STEP 1: EARNINGS & GROWTH (Strategy Block -> GrahamParameters) ---
+        # --- STEP 1: EARNINGS POWER (Strategy -> eps_normalized / growth_estimate) ---
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
 
         col1, col2 = st.columns(2)
         with col1:
             st.number_input(
-                Texts.INP_EPS_NORM,
+                Texts.INP_EPS,
                 value=None,
                 format="%.2f",
-                help=Texts.HELP_EPS_NORM,
+                help=Texts.HELP_EPS,
                 key=f"{prefix}_eps_normalized"  # Maps to GrahamParameters.eps_normalized
             )
 
         with col2:
             st.number_input(
-                Texts.INP_GROWTH_G,
+                Texts.INP_GROWTH,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_GROWTH_LT,
@@ -91,42 +79,29 @@ class GrahamValueTerminalExpert(BaseTerminalExpert):
 
         st.divider()
 
-        # --- STEP 2: MARKET CONDITIONS (Common Rates Block -> FinancialRatesParameters) ---
+        # --- STEP 2: MARKET CONDITIONS (Common Rates Block) ---
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
 
         col1, col2 = st.columns(2)
         with col1:
+            # Maps to FinancialRatesParameters.corporate_aaa_yield (Global Key)
             st.number_input(
                 Texts.INP_YIELD_AAA,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_YIELD_AAA,
-                key=f"{prefix}_yield_aaa"  # Maps to FinancialRatesParameters.corporate_aaa_yield
+                key="yield_aaa"  # Note: No prefix, maps to Common Params directly
             )
 
         with col2:
+            # Maps to FinancialRatesParameters.tax_rate (Global Key)
             st.number_input(
                 Texts.INP_TAX,
                 value=None,
                 format="%.2f",
                 help=Texts.HELP_TAX,
-                key=f"{prefix}_tax"  # Maps to FinancialRatesParameters.tax_rate
+                key="tax_rate"  # Note: No prefix, maps to Common Params directly
             )
 
         st.caption(Texts.NOTE_GRAHAM)
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of Graham-specific strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to GrahamParameters fields via UIBinder.
-        """
-        return UIBinder.pull(GrahamParameters, prefix=key_prefix)
+        st.divider()

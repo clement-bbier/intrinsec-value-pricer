@@ -1,34 +1,31 @@
 """
-app/ui/expert/terminals/ddm_terminal.py
+app/views/inputs/strategies/ddm_view.py
 
-EXPERT TERMINAL — DIVIDEND DISCOUNT MODEL (DDM)
-===============================================
+EXPERT VIEW — DIVIDEND DISCOUNT MODEL (DDM)
+===========================================
 Valuation interface based on discounted future dividends.
-Data mapping is automated via DDMParameters and UIBinder.
+Role: Renders inputs for Dividend Base and Growth Trajectory.
 
-Pattern: Strategy (Concrete Implementation)
-Architecture: V16 (Metadata-Driven Extraction)
+Pattern: Strategy View (MVC)
+Architecture: V16 (Stateless Rendering)
 Style: Numpy docstrings
 """
 
-from typing import Dict, Any
 import streamlit as st
 
 from src.models import ValuationMethodology
-from src.models.parameters.strategies import DDMParameters
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.i18n import SharedTexts
-from app.adapters.ui_binder import UIBinder
-from app.ui.expert.base_terminal import BaseTerminalExpert
+from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import (
     widget_projection_years,
     widget_growth_rate,
 )
 
 
-class DDMTerminalExpert(BaseTerminalExpert):
+class DDMTerminalExpert(BaseStrategyView):
     """
-    Expert terminal for the Dividend Discount Model (DDM).
+    Expert view for the Dividend Discount Model (DDM).
 
     This interface focuses on capturing the dividend base (D0) and
     the long-term growth trajectory for income-seeking investors.
@@ -48,14 +45,11 @@ class DDMTerminalExpert(BaseTerminalExpert):
     SHOW_SCENARIOS = True
     SHOW_SOTP = False  # Irrelevant for pure dividend models
     SHOW_PEER_TRIANGULATION = True
-    SHOW_SUBMIT_BUTTON = False
 
     def render_model_inputs(self) -> None:
         """
         Renders specific inputs for the DDM model (Steps 1 & 2).
-
-        Widget keys are mapped to UIKey suffixes defined in
-        DDMParameters to enable automated extraction.
+        Writes directly to st.session_state for the Controller to pick up.
         """
         prefix = self.MODE.name  # "DDM"
 
@@ -91,19 +85,3 @@ class DDMTerminalExpert(BaseTerminalExpert):
             st.caption(Texts.NOTE_DDM_SGR)
 
         st.divider()
-
-    def _extract_model_inputs_data(self, key_prefix: str) -> Dict[str, Any]:
-        """
-        Automated extraction of DDM-specific strategy data.
-
-        Parameters
-        ----------
-        key_prefix : str
-            The session state prefix (ValuationMode.name).
-
-        Returns
-        -------
-        Dict[str, Any]
-            Raw UI values mapped to DDMParameters fields.
-        """
-        return UIBinder.pull(DDMParameters, prefix=key_prefix)

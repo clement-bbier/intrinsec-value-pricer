@@ -224,11 +224,18 @@ class ValuationEngineDefaults:
 
 @dataclass(frozen=True)
 class UIWidgetDefaults:
+    # Projection Temporelle
+    DEFAULT_PROJECTION_YEARS: int = 5
     MIN_PROJECTION_YEARS: int = 1
     MAX_PROJECTION_YEARS: int = 15
-    MAX_GROWTH_RATE: float = 500.0
-    MAX_TAX_RATE: float = 100.0
-    MAX_BETA: float = 5.0
+
+    # Taux de Croissance (g) - Bornes (%)
+    MIN_GROWTH_RATE: float = -100.0  # Décroissance totale possible
+    MAX_GROWTH_RATE: float = 500.0   # Hyper-croissance (Startup/Biotech)
+
+    # Paramètres Fiscaux et Risque
+    MAX_TAX_RATE: float = 100.0      # Impôt confiscatoire théorique
+    MAX_BETA: float = 5.0            # Volatilité extrême (> 5 est souvent du bruit)
 
 
 # ==============================================================================
