@@ -45,33 +45,20 @@ class BaseNormalizedModel(BaseModel):
         """
         if not isinstance(data, dict):
             return data
-
-        # Iterate over inputs to find fields needing scaling
         for field_name, value in data.items():
-            # Skip empty or non-numeric values
             if value is None or not isinstance(value, (int, float)):
                 continue
-
-            # Retrieve field definition from the Pydantic model
             field_def = cls.model_fields.get(field_name)
             if not field_def:
                 continue
-
-            # Look for UIKey in the metadata
             ui_meta = next((m for m in field_def.metadata if isinstance(m, UIKey)), None)
             if not ui_meta:
                 continue
-
-            # Apply scaling logic
             if ui_meta.scale == "pct":
-                # Logic: If user types "5", they mean 5%. If "0.05", it stays 0.05.
                 if abs(value) > 1.0:
                     data[field_name] = value / 100.0
-
             elif ui_meta.scale == "million":
-                # Logic: 100 (entered as M) -> 100,000,000
                 data[field_name] = value * 1_000_000.0
-
         return data
 
 
@@ -100,6 +87,8 @@ class FinancialRatesParameters(BaseNormalizedModel):
     cost_of_debt: Annotated[Optional[float], UIKey("kd", scale="pct")] = None
     tax_rate: Annotated[Optional[float], UIKey("tax", scale="pct")] = None
     corporate_aaa_yield: Annotated[Optional[float], UIKey("yield_aaa", scale="pct")] = None
+    wacc: Annotated[Optional[float], UIKey("wacc_override", scale="pct")] = None
+    cost_of_equity: Annotated[Optional[float], UIKey("ke_override", scale="pct")] = None
 
 
 class CapitalStructureParameters(BaseNormalizedModel):

@@ -15,6 +15,12 @@ from pydantic import Field, BaseModel
 
 from src.models.parameters.input_metadata import UIKey
 from src.models.parameters.common import BaseNormalizedModel
+from src.config.constants import (
+    MonteCarloDefaults,
+    SensitivityDefaults,
+    BacktestDefaults,
+    SOTPDefaults
+)
 
 
 # ==============================================================================
@@ -56,7 +62,11 @@ class MCParameters(BaseNormalizedModel):
         Polymorphic container for volatility settings based on the strategy.
     """
     enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
-    iterations: Annotated[Optional[int], UIKey("sims", scale="raw")] = Field(None, ge=100, le=50000)
+    iterations: Annotated[int, UIKey("sims", scale="raw")] = Field(
+        default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
+        ge=MonteCarloDefaults.MIN_SIMULATIONS,
+        le=MonteCarloDefaults.MAX_SIMULATIONS
+    )
     shocks: Optional[MCShockUnion] = None
 
 
@@ -80,9 +90,12 @@ class SensitivityParameters(BaseNormalizedModel):
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
     enabled: Annotated[bool, UIKey("sensi_enable", scale="raw")] = False
-    steps: Annotated[Optional[int], UIKey("sensi_steps", scale="raw")] = Field(None, ge=3, le=9)
-    wacc_span: Annotated[Optional[float], UIKey("sensi_wacc", scale="pct")] = None
-    growth_span: Annotated[Optional[float], UIKey("sensi_growth", scale="pct")] = None
+    steps: Annotated[int, UIKey("sensi_steps", scale="raw")] = Field(
+        default=SensitivityDefaults.DEFAULT_STEPS,
+        ge=3, le=9
+    )
+    wacc_span: Annotated[Optional[float], UIKey("sensi_wacc", scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
+    growth_span: Annotated[Optional[float], UIKey("sensi_growth", scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
 
 # ==============================================================================
@@ -117,7 +130,10 @@ class ScenariosParameters(BaseNormalizedModel):
 class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
     enabled: Annotated[bool, UIKey("bt_enable", scale="raw")] = False
-    lookback_years: Annotated[int, UIKey("bt_lookback", scale="raw")] = Field(3, ge=1, le=10)
+    lookback_years: Annotated[int, UIKey("bt_lookback", scale="raw")] = Field(
+        default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS,
+        ge=1, le=10
+    )
 
 class PeersParameters(BaseNormalizedModel):
     """Configuration for peer-based relative valuation."""
@@ -143,7 +159,7 @@ class SOTPParameters(BaseNormalizedModel):
         List of manual valuations per business unit.
     """
     enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
-    conglomerate_discount: Annotated[Optional[float], UIKey("sotp_disc", scale="pct")] = None
+    conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
     segments: Annotated[List[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
 
 

@@ -33,10 +33,10 @@ class MonteCarloRunner:
         r = params.common.rates
 
         try:
-            if r.wacc_override:
-                base_wacc = r.wacc_override
-            elif r.manual_cost_of_equity:
-                base_wacc = r.manual_cost_of_equity
+            if r.wacc:
+                base_wacc = r.wacc
+            elif r.cost_of_equity:
+                base_wacc = r.cost_of_equity
             else:
                 rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
                 beta = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA

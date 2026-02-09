@@ -77,7 +77,7 @@ class ScenariosRunner:
         outcomes: List[ScenarioOutcome] = []
         weighted_sum = 0.0
         total_prob = 0.0
-        market_price = params.structure.price or 1.0
+        market_price = params.structure.current_price or 1.0
 
         # Optimization: Temporarily disable step-by-step audit for sub-runs
         original_audit_state = getattr(self.strategy, 'glass_box_enabled', True)

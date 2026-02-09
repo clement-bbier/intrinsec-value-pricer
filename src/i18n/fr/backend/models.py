@@ -28,3 +28,11 @@ class SOTPTexts:
     IMPLIED_EV = "Valeur d'Entreprise Implicite"
     CONGLOMERATE_DISCOUNT = "Décote de Conglomérat"
     SUM_OF_PARTS = "Somme des Parties"
+
+    # Champs complétés pour le Glass Box
+    FORMULA_BRIDGE = "Equity = Σ(Segments) - Dette Nette - Décote"
+    INTERP_CONSOLIDATION = "Agrégation des valorisations individuelles par Business Unit."
+    FORMULA_CONSOLIDATION = r"EV_{SOTP} = (\sum V_{segment}) \times (1 - \text{Discount})"
+    STEP_LABEL_CONSOLIDATION = "Consolidation des Parties"
+    LBL_DISCOUNT = "Décote de Holding"
+    LBL_RAW_EV_SUM = "Somme Brute des Segments"

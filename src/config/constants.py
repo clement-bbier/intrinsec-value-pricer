@@ -125,7 +125,7 @@ class GrowthCalculationDefaults:
 @dataclass(frozen=True)
 class ModelDefaults:
     # Capital Structure
-    DEFAULT_WACC = None
+    DEFAULT_WACC: float = 0.10
     DEFAULT_PAYOUT_RATIO: float = 0.50
     DEFAULT_FCF_MARGIN_TARGET: float = 0.15
     DEFAULT_REVENUE_GROWTH_START: float = 0.10

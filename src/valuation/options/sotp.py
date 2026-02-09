@@ -19,7 +19,7 @@ from typing import List, Optional
 from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SOTPResults
 from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource  # [CORRECTION] Bon Enum pour VariableInfo
+from src.models.enums import VariableSource
 from src.core.formatting import format_smart_number
 
 # Centralized i18n imports
@@ -90,7 +90,7 @@ class SOTPRunner:
             step_id=1,
             step_key="SOTP_EV_CONSOLIDATION",
             label=SOTPTexts.STEP_LABEL_CONSOLIDATION,
-            theoretical_formula=SOTPTexts.FORMULA_CONSOLIDATION, # [CORRECTION] i18n
+            theoretical_formula=SOTPTexts.FORMULA_CONSOLIDATION,
             actual_calculation=f"{format_smart_number(raw_ev_sum)} × (1 - {discount_rate:.1%})",
             result=consolidated_ev,
             unit="currency",
@@ -158,7 +158,7 @@ class SOTPRunner:
             step_id=2,
             step_key="SOTP_EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
-            theoretical_formula=SOTPTexts.FORMULA_BRIDGE, # [CORRECTION] i18n
+            theoretical_formula=SOTPTexts.FORMULA_BRIDGE,
             actual_calculation=(
                 f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
                 f"{format_smart_number(cash)} ..."

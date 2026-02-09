@@ -114,7 +114,7 @@ class StandardFCFFStrategy(IValuationRunner):
         trace_ke = step_wacc.get_variable("Ke")
         trace_kd = step_wacc.get_variable("Kd(1-t)")
 
-        val_ke = trace_ke.value if (self._glass_box and trace_ke) else (r.manual_cost_of_equity or 0.0)
+        val_ke = trace_ke.value if (self._glass_box and trace_ke) else (r.cost_of_equity or 0.0)
         val_kd = trace_kd.value if (self._glass_box and trace_kd) else (ModelDefaults.DEFAULT_COST_OF_DEBT * (1 - (r.tax_rate or 0.25)))
 
         res_rates = ResolvedRates(

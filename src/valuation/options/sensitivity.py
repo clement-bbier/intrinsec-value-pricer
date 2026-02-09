@@ -78,7 +78,7 @@ class SensitivityRunner:
     @staticmethod
     def _get_center_wacc(params: Parameters) -> float:
         r = params.common.rates
-        return r.wacc_override or r.manual_cost_of_equity or ModelDefaults.DEFAULT_WACC
+        return r.wacc or r.cost_of_equity or ModelDefaults.DEFAULT_WACC
 
     @staticmethod
     def _get_center_growth(params: Parameters) -> float:
@@ -91,8 +91,8 @@ class SensitivityRunner:
 
     @staticmethod
     def _apply_wacc(params: Parameters, value: float) -> None:
-        params.common.rates.wacc_override = value
-        params.common.rates.manual_cost_of_equity = value
+        params.common.rates.wacc = value
+        params.common.rates.cost_of_equity = value
 
     @staticmethod
     def _apply_growth(params: Parameters, value: float) -> None:
