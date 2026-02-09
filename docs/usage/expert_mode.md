@@ -149,7 +149,8 @@ AAPL, MSFT, GOOG, META
 Tous les terminaux utilisent le même widget :
 
 ```python
-from app.ui.expert.terminals.shared_widgets import render_equity_bridge_inputs
+from app.views.inputs.strategies.shared_widgets import render_equity_bridge_inputs
+
 
 def render_equity_bridge(self) -> None:
     render_equity_bridge_inputs(
