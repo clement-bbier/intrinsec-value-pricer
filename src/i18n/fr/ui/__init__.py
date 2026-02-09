@@ -6,7 +6,7 @@ UI TRANSLATIONS (FRENCH)
 from src.i18n.fr.ui.common import CommonTexts, LegalTexts
 from src.i18n.fr.ui.expert import ExpertTexts
 from src.i18n.fr.ui.extensions import ExtensionTexts
-from src.i18n.fr.ui.results import ResultsTexts, KPITexts, QuantTexts, ChartTexts, BacktestTexts
+from src.i18n.fr.ui.results import ResultsTexts, KPITexts, QuantTexts, ChartTexts, BacktestTexts, PillarLabels, InputLabels, SOTPTexts, RegistryTexts, StrategyFormulas, BenchmarkTexts
 from src.i18n.fr.ui.sidebar import SidebarTexts
 
 __all__ = [
@@ -20,4 +20,10 @@ __all__ = [
     "QuantTexts",
     "BacktestTexts",
     "ChartTexts",
+    "PillarLabels",
+    "InputLabels",
+    "SOTPTexts",
+    "RegistryTexts",
+    "StrategyFormulas",
+    "BenchmarkTexts"
 ]

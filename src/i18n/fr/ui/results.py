@@ -1,29 +1,83 @@
 """
 src/i18n/fr/ui/results.py
 
-RÉFÉRENTIEL DES TEXTES DE RENDU — VERSION INSTITUTIONNELLE FUSIONNÉE (V22)
+RÉFÉRENTIEL DES TEXTES DE RENDU — VERSION INSTITUTIONNELLE FUSIONNÉE (V23)
 ==========================================================================
 Rôle : Centralise tous les textes, labels et formats utilisés dans les vues de résultats.
-Portée : KPIs, Graphiques, Rapports d'Audit, SOTP, Backtest.
+Portée : KPIs, Graphiques, Benchmark, SOTP, Backtest, Inputs.
 """
 
-class PillarLabels:
-    """Labels officiels des 5 piliers de recherche."""
-    PILLAR_1_CONF = "Configuration"
-    PILLAR_2_TRACE = "Trace mathématique"
-    PILLAR_3_AUDIT = "Rapport d'audit"
-    PILLAR_4_RISK = "Ingénierie du risque"
-    PILLAR_5_MARKET = "Analyse de marché & SOTP"
-    PILLAR_0_SUMMARY = "Synthèse décisionnelle"
+class ResultsTexts:
+    """Textes génériques de la page résultats."""
+    TITLE = "Résultats de Valorisation"
+    VALUATION_SUMMARY = "Synthèse Décisionnelle"
+    NO_RATES_DATA = "Données de taux non disponibles"
+    NO_FINANCIALS_PROVIDED = "Aucun état financier historique fourni"
 
+class PillarLabels:
+    """
+    Labels officiels des onglets (Piliers).
+    Séparation explicite entre la Synthèse (Output) et la Configuration (Input).
+    """
+    PILLAR_0_SUMMARY = "Synthèse & Dashboard"  # Output
+    PILLAR_1_CONF = "Configuration & Inputs"   # Input
+    PILLAR_2_TRACE = "Trace Mathématique"
+    PILLAR_3_BENCHMARK = "Benchmark Sectoriel" # Ex-Audit
+    PILLAR_4_RISK = "Ingénierie du Risque"
+    PILLAR_5_MARKET = "Marché & SOTP"
+
+class InputLabels:
+    """
+    Labels spécifiques au Pilier 1 (Configuration & Hypothèses).
+    Détaille les paramètres entrés dans le modèle.
+    """
+    # Section Headers
+    SECTION_STRUCTURE = "1. Structure & Marché"
+    SECTION_WACC = "2. Paramètres de Taux (WACC)"
+    SECTION_GROWTH = "3. Croissance & Terminal"
+    SECTION_FINANCIALS = "4. Données Financières Brutes"
+
+    # Metrics Structure
+    TICKER = "Ticker"
+    CURRENCY = "Devise"
+    CURRENT_PRICE = "Prix Actuel"
+    SHARES_OUT = "Actions en Circ."
+    NET_DEBT = "Dette Nette"
+    MINORITY_INTEREST = "Intérêts Minoritaires"
+    IMPLIED_EV = "VE Implicite (Marché)"
+
+    # Metrics Taux
+    RISK_FREE_RATE = "Taux Sans Risque (Rf)"
+    SOURCE_RF = "Source : Obligations 10 ans"
+    BETA = "Beta"
+    SOURCE_BETA = "Beta Levier"
+    ERP = "Prime de Risque (ERP)"
+    COST_OF_EQUITY = "Coût des Fonds Propres"
+    COST_OF_DEBT_PRE_TAX = "Coût Dette (Pre-Tax)"
+    TAX_RATE = "Taux d'IS"
+
+    # Metrics WACC Detail
+    WEIGHT_EQUITY = "Poids Fonds Propres"
+    WEIGHT_DEBT = "Poids Dette"
+    WACC_CALC = "WACC Calculé"
+    WACC_DETAILS = "Détails du Calcul"
+
+    # Metrics Growth
+    TERMINAL_GROWTH = "Croissance Infinie (g)"
+    PROJECTION_PERIOD = "Période Explicite"
+    VALUATION_METHOD = "Méthode"
+
+    # Données brutes
+    VIEW_RAW_DATA = "Voir Compte de Résultat Historique"
+    DATA_UNFORMATTED = "Formatage des données requis"
 
 class KPITexts:
-    """Labels et titres pour les indicateurs clés (Glass Box & Dashboard)."""
+    """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
 
     # --- Navigation & Onglets ---
     TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de calcul"
-    TAB_AUDIT = "Audit de Fiabilité"
+    TAB_BENCHMARK = "Benchmark & Fiabilité" # Remplacement de Audit
     TAB_MC = "Monte Carlo"
     TAB_SCENARIOS = "Analyse de Scénarios"
 
@@ -53,7 +107,7 @@ class KPITexts:
     LABEL_PENSIONS = "Engagements de Retraite"
     LABEL_EQUITY = "Valeur des Capitaux Propres"
 
-    # --- Formules de substitution (Templates) ---
+    # --- Formules de substitution (Templates LaTeX) ---
     SUB_DILUTION = "{iv:.2f} / (1 + {rate:.2%})^{t}"
     SUB_FCF_BASE = r"FCF_0 = {val:,.2f} ({src})"
     SUB_FCF_NORM = r"FCF_norm = {val:,.2f} ({src})"
@@ -101,7 +155,7 @@ class KPITexts:
     LABEL_SCENARIO_RANGE = "Fourchette Bear - Bull"
 
     FOOTBALL_FIELD_TITLE = "Synthèse de Triangulation (Football Field)"
-    RELATIVE_VAL_DESC = "Positionnement du modèle intrinsèque face aux multiples du secteur."
+    RELATIVE_VAL_DESC = "Positionnement du modèle intrinsèque face aux métriques de marché."
     LABEL_MULTIPLES_UNAVAILABLE = "Données insuffisantes pour la triangulation relative."
 
     LABEL_FOOTBALL_FIELD_IV = "Modèle Intrinsèque"
@@ -111,36 +165,67 @@ class KPITexts:
     LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marché"
 
 
-class AuditTexts:
-    """Textes Pillar 3 — Audit & Fiabilité."""
-    COVERAGE = "Couverture d'audit"
-    H_INDICATOR = "Tests exécutés"
-    GLOBAL_SCORE = "Score de fiabilité global basé sur {score}% de conformité aux invariants."
-    CRITICAL_VIOLATION_MSG = r"{count} invariants critiques violés"
-    AUDIT_NOTES_EXPANDER = "Procès-verbal détaillé des tests"
-    H_RULE = "Règle métier"
-    H_EVIDENCE = "Preuve (Calcul)"
-    H_VERDICT = "Résultat"
-    DEFAULT_FORMULA = r"\text{Règle Standard}"
+class BenchmarkTexts:
+    """
+        Textes Pillar 3 — Benchmark & Fiabilité.
+        Vocabulaire de comparaison sectorielle et de scoring.
+        """
+    # Titres & Sections
+    TITLE_MACRO = "Contexte Macroéconomique"
+    SUBTITLE_VALUATION = "1. Positionnement Valorisation (Multiples)"
+    DESC_VALUATION = "Comparaison des multiples de valorisation actuels vs moyenne sectorielle."
+    SUBTITLE_PERFORMANCE = "2. Performance Opérationnelle"
+    DESC_PERFORMANCE = "Analyse de la qualité financière relative."
+
+    # Cartes d'Identité
+    LBL_SECTOR_REF = "SECTEUR DE RÉFÉRENCE"
+    LBL_BENCHMARK_ID = "Benchmark ETF/Indice"
+    LBL_RF = "TAUX SANS RISQUE (Rf)"
+    LBL_ERP = "PRIME DE RISQUE (ERP)"
+
+    # Statuts de comparaison (Badges)
+    STATUS_PREMIUM = "PREMIUM"  # Plus cher que le secteur
+    STATUS_DISCOUNT = "DISCOUNT"  # Moins cher que le secteur
+    STATUS_LEADER = "LEADER"  # Meilleure perf que le secteur
+    STATUS_LAGGING = "RETARD"  # Moins bonne perf que le secteur
+
+    # Labels Graphiques
+    CHART_TITLE_VALUATION = "Visualisation des écarts de valorisation"
+    LBL_ENTITY_COMPANY = "Entreprise"
+    LBL_ENTITY_SECTOR = "Moyenne Secteur"
+
+    # Messages génériques
+    NO_REPORT = "Données sectorielles indisponibles pour générer le rapport de benchmark."
+
+    COVERAGE = "Couverture des tests"
+    H_INDICATOR = "Indicateurs vérifiés"
+    GLOBAL_SCORE = "Score de fiabilité global basé sur {score}% de conformité aux standards du secteur."
+    CRITICAL_VIOLATION_MSG = r"{count} écarts critiques détectés par rapport aux normes."
+    NOTES_EXPANDER = "Détail des analyses de cohérence" # Anciennement Procès-verbal...
+
+    H_RULE = "Standard analysé"
+    H_EVIDENCE = "Valeur Modèle"
+    H_VERDICT = "Statut"
+
+    DEFAULT_FORMULA = r"\text{Standard de Marché}"
     INTERNAL_CALC = "Calcul interne"
 
     # Statuts
-    STATUS_OK = "Conforme"
-    STATUS_ALERT = "Alerte"
+    STATUS_OK = "Aligné"
+    STATUS_ALERT = "Écart Significatif"
 
     # Niveaux de fiabilité
-    RELIABILITY_HIGH = "Fiabilité élevée"
-    RELIABILITY_MODERATE = "Fiabilité modérée"
-    RELIABILITY_LOW = "Fiabilité faible"
-    NO_REPORT = "Audit indisponible pour ce modèle."
-    RATING_SCORE = "Notation Qualité"
+    RELIABILITY_HIGH = "Fiabilité : Élevée"
+    RELIABILITY_MODERATE = "Fiabilité : Modérée"
+    RELIABILITY_LOW = "Fiabilité : Faible"
+    RATING_SCORE = "Score Qualité"
 
     # Messages Spécifiques
     LBL_SOTP_REVENUE_CHECK = "Cohérence Revenus SOTP"
     LBL_SOTP_DISCOUNT_CHECK = "Prudence Décote Holding"
-    CHECK_TABLE = "Vérification des règles normatives"
+    CHECK_TABLE = "Tableau de conformité sectorielle"
 
-    # Codes de règles (pour mapping)
+    # Codes de règles (pour mapping - inchangés pour compatibilité backend)
     KEY_BETA_VALIDITY = "BETA_VALIDITY"
     KEY_DATA_FRESHNESS = "DATA_FRESHNESS"
     KEY_ICR_WARNING = "DCF_ICR_WARNING"
@@ -153,6 +238,21 @@ class AuditTexts:
     KEY_COHORT_SMALL = "MULTIPLES_COHORT_SMALL"
     KEY_HIGH_DISPERSION = "MULTIPLES_HIGH_DISPERSION"
 
+    PIOTROSKI_TITLE = "Santé Financière (F-Score Piotroski)"
+    PIOTROSKI_DESC = "Analyse de la solidité financière selon 9 critères comptables (Rentabilité, Levier, Efficacité)."
+    PIOTROSKI_LBL_SCORE = "Score F"
+    PIOTROSKI_LBL_STATUS = "Statut"
+    PIOTROSKI_LBL_HEALTH = "Santé Fondamentale : {score} sur 9 points"
+
+    # Status
+    PIOTROSKI_STATUS_STRONG = "Solide"
+    PIOTROSKI_STATUS_STABLE = "Moyen"
+    PIOTROSKI_STATUS_WEAK = "Fragile"
+
+    # Interpretations (Sans smileys)
+    PIOTROSKI_MSG_STRONG = "Fondamentaux de haute qualité. Profil défensif."
+    PIOTROSKI_MSG_STABLE = "Fondamentaux moyens. Profil standard."
+    PIOTROSKI_MSG_WEAK = "Fondamentaux de faible qualité. Profil risqué."
 
 class QuantTexts:
     """Textes Pillar 4 — Ingénierie du Risque (Monte Carlo & Scenarios)."""
@@ -192,7 +292,7 @@ class QuantTexts:
 
 
 class BacktestTexts:
-    """Textes pour le module de Backtesting Historique."""
+    """Textes pour le module de Backtesting Historique (Pillar 4 extension)."""
     TITLE = "Validation Historique (Backtest)"
     LABEL_HIST_IV = "Valeur Intrinsèque Calculée"
     LABEL_REAL_PRICE = "Prix Réel Historique"
@@ -219,11 +319,11 @@ class MarketTexts:
 
 
 class SOTPTexts:
-    """Textes spécifiques à la méthode Somme des Parties (SOTP)."""
+    """Textes spécifiques à la méthode Somme des Parties (SOTP) - Pillar 5."""
     TITLE = "Analyse Somme des Parties (SOTP)"
 
     # Waterfall Chart
-    LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise (EV)"
+    LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise Totale"
     LABEL_HOLDING_DISCOUNT = "Décote de Holding"
 
     # Tableaux
@@ -238,12 +338,12 @@ class SOTPTexts:
     METRIC_HOLDING_DISCOUNT = "Décote de Holding"
     METRIC_NET_VALUE = "Valeur Nette"
 
-    # Glass Box
+    # Glass Box UI
     FORMULA_BRIDGE = "Equity = Σ(Segments) - Dette Nette - Décote"
     INTERP_CONSOLIDATION = "Agrégation des valorisations individuelles par Business Unit."
     FORMULA_CONSOLIDATION = r"EV_{SOTP} = (\sum V_{segment}) \times (1 - \text{Discount})"
     STEP_LABEL_CONSOLIDATION = "Consolidation des Parties"
-    LBL_DISCOUNT = "Décote de Holding"
+    LBL_DISCOUNT = "Décote Appliquée"
     LBL_RAW_EV_SUM = "Somme Brute des Segments"
 
 
@@ -255,7 +355,91 @@ class ChartTexts:
     SENS_TITLE = "Modèle Intrinsèque (DCF/RIM)"
     CORREL_CAPTION = "Matrice de Corrélation des Inputs"
 
-class ResultsTexts:
-    """Textes génériques de la page résultats."""
-    TITLE = "Résultats de Valorisation"
-    VALUATION_SUMMARY = "Synthèse"
+
+class RegistryTexts:
+    """Textes pour les métadonnées du Glass Box (Registry)."""
+    # DCF
+    DCF_WACC_L = "Coût du Capital (WACC)"
+    DCF_WACC_D = "Taux d'actualisation pondéré par la structure du capital cible."
+    DCF_KE_L = "Coût des Fonds Propres (Ke)"
+    DCF_KE_D = "Rendement exigé par les actionnaires (Modèle CAPM)."
+    DCF_FCF_BASE_L = "Flux de Trésorerie de Base"
+    DCF_FCF_BASE_D = "Point de départ des projections (Année 0 ou N-1)."
+    DCF_PROJ_L = "Somme des Flux Actualisés"
+    DCF_PROJ_D = "Valeur présente des flux de trésorerie sur la période explicite."
+    DCF_TV_GORDON_L = "Valeur Terminale (Gordon)"
+    DCF_TV_GORDON_D = "Valeur à l'infini selon le modèle de croissance perpétuelle."
+    DCF_TV_MULT_L = "Valeur Terminale (Multiple)"
+    DCF_TV_MULT_D = "Valeur de sortie basée sur un multiple d'EBITDA/Revenus."
+    DCF_EV_L = "Valeur d'Entreprise (EV)"
+    DCF_EV_D = "Somme des flux actualisés et de la valeur terminale."
+    DCF_BRIDGE_L = "Pont vers l'Equity"
+    DCF_BRIDGE_D = "Ajustement de la Dette Nette et autres passifs."
+    DCF_IV_L = "Valeur par Action"
+    DCF_IV_D = "Valeur finale des capitaux propres divisée par le nombre d'actions."
+
+    # FCFE / DDM
+    FCFE_BASE_L = "FCFE de Base"
+    FCFE_BASE_D = "Flux de trésorerie disponible pour les actionnaires (après dette)."
+    DDM_BASE_L = "Dividende de Base"
+    DDM_BASE_D = "Dernier dividende versé ou projeté."
+    EQUITY_DIRECT_D = "Calcul direct de la valeur des capitaux propres (pas de pont dette)."
+
+    # RIM / Graham
+    RIM_BV_L = "Valeur Comptable (Book Value)"
+    RIM_BV_D = "Capitaux propres comptables initiaux."
+    RIM_KE_L = "Coût des Fonds Propres"
+    RIM_KE_D = "Taux d'actualisation appliqué aux revenus résiduels."
+    RIM_PAYOUT_L = "Taux de Distribution"
+    RIM_PAYOUT_D = "Part du résultat net reversée en dividendes."
+    RIM_RI_L = "Revenus Résiduels Cumulés"
+    RIM_RI_D = "Somme actualisée des profits excédentaires futurs."
+    RIM_TV_L = "Valeur Terminale (Ohlson)"
+    RIM_TV_D = "Valeur des profits anormaux perpétuels avec facteur de persistance."
+    RIM_IV_L = "Valeur Intrinsèque RIM"
+    RIM_IV_D = "Somme : BV + RI + TV."
+
+    GRAHAM_EPS_L = "Bénéfice par Action (EPS)"
+    GRAHAM_EPS_D = "Moyenne lissée ou dernier EPS connu."
+    GRAHAM_MULT_L = "Multiplicateur de Graham"
+    GRAHAM_MULT_D = "Facteur basé sur la croissance (8.5 + 2g)."
+    GRAHAM_IV_L = "Valeur Intrinsèque Graham"
+    GRAHAM_IV_D = "Formule classique de Benjamin Graham."
+
+    # Ajustements
+    HAMADA_L = "Ajustement Hamada"
+    HAMADA_D = "Désendettement et réendettement du Bêta."
+    SBC_L = "Dilution SBC"
+    SBC_D = "Impact des rémunérations en actions (Stock-Based Compensation)."
+
+
+class StrategyFormulas:
+    """Formules LaTeX pour le Glass Box."""
+    WACC = r"WACC = K_e \times \frac{E}{V} + K_d(1-t) \times \frac{D}{V}"
+    CAPM = r"K_e = R_f + \beta \times ERP"
+    FCF_BASE = r"FCF = EBIT(1-t) + D\&A - \Delta WCR - Capex"
+    FCFE_RECONSTRUCTION = r"FCFE = FCF - Int(1-t) + \Delta Dette"
+    DIVIDEND_BASE = r"Div_0"
+
+    FCF_PROJECTION = r"\sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t}"
+    GORDON = r"TV = \frac{FCF_n \times (1+g)}{WACC - g}"
+    TERMINAL_EXIT_MULTIPLE = r"TV = Metric_n \times Multiple"
+
+    NPV = r"EV = \sum PV(FCF) + PV(TV)"
+    EQUITY_BRIDGE = r"Equity = EV - Dette_{net} - Minoritaires + Cash"
+    FCFE_EQUITY_VALUE = r"Equity = \sum PV(FCFE) + PV(TV_{FCFE})"
+    VALUE_PER_SHARE = r"Prix = \frac{Equity}{Actions}"
+
+    BV_BASE = r"B_0"
+    PAYOUT_RATIO = r"Payout = \frac{Div}{NI}"
+    RI_SUM = r"\sum \frac{(ROE_t - K_e) \times B_{t-1}}{(1+K_e)^t}"
+    RIM_PERSISTENCE = r"TV = \frac{RI_n \times \omega}{1 + K_e - \omega}"
+    RIM_FINAL = r"V_0 = B_0 + \sum PV(RI) + PV(TV)"
+    RIM_RESIDUAL_INCOME = r"RI_t = NI_t - (K_e \times B_{t-1})"
+
+    EPS_BASE = r"EPS_{norm}"
+    GRAHAM_MULTIPLIER = r"M = 8.5 + 2g"
+    GRAHAM_VALUE = r"V = EPS \times (8.5 + 2g) \times \frac{4.4}{Y_{AAA}}"
+
+    HAMADA = r"\beta_L = \beta_U \times [1 + (1-t)\frac{D}{E}]"
+    SBC_DILUTION = r"Actions_{adj} = Actions \times (1+dilution)^t"

@@ -1,169 +1,122 @@
 """
-app/ui/results/core/inputs_summary.py
-
-PILLAR 1 — CONFIGURATION & HYPOTHESES
-=====================================
-Role: Provides full transparency on financial data and model parameters (Diligence).
-Architecture: Institutional FactSheet reactive to the selected valuation model.
+app/views/results/pillars/inputs_summary.py
+PILLAR 1: DETAILED INPUTS & CONFIGURATION
+=========================================
+Role: Renders the detailed view of all assumptions used in the valuation.
+Focus: Input only (Structures, Rates, Growth, Financials).
+Dependencies: Streamlit, Models, i18n.
 """
 
-from typing import Any
 import streamlit as st
+import pandas as pd
+from src.models import ValuationResult
+from src.i18n import InputLabels, ResultsTexts
 
-from src.models import ValuationResult, ValuationMethodology
-from src.i18n import (
-    KPITexts,
-    DDMTexts,
-    RegistryTexts
-)
-from src.core.formatting import format_smart_number
-from app.ui.results.base_result import ResultTabBase
-
-class InputsSummaryTab(ResultTabBase):
+def render_detailed_inputs(result: ValuationResult) -> None:
     """
-    Pillar 1: Comprehensive data inventory.
+    Renders Pillar 1: Detailed Configuration & Assumptions.
 
-    This tab renders a high-density key-value grid with conditional
-    logic to adapt the view based on the active valuation model.
+    This view displays every single parameter used in the model:
+    - Market Structure (Shares, Debt, etc.)
+    - Discount Rates (Rf, Beta, MRP, Cost of Debt)
+    - Operational Assumptions (Tax, Growth)
+    - Raw Financial Inputs (if available)
+
+    Parameters
+    ----------
+    result : ValuationResult
+        The object containing the full request configuration.
     """
+    st.subheader(InputLabels.SECTION_STRUCTURE) # Using a consistent subheader concept if needed, or KPITexts.TAB_INPUTS
 
-    TAB_ID = "inputs_summary"
-    LABEL = KPITexts.TAB_INPUTS
-    ORDER = 1
-    IS_CORE = True
+    params = result.request.parameters
 
-    def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Renders the financial diligence sheet with full i18n injection.
+    # --- Section A: Market Structure & Enterprise Value Components ---
+    st.markdown(f"#### {InputLabels.SECTION_STRUCTURE}")
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
-        Parameters
-        ----------
-        result : ValuationResult
-            The complete valuation result object containing financials and params.
-        **kwargs : Any
-            Additional rendering context.
-        """
-        f = result.financials
-        p = result.params
-        mode = result.request.mode if result.request else None
+    with col_s1:
+        st.metric(InputLabels.TICKER, result.request.ticker)
+        st.metric(InputLabels.CURRENCY, params.structure.currency)
 
-        st.markdown(f"### {KPITexts.SECTION_INPUTS_HEADER}")
-        st.caption(KPITexts.SECTION_INPUTS_CAPTION)
-        st.write("")
+    with col_s2:
+        st.metric(InputLabels.CURRENT_PRICE, f"{params.structure.current_price:,.2f}")
+        st.metric(InputLabels.SHARES_OUT, f"{params.structure.shares_outstanding:,.0f}")
 
-        # --- 1. IDENTITY & MARKET STRUCTURE ---
-        with st.container(border=True):
-            st.markdown(f"**{KPITexts.SEC_A_IDENTITY}**")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                self._render_kv(KPITexts.LABEL_NAME, f.name)
-                self._render_kv(KPITexts.LABEL_TICKER, f.ticker)
-            with c2:
-                self._render_kv(KPITexts.LABEL_SECTOR, f.sector)
-                self._render_kv(KPITexts.LABEL_COUNTRY, f.country)
-            with c3:
-                self._render_kv(KPITexts.LABEL_CURRENCY, f.currency)
-                self._render_kv(KPITexts.LABEL_SHARES, format_smart_number(f.shares_outstanding))
+    with col_s3:
+        st.metric(InputLabels.NET_DEBT, f"{params.structure.net_debt:,.0f} M")
+        st.metric(InputLabels.MINORITY_INTEREST, f"{params.structure.minority_interests:,.0f} M")
 
-        # --- 2. OPERATIONAL PERFORMANCE (TTM) ---
-        st.write("")
-        with st.container(border=True):
-            st.markdown(f"**{KPITexts.SUB_PERF}**")
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                self._render_kv(KPITexts.LABEL_REV, format_smart_number(f.revenue_ttm, currency=f.currency))
-            with c2:
-                self._render_kv(KPITexts.LABEL_EBIT, format_smart_number(f.ebit_ttm, currency=f.currency))
-            with c3:
-                self._render_kv(KPITexts.LABEL_NI, format_smart_number(f.net_income_ttm, currency=f.currency))
-            with c4:
-                self._render_kv(KPITexts.LABEL_EPS, f"{f.eps_ttm:.2f} {f.currency}")
+    with col_s4:
+        # Enterprise Value (Bridge) implied by Current Price
+        implied_ev = (params.structure.current_price * params.structure.shares_outstanding) + params.structure.net_debt
+        st.metric(InputLabels.IMPLIED_EV, f"{implied_ev:,.0f} M")
 
-            st.divider()
+    st.divider()
 
-            # Responsive logic for Cash/Distribution section
-            if mode == ValuationMethodology.DDM:
-                st.caption(RegistryTexts.DDM_GROWTH_L)
-                c1, c2, c3 = st.columns(3)
-                div_total = f.dividend_share * f.shares_outstanding if f.dividend_share else 0
-                with c1:
-                    self._render_kv(DDMTexts.INP_DIVIDEND_BASE, f"{f.dividend_share:.2f} {f.currency}")
-                with c2:
-                    self._render_kv(RegistryTexts.DDM_BASE_L, format_smart_number(div_total, currency=f.currency))
-            else:
-                st.caption(KPITexts.SUB_CASH)
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    self._render_kv(KPITexts.LABEL_FCF_LAST, format_smart_number(f.fcf, currency=f.currency))
-                with c2:
-                    self._render_kv(KPITexts.LABEL_CAPEX, format_smart_number(f.capex, currency=f.currency))
-                with c3:
-                    self._render_kv(KPITexts.LABEL_DA, format_smart_number(f.depreciation_and_amortization, currency=f.currency))
+    # --- Section B: Cost of Capital (WACC) Components ---
+    st.markdown(f"#### {InputLabels.SECTION_WACC}")
 
-        # --- 3. CAPITAL STRUCTURE (DEBT, CASH & BOOK VALUE) ---
-        st.write("")
-        with st.container(border=True):
-            st.markdown(f"**{KPITexts.SUB_CAPITAL}**")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                self._render_kv(KPITexts.LABEL_CASH, format_smart_number(f.cash_and_equivalents, currency=f.currency))
-                self._render_kv(KPITexts.LABEL_DEBT, format_smart_number(f.total_debt, currency=f.currency))
-            with c2:
-                self._render_kv(KPITexts.LABEL_BVPS, f"{f.book_value_per_share:.2f} {f.currency}")
-                self._render_kv(KPITexts.LABEL_MINORITIES, format_smart_number(f.minority_interests, currency=f.currency))
-            with c3:
-                self._render_kv(KPITexts.LABEL_NET_DEBT, format_smart_number(f.net_debt, currency=f.currency))
-                self._render_kv(KPITexts.LABEL_PENSIONS, format_smart_number(f.pension_provisions, currency=f.currency))
+    if params.rates:
+        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
 
-        # --- 4. MODEL PARAMETERS (RATES & GROWTH) ---
-        st.write("")
-        with st.container(border=True):
-            st.markdown(f"**{KPITexts.SEC_C_MODEL}**")
-            c1, c2 = st.columns(2)
+        with col_r1:
+            st.metric(InputLabels.RISK_FREE_RATE, f"{params.rates.risk_free_rate:.2%}")
+            st.caption(InputLabels.SOURCE_RF)
 
-            with c1:
-                st.caption(KPITexts.SUB_RATES)
-                self._render_kv(KPITexts.LABEL_RF, f"{p.rates.risk_free_rate:.2%}")
-                self._render_kv(KPITexts.LABEL_BETA, f"{p.rates.manual_beta or f.beta:.2f}")
-                self._render_kv(KPITexts.LABEL_MRP, f"{p.rates.market_risk_premium:.2%}")
+        with col_r2:
+            st.metric(InputLabels.BETA, f"{params.rates.beta:.2f}")
+            st.caption(InputLabels.SOURCE_BETA)
 
-                if mode == ValuationMethodology.GRAHAM:
-                    self._render_kv(KPITexts.LABEL_AAA_YIELD, f"{p.growth.exit_multiple_value:.2%}")
+        with col_r3:
+            st.metric(InputLabels.ERP, f"{params.rates.equity_risk_premium:.2%}")
+            st.metric(InputLabels.COST_OF_EQUITY, f"{params.rates.cost_of_equity:.2%}")
 
-            with c2:
-                st.caption(KPITexts.SUB_GROWTH)
-                self._render_kv(KPITexts.LABEL_G, f"{p.growth.fcf_growth_rate:.2%}")
-                self._render_kv(KPITexts.LABEL_GN, f"{p.growth.perpetual_growth_rate:.2%}")
+        with col_r4:
+            st.metric(InputLabels.COST_OF_DEBT_PRE_TAX, f"{params.rates.cost_of_debt_pre_tax:.2%}")
+            st.metric(InputLabels.TAX_RATE, f"{params.rates.tax_rate:.2%}")
 
-                if mode == ValuationMethodology.RIM:
-                    self._render_kv(KPITexts.LABEL_OMEGA, f"{p.growth.exit_multiple_value:.2f}")
+        # WACC Calculation Display
+        with st.expander(InputLabels.WACC_DETAILS):
+            st.write(f"**{InputLabels.WEIGHT_EQUITY}:** {params.rates.weight_equity:.1%}")
+            st.write(f"**{InputLabels.WEIGHT_DEBT}:** {params.rates.weight_debt:.1%}")
+            st.write(f"**{InputLabels.WACC_CALC}:** {params.rates.wacc_calculated:.2%}")
+    else:
+        st.warning(ResultsTexts.NO_RATES_DATA)
 
-                # SBC Dilution (Neutral rendering)
-                sbc_val = p.growth.annual_dilution_rate
-                self._render_kv(KPITexts.LABEL_SBC_RATE, f"{sbc_val:.2%}")
+    st.divider()
 
-    @staticmethod
-    def _render_kv(label: str, value: Any) -> None:
-        """
-        Renders a clean Key-Value row for institutional fact sheets.
+    # --- Section C: Operational & Terminal Assumptions ---
+    st.markdown(f"#### {InputLabels.SECTION_GROWTH}")
+    col_g1, col_g2, col_g3 = st.columns(3)
 
-        Parameters
-        ----------
-        label : str
-            The localized field label to display.
-        value : Any
-            The formatted value to display.
-        """
-        col_l, col_v = st.columns([0.65, 0.35])
+    with col_g1:
+        # Safe access to growth parameters
+        tgr = params.growth.terminal_growth_rate if params.growth else 0.02
+        st.metric(InputLabels.TERMINAL_GROWTH, f"{tgr:.2%}")
 
-        # Label: Slate gray, smaller font
-        col_l.markdown(
-            f"<span style='color: #64748b; font-size: 0.85rem;'>{label}</span>",
-            unsafe_allow_html=True
-        )
+    with col_g2:
+        proj_years = params.growth.projection_years if params.growth else 5
+        st.metric(InputLabels.PROJECTION_PERIOD, f"{proj_years} Y")
 
-        # Value: Bold, right-aligned
-        col_v.markdown(
-            f"<div style='text-align: right; font-weight: 600; font-size: 0.9rem;'>{value if value is not None else '—'}</div>",
-            unsafe_allow_html=True
-        )
+    with col_g3:
+        # Method used (e.g., DCF GGM or Exit Multiple)
+        method = params.strategy.valuation_method if params.strategy else "DCF Standard"
+        st.metric(InputLabels.VALUATION_METHOD, method)
+
+    # --- Section D: Raw Financial Inputs (The "Books") ---
+    st.markdown(f"#### {InputLabels.SECTION_FINANCIALS}")
+
+    if result.request.financials:
+        with st.expander(InputLabels.VIEW_RAW_DATA, expanded=False):
+            # Converting list of objects to DataFrame for display
+            try:
+                # Assumes financials.history is a list of Pydantic models
+                data = [f.model_dump() for f in result.request.financials.history]
+                df_fin = pd.DataFrame(data)
+                st.dataframe(df_fin, use_container_width=True)
+            except Exception as e:
+                st.caption(f"Technical error details: {e}")
+                st.text(InputLabels.DATA_UNFORMATTED)
+    else:
+        st.info(ResultsTexts.NO_FINANCIALS_PROVIDED)

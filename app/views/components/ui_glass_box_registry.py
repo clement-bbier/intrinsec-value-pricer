@@ -1,25 +1,17 @@
 """
-app/ui/components/ui_glass_box_registry.py
+app/views/components/ui_glass_box_registry.py
 VALUATION METADATA REGISTRY
+===========================
 Role: Central definition for calculation labels, formulas, and tooltips.
-Focus: Primarily used for Pillar 2 (Valuation) 'Glass Box' explanations.
+Focus: Data storage only (SRP). No rendering logic here.
 """
 
-from __future__ import annotations
 from typing import Any, Dict
-from src.i18n import RegistryTexts, StrategyFormulas
-
-# ==============================================================================
-# UNIFIED METADATA REGISTRY
-# ==============================================================================
+from src.i18n.fr.ui.results import RegistryTexts, StrategyFormulas
 
 STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
-    # ==========================================================================
-    # 1. CORE PIPELINE — DCF & DISCOUNT RATES
-    # ==========================================================================
-
-    # --- Discount Rates ---
+    # --- 1. CORE PIPELINE ---
     "WACC_CALC": {
         "label": RegistryTexts.DCF_WACC_L,
         "formula": StrategyFormulas.WACC,
@@ -32,8 +24,6 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "unit": "%",
         "description": RegistryTexts.DCF_KE_D
     },
-
-    # --- Base Flows (Anchors) ---
     "FCF_BASE": {
         "label": RegistryTexts.DCF_FCF_BASE_L,
         "formula": StrategyFormulas.FCF_BASE,
@@ -52,8 +42,6 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "unit": "currency/share",
         "description": RegistryTexts.DDM_BASE_D
     },
-
-    # --- Projection & Terminal Value ---
     "FCF_PROJ": {
         "label": RegistryTexts.DCF_PROJ_L,
         "formula": StrategyFormulas.FCF_PROJECTION,
@@ -72,8 +60,6 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "unit": "currency",
         "description": RegistryTexts.DCF_TV_MULT_D
     },
-
-    # --- Value Synthesis ---
     "NPV_CALC": {
         "label": RegistryTexts.DCF_EV_L,
         "formula": StrategyFormulas.NPV,
@@ -99,11 +85,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.DCF_IV_D
     },
 
-    # ==========================================================================
-    # 2. ALTERNATIVE MODELS (RIM, GRAHAM)
-    # ==========================================================================
-
-    # --- RIM Banking ---
+    # --- 2. ALTERNATIVE MODELS ---
     "RIM_BV_INITIAL": {
         "label": RegistryTexts.RIM_BV_L,
         "formula": StrategyFormulas.BV_BASE,
@@ -140,8 +122,6 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "unit": "currency",
         "description": RegistryTexts.RIM_IV_D
     },
-
-    # --- Graham Number ---
     "GRAHAM_EPS_BASE": {
         "label": RegistryTexts.GRAHAM_EPS_L,
         "formula": StrategyFormulas.EPS_BASE,
@@ -161,7 +141,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.GRAHAM_IV_D
     },
 
-    # Internal references kept for backward compatibility if models call them
+    # Legacy/Internal
     "CORE_RIM_RI": {
         "label": RegistryTexts.RIM_RI_L,
         "formula": StrategyFormulas.RIM_RESIDUAL_INCOME,
@@ -175,9 +155,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.GRAHAM_IV_D
     },
 
-    # ==========================================================================
-    # 3. TECHNICAL ADJUSTMENTS (Still relevant for DCF)
-    # ==========================================================================
+    # --- 3. ADJUSTMENTS ---
     "BETA_HAMADA_ADJUSTMENT": {
         "label": RegistryTexts.HAMADA_L,
         "formula": StrategyFormulas.HAMADA,
@@ -197,15 +175,13 @@ def get_step_metadata(key: str) -> Dict[str, Any]:
     Retrieves metadata for a specific calculation step.
     Provides a safe fallback for UI rendering.
     """
-    # 1. Primary lookup
     meta = STEP_METADATA.get(key)
     if meta:
         return meta
 
-    # 2. Secure fallback
     return {
         "label": str(key).replace("_", " ").title(),
         "formula": "N/A",
         "unit": "",
-        "description": "Information non disponible pour ce calcul."
+        "description": "Information non disponible."
     }

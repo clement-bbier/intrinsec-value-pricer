@@ -8,7 +8,7 @@ Architecture: Stateless View Components.
 
 from __future__ import annotations
 import logging
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict
 
 import altair as alt
 import numpy as np
@@ -23,7 +23,8 @@ from src.i18n import (
     QuantTexts,
     SOTPTexts,
     ChartTexts,
-    BacktestTexts
+    BacktestTexts,
+    BenchmarkTexts
 )
 
 logger = logging.getLogger(__name__)
@@ -365,3 +366,72 @@ def display_backtest_convergence_chart(backtest_report: Optional[BacktestResults
     ).properties(height=350).interactive()
 
     st.altair_chart(chart, use_container_width=True)
+
+
+# ============================================================================
+# 6. BENCHMARK VISUALIZATION
+# ============================================================================
+
+@st.fragment
+def display_sector_comparison_chart(
+        company_name: str,
+        sector_name: str,
+        metrics: Dict[str, Dict[str, float]],
+        suffix: str = "x"
+) -> None:
+    """
+    Renders a side-by-side comparison bar chart (Company vs Sector).
+    Uses i18n for legends and types.
+    """
+    if not metrics:
+        return
+
+    data = []
+
+    lbl_company = BenchmarkTexts.LBL_ENTITY_COMPANY
+    lbl_sector = BenchmarkTexts.LBL_ENTITY_SECTOR
+
+    for kpi, values in metrics.items():
+        val_c = values['company']
+        val_s = values['sector']
+
+        fmt_c = f"{val_c:,.1f}{suffix}"
+        fmt_s = f"{val_s:,.1f}{suffix}"
+
+        data.append({
+            "KPI": kpi,
+            "Entity": company_name,
+            "Value": val_c,
+            "FormattedValue": fmt_c,
+            "Type": lbl_company
+        })
+        data.append({
+            "KPI": kpi,
+            "Entity": sector_name,
+            "Value": val_s,
+            "FormattedValue": fmt_s,
+            "Type": lbl_sector
+        })
+
+    df = pd.DataFrame(data)
+
+    colors = alt.Scale(domain=[company_name, sector_name], range=['#3b82f6', '#94a3b8'])
+
+    chart = alt.Chart(df).mark_bar().encode(
+        x=alt.X('Type:N', axis=None, title=None),  # Groupement implicite par Type
+        y=alt.Y('Value:Q', title=None),
+        color=alt.Color('Entity:N', scale=colors, legend=alt.Legend(title=None, orient='top')),
+        column=alt.Column('KPI:N', header=alt.Header(title=None, labelFontSize=12, labelFontWeight='bold')),
+        tooltip=[
+            alt.Tooltip('Entity', title='Entité'),
+            alt.Tooltip('KPI'),
+            alt.Tooltip('FormattedValue:N', title='Valeur')
+        ]
+    ).properties(
+        width=100,
+        height=250
+    ).configure_view(
+        stroke=None
+    )
+
+    st.altair_chart(chart)

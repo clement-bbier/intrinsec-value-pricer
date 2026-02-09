@@ -2,11 +2,9 @@
 src/i18n/fr/__init__.py
 """
 from src.i18n.fr.backend import (
-    BenchmarkTexts,
     CalculationErrors,
     DiagnosticTexts,
     ModelTexts,
-    SOTPTexts,
     RegistryTexts,
     StrategyFormulas,
     StrategyInterpretations,
@@ -26,14 +24,18 @@ from src.i18n.fr.ui import (
     QuantTexts,
     BacktestTexts,
     ChartTexts,
+    PillarLabels,
+    InputLabels,
+    SOTPTexts,
+    RegistryTexts,
+    StrategyFormulas,
+    BenchmarkTexts,
 )
 
 __all__ = [
-    "BenchmarkTexts",
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "SOTPTexts",
     "RegistryTexts",
     "StrategyFormulas",
     "StrategyInterpretations",
@@ -51,4 +53,10 @@ __all__ = [
     "BacktestTexts",
     "QuantTexts",
     "ChartTexts",
+    "PillarLabels",
+    "InputLabels",
+    "SOTPTexts",
+    "RegistryTexts",
+    "StrategyFormulas",
+    "BenchmarkTexts"
 ]
