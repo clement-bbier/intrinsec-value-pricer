@@ -19,7 +19,11 @@ from src.i18n.fr import (
     ExpertTexts,
     ExtensionTexts,
     ResultsTexts,
-    SidebarTexts
+    SidebarTexts,
+    LegalTexts,
+    QuantTexts,
+    ChartTexts,
+    BacktestTexts,
 )
 
 __all__ = [
@@ -40,5 +44,9 @@ __all__ = [
     "ExpertTexts",
     "ExtensionTexts",
     "ResultsTexts",
-    "SidebarTexts"
+    "SidebarTexts",
+    "LegalTexts",
+    "QuantTexts",
+    "ChartTexts",
+    "BacktestTexts"
 ]

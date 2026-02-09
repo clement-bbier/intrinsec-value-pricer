@@ -6,7 +6,6 @@ from src.i18n.fr.backend import (
     CalculationErrors,
     DiagnosticTexts,
     ModelTexts,
-    KPITexts,
     SOTPTexts,
     RegistryTexts,
     StrategyFormulas,
@@ -21,7 +20,12 @@ from src.i18n.fr.ui import (
     ExpertTexts,
     ExtensionTexts,
     ResultsTexts,
-    SidebarTexts
+    SidebarTexts,
+    LegalTexts,
+    KPITexts,
+    QuantTexts,
+    BacktestTexts,
+    ChartTexts,
 )
 
 __all__ = [
@@ -29,7 +33,6 @@ __all__ = [
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "KPITexts",
     "SOTPTexts",
     "RegistryTexts",
     "StrategyFormulas",
@@ -42,5 +45,10 @@ __all__ = [
     "ExpertTexts",
     "ExtensionTexts",
     "ResultsTexts",
-    "SidebarTexts"
+    "SidebarTexts",
+    "LegalTexts",
+    "KPITexts",
+    "BacktestTexts",
+    "QuantTexts",
+    "ChartTexts",
 ]

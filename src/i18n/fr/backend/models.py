@@ -13,8 +13,6 @@ MODEL_VALIDATION_TEXTS = ModelValidationTexts()
 
 class ModelTexts:
     DEFAULT_NAME = "Entité Inconnue"
-
-class KPITexts:
     LABEL_DEBT = "Dette Totale"
     LABEL_CASH = "Trésorerie & Équivalents"
     LABEL_MINORITIES = "Intérêts Minoritaires"
@@ -23,6 +21,8 @@ class KPITexts:
 
 class SOTPTexts:
     """Textes spécifiques à la méthode Somme des Parties."""
+    LABEL_HOLDING_DISCOUNT = None
+    LBL_ENTERPRISE_VALUE = None
     TITLE = "Analyse Somme des Parties (SOTP)"
     SEGMENT_VALUATION = "Valorisation par Segment"
     IMPLIED_EV = "Valeur d'Entreprise Implicite"

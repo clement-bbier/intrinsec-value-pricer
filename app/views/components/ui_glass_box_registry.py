@@ -1,8 +1,8 @@
 """
-app/ui_components/ui_glass_box_registry.py
-UNIFIED GLASS BOX METADATA REGISTRY (Audit-Grade)
-Role: Single source of truth for labels, formulas, and descriptions.
-Architecture: Strict alignment with Pipeline V1.1 and Strategy logic.
+app/ui/components/ui_glass_box_registry.py
+VALUATION METADATA REGISTRY
+Role: Central definition for calculation labels, formulas, and tooltips.
+Focus: Primarily used for Pillar 2 (Valuation) 'Glass Box' explanations.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from src.i18n import RegistryTexts, StrategyFormulas
 STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
     # ==========================================================================
-    # 1. CORE PIPELINE — UNIFIED CALCULATIONS (Source: pipelines.py)
+    # 1. CORE PIPELINE — DCF & DISCOUNT RATES
     # ==========================================================================
 
     # --- Discount Rates ---
@@ -161,6 +161,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
         "description": RegistryTexts.GRAHAM_IV_D
     },
 
+    # Internal references kept for backward compatibility if models call them
     "CORE_RIM_RI": {
         "label": RegistryTexts.RIM_RI_L,
         "formula": StrategyFormulas.RIM_RESIDUAL_INCOME,
@@ -175,29 +176,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     },
 
     # ==========================================================================
-    # 3. AUDIT & FAILSAFE
-    # ==========================================================================
-    "AUDIT_FCFE_BORROWING": {
-        "label": RegistryTexts.FCFE_DEBT_ADJ_L,
-        "formula": StrategyFormulas.AUDIT_BORROWING,
-        "unit": "ratio",
-        "description": RegistryTexts.FCFE_DEBT_ADJ_D
-    },
-    "AUDIT_MODEL_SGR": {
-        "label": RegistryTexts.DDM_GROWTH_L,
-        "formula": StrategyFormulas.AUDIT_SGR,
-        "unit": "bool",
-        "description": RegistryTexts.DDM_GROWTH_D
-    },
-    "AUDIT_UNKNOWN": {
-        "label": RegistryTexts.AUDIT_UNK_L,
-        "formula": StrategyFormulas.NA,
-        "unit": "",
-        "description": RegistryTexts.AUDIT_UNK_D
-    },
-
-    # ==========================================================================
-    # 4. TECHNICAL ADJUSTMENTS & BRIDGES
+    # 3. TECHNICAL ADJUSTMENTS (Still relevant for DCF)
     # ==========================================================================
     "BETA_HAMADA_ADJUSTMENT": {
         "label": RegistryTexts.HAMADA_L,
@@ -216,17 +195,17 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
 def get_step_metadata(key: str) -> Dict[str, Any]:
     """
     Retrieves metadata for a specific calculation step.
-    Safety: Prevents app crashes if a registry key is missing by providing default values.
+    Provides a safe fallback for UI rendering.
     """
     # 1. Primary lookup
     meta = STEP_METADATA.get(key)
     if meta:
         return meta
 
-    # 2. Secure fallback: generate a minimal localized object for the UI
+    # 2. Secure fallback
     return {
         "label": str(key).replace("_", " ").title(),
-        "formula": StrategyFormulas.INTERNAL_CALC,
+        "formula": "N/A",
         "unit": "",
-        "description": RegistryTexts.AUDIT_TECH_DETAIL_D
+        "description": "Information non disponible pour ce calcul."
     }

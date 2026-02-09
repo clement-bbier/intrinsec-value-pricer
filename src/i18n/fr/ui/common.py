@@ -117,14 +117,6 @@ class FeedbackMessages:
     TICKER_INVALID = "Symbole boursier non identifié par le fournisseur de données."
     CALCULATION_SUCCESS = "Valorisation terminée avec succès."
 
-
-class LegalTexts:
-    """Textes juridiques et conformité."""
-    COMPLIANCE_BODY = "Les simulations générées par ce terminal reposent sur des modèles mathématiques automatisés et ne constituent pas un conseil en investissement professionnel."
-    COMPLIANCE_TITLE = "Avertissement Légal"
-    DISCLAIMER = "Document à usage strictement professionnel et analytique."
-
-
 class TooltipsTexts:
     """Aide contextuelle pour les concepts financiers (Indispensable pour corriger l'ImportError)."""
     MARKET_CAP_HELP = "Capitalisation boursière à la date d'analyse."
@@ -153,3 +145,15 @@ class UIMessages:
     PDF_UNAVAILABLE = "Module d'exportation non détecté sur l'instance courante."
     PDF_ERROR = "Erreur lors de la génération du flux PDF."
 
+class LegalTexts:
+    """
+    Textes juridiques et de conformité (Disclaimers).
+    """
+    COMPLIANCE_TITLE = "AVERTISSEMENT LÉGAL"
+    COMPLIANCE_BODY = (
+        "Cet outil est une aide à la décision à usage strictement éducatif et informatif. "
+        "Il ne constitue en aucun cas un conseil en investissement, une recommandation d'achat "
+        "ou une sollicitation. Les modèles de valorisation (DCF, RIM, Graham) reposent sur des "
+        "hypothèses qui peuvent ne pas se réaliser. L'utilisateur est seul responsable de ses "
+        "choix d'investissement."
+    )

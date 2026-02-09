@@ -6,7 +6,7 @@ from src.i18n.fr.backend.benchmark import BenchmarkTexts
 
 # 2. Core Modules (Les survivants)
 from src.i18n.fr.backend.errors import CalculationErrors, DiagnosticTexts
-from src.i18n.fr.backend.models import ModelTexts, KPITexts, SOTPTexts
+from src.i18n.fr.backend.models import ModelTexts, SOTPTexts
 from src.i18n.fr.backend.registry import RegistryTexts
 from src.i18n.fr.backend.strategies import (
     StrategyFormulas,
@@ -21,7 +21,6 @@ __all__ = [
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "KPITexts",
     "SOTPTexts",
     "RegistryTexts",
     "StrategyFormulas",

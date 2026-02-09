@@ -1,16 +1,15 @@
 """
 app/ui/components/ui_kpis.py
 ATOMIC COMPONENTS — Minimalist style, zero emojis.
-Role: Standardized KPI and Audit cards for institutional rendering.
+Role: Standardized KPI, Metric Cards, and Benchmark visualizations.
+Aggnostic of specific business logic (Audit/Comparison), focused on rendering data.
 """
 
 from __future__ import annotations
 from typing import Optional, Literal
 import streamlit as st
 
-from src.models import AuditStep, DiagnosticLevel
-from src.i18n import AuditTexts
-from app.views.components.ui_glass_box_registry import get_step_metadata
+# On retire les dépendances "Audit" (AuditStep, AuditTexts) pour rendre le fichier générique.
 
 def atom_kpi_metric(
     label: str,
@@ -19,40 +18,77 @@ def atom_kpi_metric(
     delta_color: Literal["normal", "inverse", "off", "red", "orange", "yellow", "green", "blue", "violet", "gray", "grey", "primary"] = "normal",
     help_text: str = ""
 ) -> None:
-    """Base component for financial metrics display."""
-    st.metric(label=label, value=value, delta=delta, delta_color=delta_color, help=help_text)
+    """
+    Standard Wrapper for Streamlit metrics.
+    Used for high-level financial indicators (e.g., EBITDA, CA).
+    """
+    st.metric(
+        label=label,
+        value=value,
+        delta=delta,
+        delta_color=delta_color,
+        help=help_text
+    )
 
-def render_audit_reliability_gauge(score: float, rating: str) -> None:
-    """Institutional gauge for the global reliability score."""
-    if score >= 80:
-        color, label = "green", AuditTexts.RELIABILITY_HIGH
-    elif score >= 60:
-        color, label = "orange", AuditTexts.RELIABILITY_MODERATE
+def render_score_gauge(score: float, label: str, context_label: str = "PERFORMANCE") -> None:
+    """
+    Generic gauge for scores (0-100).
+    Can be used for: Comparison Score, Financial Health, Digital Maturity.
+    """
+    # Determination of color based on generic quartiles
+    if score >= 75:
+        color = "green"
+    elif score >= 50:
+        color = "blue"  # Blue is often better for "neutral/good" in benchmarks than orange
+    elif score >= 25:
+        color = "orange"
     else:
-        color, label = "red", AuditTexts.RELIABILITY_LOW
+        color = "red"
 
     with st.container(border=True):
-        st.markdown(f"**{AuditTexts.RATING_SCORE.upper()} : {rating}**")
+        c1, c2 = st.columns([0.7, 0.3])
+        c1.markdown(f"**{context_label.upper()}**")
+        c2.markdown(f"<div style='text-align:right; color:{color}; font-weight:bold;'>{score:.1f}/100</div>", unsafe_allow_html=True)
+
         st.progress(score / 100)
-        c1, c2 = st.columns(2)
-        c1.markdown(f":{color}[**{label.upper()}**]")
-        c2.markdown(f"<div style='text-align:right; color:gray;'>{score:.1f}%</div>", unsafe_allow_html=True)
 
-def atom_audit_card(step: AuditStep) -> None:
-    """Audit card component for the Reliability Audit pillar."""
-    meta = get_step_metadata(step.step_key)
-    if step.verdict:
-        color, status = "green", AuditTexts.STATUS_OK
-    else:
-        color = "red" if step.severity == DiagnosticLevel.CRITICAL else "orange"
-        status = AuditTexts.STATUS_ALERT
+        st.caption(label)
 
+def atom_benchmark_card(
+    label: str,
+    company_value: str,
+    market_value: str,
+    status: Literal["LEADER", "ALIGNÉ", "RETARD", "N/A"],
+    status_color: Literal["green", "blue", "orange", "red", "gray"] = "gray",
+    description: str = ""
+) -> None:
+    """
+    Comparison Card: Displays Company Data vs Market/Sector Data.
+    Replaces the old 'Audit Card'.
+    """
     with st.container(border=True):
-        col_text, col_status = st.columns([0.8, 0.2])
-        col_text.markdown(f"**{meta.get('label', step.label).upper()}**")
-        col_text.caption(meta.get('description', ""))
-        col_status.markdown(f"<div style='text-align:right;'>:{color}[**{status.upper()}**]</div>", unsafe_allow_html=True)
+        # Header: Label + Status Badge
+        col_head, col_badge = st.columns([0.7, 0.3])
+        col_head.markdown(f"**{label.upper()}**")
+        col_badge.markdown(
+            f"<div style='text-align:right; color:{status_color}; font-weight:bold; font-size:0.9em; border:1px solid {status_color}; border-radius:4px; padding:2px 6px; display:inline-block;'>{status}</div>",
+            unsafe_allow_html=True
+        )
 
-        if step.evidence:
-            st.divider()
-            st.info(step.evidence)
+        if description:
+            st.caption(description)
+
+        st.divider()
+
+        # Comparison Grid
+        c1, c2 = st.columns(2)
+
+        # Left: Company (You)
+        with c1:
+            st.markdown("<span style='color:gray; font-size:0.8em;'>VOTRE DONNÉE</span>", unsafe_allow_html=True)
+            st.markdown(f"**{company_value}**")
+
+        # Right: Market (Them)
+        with c2:
+            st.markdown("<span style='color:gray; font-size:0.8em;'>MOYENNE SECTEUR</span>", unsafe_allow_html=True)
+            st.markdown(f"{market_value}")
