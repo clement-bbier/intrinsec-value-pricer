@@ -1,84 +1,62 @@
 """
-app/ui/results/core/market_analysis.py
+app/views/results/pillars/market_analysis.py
 
 PILLAR 5 — MARKET ANALYSIS & SEGMENTS (HUB)
 ===========================================
 Role: Orchestrates relative market valuation (Peers) and business
 segmentation (SOTP) into a unified market analysis interface.
+Architecture: ST-4.2 Compliant Hub & Spokes logic.
 """
 
 from typing import Any
 import streamlit as st
 
 from src.models import ValuationResult
-from src.i18n import PillarLabels, KPITexts
-from app.ui.results.base_result import ResultTabBase
+from src.i18n import PillarLabels, KPITexts, MarketTexts
 
 # Internal rendering engines (Spokes)
+# These components must implement static methods: .is_visible() and .render()
 from app.views.results.pillars.peer_multiples import PeerMultiples
 from app.views.results.pillars.sotp_breakdown import SOTPBreakdownTab
 
 
-class MarketAnalysisTab(ResultTabBase):
+def render_market_context(result: ValuationResult, **kwargs: Any) -> None:
     """
-    Pillar 5: Market Analysis Hub.
+    Renders Pillar 5: Market Analysis Hub.
 
-    This component coordinates the dynamic display of relative valuation
+    This function coordinates the dynamic display of relative valuation
     multiples and Sum-of-the-Parts (SOTP) breakdowns. It centralizes
     market-based perspectives to complement fundamental DCF analysis.
+
+    Parameters
+    ----------
+    result : ValuationResult
+        The complete valuation result object containing market data.
+    **kwargs : Any
+        Additional rendering context.
     """
 
-    TAB_ID = "market_analysis"
-    LABEL = PillarLabels.PILLAR_5_MARKET
-    ORDER = 5
-    IS_CORE = True
+    # --- 1. PILLAR HEADER (Institutional Standard) ---
+    st.header(PillarLabels.PILLAR_5_MARKET)
+    st.caption(KPITexts.RELATIVE_VAL_DESC)
+    st.divider()
 
-    def render(self, result: ValuationResult, **kwargs: Any) -> None:
-        """
-        Coordinated rendering of Pillar 5 components.
+    # --- 2. PEER MULTIPLES (Relative Valuation Spoke) ---
+    # We delegate the rendering to the Spoke if peer data is available.
+    # Architecture: Stateless call to static methods.
+    if PeerMultiples.is_visible(result):
+        PeerMultiples.render(result, **kwargs)
 
-        Parameters
-        ----------
-        result : ValuationResult
-            The complete valuation result object containing market data.
-        **kwargs : Any
-            Additional rendering context.
-        """
-        # --- 1. PILLAR HEADER (Institutional Standard) ---
-        st.markdown(f"### {PillarLabels.PILLAR_5_MARKET}")
-        st.caption(KPITexts.RELATIVE_VAL_DESC)
-        st.write("")
+    # --- 3. SOTP BREAKDOWN (Segmental Decomposition Spoke) ---
+    # We render the SOTP waterfall if segments are defined.
+    if SOTPBreakdownTab.is_visible(result):
+        # Visual separation only if both components are active to avoid clustering
+        if PeerMultiples.is_visible(result):
+            st.divider()
 
-        # 2. BLOC MULTIPLES (Market Triangulation Spoke)
-        # PeerMultiples handles its own data check internally
-        peer_view = PeerMultiples()
-        if peer_view.is_visible(result):
-            peer_view.render(result, **kwargs)
+        SOTPBreakdownTab.render(result, **kwargs)
 
-        # 3. BLOC SOTP (Segmental Decomposition Spoke)
-        sotp_view = SOTPBreakdownTab()
-        if sotp_view.is_visible(result):
-            # Add visual separation only if both components are rendered
-            if peer_view.is_visible(result):
-                st.divider()
-            sotp_view.render(result, **kwargs)
-
-    def is_visible(self, result: ValuationResult) -> bool:
-        """
-        Determines if the market analysis hub should be displayed.
-
-        The hub is visible if either the peer triangulation engine found
-        comparable companies OR if the SOTP model was explicitly enabled.
-
-        Parameters
-        ----------
-        result : ValuationResult
-            The result object to inspect for active market modules.
-
-        Returns
-        -------
-        bool
-            True if Multiples or SOTP data is available for rendering.
-        """
-        p = result.params
-        return p.peers.enabled or p.sotp.enabled
+    # --- 4. FALLBACK (Empty State) ---
+    # If neither module is active, we display a helpful message.
+    if not PeerMultiples.is_visible(result) and not SOTPBreakdownTab.is_visible(result):
+        st.info(MarketTexts.NO_MARKET_DATA)

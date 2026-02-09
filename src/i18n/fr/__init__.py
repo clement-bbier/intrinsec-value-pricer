@@ -30,6 +30,8 @@ from src.i18n.fr.ui import (
     RegistryTexts,
     StrategyFormulas,
     BenchmarkTexts,
+    MarketTexts,
+    PeersTexts
 )
 
 __all__ = [
@@ -58,5 +60,7 @@ __all__ = [
     "SOTPTexts",
     "RegistryTexts",
     "StrategyFormulas",
-    "BenchmarkTexts"
+    "BenchmarkTexts",
+    "MarketTexts",
+    "PeersTexts"
 ]

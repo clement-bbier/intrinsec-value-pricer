@@ -75,6 +75,7 @@ class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
 
     # --- Navigation & Onglets ---
+    NOTE_ANALYSIS = "Note d'Analyse"
     TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de calcul"
     TAB_BENCHMARK = "Benchmark & Fiabilité" # Remplacement de Audit
@@ -352,25 +353,65 @@ class BacktestTexts:
 
 class MarketTexts:
     """Textes Pillar 5 — Analyse de Marché (Peers & Multiples)."""
-    MARKET_TITLE = "Positionnement sectoriel & Multiples"
 
-    # Tableaux Peers
-    COL_PEER = "Comparable"
+    # --- Titres & Sections ---
+    MARKET_TITLE = "Triangulation par les Comparables"
+    TITLE_SEGMENTATION = "Analyse Somme des Parties (SOTP)"  # Utilisé comme LABEL dans SOTPBreakdownTab
+
+    # --- SOTP (Somme des Parties) ---
+    METRIC_GROSS_VALUE = "Valeur Brute Cumulée (Gross EV)"
+    COL_SEGMENT = "Segment / Business Unit"
+    COL_VALUE = "Valeur d'Entreprise (EV)"
+    COL_CONTRIBUTION = "Contribution (%)"
+    CAPTION_SEGMENTATION = "Décomposition de la valeur d'entreprise par segments opérationnels (Sum-of-the-Parts)."
+
+    # --- Peers (Comparables) ---
+    # Colonnes
+    COL_PEER = "Pair / Comparable"
     COL_MULTIPLE = "Multiple"
     COL_IMPLIED_VALUE = "VALEUR IMPLICITE"
 
+    # Labels de lignes/entités
     LBL_RATIO = "Ratio"
-    LBL_MEDIAN = "Médiane Pairs"
-    LBL_TARGET = "Cible (Actuel)"
-    IMPLIED_VAL_PREFIX = "Valeur induite via"
+    LBL_TARGET = "Cible (Target)"
+    LBL_PEER_ENTITY = "Pair Sectoriel"
+    LBL_MEDIAN = "Médiane"
+    LBL_SECTOR_MEDIAN = "Médiane Sectorielle"
 
+    # Métriques
+    IMPLIED_VAL_PREFIX = "Valeur Implicite"
+
+    # Sources & Messages Système
+    SOURCE_DEFAULT = "Données de Marché"
+    NO_MARKET_DATA = "Aucune donnée de marché (Comparables ou Segments) disponible pour cette valorisation."
+
+    # --- Phrases Dynamiques (Format Strings) ---
+    # Note: Le préfixe 'r' est utilisé pour sécuriser les chaînes de formatage
+
+    # Usage : "Basé sur une médiane de 12.5x"
+    HELP_IMPLIED_METHOD = r"Calculé sur la base d'une médiane sectorielle de {multiple}"
+
+    # Légende nombre de pairs + source
+    # Usage : "15 Pairs | Source : Bloomberg"
+    CAPTION_PEERS_COUNT = r"{count} {label} | Source : {source}"
+
+    # Résumé footer tableau
+    CAPTION_MEDIAN_SUMMARY = r"**{label}** : EV/EBITDA = {ebitda} | P/E = {pe}"
 
 class SOTPTexts:
     """Textes spécifiques à la méthode Somme des Parties (SOTP) - Pillar 5."""
+    HELP_SOTP = (
+        "Cette méthodologie valorise chaque division indépendamment pour capturer "
+        "la réalité économique des conglomérats, souvent masquée par une approche consolidée."
+    )
+    NO_SOTP_FOUND = (
+        "Aucune segmentation détectée. Veuillez configurer les segments (Business Units) "
+        "dans les paramètres pour activer la valorisation SOTP."
+    )
     TITLE = "Analyse Somme des Parties (SOTP)"
 
     # Waterfall Chart
-    LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise Totale"
+    LBL_ENTERPRISE_VALUE = "Valeur d'Entreprise Nette"
     LABEL_HOLDING_DISCOUNT = "Décote de Holding"
 
     # Tableaux

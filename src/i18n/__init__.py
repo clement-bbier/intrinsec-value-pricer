@@ -28,6 +28,8 @@ from src.i18n.fr import (
     RegistryTexts,
     StrategyFormulas,
     BenchmarkTexts,
+    MarketTexts,
+    PeersTexts
 )
 
 __all__ = [
@@ -57,4 +59,6 @@ __all__ = [
     "RegistryTexts",
     "StrategyFormulas",
     "BenchmarkTexts",
+    "MarketTexts",
+    "PeersTexts"
 ]
