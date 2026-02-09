@@ -5,12 +5,6 @@ APPLICATION ENTRY POINT
 =======================
 Role: Router and Lifecycle Orchestrator.
 Architecture: MVC (Model-View-Controller).
-Logic:
-  1. Initialize Session/State.
-  2. Render Sidebar (Inputs).
-  3. Route Content:
-     IF results exist -> Show Results Dashboard.
-     ELSE -> Show Input Form (Auto or Expert).
 """
 
 import sys
@@ -31,7 +25,7 @@ from app.assets.style_system import inject_institutional_design
 from app.views.common.sidebar import render_sidebar
 
 # Views Imports
-from app.views.results.orchestrator import ResultTabOrchestrator
+from app.views.results.orchestrator import render_valuation_results
 from app.views.inputs.expert_form import render_expert_form
 from app.views.inputs.auto_form import render_auto_form
 
@@ -43,38 +37,41 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def main():
-    # 1. Lifecycle & Assets
+
+def main() -> None:
+    """
+    Main application entry point coordinating the session lifecycle
+    and high-level routing between input forms and results dashboard.
+    """
+    # 1. Lifecycle & Assets Initialization
     SessionManager.initialize_session()
     inject_institutional_design()
     state = get_state()
 
-    # 2. Global Components
+    # 2. Global UI Components
     render_sidebar()
 
-    # 3. Content Routing
-    # Priority 1: Show Error if any
+    # 3. Content Routing Logic
+
+    # Priority 1: Critical Error Handling
     if state.error_message:
         st.error(state.error_message)
         if st.button("Dismiss Error"):
-            SessionManager.set_error(None)
+            SessionManager.set_error("")
             st.rerun()
 
-    # Priority 2: Show Results if available
+    # Priority 2: Results Dashboard (Pillars 0 to 5)
     elif state.last_result:
-        # The Orchestrator handles the Tabs (Proof, Audit, etc.)
-        orchestrator = ResultTabOrchestrator()
-        orchestrator.render(state.last_result)
+        # Functional orchestrator renders the multi-pillar tabbed interface
+        render_valuation_results(state.last_result)
 
-        # Optional: Add a "Back to Inputs" button logic if needed,
-        # but usually modifying the sidebar is enough.
-
-    # Priority 3: Show Input Form (Empty State)
+    # Priority 3: Empty State / Input Forms
     else:
         if state.is_expert_mode:
             render_expert_form()
         else:
             render_auto_form()
+
 
 if __name__ == "__main__":
     main()
