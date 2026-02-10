@@ -310,6 +310,14 @@ class TestGrahamStrategy:
     @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
     def test_zero_eps_handling(self, mock_graham_calc, strategy, basic_params):
         """Test handling of zero EPS."""
+        # Create company with zero EPS
+        company_zero_eps = Mock(spec=Company)
+        company_zero_eps.ticker = "AAPL"
+        company_zero_eps.name = "Apple Inc."
+        company_zero_eps.sector = CompanySector.TECHNOLOGY
+        company_zero_eps.current_price = 150.0
+        company_zero_eps.eps_ttm = 0.0
+        
         basic_params.strategy.eps_normalized = 0.0
 
         # Setup mock
@@ -318,11 +326,11 @@ class TestGrahamStrategy:
         ))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        result = strategy.execute(company_zero_eps, basic_params)
 
-        # Should handle zero EPS gracefully - uses the normalized EPS from params
+        # Should handle zero EPS gracefully
         assert result.results.common.intrinsic_value_per_share == 0.0
-        assert result.results.strategy.eps_used == 0.0  # Uses normalized param which is 0
+        assert result.results.strategy.eps_used == 0.0
 
     @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
     def test_negative_growth_handling(self, mock_graham_calc, strategy, basic_company, basic_params):
