@@ -81,7 +81,7 @@ class TestCalculateDiscountFactors:
         """Test that rate <= -1 raises CalculationError."""
         with pytest.raises(CalculationError) as exc_info:
             calculate_discount_factors(-1.0, 5)
-        assert "invalide" in str(exc_info.value).lower()
+        assert "invalid" in str(exc_info.value).lower()
     
     def test_rate_less_than_negative_one_raises(self):
         """Test that rate < -1 raises CalculationError."""
