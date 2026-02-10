@@ -233,6 +233,18 @@ class SharedTexts:
     LBL_BACKTEST_ENABLE = "Activer le Backtesting temporel"
     HELP_BACKTEST_ENABLE = "Recalcule le modèle sur les 3 dernières années pour vérifier si le prix intrinsèque a historiquement anticipé les mouvements de marché."
 
+    # ==========================================================================
+    # 10. MODULE : ÉTAPE 11 - SENSIBILITÉ (WACC vs g)
+    # ==========================================================================
+    SEC_11_SENSITIVITY = "#### Option : Analyse de Sensibilité (Stress Test)"
+    LBL_SENSITIVITY_ENABLE = "Activer la matrice de sensibilité"
+    MSG_SENSITIVITY_DESC = "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations du WACC et de la croissance (g) sur la valorisation finale."
+
+    LBL_SENS_STEP = "Pas de variation (%)"
+    LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
+
+    HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
+    HELP_SENS_RANGE = "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
 
 # ==============================================================================
 # CLASSES NARRATIVES SPÉCIFIQUES (Héritage de SharedTexts)
@@ -252,7 +264,7 @@ class FCFFStandardTexts(SharedTexts):
 
 
 class FCFFNormalizedTexts(SharedTexts):
-    LBL_GROWTH_G = None
+    LBL_GROWTH_G = "Taux de croissance (g)"
     TITLE = "Approche Entité (FCFF Normalisé)"
     DESCRIPTION = "DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme."
     STEP_1_TITLE = "#### Étape 1 : Flux Normatif (FCF norm)"

@@ -28,7 +28,9 @@ from app.views.inputs.strategies.shared_widgets import (
     widget_monte_carlo,
     widget_scenarios,
     widget_peer_triangulation,
-    widget_backtest
+    widget_backtest,
+    widget_sotp,
+    widget_sensitivity
 )
 
 logger = logging.getLogger(__name__)
@@ -48,13 +50,14 @@ class BaseStrategyView(ABC):
     DESCRIPTION: str = ""
     ICON: str = ""
 
-    # Rendering Options (Feature Flags)
+    # Rendering Options (Sections principales)
     SHOW_DISCOUNT_SECTION: bool = True
     SHOW_TERMINAL_SECTION: bool = True
     SHOW_BRIDGE_SECTION: bool = True
 
-    # Extensions Flags
+    # Extensions Flags (Doivent être surchargés explicitement par les vues filles)
     SHOW_MONTE_CARLO: bool = True
+    SHOW_SENSITIVITY: bool = True
     SHOW_BACKTEST: bool = True
     SHOW_SCENARIOS: bool = True
     SHOW_SOTP: bool = True
@@ -84,7 +87,6 @@ class BaseStrategyView(ABC):
         self._render_header()
 
         # Step 2: Operational (Concrete implementation hook)
-        # This is where FCFF/DDM specific inputs are drawn
         self.render_model_inputs()
 
         # Step 3: Risk & Capital (Shared widget)
@@ -109,10 +111,8 @@ class BaseStrategyView(ABC):
         if self.SHOW_BRIDGE_SECTION:
             self._render_equity_bridge()
 
-        # Steps 6-10: Analytical Extensions
+        # Steps 6-11: Analytical Extensions
         self._render_optional_features()
-
-        # Note: The "Submit/Run" button is now in the Sidebar (AppController).
 
     # ══════════════════════════════════════════════════════════════════════════
     # SHARED UI HELPERS
@@ -141,25 +141,40 @@ class BaseStrategyView(ABC):
     def _render_optional_features(self) -> None:
         """Coordinates complementary analytical modules."""
 
+        # Le key_prefix est crucial pour éviter les conflits d'ID Streamlit
+        prefix = self.MODE.name
+
         # 6. Monte Carlo Simulation
         if self.SHOW_MONTE_CARLO:
+            # Récupération de la méthode terminale choisie (si applicable) pour ajuster les inputs MC
+            term_method_key = f"{prefix}_method"
+            term_method = st.session_state.get(term_method_key)
+
             widget_monte_carlo(
                 self.MODE,
-                st.session_state.get(f"{self.MODE.name}_method"),
+                term_method,
                 custom_vols=self.get_custom_monte_carlo_vols()
             )
 
-        # 7. Scenario Analysis
+        # 7. Sensitivity Analysis (WACC vs g)
+        if self.SHOW_SENSITIVITY:
+            widget_sensitivity(key_prefix=prefix)
+
+        # 8. Scenario Analysis (Bull/Bear)
         if self.SHOW_SCENARIOS:
             widget_scenarios(self.MODE)
 
-        # 8. Historical Backtest
+        # 9. Historical Backtest
         if self.SHOW_BACKTEST:
             widget_backtest()
 
-        # 9. Peer Triangulation
+        # 10. Peer Triangulation
         if self.SHOW_PEER_TRIANGULATION:
             widget_peer_triangulation()
+
+        # 11. SOTP (Sum of the Parts)
+        if self.SHOW_SOTP:
+            widget_sotp()
 
     # ══════════════════════════════════════════════════════════════════════════
     # UI LOGIC MAPPING
@@ -170,9 +185,9 @@ class BaseStrategyView(ABC):
         Maps Methodology to specific UI labels for Monte Carlo volatilities.
         """
         mapping = {
-            ValuationMethodology.GRAHAM: {"vol_flow": SharedTexts.MC_VOL_EPS},
-            ValuationMethodology.RIM: {"vol_flow": SharedTexts.MC_VOL_NI},
-            ValuationMethodology.DDM: {"vol_flow": SharedTexts.MC_VOL_DIV}
+            ValuationMethodology.GRAHAM: {"base_flow_volatility": SharedTexts.MC_VOL_EPS},
+            ValuationMethodology.RIM: {"base_flow_volatility": SharedTexts.MC_VOL_NI},
+            ValuationMethodology.DDM: {"base_flow_volatility": SharedTexts.MC_VOL_DIV}
         }
         return mapping.get(self.MODE)
 
@@ -184,7 +199,5 @@ class BaseStrategyView(ABC):
     def render_model_inputs(self) -> None:
         """
         Concrete views must implement Step 2 UI here.
-        This method should invoke streamlit widgets that write to session_state
-        using keys compatible with InputFactory.
         """
         pass
