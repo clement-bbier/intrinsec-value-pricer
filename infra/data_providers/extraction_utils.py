@@ -19,7 +19,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import pandas as pd
 
-from src.config.constants import DataExtractionDefaults
+from infra.data_providers.config import ProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ DEBT_KEYS = ["Total Debt", "Net Debt", "Long Term Debt", "Current Debt"]
 def safe_api_call(
     func: Callable,
     context: str = "API",
-    max_retries: int = DataExtractionDefaults.MAX_RETRY_ATTEMPTS
+    max_retries: int = ProviderConfig.MAX_RETRY_ATTEMPTS
 ) -> Any:
     """
     Executes an API function with exponential backoff and timeout protection.
@@ -69,7 +69,7 @@ def safe_api_call(
             logger.warning(f"[{context}] Timeout reached (attempt {i+1})")
             continue
         except Exception as e:
-            wait = DataExtractionDefaults.RETRY_DELAY_BASE * (2 ** i)
+            wait = ProviderConfig.RETRY_DELAY_BASE * (2 ** i)
             logger.warning(f"[{context}] Error: {e}. Retry in {wait}s...")
             time.sleep(wait)
 

@@ -13,7 +13,10 @@ from .results import (
     PillarLabels,
     InputLabels,
     SOTPTexts,
-    MarketTexts
+    MarketTexts,
+    RegistryTexts,
+    StrategyFormulas,
+    BenchmarkTexts
 )
 from .expert import ExpertTexts
 from .extensions import ExtensionTexts, PeersTexts
@@ -34,5 +37,8 @@ __all__ = [
     "ExpertTexts",
     "ExtensionTexts",
     "PeersTexts",
-    "SidebarTexts"
+    "SidebarTexts",
+    "RegistryTexts",
+    "StrategyFormulas",
+    "BenchmarkTexts"
 ]

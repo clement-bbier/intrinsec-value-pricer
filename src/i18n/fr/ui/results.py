@@ -452,6 +452,14 @@ class ChartTexts:
 
 class RegistryTexts:
     """Textes pour les métadonnées du Glass Box (Registry)."""
+    FCFF_STANDARD_L = "Flux de Trésorerie Disponibles (FCFF) - Standard"
+    FCFF_GROWTH_L = "Modèle de Croissance des Revenus (FCFF)"
+    FCFF_NORM_L = "FCFF Normalisé (Moyenne de cycle)"  # Était FCFF_NORM_L dans l'appel
+    FCFE_L = "Flux de Trésorerie pour les Actionnaires (FCFE)"
+    DDM_L = "Modèle d'Actualisation des Dividendes (DDM)"
+    RIM_IV_L = "Valeur Intrinsèque RIM (Ohlson)"  # Était RIM_IV_L dans l'appel
+    GRAHAM_IV_L = "Valeur Graham AAA"  # Était GRAHAM_IV_L dans l'appel
+
     # DCF
     DCF_WACC_L = "Coût du Capital (WACC)"
     DCF_WACC_D = "Taux d'actualisation pondéré par la structure du capital cible."

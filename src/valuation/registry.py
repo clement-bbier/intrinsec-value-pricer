@@ -175,7 +175,7 @@ def _register_all_strategies() -> None:
         mode=ValuationMethodology.FCFF_STANDARD,
         strategy_cls=StandardFCFFStrategy,
         ui_renderer_name="render_expert_fcff_standard",
-        display_name=RegistryTexts.FCFF_STANDARD_L
+        display_name=RegistryTexts.FCFF_STANDARD_L  # OK
     )
 
     StrategyRegistry.register(

@@ -7,6 +7,10 @@ Labels et descriptions du registre Glass Box.
 class RegistryTexts:
     """Labels et descriptions pedagogiques du registre Glass Box."""
 
+    DDM_L = "Modèle d'Actualisation des Dividendes (DDM)"
+    RIM_IV_L = "Valeur Intrinsèque RIM (Ohlson)"  # Était RIM_IV_L dans l'appel
+    GRAHAM_IV_L = "Valeur Graham AAA"  # Était GRAHAM_IV_L dans l'appel
+
     # DCF (Approche Entite - FCFF)
     FCFE_EQUITY_VALUE = "Valeur Totale des Capitaux Propres"
     AUDIT_TECH_DETAIL_D = "Détail technique du calcul spécifique au modèle."
@@ -20,7 +24,6 @@ class RegistryTexts:
     FCFF_GROWTH_L = "DCF Growth (Revenue-Driven)"
     FCFF_NORM_L = "DCF Fondamental (Normalisé)"
     FCFE_L = "DCF Equity (FCFE)"
-    DDM_L = "Modèle Gordon-Shapiro (DDM)"
 
     SBC_LABEL = "Ajustement Dilution (SBC)"
     DCF_FCF_BASE_L = "Ancrage du Flux d'Exploitation (FCF0)"
@@ -83,7 +86,6 @@ class RegistryTexts:
     RIM_RI_D = r"Richesse creee au-dela du cout du capital immobilise."
     RIM_TV_L = "Valeur Terminale de Persistance"
     RIM_TV_D = "Estimation de la vitesse de degradation du surprofit."
-    RIM_IV_L = "Valeur Intrinseque RIM (Ohlson)"
     RIM_IV_D = "Somme de la Valeur Comptable et de la valeur actuelle des surprofits futurs."
     RIM_PAYOUT_L = "Politique de Retention des Profits"
     RIM_PAYOUT_D = "Impact de la distribution sur la croissance future."
@@ -95,7 +97,6 @@ class RegistryTexts:
     GRAHAM_EPS_D = "Benefice par action ajuste pour refleter la rentabilite recurrente."
     GRAHAM_MULT_L = "Multiplicateur de Croissance Graham"
     GRAHAM_MULT_D = "Prime de croissance theorique basee sur la formule revisee de 1974."
-    GRAHAM_IV_L = "Valeur Graham AAA"
     GRAHAM_IV_D = "Prix de reference ajuste par le rendement des obligations AAA."
 
     # Monte Carlo

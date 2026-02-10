@@ -106,12 +106,13 @@ class ValidationThresholds:
 @dataclass(frozen=True)
 class MacroDefaults:
     DEFAULT_RISK_FREE_RATE: float = 0.0425
+    FALLBACK_GROWTH_RATE: float = 0.03
+    FALLBACK_RISK_FREE_RATE: float = 0.04
     DEFAULT_MARKET_RISK_PREMIUM: float = 0.05
     DEFAULT_TAX_RATE: float = 0.25
     DEFAULT_INFLATION_RATE: float = 0.02
     DEFAULT_CORPORATE_AAA_YIELD: float = 0.045
     LARGE_CAP_THRESHOLD: float = 5_000_000_000
-
 
 # ==============================================================================
 # 8. MODEL DEFAULTS
