@@ -1,0 +1,1 @@
+# Architecture contracts tests module
