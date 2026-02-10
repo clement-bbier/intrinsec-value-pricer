@@ -8,24 +8,25 @@ Scope: Global (available to all tests automatically).
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models.company import Company, CompanySnapshot
 from src.models.valuation import ValuationRequest
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.strategies import FCFFStandardParameters
+from src.models.parameters.common import CommonParameters, FinancialRatesParameters
 from src.models.enums import ValuationMethodology, CompanySector
 
 @pytest.fixture
 def mock_apple_identity():
-    """Returns a basic identity for Apple Inc."""
+    """Returns a basic identity for Apple Inc with timezone-aware datetime."""
     return Company(
         ticker="AAPL",
         name="Apple Inc.",
         sector=CompanySector.TECHNOLOGY,
         current_price=150.0,
         currency="USD",
-        last_update=datetime.now()
+        last_update=datetime.now(timezone.utc)  # Timezone-aware
     )
 
 @pytest.fixture
@@ -84,4 +85,56 @@ def fcff_request_standard(mock_apple_identity):
     return ValuationRequest(
         mode=ValuationMethodology.FCFF_STANDARD,
         parameters=params
+    )
+
+@pytest.fixture
+def mock_parameters_with_rates():
+    """
+    A Parameters object with explicit rates (not None).
+    Used for testing scenarios where all financial rates are provided.
+    """
+    company = Company(ticker="AAPL", name="Apple Inc.")
+    
+    # Explicit rates (not ghost)
+    common_params = CommonParameters(
+        rates=FinancialRatesParameters(
+            risk_free_rate=0.04,  # 4%
+            market_risk_premium=0.05,  # 5%
+            beta=1.2,
+            tax_rate=0.21  # 21%
+        )
+    )
+    
+    strategy = FCFFStandardParameters(projection_years=5)
+    
+    return Parameters(
+        structure=company,
+        common=common_params,
+        strategy=strategy
+    )
+
+@pytest.fixture
+def mock_parameters_ghost():
+    """
+    A Parameters object with all None rates (ghost state).
+    Used for testing fallback behavior to MacroDefaults.
+    """
+    company = Company(ticker="TSLA", name="Tesla Inc.")
+    
+    # Ghost state - all None
+    common_params = CommonParameters(
+        rates=FinancialRatesParameters(
+            risk_free_rate=None,
+            market_risk_premium=None,
+            beta=None,
+            tax_rate=None
+        )
+    )
+    
+    strategy = FCFFStandardParameters(projection_years=5)
+    
+    return Parameters(
+        structure=company,
+        common=common_params,
+        strategy=strategy
     )
