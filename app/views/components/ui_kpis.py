@@ -6,27 +6,35 @@ Aggnostic of specific business logic (Audit/Comparison), focused on rendering da
 """
 
 from __future__ import annotations
-from typing import Optional, Literal
+from typing import Literal
 import streamlit as st
 
 # On retire les dépendances "Audit" (AuditStep, AuditTexts) pour rendre le fichier générique.
 
-def atom_kpi_metric(
-    label: str,
-    value: str,
-    delta: Optional[str] = None,
-    delta_color: Literal["normal", "inverse", "off", "red", "orange", "yellow", "green", "blue", "violet", "gray", "grey", "primary"] = "normal",
-    help_text: str = ""
-) -> None:
+def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=None):
     """
-    Standard Wrapper for Streamlit metrics.
-    Used for high-level financial indicators (e.g., EBITDA, CA).
+    Composant UI robuste pour les KPIs.
+    Agit comme un 'Adapter' pour protéger l'app des changements d'API Streamlit.
     """
+    # MAPPING DE SÉCURITÉ : On traduit tes couleurs métier en standards Streamlit
+    color_map = {
+        "green": "normal",  # Vert pour positif
+        "red": "inverse",  # Rouge pour positif (ou inversion selon contexte)
+        "orange": "off",  # Gris (Streamlit ne supporte pas l'orange en delta)
+        "gray": "off",
+        "normal": "normal",
+        "inverse": "inverse",
+        "off": "off"
+    }
+
+    # Si la couleur demandée n'est pas connue, on met "off" par sécurité (éviter le crash)
+    safe_color = color_map.get(delta_color, "off")
+
     st.metric(
         label=label,
-        value=value,
-        delta=delta,
-        delta_color=delta_color,
+        value=str(value),
+        delta=str(delta) if delta is not None else None,
+        delta_color=safe_color,
         help=help_text
     )
 

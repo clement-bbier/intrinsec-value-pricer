@@ -28,5 +28,5 @@ class RIMBankView(BaseStrategyView):
         c1, c2 = st.columns(2)
         with c1: widget_projection_years(default=5, key_prefix=prefix)
         with c2: st.number_input(SharedTexts.INP_GROWTH_G, value=None, format="%.2f", help=SharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate")
-        st.number_input(SharedTexts.INP_OMEGA, min_value=0.0, max_value=1.0, value=None, format="%.2f", help=SharedTexts.HELP_OMEGA, key=f"{prefix}_omega")
+        # st.number_input(SharedTexts.INP_OMEGA, min_value=0.0, max_value=1.0, value=None, format="%.2f", help=SharedTexts.HELP_OMEGA, key=f"{prefix}_omega")
         st.divider()

@@ -1,122 +1,204 @@
 """
 app/views/results/pillars/inputs_summary.py
+
 PILLAR 1: DETAILED INPUTS & CONFIGURATION
 =========================================
-Role: Renders the detailed view of all assumptions used in the valuation.
-Focus: Input only (Structures, Rates, Growth, Financials).
-Dependencies: Streamlit, Models, i18n.
+Role: Renders the audit view of all assumptions used in the valuation.
+Focus: Input traceability (Structures, Rates, Growth, Financials).
+Style: Institutional "Fact Sheet" layout using structured tables.
 """
 
 import streamlit as st
 import pandas as pd
-from src.models import ValuationResult
-from src.i18n import InputLabels, ResultsTexts
+from typing import Dict, Optional, List
+
+from src.models import ValuationResult, ValuationMethodology
+from src.i18n import InputLabels, KPITexts
 
 def render_detailed_inputs(result: ValuationResult) -> None:
     """
-    Renders Pillar 1: Detailed Configuration & Assumptions.
+    Renders Pillar 1: Configuration Fact Sheet.
 
-    This view displays every single parameter used in the model:
-    - Market Structure (Shares, Debt, etc.)
-    - Discount Rates (Rf, Beta, MRP, Cost of Debt)
-    - Operational Assumptions (Tax, Growth)
-    - Raw Financial Inputs (if available)
+    Displays inputs organized in 3 horizontal blocks:
+    1. Market & Capital Structure (The "What")
+    2. Discount Rates & Risk (The "Cost")
+    3. Operational Strategy (The "Driver" - Dynamic based on model)
 
     Parameters
     ----------
     result : ValuationResult
-        The object containing the full request configuration.
+        The object containing calculation results and request parameters.
     """
-    st.subheader(InputLabels.SECTION_STRUCTURE) # Using a consistent subheader concept if needed, or KPITexts.TAB_INPUTS
-
     params = result.request.parameters
 
-    # --- Section A: Market Structure & Enterprise Value Components ---
-    st.markdown(f"#### {InputLabels.SECTION_STRUCTURE}")
-    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-
-    with col_s1:
-        st.metric(InputLabels.TICKER, result.request.ticker)
-        st.metric(InputLabels.CURRENCY, params.structure.currency)
-
-    with col_s2:
-        st.metric(InputLabels.CURRENT_PRICE, f"{params.structure.current_price:,.2f}")
-        st.metric(InputLabels.SHARES_OUT, f"{params.structure.shares_outstanding:,.0f}")
-
-    with col_s3:
-        st.metric(InputLabels.NET_DEBT, f"{params.structure.net_debt:,.0f} M")
-        st.metric(InputLabels.MINORITY_INTEREST, f"{params.structure.minority_interests:,.0f} M")
-
-    with col_s4:
-        # Enterprise Value (Bridge) implied by Current Price
-        implied_ev = (params.structure.current_price * params.structure.shares_outstanding) + params.structure.net_debt
-        st.metric(InputLabels.IMPLIED_EV, f"{implied_ev:,.0f} M")
+    # --- HEADER: CONTEXT ---
+    currency = params.structure.currency if params.structure.currency else "USD"
+    st.caption(f"{InputLabels.SECTION_STRUCTURE} • {result.request.mode.value} • {currency}")
 
     st.divider()
 
-    # --- Section B: Cost of Capital (WACC) Components ---
-    st.markdown(f"#### {InputLabels.SECTION_WACC}")
+    # ==========================================================================
+    # BLOCKS 1 & 2: STRUCTURE & RATES (SIDE BY SIDE TABLES)
+    # ==========================================================================
+    c1, c2 = st.columns(2)
 
-    if params.rates:
-        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+    with c1:
+        st.markdown(f"#### 🏛️ {InputLabels.SECTION_STRUCTURE}")
+        _render_capital_structure_table(params)
 
-        with col_r1:
-            st.metric(InputLabels.RISK_FREE_RATE, f"{params.rates.risk_free_rate:.2%}")
-            st.caption(InputLabels.SOURCE_RF)
-
-        with col_r2:
-            st.metric(InputLabels.BETA, f"{params.rates.beta:.2f}")
-            st.caption(InputLabels.SOURCE_BETA)
-
-        with col_r3:
-            st.metric(InputLabels.ERP, f"{params.rates.equity_risk_premium:.2%}")
-            st.metric(InputLabels.COST_OF_EQUITY, f"{params.rates.cost_of_equity:.2%}")
-
-        with col_r4:
-            st.metric(InputLabels.COST_OF_DEBT_PRE_TAX, f"{params.rates.cost_of_debt_pre_tax:.2%}")
-            st.metric(InputLabels.TAX_RATE, f"{params.rates.tax_rate:.2%}")
-
-        # WACC Calculation Display
-        with st.expander(InputLabels.WACC_DETAILS):
-            st.write(f"**{InputLabels.WEIGHT_EQUITY}:** {params.rates.weight_equity:.1%}")
-            st.write(f"**{InputLabels.WEIGHT_DEBT}:** {params.rates.weight_debt:.1%}")
-            st.write(f"**{InputLabels.WACC_CALC}:** {params.rates.wacc_calculated:.2%}")
-    else:
-        st.warning(ResultsTexts.NO_RATES_DATA)
+    with c2:
+        st.markdown(f"#### ⚖️ {InputLabels.SECTION_WACC}")
+        # Pass both inputs (params) and calculated results (common.rates) for fallback
+        _render_rates_table(params, result.results.common.rates)
 
     st.divider()
 
-    # --- Section C: Operational & Terminal Assumptions ---
-    st.markdown(f"#### {InputLabels.SECTION_GROWTH}")
-    col_g1, col_g2, col_g3 = st.columns(3)
+    # ==========================================================================
+    # BLOCK 3: OPERATIONAL ASSUMPTIONS (TABLE)
+    # ==========================================================================
+    st.markdown(f"#### 🚀 {InputLabels.SECTION_GROWTH}")
 
-    with col_g1:
-        # Safe access to growth parameters
-        tgr = params.growth.terminal_growth_rate if params.growth else 0.02
-        st.metric(InputLabels.TERMINAL_GROWTH, f"{tgr:.2%}")
+    # Renders a table specific to the selected valuation strategy
+    _render_strategy_inputs_table(result)
 
-    with col_g2:
-        proj_years = params.growth.projection_years if params.growth else 5
-        st.metric(InputLabels.PROJECTION_PERIOD, f"{proj_years} Y")
+    # ==========================================================================
+    # BLOCK 4: RAW DATA SOURCE (EXPANDER)
+    # ==========================================================================
+    with st.expander(f"📚 {InputLabels.SECTION_FINANCIALS} (Raw Data Source)", expanded=False):
+        st.json({
+            "Source": "Yahoo Finance / User Override",
+            "Last Update": str(params.structure.last_update),
+            "Ticker": params.structure.ticker,
+            "Sector": params.structure.sector.value if params.structure.sector else "Unknown",
+            "Price Reference": params.structure.current_price
+        })
 
-    with col_g3:
-        # Method used (e.g., DCF GGM or Exit Multiple)
-        method = params.strategy.valuation_method if params.strategy else "DCF Standard"
-        st.metric(InputLabels.VALUATION_METHOD, method)
 
-    # --- Section D: Raw Financial Inputs (The "Books") ---
-    st.markdown(f"#### {InputLabels.SECTION_FINANCIALS}")
+# ==============================================================================
+# SUB-RENDERERS (Private Helpers)
+# ==============================================================================
 
-    if result.request.financials:
-        with st.expander(InputLabels.VIEW_RAW_DATA, expanded=False):
-            # Converting list of objects to DataFrame for display
-            try:
-                # Assumes financials.history is a list of Pydantic models
-                data = [f.model_dump() for f in result.request.financials.history]
-                df_fin = pd.DataFrame(data)
-                st.dataframe(df_fin, use_container_width=True)
-            except Exception as e:
-                st.caption(f"Technical error details: {e}")
-                st.text(InputLabels.DATA_UNFORMATTED)
+def _safe_fmt(value: Optional[float], fmt: str, default: str = "-") -> str:
+    """Safely formats a value handling None types."""
+    if value is None:
+        return default
+    return format(value, fmt)
+
+def _render_capital_structure_table(params) -> None:
+    """
+    Displays a clean dataframe for capital structure.
+    """
+    # Safe data access (V2 Model Path)
+    struct = params.structure
+    cap = params.common.capital
+
+    # On-the-fly calculations for display
+    shares = cap.shares_outstanding or 0
+    price = struct.current_price or 0.0
+    mkt_cap = price * shares
+
+    debt = cap.total_debt or 0.0
+    cash = cap.cash_and_equivalents or 0.0
+    net_debt = debt - cash
+
+    # Use formatted strings for the table
+    data = [
+        {"Item": InputLabels.CURRENT_PRICE, "Value": f"{price:,.2f} {struct.currency}"},
+        {"Item": InputLabels.SHARES_OUT,    "Value": f"{shares:,.0f}"},
+        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": f"{mkt_cap:,.0f} M"},
+        {"Item": InputLabels.NET_DEBT,      "Value": f"{net_debt:,.0f} M"},
+        {"Item": "Enterprise Value (Implied)", "Value": f"{(mkt_cap + net_debt):,.0f} M"},
+    ]
+
+    df = pd.DataFrame(data)
+    # Display as a static table (cleaner than metric widgets for lists)
+    st.table(df.set_index("Item"))
+
+
+def _render_rates_table(params, resolved_rates) -> None:
+    """
+    Displays a clean dataframe for rates (WACC/Ke).
+    Uses inputs from 'params' and falls back to 'resolved_rates' (calculated) if inputs are None.
+    """
+    # Inputs (Parameters) - FinancialRatesParameters
+    p_rates = params.common.rates
+
+    # Helper to format input vs calculated
+    def fmt_rate(input_val, calc_val):
+        if input_val is not None:
+            return f"{input_val:.2%}" # User Override
+        if calc_val is not None:
+            return f"{calc_val:.2%} (Auto)" # Calculated
+        return "-"
+
+    # Specific logic for Cost of Debt (Input is pre-tax, Resolved is post-tax usually)
+    kd_display = _safe_fmt(p_rates.cost_of_debt, ".2%", default="Auto")
+
+    data = [
+        {"Parameter": InputLabels.RISK_FREE_RATE, "Value": fmt_rate(p_rates.risk_free_rate, getattr(resolved_rates, 'risk_free_rate', None))},
+        {"Parameter": InputLabels.BETA,           "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
+        {"Parameter": InputLabels.ERP,            "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {"Parameter": InputLabels.COST_OF_EQUITY, "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity)},
+        {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX,   "Value": kd_display},
+        {"Parameter": InputLabels.WACC_CALC,      "Value": f"**{resolved_rates.wacc:.2%}**"} # WACC is always calculated
+    ]
+
+    df = pd.DataFrame(data)
+    st.table(df.set_index("Parameter"))
+
+
+def _render_strategy_inputs_table(result: ValuationResult) -> None:
+    """
+    Displays assumptions specific to the selected model as a table.
+    Adapts dynamically to content of `result.request.parameters.strategy`.
+    """
+    strat_params = result.request.parameters.strategy
+    mode = result.request.mode
+
+    data: List[Dict[str, str]]
+
+    if mode == ValuationMethodology.RIM:
+        data = [
+            {"Assumption": "Anchor (Book Value)", "Value": f"{getattr(strat_params, 'book_value_anchor', 0):,.0f} M"},
+            {"Assumption": "Persistence Factor (ω)", "Value": _safe_fmt(getattr(strat_params, 'persistence_factor', None), ".2f")},
+            {"Assumption": "Growth (g)", "Value": _safe_fmt(getattr(strat_params, 'growth_rate', None), ".2%")}
+        ]
+
+    elif mode == ValuationMethodology.GRAHAM:
+        # Check resolved rates for AAA yield if not in inputs
+        aaa_yield = getattr(result.request.parameters.common.rates, 'corporate_aaa_yield', None)
+        if aaa_yield is None:
+             aaa_yield = getattr(result.results.common.rates, 'corporate_aaa_yield', None)
+
+        data = [
+            {"Assumption": "Normalized EPS", "Value": _safe_fmt(getattr(strat_params, 'eps_normalized', None), ".2f")},
+            {"Assumption": "Conservative Growth", "Value": _safe_fmt(getattr(strat_params, 'growth_estimate', None), ".2%")},
+            {"Assumption": "AAA Corp Rate", "Value": _safe_fmt(aaa_yield, ".2%")}
+        ]
+
+    else: # DCF Family (Standard, Growth, Normalized, FCFE, DDM)
+        # Handle common fields for DCF-like models
+        anchor_val = getattr(strat_params, 'fcf_anchor', None) or \
+                     getattr(strat_params, 'fcf_norm', None) or \
+                     getattr(strat_params, 'revenue_ttm', None) or \
+                     getattr(strat_params, 'dividend_base', None) or \
+                     getattr(strat_params, 'fcfe_anchor', None) or 0
+
+        # Phase 1 Growth
+        g_p1 = getattr(strat_params, 'growth_rate_p1', None)
+        if g_p1 is None:
+            g_p1 = getattr(strat_params, 'revenue_growth_rate', getattr(strat_params, 'growth_rate', None))
+
+        data = [
+            {"Assumption": "Base Flow (FCF/Div/EPS)", "Value": f"{anchor_val:,.2f} M"},
+            {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
+            {"Assumption": "Projection Years", "Value": f"{getattr(strat_params, 'projection_years', 5)} years"},
+            {"Assumption": "Terminal Growth (g)", "Value": _safe_fmt(getattr(strat_params, 'perpetual_growth_rate', 0.02), ".2%")},
+            {"Assumption": "Terminal Method", "Value": str(getattr(strat_params, 'terminal_method', 'Gordon Growth'))}
+        ]
+
+    if data:
+        df = pd.DataFrame(data)
+        st.table(df.set_index("Assumption"))
     else:
-        st.info(ResultsTexts.NO_FINANCIALS_PROVIDED)
+        st.info("No specific operational assumptions to display for this model.")
