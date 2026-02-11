@@ -18,7 +18,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.i18n import BacktestTexts, BenchmarkTexts, ChartTexts, KPITexts, QuantTexts, SOTPTexts
+from src.i18n import BacktestTexts, BenchmarkTexts, ChartTexts, KPITexts, QuantTexts, SOTPTexts, UIMessages
 from src.models import ValuationResult
 from src.models.results.options import BacktestResults
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def display_price_chart(ticker: str, price_history: pd.DataFrame | None) -> None:
     """Streamlined price history rendering."""
     if price_history is None or price_history.empty:
-        st.info("Données de prix historiques indisponibles.")
+        st.info(UIMessages.PRICE_HISTORY_UNAVAILABLE)
         return
 
     df = price_history.copy()
@@ -225,7 +225,7 @@ def display_sensitivity_heatmap(
                 continue
 
     if not grid:
-        st.warning("Impossible de générer la matrice de sensibilité (Taux <= Croissance).")
+        st.warning(UIMessages.SENSITIVITY_MATRIX_ERROR)
         return
 
     df = pd.DataFrame(grid)

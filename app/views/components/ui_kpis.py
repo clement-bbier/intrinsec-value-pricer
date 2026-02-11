@@ -100,10 +100,10 @@ def atom_benchmark_card(
 
         # Left: Company (You)
         with c1:
-            st.markdown("<span style='color:gray; font-size:0.8em;'>VOTRE DONNÉE</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_YOUR_DATA}</span>", unsafe_allow_html=True)
             st.markdown(f"**{company_value}**")
 
         # Right: Market (Them)
         with c2:
-            st.markdown("<span style='color:gray; font-size:0.8em;'>MOYENNE SECTEUR</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_SECTOR_AVERAGE}</span>", unsafe_allow_html=True)
             st.markdown(f"{market_value}")

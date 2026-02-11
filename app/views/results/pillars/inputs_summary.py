@@ -65,13 +65,13 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     # ==========================================================================
     # BLOCK 4: RAW DATA SOURCE (EXPANDER)
     # ==========================================================================
-    with st.expander(f"📚 {InputLabels.SECTION_FINANCIALS} (Raw Data Source)", expanded=False):
+    with st.expander(f"📚 {InputLabels.SECTION_FINANCIALS} ({InputLabels.RAW_DATA_SOURCE_TITLE})", expanded=False):
         st.json({
-            "Source": "Yahoo Finance / User Override",
-            "Last Update": str(params.structure.last_update),
-            "Ticker": params.structure.ticker,
-            "Sector": params.structure.sector.value if params.structure.sector else "Unknown",
-            "Price Reference": params.structure.current_price
+            InputLabels.DATA_SOURCE: InputLabels.DATA_SOURCE_VALUE,
+            InputLabels.LAST_UPDATE: str(params.structure.last_update),
+            InputLabels.TICKER: params.structure.ticker,
+            InputLabels.SECTOR: params.structure.sector.value if params.structure.sector else InputLabels.UNKNOWN,
+            InputLabels.PRICE_REFERENCE: params.structure.current_price
         })
 
 
@@ -208,4 +208,4 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         df = pd.DataFrame(data)
         st.table(df.set_index("Assumption"))
     else:
-        st.info("No specific operational assumptions to display for this model.")
+        st.info(InputLabels.NO_OPERATIONAL_ASSUMPTIONS)

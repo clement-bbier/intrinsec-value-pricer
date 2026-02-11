@@ -10,7 +10,7 @@ decomposing the final result into its mathematical constituents.
 import streamlit as st
 
 from app.views.components.step_renderer import render_calculation_step
-from src.i18n import KPITexts, PillarLabels, ResultsTexts
+from src.i18n import KPITexts, PillarLabels, ResultsTexts, UIMessages
 from src.models import ValuationResult
 
 # Constants for filtering internal/technical steps that shouldn't appear in the audit
@@ -47,7 +47,7 @@ def render_glass_box(result: ValuationResult) -> None:
 
     # 4. Empty State Management
     if not core_steps:
-        st.info("Aucune étape majeure disponible pour ce calcul.")
+        st.info(UIMessages.NO_MAJOR_CALC_STEPS)
         return
 
     # 5. Iterative Rendering

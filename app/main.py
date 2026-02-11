@@ -30,9 +30,12 @@ from app.views.inputs.expert_form import render_expert_form  # noqa: E402
 # Views Imports
 from app.views.results.orchestrator import render_valuation_results  # noqa: E402
 
+# Import i18n for page configuration
+from src.i18n import UIMessages  # noqa: E402
+
 # Configuration of the page must be the first Streamlit command
 st.set_page_config(
-    page_title="Intrinsic Value Pricer",
+    page_title=UIMessages.PAGE_TITLE,
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -57,7 +60,7 @@ def main() -> None:
     # Priority 1: Critical Error Handling
     if state.error_message:
         st.error(state.error_message)
-        if st.button("Dismiss Error"):
+        if st.button(UIMessages.DISMISS_ERROR):
             state.error_message = ""
             st.rerun()
 
