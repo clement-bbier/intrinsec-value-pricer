@@ -184,7 +184,7 @@ class GrahamParameters(BaseNormalizedModel):
     growth_estimate: Annotated[float | None, UIKey("growth_estimate", scale="pct")] = None
 
 
-StrategyUnionParameters = Union[
-    FCFFStandardParameters, FCFFNormalizedParameters, FCFFGrowthParameters,
-    FCFEParameters, DDMParameters, RIMParameters, GrahamParameters
-]
+StrategyUnionParameters = (
+    FCFFStandardParameters | FCFFNormalizedParameters | FCFFGrowthParameters
+    | FCFEParameters | DDMParameters | RIMParameters | GrahamParameters
+)

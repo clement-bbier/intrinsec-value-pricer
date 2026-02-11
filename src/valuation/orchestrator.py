@@ -23,7 +23,7 @@ import time
 
 from src.computation.financial_math import calculate_wacc
 from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
-from src.core.exceptions import CalculationError, ValuationException
+from src.core.exceptions import CalculationError, ValuationError
 from src.core.quant_logger import QuantLogger
 from src.models import Parameters
 from src.models.company import CompanySnapshot
@@ -245,7 +245,7 @@ class ValuationOrchestrator:
 
             return valuation_output
 
-        except ValuationException as e:
+        except ValuationError as e:
             logger.error(f"[Orchestrator] Known valuation failure: {e}")
             raise e #
         except Exception as e:

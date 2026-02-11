@@ -41,7 +41,7 @@ class GrahamMCShocksParameters(BaseMCShocksParameters):
     type: Literal["graham"] = "graham"
     eps_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
 
-MCShockUnion = Union[StandardMCShocksParameters, GrahamMCShocksParameters]
+MCShockUnion = StandardMCShocksParameters | GrahamMCShocksParameters
 
 class MCParameters(BaseNormalizedModel):
     """

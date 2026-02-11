@@ -15,7 +15,7 @@ from src.core.exceptions import (
     ExternalServiceError,
     InvalidParameterError,
     TickerNotFoundError,
-    ValuationException,
+    ValuationError,
 )
 from src.core.formatting import COLOR_NEGATIVE, COLOR_NEUTRAL, COLOR_POSITIVE, format_smart_number, get_delta_color
 from src.core.interfaces import DataProviderProtocol, IResultRenderer, IUIProgressHandler, NullProgressHandler
@@ -28,7 +28,7 @@ __all__ = [
     "DiagnosticDomain",
 
     # Exceptions
-    "ValuationException",
+    "ValuationError",
     "ConfigurationError",
     "ExternalServiceError",
     "TickerNotFoundError",

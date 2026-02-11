@@ -18,7 +18,7 @@ from src.core.diagnostics import (
     DiagnosticRegistry
 )
 from src.core.exceptions import (
-    ValuationException,
+    ValuationError,
     CalculationError,
     TickerNotFoundError,
     ExternalServiceError,
@@ -217,7 +217,7 @@ def test_diagnostic_registry_risk_missing_sbc_dilution():
 
 @pytest.mark.unit
 def test_valuation_exception_base():
-    """Test ValuationException base class."""
+    """Test ValuationError base class."""
     event = DiagnosticEvent(
         code="TEST_FAIL",
         severity=SeverityLevel.ERROR,
@@ -225,7 +225,7 @@ def test_valuation_exception_base():
         message="Test failure"
     )
     
-    exc = ValuationException(event)
+    exc = ValuationError(event)
     
     assert exc.diagnostic == event
     assert str(exc) == "Test failure"
@@ -236,7 +236,7 @@ def test_calculation_error():
     """Test CalculationError exception."""
     exc = CalculationError("Invalid discount rate")
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "Invalid discount rate" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.ERROR
     assert exc.diagnostic.domain == DiagnosticDomain.MODEL
@@ -247,7 +247,7 @@ def test_ticker_not_found_error():
     """Test TickerNotFoundError exception."""
     exc = TickerNotFoundError("INVALID")
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "INVALID" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.CRITICAL
 
@@ -257,7 +257,7 @@ def test_external_service_error():
     """Test ExternalServiceError exception."""
     exc = ExternalServiceError("Yahoo Finance", "Timeout after 30s")
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "Yahoo Finance" in str(exc)
     assert exc.diagnostic.technical_detail == "Timeout after 30s"
 
@@ -267,7 +267,7 @@ def test_data_missing_error():
     """Test DataMissingError exception."""
     exc = DataMissingError("total_debt", "AAPL")
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "total_debt" in str(exc)
     assert "AAPL" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.ERROR
@@ -278,7 +278,7 @@ def test_model_divergence_error():
     """Test ModelDivergenceError exception."""
     exc = ModelDivergenceError(g=0.08, wacc=0.07)
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "8.00%" in str(exc)
     assert "7.00%" in str(exc)
 
@@ -288,7 +288,7 @@ def test_monte_carlo_instability_error():
     """Test MonteCarloInstabilityError exception."""
     exc = MonteCarloInstabilityError(valid_ratio=0.45, threshold=0.75)
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "45%" in str(exc)
 
 
@@ -297,7 +297,7 @@ def test_invalid_parameter_error():
     """Test InvalidParameterError exception."""
     exc = InvalidParameterError("projection_years", 100, (1, 50))
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "projection_years" in str(exc)
     assert exc.diagnostic.domain == DiagnosticDomain.CONFIG
 
@@ -307,7 +307,7 @@ def test_configuration_error():
     """Test ConfigurationError exception."""
     exc = ConfigurationError("/path/to/config.yaml", "File not found")
     
-    assert isinstance(exc, ValuationException)
+    assert isinstance(exc, ValuationError)
     assert "config.yaml" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.CRITICAL
 
