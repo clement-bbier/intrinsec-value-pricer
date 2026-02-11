@@ -11,8 +11,6 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import Union
-
 from pydantic import BaseModel, Field
 
 from src.models.glass_box import CalculationStep
