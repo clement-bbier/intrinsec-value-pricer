@@ -55,7 +55,7 @@ class ValuationRunMetadata(BaseModel):
     execution_time_ms : int, optional
         Execution time in milliseconds.
     """
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, protected_namespaces=())
 
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
