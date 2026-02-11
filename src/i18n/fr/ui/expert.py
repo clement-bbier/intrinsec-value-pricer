@@ -12,10 +12,10 @@ Règles de maintenance :
 - Les titres (TITLE) doivent correspondre exactement aux labels de la sidebar.
 """
 
-class SharedTexts:
+class UISharedTexts:
     """
     SOCLE COMMUN - Centralise l'intégralité des labels, messages et formules
-    utilisés par les terminaux experts et les widgets de saisie.
+    utilisés par les terminaux experts et les widgets de saisie - UI Layer.
     """
 
     # ==========================================================================
@@ -221,7 +221,7 @@ class SharedTexts:
 
     # Capital
     FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times (E R P)"
-    FORMULA_CAPITAL_WACC = r"WACC = w_e \cdot k_e + w_d \cdot [k_d(1-\tau)]"
+    FORMULA_CAPITAL_WACC = r"WACC = \frac{E}{D+E} \times K_e + \frac{D}{D+E} \times K_d \times (1 - T)"
 
     # Valeur Terminale (Dynamique Étape 4)
     FORMULA_TV_GORDON = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
@@ -250,7 +250,7 @@ class SharedTexts:
 # CLASSES NARRATIVES SPÉCIFIQUES (Héritage de SharedTexts)
 # ==============================================================================
 
-class FCFFStandardTexts(SharedTexts):
+class FCFFStandardTexts(UISharedTexts):
     TITLE = "FCFF Standard (Modèle à deux étapes)"
     DESCRIPTION = "Valorisation fondamentale de l'entreprise par l'actualisation des flux de trésorerie disponibles (FCFF)."
     STEP_1_TITLE = "#### Étape 1 : Ancrage du Flux Opérationnel"
@@ -263,7 +263,7 @@ class FCFFStandardTexts(SharedTexts):
     INP_GROWTH_G = "Croissance annuelle phase 1 (%)"
 
 
-class FCFFNormalizedTexts(SharedTexts):
+class FCFFNormalizedTexts(UISharedTexts):
     LBL_GROWTH_G = "Taux de croissance (g)"
     TITLE = "Approche Entité (FCFF Normalisé)"
     DESCRIPTION = "DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme."
@@ -277,7 +277,7 @@ class FCFFNormalizedTexts(SharedTexts):
     HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
 
 
-class FCFFGrowthTexts(SharedTexts):
+class FCFFGrowthTexts(UISharedTexts):
     TITLE = "FCFF : Modèle de Croissance & Marges"
     DESCRIPTION = "Valorisation par projection du chiffre d'affaires et convergence vers une marge cible."
     STEP_1_TITLE = "#### Étape 1 : Assiette de Revenus"
@@ -291,9 +291,19 @@ class FCFFGrowthTexts(SharedTexts):
     HELP_REV_GROWTH = "Taux de croissance annuel projeté pour les ventes."
     INP_MARGIN_TARGET = "Marge FCF cible (%)"
     HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée à la fin de l'horizon de projection."
+    
+    # Disclaimer about margin simplification
+    MARGIN_DISCLAIMER = """⚠️ Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible 
+suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.
+
+Formule complète professionnelle :
+FCFF = Revenue × Marge_EBIT × (1-T) - Réinvestissements
+
+Cette simplification est appropriée pour les analyses rapides ou lorsque les données détaillées 
+ne sont pas disponibles."""
 
 
-class RIMTexts(SharedTexts):
+class RIMTexts(UISharedTexts):
     """
     Textes spécifiques pour le Modèle à Revenu Résiduel (RIM / Ohlson).
     Idéal pour les financières (Banques, Assurances) où la Book Value est centrale.
@@ -324,13 +334,20 @@ class RIMTexts(SharedTexts):
     STEP_2_DESC = "Estimation de la durée pendant laquelle l'entreprise génère un rendement supérieur à son coût du capital (Facteur Omega)."
 
     HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
+    
+    # Omega (persistence factor) explanation
+    HELP_OMEGA = """Facteur de persistance des profits anormaux (ω ∈ [0, 1]).
+- ω = 1 : les profits anormaux persistent indéfiniment (scénario agressif, avantage compétitif durable)
+- ω = 0 : les profits anormaux disparaissent immédiatement (scénario conservateur, forte concurrence)
+- Valeurs typiques : 0.5-0.7 pour entreprises matures
+Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1))"""
 
     # Sections Logiques (Headers de regroupement)
     SEC_1_RIM_BASE = "1. Ancrage Comptable"
     SEC_2_PROJ_RIM = "2. Projection & Atténuation (Omega)"
 
 
-class GrahamTexts(SharedTexts):
+class GrahamTexts(UISharedTexts):
     """
     Textes spécifiques pour la méthode de Valorisation Intrinsèque de Graham.
     """
@@ -367,7 +384,7 @@ class GrahamTexts(SharedTexts):
 
     NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au P/E d'une entreprise à croissance nulle. Le facteur 4.4 représente le rendement AAA historique de référence."
 
-class FCFETexts(SharedTexts):
+class FCFETexts(UISharedTexts):
     TITLE = "Flux de Trésorerie Actionnaires (FCFE)"
     DESCRIPTION = "Valorisation directe des fonds propres via les flux résiduels après service de la dette."
     STEP_1_TITLE = "#### Étape 1 : Ancrage Actionnaire"
@@ -381,7 +398,7 @@ class FCFETexts(SharedTexts):
     STEP_2_DESC = "Définition de la trajectoire de croissance et de l'horizon temporel."
 
 
-class DDMTexts(SharedTexts):
+class DDMTexts(UISharedTexts):
     TITLE = "Modèle d'Actualisation des Dividendes (DDM)"
     DESCRIPTION = "Valorisation basée sur la distribution future de dividendes aux actionnaires."
     STEP_1_TITLE = "#### Étape 1 : Flux de Dividendes"

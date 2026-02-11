@@ -14,9 +14,11 @@ from .results import (
     InputLabels,
     SOTPTexts,
     MarketTexts,
-    BenchmarkTexts
+    BenchmarkTexts,
+    UIRegistryTexts,
+    UIStrategyFormulas
 )
-from .expert import ExpertTexts
+from .expert import ExpertTexts, UISharedTexts
 from .extensions import ExtensionTexts, PeersTexts
 from .sidebar import SidebarTexts
 
@@ -36,5 +38,8 @@ __all__ = [
     "ExtensionTexts",
     "PeersTexts",
     "SidebarTexts",
-    "BenchmarkTexts"
+    "BenchmarkTexts",
+    "UIRegistryTexts",
+    "UIStrategyFormulas",
+    "UISharedTexts"
 ]

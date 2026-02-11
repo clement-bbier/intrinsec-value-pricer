@@ -29,20 +29,25 @@ from src.i18n.fr.ui import (
     SOTPTexts,
     BenchmarkTexts,
     MarketTexts,
-    PeersTexts
+    PeersTexts,
+    UIRegistryTexts,
+    UIStrategyFormulas,
+    UISharedTexts
 )
 
 __all__ = [
+    # Backend (calculation/engine layer)
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "RegistryTexts",
-    "StrategyFormulas",
+    "RegistryTexts",          # Backend registry labels
+    "StrategyFormulas",        # Backend LaTeX formulas
     "StrategyInterpretations",
     "StrategySources",
-    "SharedTexts",
+    "SharedTexts",             # Backend shared texts
     "WorkflowTexts",
 
+    # UI (presentation layer)
     "CommonTexts",
     "ExpertTexts",
     "ExtensionTexts",
@@ -58,5 +63,10 @@ __all__ = [
     "SOTPTexts",
     "BenchmarkTexts",
     "MarketTexts",
-    "PeersTexts"
+    "PeersTexts",
+    
+    # UI renamed (no conflict with backend)
+    "UIRegistryTexts",
+    "UIStrategyFormulas",
+    "UISharedTexts"
 ]

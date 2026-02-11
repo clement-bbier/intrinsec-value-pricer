@@ -450,8 +450,8 @@ class ChartTexts:
     CORREL_CAPTION = "Matrice de Corrélation des Inputs (WACC vs Growth)"
     TOOLTIP_VALUATION = "Valorisation"
 
-class RegistryTexts:
-    """Textes pour les métadonnées du Glass Box (Registry)."""
+class UIRegistryTexts:
+    """Textes pour les métadonnées du Glass Box (Registry) - UI Layer."""
     FCFF_STANDARD_L = "Flux de Trésorerie Disponibles (FCFF) - Standard"
     FCFF_GROWTH_L = "Modèle de Croissance des Revenus (FCFF)"
     FCFF_NORM_L = "FCFF Normalisé (Moyenne de cycle)"  # Était FCFF_NORM_L dans l'appel
@@ -515,8 +515,8 @@ class RegistryTexts:
     SBC_D = "Impact des rémunérations en actions (Stock-Based Compensation)."
 
 
-class StrategyFormulas:
-    """Formules LaTeX pour le Glass Box."""
+class UIStrategyFormulas:
+    """Formules LaTeX pour le Glass Box - UI Layer."""
     WACC = r"WACC = K_e \times \frac{E}{V} + K_d(1-t) \times \frac{D}{V}"
     CAPM = r"K_e = R_f + \beta \times ERP"
     FCF_BASE = r"FCF = EBIT(1-t) + D\&A - \Delta WCR - Capex"
