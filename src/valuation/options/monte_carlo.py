@@ -27,6 +27,7 @@ class MonteCarloRunner:
             return None
 
         num_simulations = mc_cfg.iterations or MonteCarloDefaults.DEFAULT_SIMULATIONS
+        seed = mc_cfg.random_seed if mc_cfg.random_seed is not None else 42
 
         # 1. Economic Clamping Reference (WACC Guardrail)
         # We need a stable discount rate to cap terminal growth (g < WACC).
@@ -53,7 +54,7 @@ class MonteCarloRunner:
 
         # 2. Sampling
         betas, growths, terminal_growths, base_flows = self._generate_samples(
-            financials, params, num_simulations, base_wacc
+            financials, params, num_simulations, base_wacc, seed
         )
 
         # 3. Execution
@@ -75,7 +76,7 @@ class MonteCarloRunner:
         )
 
     @staticmethod
-    def _generate_samples(financials, params, num_sims, base_wacc):
+    def _generate_samples(financials, params, num_sims, base_wacc, seed: Optional[int] = 42):
         shocks = params.extensions.monte_carlo.shocks
 
         # Volatilities extraction
@@ -97,7 +98,8 @@ class MonteCarloRunner:
             mu_growth=mu_growth,
             sigma_growth=sig_g,
             rho=MonteCarloDefaults.DEFAULT_RHO,
-            num_simulations=num_sims
+            num_simulations=num_sims,
+            seed=seed
         )
 
         mean_gn = ModelDefaults.DEFAULT_TERMINAL_GROWTH
@@ -109,10 +111,13 @@ class MonteCarloRunner:
             sigma=sig_gn,
             num_simulations=num_sims,
             clip_min=0.0,
-            clip_max=max(0.0, base_wacc - 0.01)
+            clip_max=max(0.0, base_wacc - 0.01),
+            seed=seed
         )
 
-        base_flows = np.random.normal(1.0, sig_y0, num_sims)
+        # Use modern NumPy RNG for base_flows
+        rng = np.random.default_rng(seed)
+        base_flows = rng.normal(1.0, sig_y0, num_sims)
         return betas, growths, terminal_growths, base_flows
 
     def _run_simulations(self, financials, params, betas, growths, t_growths, flows, num_sims):

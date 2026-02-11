@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 import functools
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar, Union, Optional
 from enum import Enum
 
@@ -183,6 +184,25 @@ class QuantLogger:
             **context
         )
         _logger.error(msg)
+
+    @classmethod
+    def log_json(cls, event: str, **data: Any) -> None:
+        """
+        Emit a structured JSON log line for audit trail.
+
+        Parameters
+        ----------
+        event : str
+            Event type identifier (e.g., "valuation_completed").
+        **data
+            Arbitrary key-value pairs to include in the JSON record.
+        """
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "event": event,
+            **data
+        }
+        _logger.info(json.dumps(record, default=str))
 
 
 def log_valuation(func: F) -> F:

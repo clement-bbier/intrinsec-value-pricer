@@ -17,10 +17,12 @@ Standard: SOLID, institutional-grade error handling.
 from __future__ import annotations
 import logging
 import time
+import hashlib
 
 from src.models import Parameters
-from src.models.valuation import ValuationRequest, ValuationResult
+from src.models.valuation import ValuationRequest, ValuationResult, ValuationRunMetadata
 from src.models.company import CompanySnapshot
+from src.core.quant_logger import QuantLogger
 
 # Resolvers
 from src.valuation.resolvers.base_resolver import Resolver
@@ -79,6 +81,9 @@ class ValuationOrchestrator:
         # Hydrate Extension configurations (Monte Carlo, Sensitivity, etc.).
         params.extensions = self.extension_resolver.resolve(params.extensions) #
 
+        # Compute input hash for provenance
+        input_hash = hashlib.sha256(params.model_dump_json().encode()).hexdigest()
+
         # --- PHASE 2: CORE STRATEGY EXECUTION ---
         # Retrieve the strategy class from the registry via the selected mode.
         strategy_cls = get_strategy(request.mode) #
@@ -99,8 +104,29 @@ class ValuationOrchestrator:
             # Post-calculation metadata (Upside/Downside).
             valuation_output.compute_upside() #
 
-            execution_time = (time.time() - start_time) * 1000
-            logger.info(f"[Orchestrator] Execution successful for {ticker} in {execution_time:.2f}ms")
+            execution_time = int((time.time() - start_time) * 1000)
+            logger.info(f"[Orchestrator] Execution successful for {ticker} in {execution_time}ms")
+
+            # --- PHASE 4: METADATA ATTACHMENT ---
+            # Capture random seed if MC is enabled
+            random_seed = None
+            if params.extensions.monte_carlo and params.extensions.monte_carlo.enabled:
+                random_seed = params.extensions.monte_carlo.random_seed
+
+            metadata = ValuationRunMetadata(
+                model_name=request.mode.value,
+                ticker=ticker,
+                random_seed=random_seed,
+                input_hash=input_hash,
+                execution_time_ms=execution_time
+            )
+            valuation_output.metadata = metadata
+
+            # --- PHASE 5: STRUCTURED JSON LOGGING ---
+            QuantLogger.log_json(
+                event="valuation_completed",
+                **metadata.model_dump(mode="json")
+            )
 
             return valuation_output
 

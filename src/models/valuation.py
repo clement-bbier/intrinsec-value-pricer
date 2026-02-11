@@ -9,8 +9,10 @@ Architecture: Clean-cut Request/Result separation.
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
@@ -28,6 +30,40 @@ class ValuationRequest(BaseModel):
         ...,
         description="The complete bundle containing Identity, Common, Strategy, and Extensions."
     )
+
+class ValuationRunMetadata(BaseModel):
+    """
+    Immutable provenance record for every valuation run.
+    
+    Attributes
+    ----------
+    run_id : str
+        Unique identifier for this valuation run.
+    timestamp_utc : datetime
+        UTC timestamp when the valuation was executed.
+    engine_version : str
+        Version of the valuation engine.
+    model_name : str
+        Valuation methodology used (e.g., "FCFF_STANDARD").
+    ticker : str
+        Stock ticker symbol.
+    random_seed : int, optional
+        Monte Carlo random seed for reproducibility.
+    input_hash : str
+        SHA-256 hash of serialized DCFParameters for change detection.
+    execution_time_ms : int, optional
+        Execution time in milliseconds.
+    """
+    model_config = ConfigDict(frozen=True)
+
+    run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    engine_version: str = "12.0.0"
+    model_name: str
+    ticker: str
+    random_seed: Optional[int] = None
+    input_hash: str = ""
+    execution_time_ms: Optional[int] = None
 
 class AuditReport(BaseModel):
     """Summary of the validation checks performed during valuation."""
@@ -49,6 +85,7 @@ class ValuationResult(BaseModel):
     # Metadata & Reporting (Optional / Computed)
     audit_report: Optional[AuditReport] = None
     upside_pct: Optional[float] = None
+    metadata: Optional[ValuationRunMetadata] = None
 
     # Optional: Helper to access IV quickly without digging into results.common
     # Can be populated post-init or computed property.
