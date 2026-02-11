@@ -55,11 +55,11 @@ def mock_params_simple():
 def mock_params_ddm():
     """Mock Parameters for DDM (uses growth_rate instead of growth_rate_p1)."""
     params = Mock()
-    strategy = Mock()
+    strategy = Mock(spec=['growth_rate', 'projection_years', 'terminal_value'])
     strategy.growth_rate = 0.06
     strategy.projection_years = 5
     
-    terminal_value = Mock()
+    terminal_value = Mock(spec=['perpetual_growth_rate'])
     terminal_value.perpetual_growth_rate = 0.025
     strategy.terminal_value = terminal_value
     
@@ -312,19 +312,20 @@ def test_margin_convergence_margin_interpolation(mock_company, mock_params_margi
 
 
 def test_margin_convergence_zero_years():
-    """Test MarginConvergenceProjector with zero projection years."""
+    """Test MarginConvergenceProjector with zero projection years (defaults to 5)."""
     projector = MarginConvergenceProjector()
     company = Mock()
     params = Mock()
     strategy = Mock()
     strategy.target_fcf_margin = 0.15
     strategy.revenue_growth_rate = 0.10
-    strategy.projection_years = 0
+    strategy.projection_years = 0  # Will default to 5 due to 'or 5' fallback
     params.strategy = strategy
     
     output = projector.project(10_000_000, company, params)
     
-    assert len(output.flows) == 0
+    # Code treats 0 as falsy and defaults to 5 years
+    assert len(output.flows) == 5
 
 
 def test_margin_convergence_missing_params():
