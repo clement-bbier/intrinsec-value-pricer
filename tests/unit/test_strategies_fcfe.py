@@ -236,11 +236,17 @@ class TestFCFEStrategy:
         # Execute
         result = strategy.execute(basic_company, basic_params)
 
-        # Total equity = PV(FCFE) + Cash = 950000 + 50000 = 1000000
-        # This is passed to compute_value_per_share
+        # Total equity = PV(FCFE) + Cash
+        # Note: cash_and_equivalents=50000.0 gets scaled to 50000000000 via BaseNormalizedModel
+        # (BaseNormalizedModel applies scale="million" multiplier: 50000 * 1_000_000 = 50B)
+        pv_equity = 950000
+        scaled_cash = 50000 * 1_000_000  # 50000000000
+        expected_equity_value = pv_equity + scaled_cash
+        
+        # This value is passed to compute_value_per_share
         mock_per_share.assert_called_once()
         call_args = mock_per_share.call_args[0]
-        assert call_args[0] == 1000000  # 950000 + 50000
+        assert call_args[0] == expected_equity_value
 
     @patch('src.valuation.strategies.fcfe.CommonLibrary.resolve_discount_rate')
     @patch('src.valuation.strategies.fcfe.DCFLibrary.project_flows_simple')
@@ -293,12 +299,28 @@ class TestFCFEStrategy:
         # Execute
         result = strategy.execute(basic_company, basic_params)
 
-        # Total equity = 950000 + 50000 = 1000000
-        # Implied EV = Equity + Debt - Cash = 1000000 + 120000 - 50000 = 1070000
-        assert result.results.common.capital.equity_value_total == 1000000
-        assert result.results.common.capital.net_debt_resolved == 70000  # 120000 - 50000
-        assert result.results.common.capital.enterprise_value == 1070000
-        assert result.results.common.capital.market_cap == 2400000  # 16000 * 150.0
+        # Calculate expected values accounting for BaseNormalizedModel scaling
+        # (scale="million" multiplier applies: value * 1_000_000)
+        scale_factor = 1_000_000
+        pv_equity = 950000
+        cash_base = 50000
+        debt_base = 120000
+        shares_base = 16000
+        current_price = 150.0
+        
+        scaled_cash = cash_base * scale_factor  # 50B
+        scaled_debt = debt_base * scale_factor  # 120B
+        scaled_shares = shares_base * scale_factor  # 16B
+        
+        expected_equity_value = pv_equity + scaled_cash
+        expected_net_debt = scaled_debt - scaled_cash
+        expected_ev = expected_equity_value + scaled_debt - scaled_cash
+        expected_market_cap = scaled_shares * current_price
+        
+        assert result.results.common.capital.equity_value_total == expected_equity_value
+        assert result.results.common.capital.net_debt_resolved == expected_net_debt
+        assert result.results.common.capital.enterprise_value == expected_ev
+        assert result.results.common.capital.market_cap == expected_market_cap
 
     @patch('src.valuation.strategies.fcfe.CommonLibrary.resolve_discount_rate')
     @patch('src.valuation.strategies.fcfe.DCFLibrary.project_flows_simple')
