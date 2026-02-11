@@ -2,17 +2,18 @@
 src/i18n/__init__.py
 """
 from src.i18n.fr import (
+    # Backend (calculation/engine layer)
     CalculationErrors,
     DiagnosticTexts,
     ModelTexts,
-    KPITexts,
-    RegistryTexts,
-    StrategyFormulas,
+    RegistryTexts,          # Backend registry labels (Glass Box)
+    StrategyFormulas,        # Backend LaTeX formulas (computation)
     StrategyInterpretations,
     StrategySources,
-    SharedTexts,
+    SharedTexts,             # Backend shared texts
     WorkflowTexts,
 
+    # UI (presentation layer)
     CommonTexts,
     ExpertTexts,
     ExtensionTexts,
@@ -27,21 +28,28 @@ from src.i18n.fr import (
     InputLabels,
     BenchmarkTexts,
     MarketTexts,
-    PeersTexts
+    PeersTexts,
+    KPITexts,
+    
+    # UI renamed (no conflict with backend)
+    UIRegistryTexts,
+    UIStrategyFormulas,
+    UISharedTexts,
 )
 
 __all__ = [
+    # Backend (calculation/engine layer)
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "KPITexts",
-    "RegistryTexts",
-    "StrategyFormulas",
+    "RegistryTexts",          # Backend registry labels (Glass Box)
+    "StrategyFormulas",        # Backend LaTeX formulas (computation)
     "StrategyInterpretations",
     "StrategySources",
-    "SharedTexts",
+    "SharedTexts",             # Backend shared texts
     "WorkflowTexts",
 
+    # UI (presentation layer)
     "CommonTexts",
     "ExpertTexts",
     "ExtensionTexts",
@@ -56,5 +64,11 @@ __all__ = [
     "InputLabels",
     "BenchmarkTexts",
     "MarketTexts",
-    "PeersTexts"
+    "PeersTexts",
+    "KPITexts",
+    
+    # UI renamed (no conflict with backend)
+    "UIRegistryTexts",
+    "UIStrategyFormulas",
+    "UISharedTexts",
 ]

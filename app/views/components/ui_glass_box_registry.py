@@ -7,166 +7,166 @@ Focus: Data storage only (SRP). No rendering logic here.
 """
 
 from typing import Any, Dict
-from src.i18n.fr.ui.results import RegistryTexts, StrategyFormulas
+from src.i18n import UIRegistryTexts, UIStrategyFormulas
 
 STEP_METADATA: Dict[str, Dict[str, Any]] = {
 
     # --- 1. CORE PIPELINE ---
     "WACC_CALC": {
-        "label": RegistryTexts.DCF_WACC_L,
-        "formula": StrategyFormulas.WACC,
+        "label": UIRegistryTexts.DCF_WACC_L,
+        "formula": UIStrategyFormulas.WACC,
         "unit": "%",
-        "description": RegistryTexts.DCF_WACC_D
+        "description": UIRegistryTexts.DCF_WACC_D
     },
     "KE_CALC": {
-        "label": RegistryTexts.DCF_KE_L,
-        "formula": StrategyFormulas.CAPM,
+        "label": UIRegistryTexts.DCF_KE_L,
+        "formula": UIStrategyFormulas.CAPM,
         "unit": "%",
-        "description": RegistryTexts.DCF_KE_D
+        "description": UIRegistryTexts.DCF_KE_D
     },
     "FCF_BASE": {
-        "label": RegistryTexts.DCF_FCF_BASE_L,
-        "formula": StrategyFormulas.FCF_BASE,
+        "label": UIRegistryTexts.DCF_FCF_BASE_L,
+        "formula": UIStrategyFormulas.FCF_BASE,
         "unit": "currency",
-        "description": RegistryTexts.DCF_FCF_BASE_D
+        "description": UIRegistryTexts.DCF_FCF_BASE_D
     },
     "FCFE_BASE_SELECTION": {
-        "label": RegistryTexts.FCFE_BASE_L,
-        "formula": StrategyFormulas.FCFE_RECONSTRUCTION,
+        "label": UIRegistryTexts.FCFE_BASE_L,
+        "formula": UIStrategyFormulas.FCFE_RECONSTRUCTION,
         "unit": "currency",
-        "description": RegistryTexts.FCFE_BASE_D
+        "description": UIRegistryTexts.FCFE_BASE_D
     },
     "DDM_BASE_SELECTION": {
-        "label": RegistryTexts.DDM_BASE_L,
-        "formula": StrategyFormulas.DIVIDEND_BASE,
+        "label": UIRegistryTexts.DDM_BASE_L,
+        "formula": UIStrategyFormulas.DIVIDEND_BASE,
         "unit": "currency/share",
-        "description": RegistryTexts.DDM_BASE_D
+        "description": UIRegistryTexts.DDM_BASE_D
     },
     "FCF_PROJ": {
-        "label": RegistryTexts.DCF_PROJ_L,
-        "formula": StrategyFormulas.FCF_PROJECTION,
+        "label": UIRegistryTexts.DCF_PROJ_L,
+        "formula": UIStrategyFormulas.FCF_PROJECTION,
         "unit": "currency",
-        "description": RegistryTexts.DCF_PROJ_D
+        "description": UIRegistryTexts.DCF_PROJ_D
     },
     "TV_GORDON": {
-        "label": RegistryTexts.DCF_TV_GORDON_L,
-        "formula": StrategyFormulas.GORDON,
+        "label": UIRegistryTexts.DCF_TV_GORDON_L,
+        "formula": UIStrategyFormulas.GORDON,
         "unit": "currency",
-        "description": RegistryTexts.DCF_TV_GORDON_D
+        "description": UIRegistryTexts.DCF_TV_GORDON_D
     },
     "TV_MULTIPLE": {
-        "label": RegistryTexts.DCF_TV_MULT_L,
-        "formula": StrategyFormulas.TERMINAL_EXIT_MULTIPLE,
+        "label": UIRegistryTexts.DCF_TV_MULT_L,
+        "formula": UIStrategyFormulas.TERMINAL_EXIT_MULTIPLE,
         "unit": "currency",
-        "description": RegistryTexts.DCF_TV_MULT_D
+        "description": UIRegistryTexts.DCF_TV_MULT_D
     },
     "NPV_CALC": {
-        "label": RegistryTexts.DCF_EV_L,
-        "formula": StrategyFormulas.NPV,
+        "label": UIRegistryTexts.DCF_EV_L,
+        "formula": UIStrategyFormulas.NPV,
         "unit": "currency",
-        "description": RegistryTexts.DCF_EV_D
+        "description": UIRegistryTexts.DCF_EV_D
     },
     "EQUITY_BRIDGE": {
-        "label": RegistryTexts.DCF_BRIDGE_L,
-        "formula": StrategyFormulas.EQUITY_BRIDGE,
+        "label": UIRegistryTexts.DCF_BRIDGE_L,
+        "formula": UIStrategyFormulas.EQUITY_BRIDGE,
         "unit": "currency",
-        "description": RegistryTexts.DCF_BRIDGE_D
+        "description": UIRegistryTexts.DCF_BRIDGE_D
     },
     "EQUITY_DIRECT": {
-        "label": RegistryTexts.DCF_BRIDGE_L,
-        "formula": StrategyFormulas.FCFE_EQUITY_VALUE,
+        "label": UIRegistryTexts.DCF_BRIDGE_L,
+        "formula": UIStrategyFormulas.FCFE_EQUITY_VALUE,
         "unit": "currency",
-        "description": RegistryTexts.EQUITY_DIRECT_D
+        "description": UIRegistryTexts.EQUITY_DIRECT_D
     },
     "VALUE_PER_SHARE": {
-        "label": RegistryTexts.DCF_IV_L,
-        "formula": StrategyFormulas.VALUE_PER_SHARE,
+        "label": UIRegistryTexts.DCF_IV_L,
+        "formula": UIStrategyFormulas.VALUE_PER_SHARE,
         "unit": "currency/share",
-        "description": RegistryTexts.DCF_IV_D
+        "description": UIRegistryTexts.DCF_IV_D
     },
 
     # --- 2. ALTERNATIVE MODELS ---
     "RIM_BV_INITIAL": {
-        "label": RegistryTexts.RIM_BV_L,
-        "formula": StrategyFormulas.BV_BASE,
+        "label": UIRegistryTexts.RIM_BV_L,
+        "formula": UIStrategyFormulas.BV_BASE,
         "unit": "currency",
-        "description": RegistryTexts.RIM_BV_D
+        "description": UIRegistryTexts.RIM_BV_D
     },
     "RIM_KE_CALC": {
-        "label": RegistryTexts.RIM_KE_L,
-        "formula": StrategyFormulas.CAPM,
+        "label": UIRegistryTexts.RIM_KE_L,
+        "formula": UIStrategyFormulas.CAPM,
         "unit": "%",
-        "description": RegistryTexts.RIM_KE_D
+        "description": UIRegistryTexts.RIM_KE_D
     },
     "RIM_PAYOUT": {
-        "label": RegistryTexts.RIM_PAYOUT_L,
-        "formula": StrategyFormulas.PAYOUT_RATIO,
+        "label": UIRegistryTexts.RIM_PAYOUT_L,
+        "formula": UIStrategyFormulas.PAYOUT_RATIO,
         "unit": "%",
-        "description": RegistryTexts.RIM_PAYOUT_D
+        "description": UIRegistryTexts.RIM_PAYOUT_D
     },
     "RIM_RI_SUM": {
-        "label": RegistryTexts.RIM_RI_L,
-        "formula": StrategyFormulas.RI_SUM,
+        "label": UIRegistryTexts.RIM_RI_L,
+        "formula": UIStrategyFormulas.RI_SUM,
         "unit": "currency",
-        "description": RegistryTexts.RIM_RI_D
+        "description": UIRegistryTexts.RIM_RI_D
     },
     "RIM_TV_OHLSON": {
-        "label": RegistryTexts.RIM_TV_L,
-        "formula": StrategyFormulas.RIM_PERSISTENCE,
+        "label": UIRegistryTexts.RIM_TV_L,
+        "formula": UIStrategyFormulas.RIM_PERSISTENCE,
         "unit": "currency",
-        "description": RegistryTexts.RIM_TV_D
+        "description": UIRegistryTexts.RIM_TV_D
     },
     "RIM_FINAL_IV": {
-        "label": RegistryTexts.RIM_IV_L,
-        "formula": StrategyFormulas.RIM_FINAL,
+        "label": UIRegistryTexts.RIM_IV_L,
+        "formula": UIStrategyFormulas.RIM_FINAL,
         "unit": "currency",
-        "description": RegistryTexts.RIM_IV_D
+        "description": UIRegistryTexts.RIM_IV_D
     },
     "GRAHAM_EPS_BASE": {
-        "label": RegistryTexts.GRAHAM_EPS_L,
-        "formula": StrategyFormulas.EPS_BASE,
+        "label": UIRegistryTexts.GRAHAM_EPS_L,
+        "formula": UIStrategyFormulas.EPS_BASE,
         "unit": "currency",
-        "description": RegistryTexts.GRAHAM_EPS_D
+        "description": UIRegistryTexts.GRAHAM_EPS_D
     },
     "GRAHAM_MULTIPLIER": {
-        "label": RegistryTexts.GRAHAM_MULT_L,
-        "formula": StrategyFormulas.GRAHAM_MULTIPLIER,
+        "label": UIRegistryTexts.GRAHAM_MULT_L,
+        "formula": UIStrategyFormulas.GRAHAM_MULTIPLIER,
         "unit": "ratio",
-        "description": RegistryTexts.GRAHAM_MULT_D
+        "description": UIRegistryTexts.GRAHAM_MULT_D
     },
     "GRAHAM_FINAL": {
-        "label": RegistryTexts.GRAHAM_IV_L,
-        "formula": StrategyFormulas.GRAHAM_VALUE,
+        "label": UIRegistryTexts.GRAHAM_IV_L,
+        "formula": UIStrategyFormulas.GRAHAM_VALUE,
         "unit": "currency",
-        "description": RegistryTexts.GRAHAM_IV_D
+        "description": UIRegistryTexts.GRAHAM_IV_D
     },
 
     # Legacy/Internal
     "CORE_RIM_RI": {
-        "label": RegistryTexts.RIM_RI_L,
-        "formula": StrategyFormulas.RIM_RESIDUAL_INCOME,
+        "label": UIRegistryTexts.RIM_RI_L,
+        "formula": UIStrategyFormulas.RIM_RESIDUAL_INCOME,
         "unit": "currency",
-        "description": RegistryTexts.RIM_RI_D
+        "description": UIRegistryTexts.RIM_RI_D
     },
     "CORE_GRAHAM_IV": {
-        "label": RegistryTexts.GRAHAM_IV_L,
-        "formula": StrategyFormulas.GRAHAM_VALUE,
+        "label": UIRegistryTexts.GRAHAM_IV_L,
+        "formula": UIStrategyFormulas.GRAHAM_VALUE,
         "unit": "currency",
-        "description": RegistryTexts.GRAHAM_IV_D
+        "description": UIRegistryTexts.GRAHAM_IV_D
     },
 
     # --- 3. ADJUSTMENTS ---
     "BETA_HAMADA_ADJUSTMENT": {
-        "label": RegistryTexts.HAMADA_L,
-        "formula": StrategyFormulas.HAMADA,
+        "label": UIRegistryTexts.HAMADA_L,
+        "formula": UIStrategyFormulas.HAMADA,
         "unit": "ratio",
-        "description": RegistryTexts.HAMADA_D
+        "description": UIRegistryTexts.HAMADA_D
     },
     "SBC_DILUTION_ADJUSTMENT": {
-        "label": RegistryTexts.SBC_L,
-        "formula": StrategyFormulas.SBC_DILUTION,
+        "label": UIRegistryTexts.SBC_L,
+        "formula": UIStrategyFormulas.SBC_DILUTION,
         "unit": "currency",
-        "description": RegistryTexts.SBC_D
+        "description": UIRegistryTexts.SBC_D
     }
 }
 

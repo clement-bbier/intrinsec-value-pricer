@@ -18,7 +18,7 @@ from typing import Optional, Dict
 import streamlit as st
 
 from src.models import ValuationMethodology
-from src.i18n import SharedTexts
+from src.i18n import UISharedTexts
 
 from app.views.inputs.strategies.shared_widgets import (
     widget_cost_of_capital,
@@ -91,14 +91,14 @@ class BaseStrategyView(ABC):
 
         # Step 3: Risk & Capital (Shared widget)
         if self.SHOW_DISCOUNT_SECTION:
-            self._render_step_header(SharedTexts.SEC_3_CAPITAL, SharedTexts.SEC_3_DESC)
+            self._render_step_header(UISharedTexts.SEC_3_CAPITAL, UISharedTexts.SEC_3_DESC)
             widget_cost_of_capital(self.MODE)
 
         # Step 4: Exit Value (Terminal Value logic)
         if self.SHOW_TERMINAL_SECTION:
             if self.MODE == ValuationMethodology.RIM:
                 widget_terminal_value_rim(
-                    formula_latex=SharedTexts.FORMULA_TV_RIM,
+                    formula_latex=UISharedTexts.FORMULA_TV_RIM,
                     key_prefix=self.MODE.name
                 )
             else:
@@ -134,7 +134,7 @@ class BaseStrategyView(ABC):
 
     def _render_equity_bridge(self) -> None:
         """Renders the Equity Bridge section with context-aware formulas."""
-        formula = SharedTexts.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else SharedTexts.FORMULA_BRIDGE
+        formula = UISharedTexts.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else UISharedTexts.FORMULA_BRIDGE
         widget_equity_bridge(formula, self.MODE)
         st.divider()
 
@@ -185,9 +185,9 @@ class BaseStrategyView(ABC):
         Maps Methodology to specific UI labels for Monte Carlo volatilities.
         """
         mapping = {
-            ValuationMethodology.GRAHAM: {"base_flow_volatility": SharedTexts.MC_VOL_EPS},
-            ValuationMethodology.RIM: {"base_flow_volatility": SharedTexts.MC_VOL_NI},
-            ValuationMethodology.DDM: {"base_flow_volatility": SharedTexts.MC_VOL_DIV}
+            ValuationMethodology.GRAHAM: {"base_flow_volatility": UISharedTexts.MC_VOL_EPS},
+            ValuationMethodology.RIM: {"base_flow_volatility": UISharedTexts.MC_VOL_NI},
+            ValuationMethodology.DDM: {"base_flow_volatility": UISharedTexts.MC_VOL_DIV}
         }
         return mapping.get(self.MODE)
 
