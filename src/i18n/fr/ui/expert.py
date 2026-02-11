@@ -294,13 +294,13 @@ class FCFFGrowthTexts(UISharedTexts):
     
     # Disclaimer about margin simplification
     MARGIN_DISCLAIMER = """⚠️ Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible 
-    suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.
-    
-    Formule complète professionnelle :
-    FCFF = Revenue × Marge_EBIT × (1-T) - Réinvestissements
-    
-    Cette simplification est appropriée pour les analyses rapides ou lorsque les données détaillées 
-    ne sont pas disponibles."""
+suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.
+
+Formule complète professionnelle :
+FCFF = Revenue × Marge_EBIT × (1-T) - Réinvestissements
+
+Cette simplification est appropriée pour les analyses rapides ou lorsque les données détaillées 
+ne sont pas disponibles."""
 
 
 class RIMTexts(UISharedTexts):
@@ -337,10 +337,10 @@ class RIMTexts(UISharedTexts):
     
     # Omega (persistence factor) explanation
     HELP_OMEGA = """Facteur de persistance des profits anormaux (ω ∈ [0, 1]).
-    - ω = 1 : les profits anormaux persistent indéfiniment (scénario agressif, avantage compétitif durable)
-    - ω = 0 : les profits anormaux disparaissent immédiatement (scénario conservateur, forte concurrence)
-    - Valeurs typiques : 0.5-0.7 pour entreprises matures
-    Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1))"""
+- ω = 1 : les profits anormaux persistent indéfiniment (scénario agressif, avantage compétitif durable)
+- ω = 0 : les profits anormaux disparaissent immédiatement (scénario conservateur, forte concurrence)
+- Valeurs typiques : 0.5-0.7 pour entreprises matures
+Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1))"""
 
     # Sections Logiques (Headers de regroupement)
     SEC_1_RIM_BASE = "1. Ancrage Comptable"
