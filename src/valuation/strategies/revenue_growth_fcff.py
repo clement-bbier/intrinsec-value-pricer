@@ -8,6 +8,14 @@ Logic: Projects Revenue -> Converges Margins -> Derives FCF.
 Architecture: IValuationRunner implementation.
 
 Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
+
+Warning
+-------
+This model uses a simplified approach: FCF_t = Revenue_t × Margin_t.
+This assumes the margin already incorporates all operating adjustments
+(working capital changes, capex, D&A, tax shield, etc.). For more
+granular modeling, use the standard FCFF strategy with explicit
+adjustments.
 """
 
 from __future__ import annotations

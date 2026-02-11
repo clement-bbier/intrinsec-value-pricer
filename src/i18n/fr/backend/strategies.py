@@ -66,7 +66,7 @@ class StrategyFormulas:
     RIM_FINAL = r"IV = BV_0 + \sum PV(RI) + PV(TV)"
     NPV = r"PV = \sum_{t=1}^{n} \frac{FCF_t}{(1 + r)^t} + \frac{TV_n}{(1 + r)^n}"
     DCF_STANDARD = r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
-    EQUITY_BRIDGE = r"Equity\ Value = Enterprise\ Value - Net\ Debt - Minority\ Interests - Pension\ Liabilities"
+    EQUITY_BRIDGE = r"Equity\ Value = EV - Net\ Debt - Minorities - Pensions + Non\text{-}Op\ Assets"
     VALUE_PER_SHARE = r"IV = \frac{Equity}{Shares\ Outstanding}"
     MC_VOLATILITY_MATRIX = r"\sigma = [\sigma_\beta, \sigma_g, \sigma_{Y_0}]"
     PE_MULTIPLE = r"P/E = \frac{Price}{EPS}"

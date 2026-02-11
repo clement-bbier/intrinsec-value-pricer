@@ -336,11 +336,11 @@ class RIMTexts(UISharedTexts):
     HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
     
     # Omega (persistence factor) explanation
-    HELP_OMEGA = """Facteur de persistance des profits anormaux (ω ∈ [0, 1]).
+    HELP_OMEGA = """Facteur de persistance des profits anormaux : ω (0 < ω < 1), issu du modèle Ohlson (1995) AR(1).
 - ω = 1 : les profits anormaux persistent indéfiniment (scénario agressif, avantage compétitif durable)
 - ω = 0 : les profits anormaux disparaissent immédiatement (scénario conservateur, forte concurrence)
 - Valeurs typiques : 0.5-0.7 pour entreprises matures
-Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1))"""
+Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1), Ohlson 1995)"""
 
     # Sections Logiques (Headers de regroupement)
     SEC_1_RIM_BASE = "1. Ancrage Comptable"
