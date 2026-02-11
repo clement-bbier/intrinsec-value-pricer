@@ -40,7 +40,7 @@ class StrategyFormulas:
     RIM_RI = r"RI_t = NI_t - (K_e \times BV_{t-1})"
     INTERNAL_CALC = r"\text{Internal Calculation}"
     CAPM = r"K_e = R_f + \beta \times ERP"
-    WACC = r"WACC = \frac{V_E}{V_E + V_D} \times K_e + \frac{V_D}{V_E + V_D} \times K_d \times (1 - T_c)"
+    WACC = r"WACC = K_e \times \frac{E}{D+E} + K_d(1-T) \times \frac{D}{D+E}"
     HAMADA = r"\beta_L = \beta_U \times [1 + (1 - T) \times \frac{D}{E}]"
     GORDON = r"TV_n = \frac{FCF_n \times (1 + g_\infty)}{WACC - g_\infty}"
     TERMINAL_MULTIPLE = r"TV_n = FCF_n \times Multiple"
@@ -66,7 +66,7 @@ class StrategyFormulas:
     RIM_FINAL = r"IV = BV_0 + \sum PV(RI) + PV(TV)"
     NPV = r"PV = \sum_{t=1}^{n} \frac{FCF_t}{(1 + r)^t} + \frac{TV_n}{(1 + r)^n}"
     DCF_STANDARD = r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
-    EQUITY_BRIDGE = r"Equity = EV - Debt + Cash - Minority - Provisions"
+    EQUITY_BRIDGE = r"Equity\ Value = Enterprise\ Value - Net\ Debt - Minority\ Interests - Pension\ Liabilities"
     VALUE_PER_SHARE = r"IV = \frac{Equity}{Shares\ Outstanding}"
     MC_VOLATILITY_MATRIX = r"\sigma = [\sigma_\beta, \sigma_g, \sigma_{Y_0}]"
     PE_MULTIPLE = r"P/E = \frac{Price}{EPS}"
@@ -213,7 +213,7 @@ class SharedTexts:
 
     # Formules (LaTeX)
     FORMULA_CAPITAL_KE = r"K_e = R_f + \beta \times (R_m - R_f)"
-    FORMULA_CAPITAL_WACC = r"WACC = K_e \times \frac{E}{V} + K_d (1-t) \times \frac{D}{V}"
+    FORMULA_CAPITAL_WACC = r"WACC = K_e \times \frac{E}{D+E} + K_d(1-T) \times \frac{D}{D+E}"
 
     # ==========================================================================
     # 3. SECTION VALEUR TERMINALE (TERMINAL VALUE)

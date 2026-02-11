@@ -78,13 +78,15 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
 
     st.latex(SharedTexts.FORMULA_CAPITAL_KE if mode.is_direct_equity else SharedTexts.FORMULA_CAPITAL_WACC)
 
-    st.number_input(
-        SharedTexts.INP_PRICE_WEIGHTS,
-        value=None,
-        format="%.2f",
-        help=SharedTexts.HELP_PRICE_WEIGHTS,
-        key=f"{prefix}_price"
-    )
+    # Debt weight only for enterprise value models (FCFF), not for direct equity models (FCFE, DDM)
+    if not mode.is_direct_equity:
+        st.number_input(
+            SharedTexts.INP_PRICE_WEIGHTS,
+            value=None,
+            format="%.2f",
+            help=SharedTexts.HELP_PRICE_WEIGHTS,
+            key=f"{prefix}_price"
+        )
 
     col_a, col_b = st.columns(2)
     # Taux sans risque & Beta

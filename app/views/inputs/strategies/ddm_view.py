@@ -10,7 +10,12 @@ class DDMView(BaseStrategyView):
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- UI Pipeline Configuration ---
+    # --- UI Pipeline Configuration (Sections Standards) ---
+    SHOW_DISCOUNT_SECTION = True  # DDM uses Ke (Cost of Equity), not WACC
+    SHOW_TERMINAL_SECTION = True  # Terminal value needed  
+    SHOW_BRIDGE_SECTION = False   # Direct equity method, no bridge from EV to Equity
+
+    # --- Extensions Flags ---
     SHOW_MONTE_CARLO = True
     SHOW_SENSITIVITY = True
     SHOW_BACKTEST = True
