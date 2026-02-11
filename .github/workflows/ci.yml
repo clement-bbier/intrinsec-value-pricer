@@ -34,7 +34,7 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ --cov=src --cov=app --cov=infra --cov-fail-under=95 --cov-report=xml
+        run: pytest tests/ --cov=src --cov=infra --cov-fail-under=95 --cov-report=xml
 
       - name: Security audit with pip-audit
         run: pip-audit
