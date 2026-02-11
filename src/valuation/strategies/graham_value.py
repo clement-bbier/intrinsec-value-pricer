@@ -163,7 +163,7 @@ class GrahamNumberStrategy(IValuationRunner):
         """
         Vectorized Graham Formula Execution for Monte Carlo.
 
-        Formula: IV = (EPS * (8.5 + 2g) * 4.4) / AAA_Yield
+        Formula: IV = (EPS * (8.5 + 2*g) * 4.4) / AAA_Yield
 
         Parameters
         ----------
