@@ -13,7 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -193,3 +194,83 @@ class RIMBankingStrategy(IValuationRunner):
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        High-Performance Vectorized Execution for Monte Carlo (RIM).
+
+        Uses recursive vector operations to simulate clean surplus relations
+        across projection years for 10,000+ scenarios.
+
+        Parameters
+        ----------
+        financials : Company
+            Source for Book Value / EPS if not overridden.
+        params : Parameters
+            Valuation settings (Persistence factor, Years).
+        vectors : Dict[str, np.ndarray]
+            - 'wacc': Cost of Equity (Ke) vector.
+            - 'growth': Earnings growth vector.
+            - 'base_flow': EPS shock vector (Earnings Power).
+
+        Returns
+        -------
+        np.ndarray
+            Array of Intrinsic Values per Share.
+        """
+        # 1. Unpack Vectors
+        ke_vec = vectors['wacc'] # Cost of Equity
+        g_p1 = vectors['growth'] # Growth of EPS/Book
+
+        # 2. Establish Anchors (B0 and EPS0)
+        # Note: We use 'financials' here because params might not have the anchor set.
+        b0 = params.strategy.book_value_anchor or (financials.book_value_ps or 10.0)
+
+        # Base Flow Vector represents the shocked starting Earnings Power (EPS)
+        # Assumes vectors['base_flow'] is centered around the TTM EPS or 1.0 multiplier
+        eps_vec = vectors['base_flow']
+
+        # 3. Clean Surplus Recursion
+        # We iterate over time (T=5), calculating full vectors at each step.
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+        payout = 0.0 # Conservative assumption: Retain all earnings to grow Book
+
+        # Initialize state vectors [N_SIMS]
+        current_b = np.full_like(ke_vec, b0)
+        current_eps = eps_vec
+
+        pv_ri_sum = np.zeros_like(ke_vec)
+
+        ri = np.zeros_like(ke_vec)
+
+        for t in range(1, years + 1):
+            # A. Project Earnings: EPS_t = EPS_{t-1} * (1 + g)
+            current_eps = current_eps * (1 + g_p1)
+
+            # B. Calculate Residual Income: RI_t = EPS_t - (Ke * B_{t-1})
+            ri = current_eps - (ke_vec * current_b)
+
+            # C. Discount RI: PV = RI / (1+Ke)^t
+            discount_factor = 1.0 / ((1 + ke_vec) ** t)
+            pv_ri_sum += ri * discount_factor
+
+            # D. Update Book Value (Clean Surplus): B_t = B_{t-1} + EPS_t - Div_t
+            div = current_eps * payout
+            current_b = current_b + current_eps - div
+
+        # 4. Terminal Value (Ohlson Persistence)
+        # TV = RI_n * omega / (1 + Ke - omega)
+        omega = getattr(params.strategy, 'persistence_factor', 0.6) or 0.6
+
+        # Guardrail for denominator
+        denom = np.maximum(1 + ke_vec - omega, 0.001)
+
+        # Last RI from loop is used here
+        tv_nominal = ri * omega / denom
+        pv_tv = tv_nominal / ((1 + ke_vec) ** years)
+
+        # 5. Total Value Per Share = B0 + Sum(PV_RI) + PV_TV
+        iv_per_share = b0 + pv_ri_sum + pv_tv
+
+        return iv_per_share

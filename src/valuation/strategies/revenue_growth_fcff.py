@@ -20,7 +20,8 @@ adjustments.
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -77,16 +78,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_wacc)
 
         # --- STEP 2: Revenue Anchor Selection ---
-        # Prioritize User Input (from Strategy Params) > TTM (Snapshot)
         user_rev = params.strategy.revenue_ttm
         rev_anchor = user_rev if user_rev is not None else (financials.revenue_ttm or 0.0)
 
-        # Calculate Current Implied Margin (for the convergence start point)
-        # Note: We use TTM FCF and Revenue. Be careful with negative values.
         fcf_ttm = financials.fcf_ttm or 0.0
         current_margin = (fcf_ttm / rev_anchor) if rev_anchor > 0 else 0.0
-
-        # Target Margin (User Input required for this model usually, else default)
         target_margin = params.strategy.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         if self._glass_box:
@@ -104,8 +100,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                 }
             ))
 
-        # --- STEP 3: Projection (Revenue & Margin Model) ---
-        # Note: manual_growth_vector in params applies to REVENUE growth in this context
+        # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
             base_revenue=rev_anchor,
             current_margin=current_margin,
@@ -116,7 +111,6 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_proj)
 
         # --- STEP 4: Terminal Value ---
-        # Uses the last projected FCF
         final_flow = flows[-1] if flows else 0.0
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params)
         if self._glass_box: steps.append(step_tv)
@@ -134,15 +128,12 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
-
-        # A. Rates
         res_rates = ResolvedRates(
             cost_of_equity=step_wacc.get_variable("Ke").value if self._glass_box else 0.0,
             cost_of_debt_after_tax=step_wacc.get_variable("Kd(1-t)").value if self._glass_box else 0.0,
             wacc=wacc
         )
 
-        # B. Capital
         shares = params.common.capital.shares_outstanding or 1.0
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
@@ -151,7 +142,6 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             equity_value_total=equity_value
         )
 
-        # C. Common Results
         common_res = CommonResults(
             rates=res_rates,
             capital=res_capital,
@@ -160,7 +150,6 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             bridge_trace=steps if self._glass_box else []
         )
 
-        # D. Strategy Specific Results (FCFF Growth)
         discount_factors = calculate_discount_factors(wacc, len(flows))
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
 
@@ -171,7 +160,6 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             discounted_terminal_value=pv_tv,
             tv_weight_pct=(pv_tv / ev) if ev > 0 else 0.0,
             strategy_trace=[],
-            # Specific fields for Charting
             projected_revenues=revenues,
             projected_margins=margins,
             target_margin_reached=margins[-1] if margins else target_margin
@@ -188,3 +176,70 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        Vectorized Revenue-Growth DCF Execution for Monte Carlo.
+
+        Logic:
+        1. Project Revenue (using shocked base_flow and growth vector).
+        2. Apply Margin Curve (Linear convergence from current to target).
+        3. FCF = Revenue * Margin.
+        4. Discount.
+        """
+        # 1. Unpack Vectors
+        wacc = vectors['wacc']
+        g_p1 = vectors['growth'] # Revenue Growth
+        g_n  = vectors['terminal_growth']
+        rev_0 = vectors['base_flow'] # Shocked Revenue TTM
+
+        # 2. Resolve Margins (Static Profile applied to Dynamic Revenue)
+        # We need to construct the margin curve [Years]
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+
+        # Current Margin (Scalar)
+        # We use TTM values from financials as the anchor for margin calculation
+        # This keeps the margin profile consistent with the fundamental view
+        base_rev_static = financials.revenue_ttm or 1.0
+        fcf_ttm = financials.fcf_ttm or 0.0
+        current_margin = fcf_ttm / base_rev_static
+
+        target_margin = params.strategy.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
+
+        # Create Margin Vector [Years] via linear interpolation
+        # shape: (Years,) e.g. [0.12, 0.14, 0.16, 0.18, 0.20]
+        margin_curve = np.linspace(current_margin, target_margin, years + 1)[1:] # Skip index 0 (current)
+
+        # 3. Vectorized Revenue Projection
+        time_exponents = np.arange(1, years + 1)
+
+        # Revenue Factors [N_SIMS, YEARS]
+        growth_factors = (1 + g_p1)[:, np.newaxis] ** time_exponents
+        projected_revenue = rev_0[:, np.newaxis] * growth_factors
+
+        # 4. Derive FCF [N_SIMS, YEARS]
+        # Broadcasting: [N, Y] * [Y] -> [N, Y]
+        projected_flows = projected_revenue * margin_curve
+
+        # 5. Discounting
+        discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
+        pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
+
+        # 6. Terminal Value
+        # Uses last year FCF and Revenue Growth? No, Gordon Growth on FCF.
+        final_flow = projected_flows[:, -1]
+        denominator = np.maximum(wacc - g_n, 0.001)
+        tv_nominal = final_flow * (1 + g_n) / denominator
+        pv_tv = tv_nominal / ((1 + wacc) ** years)
+
+        # 7. Equity Bridge
+        ev = pv_explicit + pv_tv
+
+        shares = params.common.capital.shares_outstanding or 1.0
+        net_debt = (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
+
+        equity_value = ev - net_debt
+        iv_per_share = equity_value / shares
+
+        return iv_per_share

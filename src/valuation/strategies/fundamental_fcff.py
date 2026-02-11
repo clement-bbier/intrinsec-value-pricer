@@ -13,7 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -69,17 +70,10 @@ class FundamentalFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_wacc)
 
         # --- STEP 2: Normalized Anchor Selection ---
-        # Specific Logic: We prioritize the Strategy Input (User Override)
-        # If not present, we fall back to the Company Snapshot's smoothed metric (Calculated by Provider)
-        # We assume `params.strategy` is of type FCFFNormalizedParameters
-
         user_norm_fcf = params.strategy.fcf_norm
-        # Note: In a real scenario, we might want to check `financials.fcf_fundamental_smoothed`
-        # if user_norm_fcf is None. For now, we rely on the Resolver to have populated params.
-        # Fallback to TTM if absolutely nothing exists (Safety net).
         fcf_anchor = user_norm_fcf or 0.0
 
-        # Trace the Anchor Selection (Critical for this Strategy)
+        # Trace the Anchor Selection
         if self._glass_box:
             steps.append(CalculationStep(
                 step_key="FCF_NORM_ANCHOR",
@@ -99,7 +93,6 @@ class FundamentalFCFFStrategy(IValuationRunner):
             ))
 
         # --- STEP 3: FCF Projection ---
-        # Handles Expert Vector Override transparently via BaseProjectedParameters
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
         if manual_vector and len(manual_vector) > 0:
@@ -127,15 +120,12 @@ class FundamentalFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
-
-        # A. Rates Reconstruction
         res_rates = ResolvedRates(
             cost_of_equity=step_wacc.get_variable("Ke").value if self._glass_box else 0.0,
             cost_of_debt_after_tax=step_wacc.get_variable("Kd(1-t)").value if self._glass_box else 0.0,
             wacc=wacc
         )
 
-        # B. Capital Reconstruction
         shares = params.common.capital.shares_outstanding or 1.0
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
@@ -144,7 +134,6 @@ class FundamentalFCFFStrategy(IValuationRunner):
             equity_value_total=equity_value
         )
 
-        # C. Common Results
         common_res = CommonResults(
             rates=res_rates,
             capital=res_capital,
@@ -153,7 +142,6 @@ class FundamentalFCFFStrategy(IValuationRunner):
             bridge_trace=steps if self._glass_box else []
         )
 
-        # D. Strategy Specific Results (FCFF Normalized)
         discount_factors = calculate_discount_factors(wacc, len(flows))
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
 
@@ -164,7 +152,6 @@ class FundamentalFCFFStrategy(IValuationRunner):
             discounted_terminal_value=pv_tv,
             tv_weight_pct=(pv_tv / ev) if ev > 0 else 0.0,
             strategy_trace=[],
-            # Specific field for this strategy
             normalized_fcf_used=fcf_anchor
         )
 
@@ -175,7 +162,48 @@ class FundamentalFCFFStrategy(IValuationRunner):
             ),
             results=Results(
                 common=common_res,
-                strategy=strategy_res, # Polymorphic field (matches FCFFNormalizedResults)
+                strategy=strategy_res,
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        High-Performance Vectorized Execution for Monte Carlo (Fundamental DCF).
+        Identical math to Standard DCF, just using the shocked 'base_flow' which maps to Normalized FCF.
+        """
+        # 1. Unpack Vectors
+        wacc = vectors['wacc']
+        g_p1 = vectors['growth']
+        g_n  = vectors['terminal_growth']
+        fcf_0 = vectors['base_flow'] # Represents the shocked Normalized FCF
+
+        # 2. Vectorized Projection
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+        time_exponents = np.arange(1, years + 1)
+
+        # Growth factors: (1+g)^t
+        growth_factors = (1 + g_p1)[:, np.newaxis] ** time_exponents
+        projected_flows = fcf_0[:, np.newaxis] * growth_factors
+
+        # 3. Discounting
+        discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
+        pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
+
+        # 4. Terminal Value
+        final_flow = projected_flows[:, -1]
+        denominator = np.maximum(wacc - g_n, 0.001)
+        tv_nominal = final_flow * (1 + g_n) / denominator
+        pv_tv = tv_nominal / ((1 + wacc) ** years)
+
+        # 5. Equity Bridge
+        ev = pv_explicit + pv_tv
+
+        shares = params.common.capital.shares_outstanding or 1.0
+        net_debt = (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
+
+        equity_value = ev - net_debt
+        iv_per_share = equity_value / shares
+
+        return iv_per_share

@@ -14,7 +14,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -154,3 +155,53 @@ class GrahamNumberStrategy(IValuationRunner):
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        Vectorized Graham Formula Execution for Monte Carlo.
+
+        Formula: IV = (EPS * (8.5 + 2g) * 4.4) / AAA_Yield
+
+        Parameters
+        ----------
+        _financials : Company
+            Static financial data (Unused, prefix '_' for linter compliance).
+        params : Parameters
+            Static parameters (AAA yield).
+        vectors : Dict[str, np.ndarray]
+            Dictionary containing stochastic arrays:
+            - 'base_flow': EPS vector (Earnings Power).
+            - 'growth': Growth rate vector (decimal).
+
+        Returns
+        -------
+        np.ndarray
+            Array of Intrinsic Values per Share.
+        """
+        # 1. Unpack Vectors
+        eps_vec = vectors['base_flow'] # Maps to EPS in MC engine logic
+        g_vec = vectors['growth']      # Maps to growth_estimate
+
+        # Graham uses AAA Yield, not WACC/Ke.
+        # Ideally MC should shock AAA yield too, but usually it shocks Beta/MRP.
+        # We'll take the static AAA yield from params or fallback to vectors['wacc'] if you want it dynamic.
+        # Let's use the static parameter for consistency unless you explicitely shock yield.
+        aaa_yield = params.common.rates.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
+
+        # Guardrail against division by zero
+        if aaa_yield <= 0.001:
+            aaa_yield = 0.044
+
+        # 2. Formula Vectorized
+        # IV = (EPS * (8.5 + 2g) * 4.4) / Y
+        # Note: g is entered as decimal (0.05) but Graham formula expects integer (5) -> multiply by 100.
+
+        multiplier = 8.5 + 2.0 * (g_vec * 100.0)
+
+        # The 4.4 factor is the base AAA yield normalizer.
+        # Y is typically entered as percent (e.g. 4.4), so we multiply yield decimal by 100
+
+        intrinsic_values = (eps_vec * multiplier * 4.4) / (aaa_yield * 100.0)
+
+        return intrinsic_values

@@ -13,7 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -62,17 +63,14 @@ class FCFEStrategy(IValuationRunner):
         steps: List[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
-        # FCFE requires Cost of Equity, not WACC.
         ke, step_ke = CommonLibrary.resolve_discount_rate(
             financials=financials,
             params=params,
-            use_cost_of_equity_only=True # Crucial Flag
+            use_cost_of_equity_only=True
         )
         if self._glass_box: steps.append(step_ke)
 
         # --- STEP 2: Anchor Selection ---
-        # The Resolver has already populated 'fcfe_anchor' in FCFEParameters.
-        # This typically comes from: Net Income + D&A - Capex - dWCR + Net Borrowing
         fcfe_base = params.strategy.fcfe_anchor or 0.0
 
         if self._glass_box:
@@ -93,7 +91,6 @@ class FCFEStrategy(IValuationRunner):
             ))
 
         # --- STEP 3: Projection ---
-        # Checks for manual vector overrides in params
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
         if manual_vector and len(manual_vector) > 0:
@@ -105,19 +102,14 @@ class FCFEStrategy(IValuationRunner):
 
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else fcfe_base
-        # Important: TV is calculated using Ke, not WACC
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, ke, params)
         if self._glass_box: steps.append(step_tv)
 
         # --- STEP 5: Discounting ---
-        # Discount at Ke. Result is PV of Equity (Operating).
         pv_equity, step_ev = DCFLibrary.compute_discounting(flows, tv, ke)
         if self._glass_box: steps.append(step_ev)
 
-        # --- STEP 6: Total Equity Value (No Debt Substraction) ---
-        # For FCFE: Total Equity = PV(FCFE) + Non-Operating Assets (Cash)
-        # We DO NOT subtract Debt (it's already serviced in the flows).
-
+        # --- STEP 6: Total Equity Value ---
         cash = params.common.capital.cash_and_equivalents or 0.0
         total_equity_value = pv_equity + cash
 
@@ -141,28 +133,23 @@ class FCFEStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
-
-        # A. Rates
         res_rates = ResolvedRates(
             cost_of_equity=ke,
-            cost_of_debt_after_tax=0.0, # Not relevant for discounting FCFE
-            wacc=ke # Effectively acts as the discount rate here
+            cost_of_debt_after_tax=0.0,
+            wacc=ke
         )
 
-        # B. Capital (Reverse engineered for consistency in UI)
-        # We derived Equity directly. EV = Equity + Debt - Cash
         debt = params.common.capital.total_debt or 0.0
         implied_ev = total_equity_value + debt - cash
 
         shares = params.common.capital.shares_outstanding or 1.0
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
-            enterprise_value=implied_ev, # Calculated backwards for FCFE
+            enterprise_value=implied_ev,
             net_debt_resolved=debt - cash,
             equity_value_total=total_equity_value
         )
 
-        # C. Common Results
         common_res = CommonResults(
             rates=res_rates,
             capital=res_capital,
@@ -171,7 +158,6 @@ class FCFEStrategy(IValuationRunner):
             bridge_trace=steps if self._glass_box else []
         )
 
-        # D. Strategy Specific
         discount_factors = calculate_discount_factors(ke, len(flows))
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
 
@@ -182,7 +168,7 @@ class FCFEStrategy(IValuationRunner):
             discounted_terminal_value=pv_tv,
             tv_weight_pct=(pv_tv / pv_equity) if pv_equity > 0 else 0.0,
             strategy_trace=[],
-            projected_net_borrowing=[] # Not projected in simplified FCFE
+            projected_net_borrowing=[]
         )
 
         return ValuationResult(
@@ -196,3 +182,46 @@ class FCFEStrategy(IValuationRunner):
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        Vectorized FCFE Execution for Monte Carlo.
+
+        Logic: PV(FCFE, Ke) + Non-Operating Cash.
+        Note: We do NOT subtract debt here (unlike FCFF), we add Cash.
+        """
+        # 1. Unpack Vectors
+        ke_vec = vectors['wacc'] # Maps to Ke for FCFE
+        g_p1 = vectors['growth']
+        g_n  = vectors['terminal_growth']
+        fcfe_0 = vectors['base_flow']
+
+        # 2. Vectorized Projection
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+        time_exponents = np.arange(1, years + 1)
+
+        # Growth
+        growth_factors = (1 + g_p1)[:, np.newaxis] ** time_exponents
+        projected_flows = fcfe_0[:, np.newaxis] * growth_factors
+
+        # 3. Discounting (at Ke)
+        discount_factors = 1.0 / ((1 + ke_vec)[:, np.newaxis] ** time_exponents)
+        pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
+
+        # 4. Terminal Value
+        final_flow = projected_flows[:, -1]
+        denominator = np.maximum(ke_vec - g_n, 0.001)
+        tv_nominal = final_flow * (1 + g_n) / denominator
+        pv_tv = tv_nominal / ((1 + ke_vec) ** years)
+
+        # 5. Total Equity Value
+        # Equity = PV(FCFE) + Cash
+        cash = params.common.capital.cash_and_equivalents or 0.0
+        total_equity = pv_explicit + pv_tv + cash
+
+        # 6. Intrinsic Value Per Share
+        shares = params.common.capital.shares_outstanding or 1.0
+        iv_per_share = total_equity / shares
+
+        return iv_per_share

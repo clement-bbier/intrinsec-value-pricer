@@ -12,7 +12,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -55,12 +56,11 @@ class StandardFCFFStrategy(IValuationRunner):
 
     def execute(self, financials: Company, params: Parameters) -> ValuationResult:
         """
-        Executes the DCF Standard sequence.
+        Executes the DCF Standard sequence (Single Run).
         """
         steps: List[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
-        # Delegate to CommonLibrary (Single Responsibility)
         wacc, step_wacc = CommonLibrary.resolve_discount_rate(
             financials=financials,
             params=params,
@@ -69,30 +69,22 @@ class StandardFCFFStrategy(IValuationRunner):
         if self._glass_box: steps.append(step_wacc)
 
         # --- STEP 2: FCF Projection ---
-        # StrategyResolver has already prioritized User Input > Normalized > TTM
-        # We assume fcf_anchor is populated (fallback to 0.0 handled by Pydantic/Defaults)
         fcf_base = params.strategy.fcf_anchor or ModelDefaults.DEFAULT_FCF_TTM
-
-        # Expert Override Logic (Vector vs Scalar)
-        # We rely on the Model definition to carry the manual vector if present
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
         if manual_vector and len(manual_vector) > 0:
-            # EXPERT MODE: Use explicit vector via Library
             flows, step_proj = DCFLibrary.project_flows_manual(fcf_base, manual_vector)
         else:
-            # AUTO MODE: Use linear fade-down via Library
             flows, step_proj = DCFLibrary.project_flows_simple(fcf_base, params)
 
         if self._glass_box: steps.append(step_proj)
 
         # --- STEP 3: Terminal Value ---
-        # Uses the last projected flow (Year N)
         final_flow = flows[-1] if flows else fcf_base
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params)
         if self._glass_box: steps.append(step_tv)
 
-        # --- STEP 4: Discounting (Enterprise Value) ---
+        # --- STEP 4: Discounting ---
         ev, step_ev = DCFLibrary.compute_discounting(flows, tv, wacc)
         if self._glass_box: steps.append(step_ev)
 
@@ -100,17 +92,12 @@ class StandardFCFFStrategy(IValuationRunner):
         equity_value, step_bridge = CommonLibrary.compute_equity_bridge(ev, params)
         if self._glass_box: steps.append(step_bridge)
 
-        # --- STEP 6: Per Share & Synthesis ---
+        # --- STEP 6: Per Share ---
         iv_per_share, step_iv = DCFLibrary.compute_value_per_share(equity_value, params)
         if self._glass_box: steps.append(step_iv)
 
-        # --- RESULT CONSTRUCTION (The Nested Packaging) ---
-
-        # A. Resolved Rates Object (Reconstruction for Result View)
-        # We extract effective rates from the WACC calculation result or fallback to params
+        # --- RESULT CONSTRUCTION ---
         r = params.common.rates
-
-        # Defensive access to trace variables if available, else standard fallback
         trace_ke = step_wacc.get_variable("Ke")
         trace_kd = step_wacc.get_variable("Kd(1-t)")
 
@@ -123,22 +110,19 @@ class StandardFCFFStrategy(IValuationRunner):
             wacc=wacc
         )
 
-        # B. Resolved Capital Object
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         price = financials.current_price or 0.0
-        market_cap = shares * price
 
         debt = params.common.capital.total_debt or 0.0
         cash = params.common.capital.cash_and_equivalents or 0.0
 
         res_capital = ResolvedCapital(
-            market_cap=market_cap,
+            market_cap=shares * price,
             enterprise_value=ev,
             net_debt_resolved=debt - cash,
             equity_value_total=equity_value
         )
 
-        # C. Common Results
         upside = (iv_per_share - price) / price if price > 0 else 0.0
 
         common_res = CommonResults(
@@ -149,11 +133,7 @@ class StandardFCFFStrategy(IValuationRunner):
             bridge_trace=steps if self._glass_box else []
         )
 
-        # D. Strategy Specific Results (FCFF Standard)
-        # We need discount factors for the UI chart (re-calculated here as they are deterministic)
         discount_factors = calculate_discount_factors(wacc, len(flows))
-
-        # PV of TV for weighting
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
         tv_weight = pv_tv / ev if ev > 0 else 0.0
 
@@ -163,10 +143,9 @@ class StandardFCFFStrategy(IValuationRunner):
             terminal_value=tv,
             discounted_terminal_value=pv_tv,
             tv_weight_pct=tv_weight,
-            strategy_trace=[] # Main trace is in CommonResults to keep UI unified
+            strategy_trace=[]
         )
 
-        # E. Final Assembly
         return ValuationResult(
             request=ValuationRequest(
                 mode=ValuationMethodology.FCFF_STANDARD,
@@ -175,6 +154,92 @@ class StandardFCFFStrategy(IValuationRunner):
             results=Results(
                 common=common_res,
                 strategy=strategy_res,
-                extensions=ExtensionBundleResults() # Empty by default
+                extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(_financials: Company, params: Parameters,
+                           vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        High-Performance Vectorized Execution for Monte Carlo.
+
+        Instead of looping through objects, this method uses NumPy algebra to compute
+        10,000 valuations in a single CPU cycle.
+
+        Parameters
+        ----------
+        _financials : Company
+            Static financial data (Unused in FCFF Standard as params contains all resolved inputs).
+            Prefix '_' indicates intentional non-use to satisfy the interface contract.
+        params : Parameters
+            Static parameters (Tax rate, Years).
+        vectors : Dict[str, np.ndarray]
+            Dictionary containing stochastic arrays:
+            - 'wacc': Cost of capital vector.
+            - 'growth': Phase 1 growth rate vector.
+            - 'terminal_growth': Perpetual growth vector.
+            - 'base_flow': Initial FCF vector.
+
+        Returns
+        -------
+        np.ndarray
+            Array of Intrinsic Values per Share.
+        """
+        # 1. Unpack Vectors (All shape: [N_SIMS])
+        wacc = vectors['wacc']
+        g_p1 = vectors['growth']
+        g_n = vectors['terminal_growth']
+        fcf_0 = vectors['base_flow']
+
+        # 2. Vectorized Projection (Phase 1)
+        # We assume a fixed projection period (e.g. 5 years) for all sims to allow matrix operations
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+
+        # Create a time matrix [N_SIMS, YEARS] -> e.g. [1, 2, 3, 4, 5]
+        # (1 + g)^t
+        time_exponents = np.arange(1, years + 1)
+
+        # Growth factors matrix: [N_SIMS, YEARS]
+        # We use outer product or broadcasting
+        # flows[i, t] = fcf_0[i] * (1 + g_p1[i])^t
+        growth_factors = (1 + g_p1)[:, np.newaxis] ** time_exponents
+        projected_flows = fcf_0[:, np.newaxis] * growth_factors
+
+        # 3. Vectorized Discounting
+        # Discount factors: 1 / (1 + wacc)^t
+        discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
+
+        # PV of Explicit Flows: Sum(Flow * Discount) along time axis
+        pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
+
+        # 4. Vectorized Terminal Value
+        # TV = FCF_n * (1 + g_n) / (wacc - g_n)
+        final_flow = projected_flows[:, -1]
+
+        # Safety guardrail: Ensure wacc > g_n to avoid infinity/negatives
+        # We clip the denominator to a small epsilon
+        denominator = np.maximum(wacc - g_n, 0.001)
+
+        tv_nominal = final_flow * (1 + g_n) / denominator
+
+        # Discount TV back to T0: TV / (1 + wacc)^N
+        pv_tv = tv_nominal / ((1 + wacc) ** years)
+
+        # 5. Enterprise Value
+        ev = pv_explicit + pv_tv
+
+        # 6. Equity Bridge (Vectorized)
+        # Equity = EV + Cash - Debt
+        # Note: Debt/Cash are scalars here (unless we shock them, but usually we shock Ops/Rates)
+        shares = params.common.capital.shares_outstanding or 1.0
+        debt = params.common.capital.total_debt or 0.0
+        cash = params.common.capital.cash_and_equivalents or 0.0
+        net_debt = debt - cash
+
+        equity_value = ev - net_debt
+
+        # 7. Intrinsic Value Per Share
+        iv_per_share = equity_value / shares
+
+        return iv_per_share

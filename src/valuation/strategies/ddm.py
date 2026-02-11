@@ -14,7 +14,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import List
+import numpy as np
+from typing import List, Dict
 
 from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
@@ -193,3 +194,81 @@ class DividendDiscountStrategy(IValuationRunner):
                 extensions=ExtensionBundleResults()
             )
         )
+
+    @staticmethod
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+        """
+        High-Performance Vectorized Execution for Monte Carlo (DDM).
+
+        Uses NumPy algebra to compute 10,000 valuations in a single CPU cycle.
+        DDM Variant: Discounts dividends at Cost of Equity (Ke).
+
+        Parameters
+        ----------
+        _financials : Company
+            Static financial data (Unused in simple DDM Stochastic as params contains anchors).
+            Prefix '_' indicates intentional non-use to satisfy the interface contract.
+        params : Parameters
+            Static parameters (Projection years, etc.).
+        vectors : Dict[str, np.ndarray]
+            Dictionary containing stochastic arrays:
+            - 'wacc': Maps to Cost of Equity (Ke) for DDM.
+            - 'growth': Dividend growth rate vector.
+            - 'terminal_growth': Perpetual growth vector.
+            - 'base_flow': Initial Dividend Mass vector.
+
+        Returns
+        -------
+        np.ndarray
+            Array of Intrinsic Values per Share.
+        """
+        # 1. Unpack Vectors (All shape: [N_SIMS])
+        # Note: For DDM, the 'wacc' vector from MC engine contains the Cost of Equity (Ke)
+        # because resolve_discount_rate logic in MC is generic but driven by Beta shocks.
+        ke_vec = vectors['wacc']
+        g_p1 = vectors['growth']
+        g_n  = vectors['terminal_growth']
+
+        # Base Flow is Total Dividend Mass here (D0 * Shares)
+        div_0 = vectors['base_flow']
+
+        # 2. Vectorized Projection (Phase 1)
+        years = getattr(params.strategy, 'projection_years', 5) or 5
+
+        # Create a time matrix [N_SIMS, YEARS] -> e.g. [1, 2, 3, 4, 5]
+        time_exponents = np.arange(1, years + 1)
+
+        # Growth factors matrix: [N_SIMS, YEARS]
+        growth_factors = (1 + g_p1)[:, np.newaxis] ** time_exponents
+        projected_divs = div_0[:, np.newaxis] * growth_factors
+
+        # 3. Vectorized Discounting
+        # Discount factors: 1 / (1 + Ke)^t
+        discount_factors = 1.0 / ((1 + ke_vec)[:, np.newaxis] ** time_exponents)
+
+        # PV of Explicit Dividends
+        pv_explicit = np.sum(projected_divs * discount_factors, axis=1)
+
+        # 4. Vectorized Terminal Value
+        # TV = Div_n * (1 + g_n) / (Ke - g_n)
+        final_div = projected_divs[:, -1]
+
+        # Safety guardrail: Ensure Ke > g_n
+        denominator = np.maximum(ke_vec - g_n, 0.001)
+
+        tv_nominal = final_div * (1 + g_n) / denominator
+
+        # Discount TV back to T0
+        pv_tv = tv_nominal / ((1 + ke_vec) ** years)
+
+        # 5. Total Equity Value
+        # DDM calculates Equity Value directly.
+        # Typically DDM does not add Cash separately as it values the payout stream directly.
+        # We align with the main execute() logic which sums discounted flows.
+        total_equity = pv_explicit + pv_tv
+
+        # 6. Intrinsic Value Per Share
+        shares = params.common.capital.shares_outstanding or 1.0
+        iv_per_share = total_equity / shares
+
+        return iv_per_share
