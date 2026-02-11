@@ -154,7 +154,10 @@ class RIMLibrary:
             step_key="TV_OHLSON",
             label=RegistryTexts.RIM_TV_L,
             theoretical_formula=StrategyFormulas.RIM_TV,
-            actual_calculation=f"({format_smart_number(final_ri)} × {omega:.2f}) / (1 + {cost_of_equity:.1%} - {omega:.2f})",
+            actual_calculation=(
+                f"({format_smart_number(final_ri)} × {omega:.2f})"
+                f" / (1 + {cost_of_equity:.1%} - {omega:.2f})"
+            ),
             result=tv,
             interpretation=StrategyInterpretations.RIM_PERSISTENCE.format(val=omega),
             source=StrategySources.CALCULATED,
@@ -184,16 +187,32 @@ class RIMLibrary:
         total_equity = current_book_value + pv_ri + pv_tv
 
         variables = {
-            "B_0": VariableInfo(symbol="B_0", value=current_book_value, formatted_value=format_smart_number(current_book_value), source=VariableSource.SYSTEM),
-            "ΣPV_RI": VariableInfo(symbol="ΣPV_RI", value=pv_ri, formatted_value=format_smart_number(pv_ri), source=VariableSource.CALCULATED),
-            "PV_TV": VariableInfo(symbol="PV_TV", value=pv_tv, formatted_value=format_smart_number(pv_tv), source=VariableSource.CALCULATED)
+            "B_0": VariableInfo(
+                symbol="B_0", value=current_book_value,
+                formatted_value=format_smart_number(current_book_value),
+                source=VariableSource.SYSTEM,
+            ),
+            "ΣPV_RI": VariableInfo(
+                symbol="ΣPV_RI", value=pv_ri,
+                formatted_value=format_smart_number(pv_ri),
+                source=VariableSource.CALCULATED,
+            ),
+            "PV_TV": VariableInfo(
+                symbol="PV_TV", value=pv_tv,
+                formatted_value=format_smart_number(pv_tv),
+                source=VariableSource.CALCULATED,
+            )
         }
 
         step = CalculationStep(
             step_key="RIM_AGGREGATION",
             label=RegistryTexts.RIM_IV_L,
             theoretical_formula=StrategyFormulas.RIM_GLOBAL,
-            actual_calculation=f"{format_smart_number(current_book_value)} + {format_smart_number(pv_ri)} + {format_smart_number(pv_tv)}",
+            actual_calculation=(
+                f"{format_smart_number(current_book_value)}"
+                f" + {format_smart_number(pv_ri)}"
+                f" + {format_smart_number(pv_tv)}"
+            ),
             result=total_equity,
             interpretation=StrategyInterpretations.RIM_FINAL,
             source=StrategySources.CALCULATED,

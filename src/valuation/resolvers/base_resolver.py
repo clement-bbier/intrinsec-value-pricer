@@ -95,22 +95,46 @@ class Resolver:
 
         # --- Capital Structure (Pick Logic) ---
         cap.total_debt = self._pick(cap.total_debt, snap.total_debt, ModelDefaults.DEFAULT_TOTAL_DEBT)
-        cap.cash_and_equivalents = self._pick(cap.cash_and_equivalents, snap.cash_and_equivalents, ModelDefaults.DEFAULT_CASH_EQUIVALENTS)
-        cap.minority_interests = self._pick(cap.minority_interests, snap.minority_interests, ModelDefaults.DEFAULT_MINORITY_INTERESTS)
-        cap.pension_provisions = self._pick(cap.pension_provisions, snap.pension_provisions, ModelDefaults.DEFAULT_PENSION_PROVISIONS)
-        cap.shares_outstanding = self._pick(cap.shares_outstanding, snap.shares_outstanding, ModelDefaults.DEFAULT_SHARES_OUTSTANDING)
+        cap.cash_and_equivalents = self._pick(
+            cap.cash_and_equivalents, snap.cash_and_equivalents,
+            ModelDefaults.DEFAULT_CASH_EQUIVALENTS,
+        )
+        cap.minority_interests = self._pick(
+            cap.minority_interests, snap.minority_interests,
+            ModelDefaults.DEFAULT_MINORITY_INTERESTS,
+        )
+        cap.pension_provisions = self._pick(
+            cap.pension_provisions, snap.pension_provisions,
+            ModelDefaults.DEFAULT_PENSION_PROVISIONS,
+        )
+        cap.shares_outstanding = self._pick(
+            cap.shares_outstanding, snap.shares_outstanding,
+            ModelDefaults.DEFAULT_SHARES_OUTSTANDING,
+        )
 
         # Dilution is rarely in provider data, usually a System Default or User Override
-        cap.annual_dilution_rate = self._pick(cap.annual_dilution_rate, None, ModelDefaults.DEFAULT_ANNUAL_DILUTION_RATE)
+        cap.annual_dilution_rate = self._pick(
+            cap.annual_dilution_rate, None,
+            ModelDefaults.DEFAULT_ANNUAL_DILUTION_RATE,
+        )
 
         # --- Rates & Risk ---
-        rates.risk_free_rate = self._pick(rates.risk_free_rate, snap.risk_free_rate, MacroDefaults.DEFAULT_RISK_FREE_RATE)
-        rates.market_risk_premium = self._pick(rates.market_risk_premium, snap.market_risk_premium, MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM)
+        rates.risk_free_rate = self._pick(
+            rates.risk_free_rate, snap.risk_free_rate,
+            MacroDefaults.DEFAULT_RISK_FREE_RATE,
+        )
+        rates.market_risk_premium = self._pick(
+            rates.market_risk_premium, snap.market_risk_premium,
+            MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM,
+        )
         rates.beta = self._pick(rates.beta, snap.beta, ModelDefaults.DEFAULT_BETA)
         rates.tax_rate = self._pick(rates.tax_rate, snap.tax_rate, MacroDefaults.DEFAULT_TAX_RATE)
 
         # AAA Yield logic (Specific to Graham, but stored in common rates for consistency)
-        rates.corporate_aaa_yield = self._pick(rates.corporate_aaa_yield, snap.corporate_aaa_yield, MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD)
+        rates.corporate_aaa_yield = self._pick(
+            rates.corporate_aaa_yield, snap.corporate_aaa_yield,
+            MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD,
+        )
 
         # Implied Cost of Debt (Kd) calculation if not provided by User
         if rates.cost_of_debt is None:
@@ -146,14 +170,23 @@ class Resolver:
 
         # --- DDM ---
         elif isinstance(strat, DDMParameters):
-            strat.dividend_per_share = self._pick(strat.dividend_per_share, snap.dividend_share, ModelDefaults.DEFAULT_DIVIDEND_PS)
+            strat.dividend_per_share = self._pick(
+                strat.dividend_per_share, snap.dividend_share,
+                ModelDefaults.DEFAULT_DIVIDEND_PS,
+            )
             strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
 
         # --- RIM (Banks) ---
         elif isinstance(strat, RIMParameters):
-            strat.book_value_anchor = self._pick(strat.book_value_anchor, snap.book_value_ps, ModelDefaults.DEFAULT_BOOK_VALUE_PS)
+            strat.book_value_anchor = self._pick(
+                strat.book_value_anchor, snap.book_value_ps,
+                ModelDefaults.DEFAULT_BOOK_VALUE_PS,
+            )
             strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, 0.0)
-            strat.persistence_factor = self._pick(strat.persistence_factor, None, ModelDefaults.DEFAULT_PERSISTENCE_FACTOR)
+            strat.persistence_factor = self._pick(
+                strat.persistence_factor, None,
+                ModelDefaults.DEFAULT_PERSISTENCE_FACTOR,
+            )
 
         # --- FCFE ---
         elif isinstance(strat, FCFEParameters):

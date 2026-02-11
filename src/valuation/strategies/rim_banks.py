@@ -135,7 +135,8 @@ class RIMBankingStrategy(IValuationRunner):
         # RIM computes raw equity value. We still need to account for SBC dilution.
         # We reuse DCFLibrary utility for this (Per Share Logic).
         iv_per_share, step_dil = DCFLibrary.compute_value_per_share(
-            equity_value=iv_raw * (params.common.capital.shares_outstanding or 1.0), # Convert to Total for the standard func
+            # Convert to Total for the standard func
+            equity_value=iv_raw * (params.common.capital.shares_outstanding or 1.0),
             params=params
         )
         # Note: compute_value_per_share divides by shares again.

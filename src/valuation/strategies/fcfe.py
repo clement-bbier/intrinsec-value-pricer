@@ -127,7 +127,11 @@ class FCFEStrategy(IValuationRunner):
                 source=StrategySources.CALCULATED,
                 variables_map={
                     "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
-                    "Cash": VariableInfo(symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH)
+                    "Cash": VariableInfo(
+                        symbol="Cash", value=cash,
+                        source=VariableSource.SYSTEM,
+                        description=KPITexts.LABEL_CASH,
+                    )
                 }
             ))
 
@@ -158,7 +162,10 @@ class FCFEStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
-            upside_pct=((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0,
+            upside_pct=(
+                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
+                if financials.current_price else 0.0
+            ),
             bridge_trace=steps if self._glass_box else []
         )
 
