@@ -517,7 +517,7 @@ class UIRegistryTexts:
 
 class UIStrategyFormulas:
     """Formules LaTeX pour le Glass Box - UI Layer."""
-    WACC = r"WACC = K_e \times \frac{E}{V} + K_d(1-t) \times \frac{D}{V}"
+    WACC = r"WACC = K_e \times \frac{E}{D+E} + K_d(1-T) \times \frac{D}{D+E}"
     CAPM = r"K_e = R_f + \beta \times ERP"
     FCF_BASE = r"FCF = EBIT(1-t) + D\&A - \Delta WCR - Capex"
     FCFE_RECONSTRUCTION = r"FCFE = FCF - Int(1-t) + \Delta Dette"
@@ -528,7 +528,7 @@ class UIStrategyFormulas:
     TERMINAL_EXIT_MULTIPLE = r"TV = Metric_n \times Multiple"
 
     NPV = r"EV = \sum PV(FCF) + PV(TV)"
-    EQUITY_BRIDGE = r"Equity = EV - Dette_{net} - Minoritaires + Cash"
+    EQUITY_BRIDGE = r"Equity\ Value = EV - Net\ Debt - Minorities - Pensions + Non\text{-}Op\ Assets"
     FCFE_EQUITY_VALUE = r"Equity = \sum PV(FCFE) + PV(TV_{FCFE})"
     VALUE_PER_SHARE = r"Prix = \frac{Equity}{Actions}"
 
