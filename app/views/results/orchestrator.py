@@ -28,7 +28,7 @@ from app.views.results.pillars import (
     market_analysis,  # Pillar 5: Market Hub
     risk_engineering,  # Pillar 4: Risk Hub
 )
-from src.i18n import KPITexts, PillarLabels
+from src.i18n import KPITexts, PillarLabels, UIMessages
 
 # --- Data Models & i18n ---
 from src.models import ValuationResult
@@ -99,7 +99,7 @@ def render_valuation_results(result: ValuationResult) -> None:
     active_tabs = [t for t in tabs_config if t[2]]
 
     if not active_tabs:
-        st.error("No result modules available to display.")
+        st.error(UIMessages.NO_RESULT_MODULES)
         return
 
     # Create Streamlit tabs

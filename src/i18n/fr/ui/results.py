@@ -70,6 +70,16 @@ class InputLabels:
     # Données brutes
     VIEW_RAW_DATA = "Voir Compte de Résultat Historique"
     DATA_UNFORMATTED = "Formatage des données requis"
+    
+    # Raw data source labels (for inputs_summary.py)
+    RAW_DATA_SOURCE_TITLE = "Source de Données Brutes"
+    DATA_SOURCE = "Source"
+    DATA_SOURCE_VALUE = "Yahoo Finance / Saisie Manuelle"
+    LAST_UPDATE = "Dernière Mise à Jour"
+    SECTOR = "Secteur"
+    PRICE_REFERENCE = "Prix de Référence"
+    UNKNOWN = "Inconnu"
+    NO_OPERATIONAL_ASSUMPTIONS = "Aucune hypothèse opérationnelle spécifique à afficher pour ce modèle."
 
 class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
@@ -164,6 +174,10 @@ class KPITexts:
     LABEL_FOOTBALL_FIELD_EBITDA = "EV/EBITDA"
     LABEL_FOOTBALL_FIELD_PE = "P/E Ratio"
     LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marché"
+    
+    # --- Comparison Labels (for ui_kpis.py) ---
+    LABEL_YOUR_DATA = "VOTRE DONNÉE"
+    LABEL_SECTOR_AVERAGE = "MOYENNE SECTEUR"
 
 
 class BenchmarkTexts:

@@ -3,7 +3,7 @@ src/i18n/fr/ui/__init__.py
 Point d'entrée des traductions de l'interface utilisateur.
 """
 
-from .common import CommonTexts, LegalTexts
+from .common import CommonTexts, FeedbackMessages, LegalTexts, OnboardingTexts, TooltipsTexts, UIMessages
 from .expert import ExpertTexts, UISharedTexts
 from .extensions import ExtensionTexts, PeersTexts
 from .results import (
@@ -24,7 +24,11 @@ from .sidebar import SidebarTexts
 
 __all__ = [
     "CommonTexts",
+    "FeedbackMessages",
     "LegalTexts",
+    "OnboardingTexts",
+    "TooltipsTexts",
+    "UIMessages",
     "ResultsTexts",
     "KPITexts",
     "QuantTexts",

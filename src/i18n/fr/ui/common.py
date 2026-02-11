@@ -170,6 +170,16 @@ class UIMessages:
     NO_CALCULATION_STEPS = "Aucune trace de calcul disponible pour ce modèle."
     NO_DETAILED_TESTS = "Aucun test d'intégrité supplémentaire requis."
     NO_TABS_TO_DISPLAY = "Initialisation de l'orchestrateur..."
+    
+    # Main app messages
+    PAGE_TITLE = "Intrinsic Value Pricer"
+    DISMISS_ERROR = "Dismiss Error"
+    NO_RESULT_MODULES = "No result modules available to display."
+    
+    # Chart messages
+    PRICE_HISTORY_UNAVAILABLE = "Données de prix historiques indisponibles."
+    SENSITIVITY_MATRIX_ERROR = "Impossible de générer la matrice de sensibilité (Taux <= Croissance)."
+    NO_MAJOR_CALC_STEPS = "Aucune étape majeure disponible pour ce calcul."
 
     # PDF / Export
     DOWNLOAD_PDF_BTN = "Générer le Rapport d'Analyse (PDF)"
