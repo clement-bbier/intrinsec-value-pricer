@@ -125,7 +125,7 @@ class ValuationOrchestrator:
             # --- PHASE 5: STRUCTURED JSON LOGGING ---
             QuantLogger.log_json(
                 event="valuation_completed",
-                **metadata.model_dump()
+                **metadata.model_dump(mode="json")
             )
 
             return valuation_output

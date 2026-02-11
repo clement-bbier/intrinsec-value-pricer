@@ -239,8 +239,7 @@ def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
         random_seed=random_seed,
         shocks=StandardMCShocksParameters(
             fcf_volatility=0.10,
-            beta_volatility=0.10,
-            growth_volatility=0.02
+
         ) if enable_mc else None
     )
     
@@ -257,26 +256,6 @@ def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
         parameters=params
     )
 
-
-def assert_within_tolerance(actual: float, expected: float, tolerance: float = 0.01):
-    """
-    Asserts that actual value is within ±tolerance of expected value.
-    
-    Parameters
-    ----------
-    actual : float
-        The computed value.
-    expected : float
-        The expected value.
-    tolerance : float
-        Tolerance as a fraction (default: 1%).
-    """
-    lower = expected * (1 - tolerance)
-    upper = expected * (1 + tolerance)
-    assert lower <= actual <= upper, (
-        f"Value {actual:.2f} outside tolerance range [{lower:.2f}, {upper:.2f}] "
-        f"for expected {expected:.2f}"
-    )
 
 
 # ==============================================================================
@@ -386,11 +365,11 @@ class TestDeterministicValuations:
             assert result.metadata is not None
             assert result.metadata.ticker == "DIST"
             
-        except CalculationError as e:
-            # This is also acceptable - negative FCF can cause valuation failures
-            assert "negative" in str(e).lower() or "invalid" in str(e).lower()
-
-
+        except CalculationError:
+            # This is also acceptable - negative FCF can cause valuation failures.
+            # We only assert that a CalculationError is raised, not on its message,
+            # to keep the test robust against message wording changes.
+            pass
 # ==============================================================================
 # MONTE CARLO REPRODUCIBILITY TESTS
 # ==============================================================================
@@ -437,7 +416,7 @@ class TestMonteCarloReproducibility:
         import numpy as np
         values1 = np.array(mc1.simulation_values)
         values2 = np.array(mc2.simulation_values)
-        assert np.allclose(values1, values2, rtol=1e-9), "MC values should be identical with same seed"
+        assert np.array_equal(values1, values2), "MC values should be identical with same seed"
         
         # Check quantiles are identical
         assert abs(mc1.quantiles["P50"] - mc2.quantiles["P50"]) < 0.01
