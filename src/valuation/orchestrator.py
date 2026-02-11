@@ -6,9 +6,10 @@ CENTRAL VALUATION ORCHESTRATOR
 Role: The entry point for the backend calculation pipeline.
 Process:
   1. Hydrate Parameters (Ghost -> Solid).
-  2. Execute Core Strategy (IValuationRunner).
-  3. Execute Extensions (Monte Carlo, Sensitivity, etc.).
-  4. Package Final Envelope.
+  2. Run Economic Guardrails (Validation).
+  3. Execute Core Strategy (IValuationRunner).
+  4. Execute Extensions (Monte Carlo, Sensitivity, etc.).
+  5. Package Final Envelope.
 
 Architecture: Pipeline Pattern.
 Standard: SOLID, institutional-grade error handling.
@@ -18,11 +19,13 @@ from __future__ import annotations
 import logging
 import time
 import hashlib
+from typing import List
 
 from src.models import Parameters
-from src.models.valuation import ValuationRequest, ValuationResult, ValuationRunMetadata
+from src.models.valuation import ValuationRequest, ValuationResult, ValuationRunMetadata, AuditReport
 from src.models.company import CompanySnapshot
 from src.core.quant_logger import QuantLogger
+from src.core.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
 
 # Resolvers
 from src.valuation.resolvers.base_resolver import Resolver
@@ -31,6 +34,16 @@ from src.valuation.resolvers.options import ExtensionResolver
 # Registry & Interface
 from src.valuation.registry import get_strategy
 from src.core.exceptions import CalculationError, ValuationException
+
+# Guardrails
+from src.valuation.guardrails import (
+    validate_terminal_growth,
+    validate_roic_spread,
+    validate_capital_structure,
+    validate_scenario_probabilities,
+    GuardrailCheckResult,
+)
+from src.computation.financial_math import calculate_wacc
 
 # Options/Extensions Runners
 from src.valuation.options.monte_carlo import MonteCarloRunner
@@ -53,6 +66,79 @@ class ValuationOrchestrator:
         """Initializes the required resolvers for hydration."""
         self.resolver = Resolver()
         self.extension_resolver = ExtensionResolver()
+
+    def _run_guardrails(self, params: Parameters) -> tuple[List[DiagnosticEvent], bool]:
+        """
+        Executes all economic guardrails and collects results.
+
+        Parameters
+        ----------
+        params : Parameters
+            The hydrated parameters to validate.
+
+        Returns
+        -------
+        tuple[List[DiagnosticEvent], bool]
+            A tuple of (diagnostic_events, has_blocking_errors).
+            - diagnostic_events: All guardrail check results converted to DiagnosticEvent.
+            - has_blocking_errors: True if any guardrail returned an 'error' type.
+
+        Raises
+        ------
+        CalculationError
+            If any guardrail returns a blocking error.
+        """
+        financials = params.structure
+        events: List[DiagnosticEvent] = []
+        has_errors = False
+
+        # Calculate WACC for guardrails that need it
+        # We do a preliminary WACC calculation here for validation
+        # (The actual WACC will be recalculated by the strategy)
+        try:
+            wacc_breakdown = calculate_wacc(financials, params)
+            wacc = wacc_breakdown.wacc
+        except Exception as e:
+            logger.warning(f"Could not calculate WACC for guardrails: {e}. Using default.")
+            wacc = 0.10  # Fallback default
+
+        # Run each guardrail
+        guardrail_checks: List[GuardrailCheckResult] = [
+            validate_terminal_growth(params, wacc),
+            validate_roic_spread(financials, params, wacc),
+            validate_capital_structure(financials, params),
+            validate_scenario_probabilities(params),
+        ]
+
+        # Convert guardrail results to DiagnosticEvents
+        for check in guardrail_checks:
+            # Map guardrail severity to DiagnosticEvent severity
+            if check.type == "error":
+                severity = SeverityLevel.ERROR
+                has_errors = True
+            elif check.type == "warning":
+                severity = SeverityLevel.WARNING
+            else:  # info
+                severity = SeverityLevel.INFO
+
+            event = DiagnosticEvent(
+                code=check.code,
+                severity=severity,
+                domain=DiagnosticDomain.MODEL,
+                message=check.message,
+                technical_detail=str(check.extra) if check.extra else None,
+            )
+            events.append(event)
+
+            # Log the event
+            if check.type == "error":
+                logger.error(f"[Guardrail] {check.code}: {check.message}")
+            elif check.type == "warning":
+                logger.warning(f"[Guardrail] {check.code}: {check.message}")
+            else:
+                logger.info(f"[Guardrail] {check.code}: {check.message}")
+
+        return events, has_errors
 
     def run(self, request: ValuationRequest, snapshot: CompanySnapshot) -> ValuationResult:
         """
@@ -84,6 +170,21 @@ class ValuationOrchestrator:
         # Compute input hash for provenance
         input_hash = hashlib.sha256(params.model_dump_json().encode()).hexdigest()
 
+        # --- PHASE 1.5: ECONOMIC GUARDRAILS ---
+        # Validate economic assumptions before executing expensive calculations
+        logger.info(f"[Orchestrator] Running economic guardrails for {ticker}")
+        guardrail_events, has_blocking_errors = self._run_guardrails(params)
+
+        # If there are blocking errors, raise exception
+        if has_blocking_errors:
+            error_messages = [
+                event.message for event in guardrail_events
+                if event.severity == SeverityLevel.ERROR
+            ]
+            raise CalculationError(
+                f"Valuation blocked by economic guardrails: {'; '.join(error_messages)}"
+            )
+
         # --- PHASE 2: CORE STRATEGY EXECUTION ---
         # Retrieve the strategy class from the registry via the selected mode.
         strategy_cls = get_strategy(request.mode) #
@@ -103,6 +204,20 @@ class ValuationOrchestrator:
 
             # Post-calculation metadata (Upside/Downside).
             valuation_output.compute_upside() #
+
+            # --- PHASE 3.5: ATTACH GUARDRAIL RESULTS TO AUDIT ---
+            # Add guardrail events to the audit report
+            if valuation_output.audit_report is None:
+                valuation_output.audit_report = AuditReport()
+
+            # Add guardrail events to audit report
+            valuation_output.audit_report.events.extend(guardrail_events)
+
+            # Update critical warnings count
+            valuation_output.audit_report.critical_warnings += sum(
+                1 for event in guardrail_events
+                if event.severity == SeverityLevel.WARNING
+            )
 
             execution_time = int((time.time() - start_time) * 1000)
             logger.info(f"[Orchestrator] Execution successful for {ticker} in {execution_time}ms")

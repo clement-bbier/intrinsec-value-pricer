@@ -16,11 +16,13 @@ from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
 from src.models.results.options import MCResults
 from src.valuation.strategies.interface import IValuationRunner
+from src.computation.financial_math import calculate_cost_of_equity_capm
 
 from src.config.constants import MonteCarloDefaults, ModelDefaults, MacroDefaults
 from src.core.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
+
 
 class MonteCarloRunner:
     """Orchestrates the stochastic simulation lifecycle."""
@@ -36,20 +38,36 @@ class MonteCarloRunner:
         num_simulations = mc_cfg.iterations or MonteCarloDefaults.DEFAULT_SIMULATIONS
         seed = mc_cfg.random_seed if mc_cfg.random_seed is not None else 42
 
-        # 1. Establish Baselines
+        # 1. Establish Baselines & Economic Guardrails
+        # --------------------------------------------
         r = params.common.rates
 
         # Fallback logic for Risk Free / MRP if missing
         rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
         mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
 
-        # Handle Beta (Input Parameter > Financials Data > Default)
-        # Note: financials might be a CompanySnapshot or Company object, both usually represent beta.
+        # Handle Beta
         fin_beta = getattr(financials, 'beta', None)
         beta_base = r.beta if r.beta is not None else (fin_beta or ModelDefaults.DEFAULT_BETA)
 
-        # --- CORRECTION CRITIQUE ICI ---
-        # Calcul dynamique des poids (Weights) car ils n'existent pas dans params.common.rates
+        # --- MERGE: Robust WACC Calculation (From Remote Agent) ---
+        # We calculate a robust base_wacc to use as a clamping reference for terminal growth.
+        try:
+            if r.wacc:
+                base_wacc = r.wacc
+            elif r.cost_of_equity:
+                base_wacc = r.cost_of_equity
+            else:
+                base_wacc = calculate_cost_of_equity_capm(rf, beta_base, mrp)
+
+            if base_wacc <= 0:
+                base_wacc = ModelDefaults.DEFAULT_WACC
+        except (ArithmeticError, TypeError, ValueError) as e:
+            logger.warning(f"Failed to calculate base WACC for MC clamping, using default: {e}")
+            base_wacc = ModelDefaults.DEFAULT_WACC
+
+        # --- FIX: Dynamic Calculation of Weights & Cost of Debt (Local Fix) ---
+        # Essential to avoid AttributeError on 'weight_equity' which doesn't exist in params.
         cap = params.common.capital
         shares = cap.shares_outstanding or 0.0
         price = params.structure.current_price or 0.0
@@ -62,17 +80,14 @@ class MonteCarloRunner:
             weight_e = equity_val / total_val
             weight_d = debt_val / total_val
         else:
-            weight_e = 0.80 # Fallback standard
+            weight_e = 0.80  # Fallback
             weight_d = 0.20
 
-        # Calcul dynamique du Kd Post-Tax (car params ne contient que le Pre-Tax)
+        # Calculate Kd Post-Tax dynamically
         kd_pre_tax = r.cost_of_debt if r.cost_of_debt is not None else 0.05
         tax_rate = r.tax_rate if r.tax_rate is not None else 0.25
         kd_post_tax = kd_pre_tax * (1 - tax_rate)
-        # -------------------------------
-
-        # Base WACC for clamping (used in vector generation)
-        base_wacc = r.wacc if r.wacc else 0.09 # Simplified fallback
+        # -----------------------------------------------------------
 
         # 2. Generate Stochastic Vectors (NumPy)
         # --------------------------------------
@@ -84,31 +99,29 @@ class MonteCarloRunner:
 
         # 3. Vectorized WACC Calculation
         # ------------------------------
-        # Since Beta is shocked, Ke changes, thus WACC changes for each sim.
         # Ke_vec = Rf + Beta_vec * MRP
         ke_vec = rf + vectors['beta'] * mrp
 
         # WACC_vec = Ke_vec * We + Kd * Wd
         wacc_vec = ke_vec * weight_e + kd_post_tax * weight_d
 
-        # Add WACC to vectors bundle
+        # Add WACC to vectors bundle for strategy use
         vectors['wacc'] = wacc_vec
 
         # 4. Fast-Path Execution
         # ----------------------
-        # We check if the strategy supports vectorized execution
         if hasattr(self.strategy, 'execute_stochastic'):
             sim_values_array = self.strategy.execute_stochastic(financials, params, vectors)
         else:
             # Fallback for strategies not yet optimized (Legacy Loop)
-            logger.warning(f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop.")
+            logger.warning(
+                f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop.")
             sim_values_array = self._run_legacy_loop(financials, params, vectors, num_simulations)
 
         # 5. Filtering & Result Packaging
         # -------------------------------
-        # Filter out NaN/Inf/Negative values that break statistics
         valid_values = sim_values_array[np.isfinite(sim_values_array)]
-        valid_values = valid_values[(valid_values > 0) & (valid_values < 1_000_000)] # Sanity bounds
+        valid_values = valid_values[(valid_values > 0) & (valid_values < 1_000_000)]  # Sanity bounds
 
         if len(valid_values) == 0:
             return None
@@ -125,7 +138,8 @@ class MonteCarloRunner:
         )
 
     @staticmethod
-    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> Dict[str, np.ndarray]:
+    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> Dict[
+        str, np.ndarray]:
         """Generates all random vectors in one go using NumPy Generator."""
         rng = np.random.default_rng(seed)
         shocks = params.extensions.monte_carlo.shocks
@@ -139,7 +153,6 @@ class MonteCarloRunner:
         betas = rng.normal(base_beta, base_beta * sig_beta, n_sims)
 
         # 2. Growth Vector (Normal)
-        # Extract base growth from strategy
         st = params.strategy
         base_g = getattr(st, 'growth_rate_p1', 0.05) or 0.05
         growths = rng.normal(base_g, sig_growth, n_sims)
@@ -154,10 +167,7 @@ class MonteCarloRunner:
         term_growths = np.minimum(term_growths, base_wacc - 0.01)
 
         # 4. Base Flow Shock Vector (Normal centered on 1.0)
-        # Multiplier to apply to the anchor flow
         base_flow_mults = rng.normal(1.0, sig_flow, n_sims)
-
-        # Resolve absolute base flow value
         anchor_val = getattr(st, 'fcf_anchor', None) or getattr(st, 'revenue_ttm', 0.0) or 100.0
         base_flows = anchor_val * base_flow_mults
 
@@ -171,14 +181,11 @@ class MonteCarloRunner:
     def _run_legacy_loop(self, financials, params, vectors, num_sims):
         """Fallback method for non-vectorized strategies."""
         results = []
-        # Suppress logging for performance
         self.strategy.glass_box_enabled = False
 
-        # Unpack for speed
         betas = vectors['beta']
         growths = vectors['growth']
 
-        # Simple loop (Slow)
         for i in range(num_sims):
             try:
                 s_par = params.model_copy(deep=True)

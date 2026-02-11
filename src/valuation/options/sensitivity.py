@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from typing import List, Any
 
-from src.core.exceptions import CalculationError, ModelDivergenceError
+from src.core.exceptions import CalculationError
 from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import SensitivityResults
 from src.valuation.strategies.interface import IValuationRunner
@@ -56,7 +56,9 @@ class SensitivityRunner:
                     self.strategy.glass_box_enabled = False
                     res = self.strategy.execute(financials, work_params)
                     row_values.append(res.results.common.intrinsic_value_per_share)
-                except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
+                except (CalculationError, ValueError, ZeroDivisionError):
+                    # Note: Sensitivity analysis explores edge cases (g > WACC).
+                    # Guardrails validate the base case, but sensitivity needs to handle all scenarios.
                     row_values.append(0.0)
 
             matrix_values.append(row_values)
