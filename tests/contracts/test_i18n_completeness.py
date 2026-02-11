@@ -55,8 +55,9 @@ class I18nUsageScanner(ast.NodeVisitor):
             class_name = node.value.id
             if class_name in self.imports and class_name.endswith(('Texts', 'Labels', 'Messages')):
                 attr_name = node.attr
-                # Only track uppercase attributes (constants, not methods)
-                if attr_name.isupper() or attr_name.startswith('LABEL_') or attr_name.startswith('SUB_'):
+                # Track constants: uppercase or special prefixes (LABEL_, SUB_, HELP_, etc.)
+                # These naming patterns are exceptions to the pure UPPERCASE convention
+                if attr_name.isupper() or attr_name.startswith(('LABEL_', 'SUB_', 'HELP_', 'LBL_')):
                     self.usages.append((class_name, attr_name, node.lineno))
         self.generic_visit(node)
 
@@ -280,8 +281,6 @@ class TestI18nCompleteness:
                 UIRegistryTexts,
                 UISharedTexts,
             )
-            # All imports successful
-            assert True
         except ImportError as e:
             pytest.fail(f"Failed to import i18n modules: {e}")
     
@@ -407,7 +406,17 @@ class TestI18nNamingConventions:
             )
     
     def test_i18n_constants_are_uppercase(self):
-        """i18n constant attributes should be UPPERCASE with underscores."""
+        """
+        i18n constant attributes should be UPPERCASE with underscores.
+        
+        Exceptions to pure UPPERCASE convention:
+        - LABEL_ prefix: UI labels (e.g., LABEL_YOUR_DATA)
+        - SUB_ prefix: Substitution templates (e.g., SUB_DILUTION)
+        - HELP_ prefix: Help/tooltip texts (e.g., HELP_WACC)
+        - LBL_ prefix: Short labels (e.g., LBL_BULL)
+        
+        These prefixed constants are allowed to maintain semantic clarity.
+        """
         from src.i18n import CommonTexts, KPITexts, SidebarTexts
         
         for text_class in [CommonTexts, KPITexts, SidebarTexts]:
@@ -417,8 +426,8 @@ class TestI18nNamingConventions:
             ]
             
             for attr in attrs:
-                # Allow some exceptions for special patterns
-                if attr.startswith('SUB_') or attr.startswith('LABEL_') or attr.startswith('HELP_'):
+                # Allow exceptions for special patterns
+                if attr.startswith(('SUB_', 'LABEL_', 'HELP_', 'LBL_')):
                     continue
                 
                 # Most constants should be uppercase

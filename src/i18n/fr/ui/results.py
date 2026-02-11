@@ -72,14 +72,14 @@ class InputLabels:
     DATA_UNFORMATTED = "Formatage des données requis"
     
     # Raw data source labels (for inputs_summary.py)
-    RAW_DATA_SOURCE_TITLE = "Raw Data Source"
+    RAW_DATA_SOURCE_TITLE = "Source de Données Brutes"
     DATA_SOURCE = "Source"
-    DATA_SOURCE_VALUE = "Yahoo Finance / User Override"
-    LAST_UPDATE = "Last Update"
-    SECTOR = "Sector"
-    PRICE_REFERENCE = "Price Reference"
-    UNKNOWN = "Unknown"
-    NO_OPERATIONAL_ASSUMPTIONS = "No specific operational assumptions to display for this model."
+    DATA_SOURCE_VALUE = "Yahoo Finance / Saisie Manuelle"
+    LAST_UPDATE = "Dernière Mise à Jour"
+    SECTOR = "Secteur"
+    PRICE_REFERENCE = "Prix de Référence"
+    UNKNOWN = "Inconnu"
+    NO_OPERATIONAL_ASSUMPTIONS = "Aucune hypothèse opérationnelle spécifique à afficher pour ce modèle."
 
 class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
