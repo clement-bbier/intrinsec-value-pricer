@@ -356,3 +356,25 @@ Voir `CHANGELOG.md` et `README.md` pour les références académiques complètes
 
 **Document maintenu par @clement-bbier**  
 **Dernière mise à jour : 2026-02-11**
+
+---
+
+## Known Technical Debt
+
+### Streamlit Dependency in Infrastructure Layer
+
+**Issue**: `infra/data_providers/yahoo_financial_provider.py` imports Streamlit for caching (`@st.cache_data`).
+
+**Impact**: Violates the clean architecture principle where infrastructure should be framework-agnostic.
+
+**Recommendation**: Move caching logic to the app layer:
+```python
+# In app/controllers/ or app/adapters/
+@st.cache_data(ttl=3600)
+def get_cached_company_data(ticker: str, provider: FinancialDataProvider):
+    return provider.get_company_snapshot(ticker)
+```
+
+**Status**: Documented for future refactoring. Does not impact functionality but reduces reusability of infra/ modules in non-Streamlit contexts.
+
+---
