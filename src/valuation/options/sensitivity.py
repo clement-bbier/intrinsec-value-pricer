@@ -1,17 +1,17 @@
 from __future__ import annotations
-import logging
-import numpy as np
-from typing import List, Any
 
-from src.core.exceptions import CalculationError
-from src.models.parameters.base_parameter import Parameters
-from src.models.results.options import SensitivityResults
-from src.valuation.strategies.interface import IValuationRunner
-from src.models.parameters.strategies import ( GrahamParameters
-)
+import logging
+from typing import Any
+
+import numpy as np
 
 # Imports centralisés
 from src.config.constants import ModelDefaults
+from src.core.exceptions import CalculationError
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import GrahamParameters
+from src.models.results.options import SensitivityResults
+from src.valuation.strategies.interface import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +42,12 @@ class SensitivityRunner:
             cfg.steps
         ).tolist()
 
-        matrix_values: List[List[float]] = []
+        matrix_values: list[list[float]] = []
         work_params = base_params.model_copy(deep=True)
 
         # 2. Execution Loop
         for g_val in reversed(growth_steps):
-            row_values: List[float] = []
+            row_values: list[float] = []
             self._apply_growth(work_params, g_val)
 
             for w_val in wacc_steps:
@@ -104,7 +104,8 @@ class SensitivityRunner:
             params.strategy.growth_estimate = value
 
     @staticmethod
-    def _compute_volatility_score(matrix: List[List[float]]) -> float:
+    def _compute_volatility_score(matrix: list[list[float]]) -> float:
         flat = [v for row in matrix for v in row if v > 0]
-        if not flat: return 0.0
+        if not flat:
+            return 0.0
         return (max(flat) - min(flat)) / (sum(flat) / len(flat))

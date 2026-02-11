@@ -7,25 +7,20 @@ Architecture: Stateless View Components.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import List, Optional, Callable, Dict, Any
+from collections.abc import Callable
+from typing import Any
 
 import altair as alt
 import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.graph_objects as go
+import streamlit as st
 
+from src.i18n import BacktestTexts, BenchmarkTexts, ChartTexts, KPITexts, QuantTexts, SOTPTexts
 from src.models import ValuationResult
 from src.models.results.options import BacktestResults
-from src.i18n import (
-    KPITexts,
-    QuantTexts,
-    SOTPTexts,
-    ChartTexts,
-    BacktestTexts,
-    BenchmarkTexts
-)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 @st.fragment
-def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> None:
+def display_price_chart(ticker: str, price_history: pd.DataFrame | None) -> None:
     """Streamlined price history rendering."""
     if price_history is None or price_history.empty:
         st.info("Données de prix historiques indisponibles.")
@@ -81,7 +76,7 @@ def display_price_chart(ticker: str, price_history: Optional[pd.DataFrame]) -> N
 # ============================================================================
 
 @st.fragment
-def display_simulation_chart(simulation_results: List[float], currency: str) -> None:
+def display_simulation_chart(simulation_results: list[float], currency: str) -> None:
     """Stochastic distribution visualization."""
     if not simulation_results:
         st.warning(QuantTexts.MC_FAILED)
@@ -105,8 +100,10 @@ def display_simulation_chart(simulation_results: List[float], currency: str) -> 
 
     # Stats Summary HTML block
     st.markdown(f"""
-    <div style="font-size: 0.85rem; color: #64748b; padding: 10px; border-left: 3px solid #1e293b; background: #f8fafc; border-radius: 4px; margin-top: 10px;">
-        {len(values):,} {QuantTexts.MC_TITLE} | 
+    <div style="font-size: 0.85rem; color: #64748b; padding: 10px;
+     border-left: 3px solid #1e293b; background: #f8fafc;
+     border-radius: 4px; margin-top: 10px;">
+        {len(values):,} {QuantTexts.MC_TITLE} |
         {QuantTexts.MC_MEDIAN} : <b>{p50:,.2f} {currency}</b> |
         {QuantTexts.CONFIDENCE_INTERVAL} 80% : {p10:,.2f} — {p90:,.2f}
     </div>
@@ -336,7 +333,7 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
 
 
 @st.fragment
-def display_backtest_convergence_chart(backtest_report: Optional[BacktestResults], currency: str) -> None:
+def display_backtest_convergence_chart(backtest_report: BacktestResults | None, currency: str) -> None:
     """Historical convergence chart."""
     if not backtest_report or not backtest_report.points:
         st.info(BacktestTexts.NO_BACKTEST_FOUND)
@@ -376,7 +373,7 @@ def display_backtest_convergence_chart(backtest_report: Optional[BacktestResults
 def display_sector_comparison_chart(
         company_name: str,
         sector_name: str,
-        metrics: Dict[str, Dict[str, float]],
+        metrics: dict[str, dict[str, float]],
         suffix: str = "x"
 ) -> None:
     """
@@ -442,7 +439,7 @@ def display_sector_comparison_chart(
 
 @st.fragment
 def display_scenario_comparison_chart(
-    scenarios_data: List[Dict[str, Any]],
+    scenarios_data: list[dict[str, Any]],
     market_price: float,
     currency: str
 ) -> None:

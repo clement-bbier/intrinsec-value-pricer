@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from typing import Any, Callable, List, Optional, Tuple
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from typing import Any
 
 import pandas as pd
 
@@ -80,7 +82,7 @@ def safe_api_call(
 # 3. ATOMIC PARSING (Technical Utilities)
 # ==============================================================================
 
-def extract_most_recent_value(df: pd.DataFrame, keys: List[str]) -> Optional[float]:
+def extract_most_recent_value(df: pd.DataFrame, keys: list[str]) -> float | None:
     """
     Technically extracts the latest non-null value for a set of keys.
 
@@ -119,7 +121,7 @@ def extract_most_recent_value(df: pd.DataFrame, keys: List[str]) -> Optional[flo
                         continue
     return None
 
-def normalize_currency_and_price(info: dict) -> Tuple[str, float]:
+def normalize_currency_and_price(info: dict) -> tuple[str, float]:
     """
     Handles technical currency normalization (e.g., GBp to GBP).
     """

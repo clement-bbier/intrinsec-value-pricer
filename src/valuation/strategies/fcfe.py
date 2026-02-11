@@ -14,28 +14,27 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict
 
-from src.models.parameters.base_parameter import Parameters
+from src.computation.financial_math import calculate_discount_factors
+
+# Config & i18n
+from src.i18n import KPITexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
-from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import ValuationMethodology, VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
+from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import FCFEResults
 
 # Models Results
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import FCFEResults
-from src.models.results.options import ExtensionBundleResults
+from src.models.valuation import ValuationRequest, ValuationResult
 
 # Libraries
 from src.valuation.library.common import CommonLibrary
 from src.valuation.library.dcf import DCFLibrary
 from src.valuation.strategies.interface import IValuationRunner
-from src.computation.financial_math import calculate_discount_factors
-
-# Config & i18n
-from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations, KPITexts
 
 
 class FCFEStrategy(IValuationRunner):
@@ -60,7 +59,7 @@ class FCFEStrategy(IValuationRunner):
         Executes FCFE valuation sequence.
         Note: Discounts at Ke, not WACC.
         """
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         ke, step_ke = CommonLibrary.resolve_discount_rate(
@@ -68,7 +67,8 @@ class FCFEStrategy(IValuationRunner):
             params=params,
             use_cost_of_equity_only=True
         )
-        if self._glass_box: steps.append(step_ke)
+        if self._glass_box:
+            steps.append(step_ke)
 
         # --- STEP 2: Anchor Selection ---
         fcfe_base = params.strategy.fcfe_anchor or 0.0
@@ -98,16 +98,19 @@ class FCFEStrategy(IValuationRunner):
         else:
             flows, step_proj = DCFLibrary.project_flows_simple(fcfe_base, params)
 
-        if self._glass_box: steps.append(step_proj)
+        if self._glass_box:
+            steps.append(step_proj)
 
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else fcfe_base
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, ke, params)
-        if self._glass_box: steps.append(step_tv)
+        if self._glass_box:
+            steps.append(step_tv)
 
         # --- STEP 5: Discounting ---
         pv_equity, step_ev = DCFLibrary.compute_discounting(flows, tv, ke)
-        if self._glass_box: steps.append(step_ev)
+        if self._glass_box:
+            steps.append(step_ev)
 
         # --- STEP 6: Total Equity Value ---
         cash = params.common.capital.cash_and_equivalents or 0.0
@@ -124,13 +127,18 @@ class FCFEStrategy(IValuationRunner):
                 source=StrategySources.CALCULATED,
                 variables_map={
                     "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
-                    "Cash": VariableInfo(symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH)
+                    "Cash": VariableInfo(
+                        symbol="Cash", value=cash,
+                        source=VariableSource.SYSTEM,
+                        description=KPITexts.LABEL_CASH,
+                    )
                 }
             ))
 
         # --- STEP 7: Per Share ---
         iv_per_share, step_iv = DCFLibrary.compute_value_per_share(total_equity_value, params)
-        if self._glass_box: steps.append(step_iv)
+        if self._glass_box:
+            steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
         res_rates = ResolvedRates(
@@ -154,7 +162,10 @@ class FCFEStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
-            upside_pct=((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0,
+            upside_pct=(
+                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
+                if financials.current_price else 0.0
+            ),
             bridge_trace=steps if self._glass_box else []
         )
 
@@ -184,7 +195,7 @@ class FCFEStrategy(IValuationRunner):
         )
 
     @staticmethod
-    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         Vectorized FCFE Execution for Monte Carlo.
 

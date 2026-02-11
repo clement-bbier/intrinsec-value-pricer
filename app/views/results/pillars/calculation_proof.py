@@ -8,9 +8,10 @@ decomposing the final result into its mathematical constituents.
 """
 
 import streamlit as st
-from src.models import ValuationResult
-from src.i18n import KPITexts, PillarLabels, ResultsTexts
+
 from app.views.components.step_renderer import render_calculation_step
+from src.i18n import KPITexts, PillarLabels, ResultsTexts
+from src.models import ValuationResult
 
 # Constants for filtering internal/technical steps that shouldn't appear in the audit
 EXCLUDED_STEP_PREFIXES = ("_meta", "internal_", "debug_")

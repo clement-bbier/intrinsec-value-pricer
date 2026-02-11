@@ -12,19 +12,20 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import List, Optional
+
 import pandas as pd
 
-from src.models.company import CompanySnapshot
-from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from infra.data_providers.extraction_utils import (
+    CAPEX_KEYS,
+    DEBT_KEYS,
+    OCF_KEYS,
     extract_most_recent_value,
     normalize_currency_and_price,
-    OCF_KEYS,
-    CAPEX_KEYS,
-    DEBT_KEYS
 )
+from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
+from src.models.company import CompanySnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +73,18 @@ class YahooSnapshotMapper:
         snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"]) # For Cost of Debt
 
         # TTM Reconstruction (Pillar 3)
-        snapshot.revenue_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"]) or info.get("totalRevenue")
-        snapshot.ebit_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"]) or info.get("operatingCashflow")
-        snapshot.net_income_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"]) or info.get("netIncomeToCommon")
+        snapshot.revenue_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"])
+            or info.get("totalRevenue")
+        )
+        snapshot.ebit_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"])
+            or info.get("operatingCashflow")
+        )
+        snapshot.net_income_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"])
+            or info.get("netIncomeToCommon")
+        )
 
         ocf = self._sum_last_4_quarters(raw.quarterly_cash_flow, OCF_KEYS)
         capex = self._sum_last_4_quarters(raw.quarterly_cash_flow, CAPEX_KEYS)
@@ -92,7 +102,7 @@ class YahooSnapshotMapper:
     # =========================================================================
 
     @staticmethod
-    def _sum_last_4_quarters(df: Optional[pd.DataFrame], keys: List[str]) -> Optional[float]:
+    def _sum_last_4_quarters(df: pd.DataFrame | None, keys: list[str]) -> float | None:
         """
         Aggregates the last 4 quarters for a given metric to build TTM values.
 

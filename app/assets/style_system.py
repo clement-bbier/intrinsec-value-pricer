@@ -5,6 +5,7 @@ Rôle : Centraliser le CSS et les composants visuels de structure (Action 1.1).
 """
 
 import streamlit as st
+
 from src.i18n import CommonTexts, LegalTexts
 
 # ==============================================================================
@@ -28,9 +29,9 @@ section[data-testid="stSidebar"] {
 }
 
 /* Contraste des textes sidebar (Blanc Slate) */
-section[data-testid="stSidebar"] h2, 
-section[data-testid="stSidebar"] h3, 
-section[data-testid="stSidebar"] label p, 
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] label p,
 section[data-testid="stSidebar"] .stMarkdown p {
     color: #f1f5f9 !important;
 }
@@ -47,7 +48,7 @@ button[data-testid="collapsedControl"] {
     color: #ef4444 !important;
 }
 
-section[data-testid="stSidebar"] .stSelectbox, 
+section[data-testid="stSidebar"] .stSelectbox,
 section[data-testid="stSidebar"] .stTextInput {
     background-color: transparent !important;
 }

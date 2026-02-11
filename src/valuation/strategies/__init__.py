@@ -12,21 +12,22 @@ Usage:
 
 from __future__ import annotations
 
-# The Contract (Interface)
-from .interface import IValuationRunner
-
-# DCF Strategies (Firm-Level)
-from .standard_fcff import StandardFCFFStrategy
-from .fundamental_fcff import FundamentalFCFFStrategy
-from .revenue_growth_fcff import RevenueGrowthFCFFStrategy
+from .ddm import DividendDiscountStrategy
 
 # DCF Strategies (Equity-Level)
 from .fcfe import FCFEStrategy
-from .ddm import DividendDiscountStrategy
+from .fundamental_fcff import FundamentalFCFFStrategy
+from .graham_value import GrahamNumberStrategy
+
+# The Contract (Interface)
+from .interface import IValuationRunner
+from .revenue_growth_fcff import RevenueGrowthFCFFStrategy
 
 # Other Models (RIM, Graham)
 from .rim_banks import RIMBankingStrategy
-from .graham_value import GrahamNumberStrategy
+
+# DCF Strategies (Firm-Level)
+from .standard_fcff import StandardFCFFStrategy
 
 # Public API
 __all__ = [

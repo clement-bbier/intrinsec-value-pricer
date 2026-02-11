@@ -8,18 +8,18 @@ Architecture: Fast-Path NumPy implementation (No loops).
 """
 
 from __future__ import annotations
-import logging
-import numpy as np
-from typing import Optional, Dict
 
-from src.models.parameters.base_parameter import Parameters
+import logging
+
+import numpy as np
+
+from src.computation.financial_math import calculate_cost_of_equity_capm
+from src.config.constants import MacroDefaults, ModelDefaults, MonteCarloDefaults
+from src.core.exceptions import CalculationError
 from src.models.company import Company
+from src.models.parameters.base_parameter import Parameters
 from src.models.results.options import MCResults
 from src.valuation.strategies.interface import IValuationRunner
-from src.computation.financial_math import calculate_cost_of_equity_capm
-
-from src.config.constants import MonteCarloDefaults, ModelDefaults, MacroDefaults
-from src.core.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class MonteCarloRunner:
     def __init__(self, strategy: IValuationRunner):
         self.strategy = strategy
 
-    def execute(self, params: Parameters, financials: Company) -> Optional[MCResults]:
+    def execute(self, params: Parameters, financials: Company) -> MCResults | None:
         mc_cfg = params.extensions.monte_carlo
         if not mc_cfg or not mc_cfg.enabled:
             return None
@@ -138,7 +138,7 @@ class MonteCarloRunner:
         )
 
     @staticmethod
-    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> Dict[
+    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> dict[
         str, np.ndarray]:
         """Generates all random vectors in one go using NumPy Generator."""
         rng = np.random.default_rng(seed)

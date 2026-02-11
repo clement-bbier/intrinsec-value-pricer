@@ -15,12 +15,13 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-import logging
 import functools
 import json
+import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable, TypeVar, Union, Optional
 from enum import Enum
+from typing import Any, TypeVar
 
 # Type variable for preserving function signatures in decorators
 F = TypeVar('F', bound=Callable[..., Any])
@@ -126,9 +127,9 @@ class QuantLogger:
         ticker: str,
         mode: str,
         iv: float,
-        audit_score: Optional[float] = None,
-        upside: Optional[float] = None,
-        duration_ms: Optional[int] = None,
+        audit_score: float | None = None,
+        upside: float | None = None,
+        duration_ms: int | None = None,
         **extra: Any
     ) -> None:
         """Logs a successful valuation completion."""
@@ -170,7 +171,7 @@ class QuantLogger:
     def log_error(
         cls,
         ticker: str,
-        error: Union[str, Exception],
+        error: str | Exception,
         domain: LogDomain = LogDomain.ENGINE,
         **context: Any
     ) -> None:

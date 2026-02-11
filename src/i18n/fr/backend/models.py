@@ -4,6 +4,7 @@ Backend constants for Data Models and Validation logic.
 """
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class ModelValidationTexts:
     """Error messages related to model integrity and validation."""

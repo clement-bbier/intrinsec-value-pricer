@@ -13,11 +13,12 @@ Standards:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Any, Dict
+from typing import Any
+
 import streamlit as st
 
-from src.models.valuation import ValuationResult
 from src.models.enums import ValuationMethodology
+from src.models.valuation import ValuationResult
 
 
 @dataclass
@@ -54,13 +55,13 @@ class AppState:
     selected_methodology: ValuationMethodology = ValuationMethodology.FCFF_STANDARD
 
     # --- 2. Results & Caching ---
-    last_result: Optional[ValuationResult] = None
-    result_hash: Optional[str] = None
-    technical_cache: Dict[str, Any] = field(default_factory=dict)
+    last_result: ValuationResult | None = None
+    result_hash: str | None = None
+    technical_cache: dict[str, Any] = field(default_factory=dict)
 
     # --- 3. Interface Flags (Spinners, Toasts) ---
     should_run_valuation: bool = False
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     def clear_results(self) -> None:
         """

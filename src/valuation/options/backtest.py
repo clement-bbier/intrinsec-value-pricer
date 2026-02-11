@@ -14,7 +14,6 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import pandas as pd
 
@@ -32,7 +31,7 @@ class BacktestRunner:
     """
 
     @staticmethod
-    def isolate_fiscal_year(raw_data: RawFinancialData, target_year: int) -> Optional[RawFinancialData]:
+    def isolate_fiscal_year(raw_data: RawFinancialData, target_year: int) -> RawFinancialData | None:
         """
         Creates a Point-in-Time snapshot of RawFinancialData for a specific fiscal year.
         """
@@ -107,7 +106,7 @@ class BacktestRunner:
             return 0.0
 
     @staticmethod
-    def _filter_df_by_year(df: Optional[pd.DataFrame], year: int) -> Optional[pd.DataFrame]:
+    def _filter_df_by_year(df: pd.DataFrame | None, year: int) -> pd.DataFrame | None:
         """
         Helper: Extracts the column corresponding to the specified fiscal year.
         """

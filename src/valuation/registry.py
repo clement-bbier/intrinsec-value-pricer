@@ -13,11 +13,11 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Dict, Type, Optional, Callable
 
-from src.models import ValuationMethodology
 from src.i18n import RegistryTexts
+from src.models import ValuationMethodology
 from src.valuation.strategies.interface import IValuationRunner
 
 logger = logging.getLogger(__name__)
@@ -40,9 +40,9 @@ class StrategyMetadata:
         The localized (i18n) label displayed in the application.
     """
     mode: ValuationMethodology
-    strategy_cls: Type[IValuationRunner]
-    ui_renderer_name: Optional[str] = None
-    display_name: Optional[str] = None
+    strategy_cls: type[IValuationRunner]
+    ui_renderer_name: str | None = None
+    display_name: str | None = None
 
 
 class StrategyRegistry:
@@ -52,8 +52,8 @@ class StrategyRegistry:
     Manages the lifecycle and centralized access to financial strategies.
     """
 
-    _instance: Optional[StrategyRegistry] = None
-    _strategies: Dict[ValuationMethodology, StrategyMetadata] = {}
+    _instance: StrategyRegistry | None = None
+    _strategies: dict[ValuationMethodology, StrategyMetadata] = {}
 
     def __new__(cls) -> StrategyRegistry:
         if cls._instance is None:
@@ -65,9 +65,9 @@ class StrategyRegistry:
     def register(
         cls,
         mode: ValuationMethodology,
-        strategy_cls: Type[IValuationRunner],
-        ui_renderer_name: Optional[str] = None,
-        display_name: Optional[str] = None
+        strategy_cls: type[IValuationRunner],
+        ui_renderer_name: str | None = None,
+        display_name: str | None = None
     ) -> None:
         """
         Formally registers a strategy into the calculation core.
@@ -82,13 +82,13 @@ class StrategyRegistry:
         logger.debug("[Registry] Strategy registered | mode=%s", mode.value)
 
     @classmethod
-    def get_strategy_cls(cls, mode: ValuationMethodology) -> Optional[Type[IValuationRunner]]:
+    def get_strategy_cls(cls, mode: ValuationMethodology) -> type[IValuationRunner] | None:
         """Retrieves the calculation class for a specific mode."""
         metadata = cls._strategies.get(mode)
         return metadata.strategy_cls if metadata else None
 
     @classmethod
-    def get_ui_renderer_name(cls, mode: ValuationMethodology) -> Optional[str]:
+    def get_ui_renderer_name(cls, mode: ValuationMethodology) -> str | None:
         """Identifies the specialized UI renderer for the given mode."""
         metadata = cls._strategies.get(mode)
         return metadata.ui_renderer_name if metadata else None
@@ -100,12 +100,12 @@ class StrategyRegistry:
         return metadata.display_name if metadata else mode.value
 
     @classmethod
-    def get_all_modes(cls) -> Dict[ValuationMethodology, StrategyMetadata]:
+    def get_all_modes(cls) -> dict[ValuationMethodology, StrategyMetadata]:
         """Provides a copy of the full strategy catalog."""
         return cls._strategies.copy()
 
     @classmethod
-    def get_display_names_map(cls) -> Dict[ValuationMethodology, str]:
+    def get_display_names_map(cls) -> dict[ValuationMethodology, str]:
         """Generates a mapping of modes to localized labels for UI components."""
         return {
             mode: meta.display_name
@@ -116,13 +116,13 @@ class StrategyRegistry:
 
 def register_strategy(
     mode: ValuationMethodology,
-    ui_renderer: Optional[str] = None,
-    display_name: Optional[str] = None
-) -> Callable[[Type[IValuationRunner]], Type[IValuationRunner]]:
+    ui_renderer: str | None = None,
+    display_name: str | None = None
+) -> Callable[[type[IValuationRunner]], type[IValuationRunner]]:
     """
     Decorator for automated registration of valuation strategies.
     """
-    def decorator(cls: Type[IValuationRunner]) -> Type[IValuationRunner]:
+    def decorator(cls: type[IValuationRunner]) -> type[IValuationRunner]:
         StrategyRegistry.register(
             mode=mode,
             strategy_cls=cls,
@@ -135,17 +135,17 @@ def register_strategy(
     return decorator
 
 
-def get_strategy(mode: ValuationMethodology) -> Optional[Type[IValuationRunner]]:
+def get_strategy(mode: ValuationMethodology) -> type[IValuationRunner] | None:
     """Simplified facade for accessing strategy classes."""
     return StrategyRegistry.get_strategy_cls(mode)
 
 
-def get_all_strategies() -> Dict[ValuationMethodology, StrategyMetadata]:
+def get_all_strategies() -> dict[ValuationMethodology, StrategyMetadata]:
     """Global access to the metadata catalog."""
     return StrategyRegistry.get_all_modes()
 
 
-def get_display_names() -> Dict[ValuationMethodology, str]:
+def get_display_names() -> dict[ValuationMethodology, str]:
     """Simplified access to localized i18n label mapping."""
     return StrategyRegistry.get_display_names_map()
 
@@ -162,13 +162,13 @@ def _register_all_strategies() -> None:
     if _REGISTRY_INITIALIZED:
         return
 
-    from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
-    from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
-    from src.valuation.strategies.revenue_growth_fcff import RevenueGrowthFCFFStrategy
-    from src.valuation.strategies.fcfe import FCFEStrategy
     from src.valuation.strategies.ddm import DividendDiscountStrategy
-    from src.valuation.strategies.rim_banks import RIMBankingStrategy
+    from src.valuation.strategies.fcfe import FCFEStrategy
+    from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
     from src.valuation.strategies.graham_value import GrahamNumberStrategy
+    from src.valuation.strategies.revenue_growth_fcff import RevenueGrowthFCFFStrategy
+    from src.valuation.strategies.rim_banks import RIMBankingStrategy
+    from src.valuation.strategies.standard_fcff import StandardFCFFStrategy
 
     # --- Firm Value Approaches (WACC-Based) ---
     StrategyRegistry.register(

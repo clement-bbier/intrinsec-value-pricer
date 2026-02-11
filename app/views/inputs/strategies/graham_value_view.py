@@ -1,7 +1,9 @@
 import streamlit as st
-from src.models import ValuationMethodology
-from src.i18n.fr.ui.expert import GrahamTexts as Texts
+
 from app.views.inputs.base_strategy import BaseStrategyView
+from src.i18n.fr.ui.expert import GrahamTexts as Texts
+from src.models import ValuationMethodology
+
 
 class GrahamValueView(BaseStrategyView):
     MODE = ValuationMethodology.GRAHAM
@@ -26,12 +28,23 @@ class GrahamValueView(BaseStrategyView):
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         c1, c2 = st.columns(2)
-        with c1: st.number_input(Texts.INP_EPS, value=None, format="%.2f", help=Texts.HELP_EPS, key=f"{prefix}_eps_normalized")
-        with c2: st.number_input(Texts.INP_GROWTH, value=None, format="%.2f", help=Texts.HELP_GROWTH_LT, key=f"{prefix}_growth_estimate")
+        with c1:
+            st.number_input(
+                Texts.INP_EPS, value=None, format="%.2f",
+                help=Texts.HELP_EPS, key=f"{prefix}_eps_normalized",
+            )
+        with c2:
+            st.number_input(
+                Texts.INP_GROWTH, value=None, format="%.2f",
+                help=Texts.HELP_GROWTH_LT, key=f"{prefix}_growth_estimate",
+            )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
-        with c1: st.number_input(Texts.INP_YIELD_AAA, value=None, format="%.2f", help=Texts.HELP_YIELD_AAA, key="yield_aaa")
-        with c2: st.number_input(Texts.INP_TAX, value=None, format="%.2f", help=Texts.HELP_TAX, key="tax_rate")
-        if hasattr(Texts, 'NOTE_GRAHAM') and Texts.NOTE_GRAHAM: st.caption(Texts.NOTE_GRAHAM)
+        with c1:
+            st.number_input(Texts.INP_YIELD_AAA, value=None, format="%.2f", help=Texts.HELP_YIELD_AAA, key="yield_aaa")
+        with c2:
+            st.number_input(Texts.INP_TAX, value=None, format="%.2f", help=Texts.HELP_TAX, key="tax_rate")
+        if hasattr(Texts, 'NOTE_GRAHAM') and Texts.NOTE_GRAHAM:
+            st.caption(Texts.NOTE_GRAHAM)
         st.divider()

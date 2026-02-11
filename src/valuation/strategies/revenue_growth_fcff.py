@@ -21,29 +21,28 @@ adjustments.
 from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict
 
-from src.models.parameters.base_parameter import Parameters
+from src.computation.financial_math import calculate_discount_factors
+
+# Config & i18n
+from src.config.constants import ModelDefaults
+from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
-from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import ValuationMethodology, VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
+from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import FCFFGrowthResults
 
 # Models Results (Nested Architecture)
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import FCFFGrowthResults
-from src.models.results.options import ExtensionBundleResults
+from src.models.valuation import ValuationRequest, ValuationResult
 
 # Libraries (DRY Logic)
 from src.valuation.library.common import CommonLibrary
 from src.valuation.library.dcf import DCFLibrary
 from src.valuation.strategies.interface import IValuationRunner
-from src.computation.financial_math import calculate_discount_factors
-
-# Config & i18n
-from src.config.constants import ModelDefaults
-from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations
 
 
 class RevenueGrowthFCFFStrategy(IValuationRunner):
@@ -67,7 +66,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         """
         Executes the Revenue-Driven DCF sequence.
         """
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
         wacc, step_wacc = CommonLibrary.resolve_discount_rate(
@@ -75,7 +74,8 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             params=params,
             use_cost_of_equity_only=False
         )
-        if self._glass_box: steps.append(step_wacc)
+        if self._glass_box:
+            steps.append(step_wacc)
 
         # --- STEP 2: Revenue Anchor Selection ---
         user_rev = params.strategy.revenue_ttm
@@ -108,24 +108,29 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             params=params
         )
 
-        if self._glass_box: steps.append(step_proj)
+        if self._glass_box:
+            steps.append(step_proj)
 
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else 0.0
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params)
-        if self._glass_box: steps.append(step_tv)
+        if self._glass_box:
+            steps.append(step_tv)
 
         # --- STEP 5: Discounting ---
         ev, step_ev = DCFLibrary.compute_discounting(flows, tv, wacc)
-        if self._glass_box: steps.append(step_ev)
+        if self._glass_box:
+            steps.append(step_ev)
 
         # --- STEP 6: Equity Bridge ---
         equity_value, step_bridge = CommonLibrary.compute_equity_bridge(ev, params)
-        if self._glass_box: steps.append(step_bridge)
+        if self._glass_box:
+            steps.append(step_bridge)
 
         # --- STEP 7: Per Share ---
         iv_per_share, step_iv = DCFLibrary.compute_value_per_share(equity_value, params)
-        if self._glass_box: steps.append(step_iv)
+        if self._glass_box:
+            steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
         res_rates = ResolvedRates(
@@ -138,7 +143,10 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
             enterprise_value=ev,
-            net_debt_resolved=(params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0),
+            net_debt_resolved=(
+                (params.common.capital.total_debt or 0.0)
+                - (params.common.capital.cash_and_equivalents or 0.0)
+            ),
             equity_value_total=equity_value
         )
 
@@ -146,7 +154,10 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
-            upside_pct=((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0,
+            upside_pct=(
+                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
+                if financials.current_price else 0.0
+            ),
             bridge_trace=steps if self._glass_box else []
         )
 
@@ -178,7 +189,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         )
 
     @staticmethod
-    def execute_stochastic(financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         Vectorized Revenue-Growth DCF Execution for Monte Carlo.
 

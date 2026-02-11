@@ -4,6 +4,7 @@ AUTO MODE LANDING VIEW
 """
 
 import streamlit as st
+
 from app.state.store import get_state
 from src.i18n import CommonTexts, SidebarTexts
 from src.i18n.fr.ui.common import OnboardingTexts

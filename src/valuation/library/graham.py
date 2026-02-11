@@ -17,24 +17,16 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import Tuple
-
-from src.models.parameters.base_parameter import Parameters
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource
-from src.core.formatting import format_smart_number
-
 # Atomic Math Imports
 from src.computation.financial_math import calculate_graham_1974_value
 
 # Configuration & i18n
 from src.config.constants import MacroDefaults, ModelDefaults
-from src.i18n import (
-    RegistryTexts,
-    StrategyFormulas,
-    StrategyInterpretations,
-    StrategySources
-)
+from src.core.formatting import format_smart_number
+from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.enums import VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
 
 
 class GrahamLibrary:
@@ -45,7 +37,7 @@ class GrahamLibrary:
     @staticmethod
     def compute_intrinsic_value(
             params: Parameters
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """
         Calculates value using the Graham Formula (1974).
 

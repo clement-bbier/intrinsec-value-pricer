@@ -6,10 +6,11 @@ Role: Central definition for calculation labels, formulas, and tooltips.
 Focus: Data storage only (SRP). No rendering logic here.
 """
 
-from typing import Any, Dict
+from typing import Any
+
 from src.i18n import UIRegistryTexts, UIStrategyFormulas
 
-STEP_METADATA: Dict[str, Dict[str, Any]] = {
+STEP_METADATA: dict[str, dict[str, Any]] = {
 
     # --- 1. CORE PIPELINE ---
     "WACC_CALC": {
@@ -170,7 +171,7 @@ STEP_METADATA: Dict[str, Dict[str, Any]] = {
     }
 }
 
-def get_step_metadata(key: str) -> Dict[str, Any]:
+def get_step_metadata(key: str) -> dict[str, Any]:
     """
     Retrieves metadata for a specific calculation step.
     Provides a safe fallback for UI rendering.

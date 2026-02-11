@@ -8,8 +8,8 @@ Architecture: Mix of Dataclasses (for config objects) and Static Classes (for lo
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Tuple
 
 # ==============================================================================
 # 1. MONTE CARLO SIMULATION
@@ -75,8 +75,8 @@ class ScenarioDefaults:
     DEFAULT_PROBABILITY: float = 1.0
     DEFAULT_GROWTH_ADJUSTMENT: float = 0.0
     DEFAULT_MARGIN_ADJUSTMENT: float = 0.0
-    STANDARD_LABELS: Tuple[str, str, str] = ("Bear Case", "Base Case", "Bull Case")
-    STANDARD_WEIGHTS: Tuple[float, float, float] = (0.25, 0.50, 0.25)
+    STANDARD_LABELS: tuple[str, str, str] = ("Bear Case", "Base Case", "Bull Case")
+    STANDARD_WEIGHTS: tuple[float, float, float] = (0.25, 0.50, 0.25)
 
 
 # ==============================================================================

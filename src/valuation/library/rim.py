@@ -18,27 +18,16 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import Tuple, List
-
-from src.models.parameters.base_parameter import Parameters
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource
-from src.core.formatting import format_smart_number
-
 # Atomic Math Imports
-from src.computation.financial_math import (
-    calculate_rim_vectors,
-    calculate_discount_factors
-)
+from src.computation.financial_math import calculate_discount_factors, calculate_rim_vectors
 
 # Configuration & i18n
 from src.config.constants import ModelDefaults
-from src.i18n import (
-    RegistryTexts,
-    StrategyFormulas,
-    StrategyInterpretations,
-    StrategySources
-)
+from src.core.formatting import format_smart_number
+from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.enums import VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
 
 
 class RIMLibrary:
@@ -52,7 +41,7 @@ class RIMLibrary:
             base_earnings: float,
             cost_of_equity: float,
             params: Parameters
-    ) -> Tuple[List[float], List[float], List[float], CalculationStep]:
+    ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects Earnings, Book Values, and Residual Incomes based on Clean Surplus.
         """
@@ -132,7 +121,7 @@ class RIMLibrary:
             final_ri: float,
             cost_of_equity: float,
             params: Parameters
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """Calculates Terminal Value using the Ohlson Model with Persistence Factor (omega)."""
 
         # Access Persistence Factor from RIMParameters
@@ -165,7 +154,10 @@ class RIMLibrary:
             step_key="TV_OHLSON",
             label=RegistryTexts.RIM_TV_L,
             theoretical_formula=StrategyFormulas.RIM_TV,
-            actual_calculation=f"({format_smart_number(final_ri)} × {omega:.2f}) / (1 + {cost_of_equity:.1%} - {omega:.2f})",
+            actual_calculation=(
+                f"({format_smart_number(final_ri)} × {omega:.2f})"
+                f" / (1 + {cost_of_equity:.1%} - {omega:.2f})"
+            ),
             result=tv,
             interpretation=StrategyInterpretations.RIM_PERSISTENCE.format(val=omega),
             source=StrategySources.CALCULATED,
@@ -177,10 +169,10 @@ class RIMLibrary:
     @staticmethod
     def compute_equity_value(
             current_book_value: float,
-            residual_incomes: List[float],
+            residual_incomes: list[float],
             terminal_value: float,
             cost_of_equity: float
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """Aggregates components to find Total Equity Value."""
         # 1. Discount Factors
         factors = calculate_discount_factors(cost_of_equity, len(residual_incomes))
@@ -195,16 +187,32 @@ class RIMLibrary:
         total_equity = current_book_value + pv_ri + pv_tv
 
         variables = {
-            "B_0": VariableInfo(symbol="B_0", value=current_book_value, formatted_value=format_smart_number(current_book_value), source=VariableSource.SYSTEM),
-            "ΣPV_RI": VariableInfo(symbol="ΣPV_RI", value=pv_ri, formatted_value=format_smart_number(pv_ri), source=VariableSource.CALCULATED),
-            "PV_TV": VariableInfo(symbol="PV_TV", value=pv_tv, formatted_value=format_smart_number(pv_tv), source=VariableSource.CALCULATED)
+            "B_0": VariableInfo(
+                symbol="B_0", value=current_book_value,
+                formatted_value=format_smart_number(current_book_value),
+                source=VariableSource.SYSTEM,
+            ),
+            "ΣPV_RI": VariableInfo(
+                symbol="ΣPV_RI", value=pv_ri,
+                formatted_value=format_smart_number(pv_ri),
+                source=VariableSource.CALCULATED,
+            ),
+            "PV_TV": VariableInfo(
+                symbol="PV_TV", value=pv_tv,
+                formatted_value=format_smart_number(pv_tv),
+                source=VariableSource.CALCULATED,
+            )
         }
 
         step = CalculationStep(
             step_key="RIM_AGGREGATION",
             label=RegistryTexts.RIM_IV_L,
             theoretical_formula=StrategyFormulas.RIM_GLOBAL,
-            actual_calculation=f"{format_smart_number(current_book_value)} + {format_smart_number(pv_ri)} + {format_smart_number(pv_tv)}",
+            actual_calculation=(
+                f"{format_smart_number(current_book_value)}"
+                f" + {format_smart_number(pv_ri)}"
+                f" + {format_smart_number(pv_tv)}"
+            ),
             result=total_equity,
             interpretation=StrategyInterpretations.RIM_FINAL,
             source=StrategySources.CALCULATED,

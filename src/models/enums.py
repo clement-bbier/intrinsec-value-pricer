@@ -11,6 +11,7 @@ Style: NumPy docstrings.
 
 from enum import Enum
 
+
 class ValuationMethodology(str, Enum):
     """
     Supported valuation strategies available in the engine.

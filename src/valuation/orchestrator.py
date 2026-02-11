@@ -16,40 +16,40 @@ Standard: SOLID, institutional-grade error handling.
 """
 
 from __future__ import annotations
+
+import hashlib
 import logging
 import time
-import hashlib
-from typing import List
 
-from src.models import Parameters
-from src.models.valuation import ValuationRequest, ValuationResult, ValuationRunMetadata, AuditReport
-from src.models.company import CompanySnapshot
+from src.computation.financial_math import calculate_wacc
+from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
+from src.core.exceptions import CalculationError, ValuationError
 from src.core.quant_logger import QuantLogger
-from src.core.diagnostics import DiagnosticEvent, SeverityLevel, DiagnosticDomain
+from src.models import Parameters
+from src.models.company import CompanySnapshot
+from src.models.valuation import AuditReport, ValuationRequest, ValuationResult, ValuationRunMetadata
+
+# Guardrails
+from src.valuation.guardrails import (
+    GuardrailCheckResult,
+    validate_capital_structure,
+    validate_roic_spread,
+    validate_scenario_probabilities,
+    validate_terminal_growth,
+)
+
+# Options/Extensions Runners
+from src.valuation.options.monte_carlo import MonteCarloRunner
+from src.valuation.options.scenarios import ScenariosRunner
+from src.valuation.options.sensitivity import SensitivityRunner
+from src.valuation.options.sotp import SOTPRunner
+
+# Registry & Interface
+from src.valuation.registry import get_strategy
 
 # Resolvers
 from src.valuation.resolvers.base_resolver import Resolver
 from src.valuation.resolvers.options import ExtensionResolver
-
-# Registry & Interface
-from src.valuation.registry import get_strategy
-from src.core.exceptions import CalculationError, ValuationException
-
-# Guardrails
-from src.valuation.guardrails import (
-    validate_terminal_growth,
-    validate_roic_spread,
-    validate_capital_structure,
-    validate_scenario_probabilities,
-    GuardrailCheckResult,
-)
-from src.computation.financial_math import calculate_wacc
-
-# Options/Extensions Runners
-from src.valuation.options.monte_carlo import MonteCarloRunner
-from src.valuation.options.sensitivity import SensitivityRunner
-from src.valuation.options.scenarios import ScenariosRunner
-from src.valuation.options.sotp import SOTPRunner
 from src.valuation.strategies import IValuationRunner
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class ValuationOrchestrator:
         self.resolver = Resolver()
         self.extension_resolver = ExtensionResolver()
 
-    def _run_guardrails(self, params: Parameters) -> tuple[List[DiagnosticEvent], bool]:
+    def _run_guardrails(self, params: Parameters) -> tuple[list[DiagnosticEvent], bool]:
         """
         Executes all economic guardrails and collects results.
 
@@ -89,7 +89,7 @@ class ValuationOrchestrator:
             If any guardrail returns a blocking error.
         """
         financials = params.structure
-        events: List[DiagnosticEvent] = []
+        events: list[DiagnosticEvent] = []
         has_errors = False
 
         # Calculate WACC for guardrails that need it
@@ -103,7 +103,7 @@ class ValuationOrchestrator:
             wacc = 0.10  # Fallback default
 
         # Run each guardrail
-        guardrail_checks: List[GuardrailCheckResult] = [
+        guardrail_checks: list[GuardrailCheckResult] = [
             validate_terminal_growth(params, wacc),
             validate_roic_spread(financials, params, wacc),
             validate_capital_structure(financials, params),
@@ -245,7 +245,7 @@ class ValuationOrchestrator:
 
             return valuation_output
 
-        except ValuationException as e:
+        except ValuationError as e:
             logger.error(f"[Orchestrator] Known valuation failure: {e}")
             raise e #
         except Exception as e:

@@ -7,14 +7,16 @@ Architecture: Injectable Grade-A component.
 """
 
 from typing import Any, Literal
-import streamlit as st
-import pandas as pd
 
-from src.models import ValuationResult
-from src.i18n import QuantTexts, KPITexts
-from src.core.formatting import format_smart_number
-from app.views.components.ui_kpis import atom_kpi_metric
+import pandas as pd
+import streamlit as st
+
 from app.views.components.ui_charts import display_scenario_comparison_chart
+from app.views.components.ui_kpis import atom_kpi_metric
+from src.core.formatting import format_smart_number
+from src.i18n import KPITexts, QuantTexts
+from src.models import ValuationResult
+
 
 class ScenarioAnalysisTab:
     """

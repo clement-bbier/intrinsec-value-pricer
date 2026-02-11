@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Any, Dict
+from typing import Any
 
 # You will need to ensure src.i18n is updated to English or keys are used correctly
 # For this file, I am focusing on the structure and English context.
@@ -107,16 +107,16 @@ class DiagnosticEvent:
     severity: SeverityLevel
     domain: DiagnosticDomain
     message: str
-    technical_detail: Optional[str] = None
-    remediation_hint: Optional[str] = None
-    financial_context: Optional[FinancialContext] = None
+    technical_detail: str | None = None
+    remediation_hint: str | None = None
+    financial_context: FinancialContext | None = None
 
     @property
     def is_blocking(self) -> bool:
         """Determines if this event prevents the valuation from completing."""
         return self.severity in [SeverityLevel.ERROR, SeverityLevel.CRITICAL]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the event for transmission.
 
@@ -125,7 +125,7 @@ class DiagnosticEvent:
         Dict[str, Any]
             JSON-serializable representation of the event.
         """
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "code": self.code,
             "severity": self.severity.value,
             "domain": self.domain.value,

@@ -6,33 +6,32 @@ from src.i18n.fr.backend import (
     DiagnosticTexts,
     ModelTexts,
     RegistryTexts,
+    SharedTexts,
     StrategyFormulas,
     StrategyInterpretations,
     StrategySources,
-    SharedTexts,
-    WorkflowTexts
+    WorkflowTexts,
 )
-
 from src.i18n.fr.ui import (
+    BacktestTexts,
+    BenchmarkTexts,
+    ChartTexts,
     CommonTexts,
     ExpertTexts,
     ExtensionTexts,
-    ResultsTexts,
-    SidebarTexts,
-    LegalTexts,
-    KPITexts,
-    QuantTexts,
-    BacktestTexts,
-    ChartTexts,
-    PillarLabels,
     InputLabels,
-    SOTPTexts,
-    BenchmarkTexts,
+    KPITexts,
+    LegalTexts,
     MarketTexts,
     PeersTexts,
+    PillarLabels,
+    QuantTexts,
+    ResultsTexts,
+    SidebarTexts,
+    SOTPTexts,
     UIRegistryTexts,
+    UISharedTexts,
     UIStrategyFormulas,
-    UISharedTexts
 )
 
 __all__ = [
@@ -64,7 +63,7 @@ __all__ = [
     "BenchmarkTexts",
     "MarketTexts",
     "PeersTexts",
-    
+
     # UI renamed (no conflict with backend)
     "UIRegistryTexts",
     "UIStrategyFormulas",

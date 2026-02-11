@@ -15,10 +15,6 @@ Style: NumPy docstrings.
 
 import streamlit as st
 
-# --- Data Models & i18n ---
-from src.models import ValuationResult
-from src.i18n import PillarLabels, KPITexts
-
 # --- UI Components ---
 from app.views.components.ui_kpis import atom_kpi_metric
 
@@ -26,12 +22,16 @@ from app.views.components.ui_kpis import atom_kpi_metric
 # These modules must exist in 'app/views/results/pillars/'
 # If a file is missing, the import will fail.
 from app.views.results.pillars import (
-    inputs_summary,      # Pillar 1: Configuration
-    calculation_proof,   # Pillar 2: Glass Box / Trace (formerly glass_box_trace)
-    benchmark_report,    # Pillar 3: Benchmark (formerly benchmark)
-    risk_engineering,    # Pillar 4: Risk Hub
-    market_analysis      # Pillar 5: Market Hub
+    benchmark_report,  # Pillar 3: Benchmark (formerly benchmark)
+    calculation_proof,  # Pillar 2: Glass Box / Trace (formerly glass_box_trace)
+    inputs_summary,  # Pillar 1: Configuration
+    market_analysis,  # Pillar 5: Market Hub
+    risk_engineering,  # Pillar 4: Risk Hub
 )
+from src.i18n import KPITexts, PillarLabels
+
+# --- Data Models & i18n ---
+from src.models import ValuationResult
 
 
 def render_valuation_results(result: ValuationResult) -> None:

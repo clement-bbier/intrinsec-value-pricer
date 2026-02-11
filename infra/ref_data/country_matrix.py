@@ -10,7 +10,8 @@ Architecture: Reference Data Layer.
 Style: Numpy docstrings.
 """
 
-from typing import TypedDict, Dict, Optional
+from typing import TypedDict
+
 
 class CountryData(TypedDict):
     """
@@ -56,7 +57,7 @@ GLOBAL_URLS = {
 
 
 
-COUNTRY_CONTEXT: Dict[str, CountryData] = {
+COUNTRY_CONTEXT: dict[str, CountryData] = {
     "United States": {
         "tax_rate": 0.21,
         "risk_free_rate": 0.0425,     # Yield curve shift (Feb 2026)
@@ -126,7 +127,7 @@ DEFAULT_COUNTRY = COUNTRY_CONTEXT["United States"]
 # RESILIENT EXTRACTION LOGIC
 # ==============================================================================
 
-def get_country_context(country_name: Optional[str]) -> CountryData:
+def get_country_context(country_name: str | None) -> CountryData:
     """
     Retrieves the macro context for a given country.
 

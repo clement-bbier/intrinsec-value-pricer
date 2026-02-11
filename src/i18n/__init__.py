@@ -2,39 +2,37 @@
 src/i18n/__init__.py
 """
 from src.i18n.fr import (
+    BacktestTexts,
+    BenchmarkTexts,
     # Backend (calculation/engine layer)
     CalculationErrors,
-    DiagnosticTexts,
-    ModelTexts,
-    RegistryTexts,          # Backend registry labels (Glass Box)
-    StrategyFormulas,        # Backend LaTeX formulas (computation)
-    StrategyInterpretations,
-    StrategySources,
-    SharedTexts,             # Backend shared texts
-    WorkflowTexts,
-
+    ChartTexts,
     # UI (presentation layer)
     CommonTexts,
+    DiagnosticTexts,
     ExpertTexts,
     ExtensionTexts,
-    ResultsTexts,
-    SidebarTexts,
-    LegalTexts,
-    QuantTexts,
-    ChartTexts,
-    BacktestTexts,
-    PillarLabels,
-    SOTPTexts,
     InputLabels,
-    BenchmarkTexts,
-    MarketTexts,
-    PeersTexts,
     KPITexts,
-    
+    LegalTexts,
+    MarketTexts,
+    ModelTexts,
+    PeersTexts,
+    PillarLabels,
+    QuantTexts,
+    RegistryTexts,  # Backend registry labels (Glass Box)
+    ResultsTexts,
+    SharedTexts,  # Backend shared texts
+    SidebarTexts,
+    SOTPTexts,
+    StrategyFormulas,  # Backend LaTeX formulas (computation)
+    StrategyInterpretations,
+    StrategySources,
     # UI renamed (no conflict with backend)
     UIRegistryTexts,
-    UIStrategyFormulas,
     UISharedTexts,
+    UIStrategyFormulas,
+    WorkflowTexts,
 )
 
 __all__ = [
@@ -66,7 +64,7 @@ __all__ = [
     "MarketTexts",
     "PeersTexts",
     "KPITexts",
-    
+
     # UI renamed (no conflict with backend)
     "UIRegistryTexts",
     "UIStrategyFormulas",

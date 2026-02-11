@@ -12,19 +12,13 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
-from src.core.diagnostics import (
-    DiagnosticEvent,
-    SeverityLevel,
-    DiagnosticDomain,
-    DiagnosticRegistry
-)
+from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, DiagnosticRegistry, SeverityLevel
 
 logger = logging.getLogger(__name__)
 
 
-class ValuationException(Exception):
+class ValuationError(Exception):
     """
     Standardized root exception for the entire valuation engine.
 
@@ -46,7 +40,7 @@ class ValuationException(Exception):
 # 1. INFRASTRUCTURE & CONFIGURATION
 # ==============================================================================
 
-class ConfigurationError(ValuationException):
+class ConfigurationError(ValuationError):
     """Raised when critical configuration files (YAML) are missing or invalid."""
     def __init__(self, file_path: str, details: str):
         event = DiagnosticEvent(
@@ -60,7 +54,7 @@ class ConfigurationError(ValuationException):
         super().__init__(event)
 
 
-class ExternalServiceError(ValuationException):
+class ExternalServiceError(ValuationError):
     """Raised when an external API (Yahoo, Macro) fails or times out."""
     def __init__(self, provider: str, error_detail: str):
         event = DiagnosticEvent(
@@ -74,7 +68,7 @@ class ExternalServiceError(ValuationException):
         super().__init__(event)
 
 
-class TickerNotFoundError(ValuationException):
+class TickerNotFoundError(ValuationError):
     """Raised when the financial provider cannot resolve a stock symbol."""
     def __init__(self, ticker: str):
         event = DiagnosticEvent(
@@ -88,9 +82,9 @@ class TickerNotFoundError(ValuationException):
         super().__init__(event)
 
 
-class DataMissingError(ValuationException):
+class DataMissingError(ValuationError):
     """Raised when a mandatory financial field is absent from the dataset."""
-    def __init__(self, missing_field: str, ticker: str, year: Optional[int] = None):
+    def __init__(self, missing_field: str, ticker: str, year: int | None = None):
         if year:
             msg = f"Missing data for {ticker}: Field '{missing_field}' (Year: {year})."
         else:
@@ -110,19 +104,19 @@ class DataMissingError(ValuationException):
 # 2. MODELING AND CALCULATION ERRORS
 # ==============================================================================
 
-class ModelDivergenceError(ValuationException):
+class ModelDivergenceError(ValuationError):
     """Raised when Gordon Growth parameters prevent model convergence (g >= WACC)."""
     def __init__(self, g: float, wacc: float):
         super().__init__(DiagnosticRegistry.model_g_divergence(g, wacc))
 
 
-class MonteCarloInstabilityError(ValuationException):
+class MonteCarloInstabilityError(ValuationError):
     """Raised when the simulation fails to produce enough valid iterations."""
     def __init__(self, valid_ratio: float, threshold: float):
         super().__init__(DiagnosticRegistry.model_mc_instability(valid_ratio, threshold))
 
 
-class CalculationError(ValuationException):
+class CalculationError(ValuationError):
     """Raised for generic mathematical failures during model execution."""
     def __init__(self, message: str):
         event = DiagnosticEvent(
@@ -135,7 +129,7 @@ class CalculationError(ValuationException):
         super().__init__(event)
 
 
-class InvalidParameterError(ValuationException):
+class InvalidParameterError(ValuationError):
     """Raised when a user-provided parameter is outside allowed bounds."""
     def __init__(self, param_name: str, value: float, bounds: tuple[float, float]):
         event = DiagnosticEvent(

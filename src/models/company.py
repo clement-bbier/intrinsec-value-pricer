@@ -15,11 +15,12 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import Optional
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.enums import CompanySector
+
 
 class Company(BaseModel):
     """
@@ -45,8 +46,8 @@ class Company(BaseModel):
     ticker: str
     name: str = "Unknown Entity"
     sector: CompanySector = Field(default=CompanySector.UNKNOWN)
-    industry: Optional[str] = None
-    country: Optional[str] = None
+    industry: str | None = None
+    country: str | None = None
     currency: str = "USD"
     current_price: float = Field(default=0.0, ge=0)
     last_update: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -70,42 +71,42 @@ class CompanySnapshot(BaseModel):
 
     # --- 1. Identity Trace ---
     ticker: str
-    name: Optional[str] = None
-    country: Optional[str] = None
-    sector: Optional[str] = None
-    industry: Optional[str] = None
-    currency: Optional[str] = None
-    current_price: Optional[float] = None
+    name: str | None = None
+    country: str | None = None
+    sector: str | None = None
+    industry: str | None = None
+    currency: str | None = None
+    current_price: float | None = None
 
     # --- 2. Raw Micro Financials (Micro) ---
     # Used to hydrate Parameters.common.capital
-    total_debt: Optional[float] = None
-    cash_and_equivalents: Optional[float] = None
-    minority_interests: Optional[float] = None
-    pension_provisions: Optional[float] = None
-    shares_outstanding: Optional[float] = None
-    interest_expense: Optional[float] = None
-    net_borrowing_ttm: Optional[float] = None
+    total_debt: float | None = None
+    cash_and_equivalents: float | None = None
+    minority_interests: float | None = None
+    pension_provisions: float | None = None
+    shares_outstanding: float | None = None
+    interest_expense: float | None = None
+    net_borrowing_ttm: float | None = None
 
     # Used to hydrate Parameters.strategy anchors
-    revenue_ttm: Optional[float] = None
-    ebit_ttm: Optional[float] = None
-    net_income_ttm: Optional[float] = None
-    fcf_ttm: Optional[float] = None
-    eps_ttm: Optional[float] = None
-    dividend_share: Optional[float] = None
-    book_value_ps: Optional[float] = None
-    beta: Optional[float] = None
-    capex_ttm: Optional[float] = None
+    revenue_ttm: float | None = None
+    ebit_ttm: float | None = None
+    net_income_ttm: float | None = None
+    fcf_ttm: float | None = None
+    eps_ttm: float | None = None
+    dividend_share: float | None = None
+    book_value_ps: float | None = None
+    beta: float | None = None
+    capex_ttm: float | None = None
 
     # --- 3. Knowledge Base Fallbacks ---
-    sector_pe_fallback: Optional[float] = None
-    sector_ev_ebitda_fallback: Optional[float] = None
-    sector_ev_rev_fallback: Optional[float] = None
+    sector_pe_fallback: float | None = None
+    sector_ev_ebitda_fallback: float | None = None
+    sector_ev_rev_fallback: float | None = None
 
     # --- 4. Raw Macro Context (Macro) ---
-    risk_free_rate: Optional[float] = None
-    market_risk_premium: Optional[float] = None
-    tax_rate: Optional[float] = None
-    perpetual_growth_rate: Optional[float] = None
-    corporate_aaa_yield: Optional[float] = None
+    risk_free_rate: float | None = None
+    market_risk_premium: float | None = None
+    tax_rate: float | None = None
+    perpetual_growth_rate: float | None = None
+    corporate_aaa_yield: float | None = None

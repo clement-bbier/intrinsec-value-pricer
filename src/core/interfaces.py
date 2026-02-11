@@ -11,11 +11,12 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from src.models.valuation import ValuationResult
     from types import TracebackType
+
+    from src.models.valuation import ValuationResult
 
 
 # ==============================================================================

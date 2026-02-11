@@ -7,12 +7,14 @@ Focus: Relative Valuation (Multiples) and Operational Performance (Margins/ROE).
 Style: Professional financial dashboard (Comparison only).
 """
 
-from typing import Literal, Tuple
+from typing import Literal
+
 import streamlit as st
-from src.models import ValuationResult
-from src.i18n import BenchmarkTexts, PillarLabels
-from app.views.components.ui_kpis import atom_benchmark_card
+
 from app.views.components.ui_charts import display_sector_comparison_chart
+from app.views.components.ui_kpis import atom_benchmark_card
+from src.i18n import BenchmarkTexts, PillarLabels
+from src.models import ValuationResult
 
 
 def _render_piotroski_section(company_stats) -> None:
@@ -111,7 +113,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
     col_v1, col_v2, col_v3 = st.columns(3)
 
     # --- Helper Logic for Status (Valuation) ---
-    def get_val_status(company_val: float, sector_val: float) -> Tuple[
+    def get_val_status(company_val: float, sector_val: float) -> tuple[
         Literal["LEADER", "RETARD"], Literal["green", "orange"]]:
         if company_val > sector_val:
             # Expensive -> "RETARD" (Orange)
@@ -190,7 +192,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
     col_p1, col_p2, col_p3 = st.columns(3)
 
     # --- Helper Logic for Performance ---
-    def get_perf_status(company_val: float, sector_val: float) -> Tuple[
+    def get_perf_status(company_val: float, sector_val: float) -> tuple[
         Literal["LEADER", "RETARD"], Literal["green", "red"]]:
         if company_val > sector_val:
             return "LEADER", "green"

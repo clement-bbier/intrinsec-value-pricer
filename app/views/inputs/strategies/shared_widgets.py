@@ -12,18 +12,18 @@ Style: Numpy docstrings
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Dict, Optional
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
-from src.models import (
-    ValuationMethodology,
-    TerminalValueMethod,
-)
-from src.i18n import UISharedTexts
 from src.config.constants import UIWidgetDefaults
+from src.i18n import UISharedTexts
+from src.models import (
+    TerminalValueMethod,
+    ValuationMethodology,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,15 +91,27 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
     col_a, col_b = st.columns(2)
     # Taux sans risque & Beta
     col_a.number_input(UISharedTexts.INP_RF, value=None, format="%.2f", help=UISharedTexts.HELP_RF, key=f"{prefix}_rf")
-    col_b.number_input(UISharedTexts.INP_BETA, value=None, format="%.2f", help=UISharedTexts.HELP_BETA, key=f"{prefix}_beta")
+    col_b.number_input(
+        UISharedTexts.INP_BETA, value=None, format="%.2f",
+        help=UISharedTexts.HELP_BETA, key=f"{prefix}_beta",
+    )
 
     # Prime de risque
-    col_a.number_input(UISharedTexts.INP_MRP, value=None, format="%.2f", help=UISharedTexts.HELP_MRP, key=f"{prefix}_mrp")
+    col_a.number_input(
+        UISharedTexts.INP_MRP, value=None, format="%.2f",
+        help=UISharedTexts.HELP_MRP, key=f"{prefix}_mrp",
+    )
 
     if not mode.is_direct_equity:
         # Coût de la dette et Taxe (uniquement pour FCFF/WACC)
-        col_b.number_input(UISharedTexts.INP_KD, value=None, format="%.2f", help=UISharedTexts.HELP_KD, key=f"{prefix}_kd")
-        col_a.number_input(UISharedTexts.INP_TAX, value=None, format="%.2f", help=UISharedTexts.HELP_TAX, key=f"{prefix}_tax")
+        col_b.number_input(
+            UISharedTexts.INP_KD, value=None, format="%.2f",
+            help=UISharedTexts.HELP_KD, key=f"{prefix}_kd",
+        )
+        col_a.number_input(
+            UISharedTexts.INP_TAX, value=None, format="%.2f",
+            help=UISharedTexts.HELP_TAX, key=f"{prefix}_tax",
+        )
 
 # ==============================================================================
 # 3. TERMINAL VALUE (Section 4)
@@ -125,7 +137,10 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
     method = st.radio(
         UISharedTexts.RADIO_TV_METHOD,
         options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
-        format_func=lambda x: UISharedTexts.TV_GORDON if x == TerminalValueMethod.GORDON_GROWTH else UISharedTexts.TV_EXIT,
+        format_func=lambda x: (
+            UISharedTexts.TV_GORDON if x == TerminalValueMethod.GORDON_GROWTH
+            else UISharedTexts.TV_EXIT
+        ),
         horizontal=True,
         key=f"{key_prefix}_method"
     )
@@ -174,16 +189,28 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
     st.latex(formula_latex)
 
     if mode.is_direct_equity:
-        st.number_input(UISharedTexts.INP_SHARES, value=None, format="%.0f", help=UISharedTexts.HELP_SHARES, key=f"{prefix}_shares")
+        st.number_input(
+            UISharedTexts.INP_SHARES, value=None, format="%.0f",
+            help=UISharedTexts.HELP_SHARES, key=f"{prefix}_shares",
+        )
     else:
         c1, c2 = st.columns(2)
-        c1.number_input(UISharedTexts.INP_DEBT, value=None, format="%.0f", help=UISharedTexts.HELP_DEBT, key=f"{prefix}_debt")
-        c2.number_input(UISharedTexts.INP_CASH, value=None, format="%.0f", help=UISharedTexts.HELP_CASH, key=f"{prefix}_cash")
+        c1.number_input(
+            UISharedTexts.INP_DEBT, value=None, format="%.0f",
+            help=UISharedTexts.HELP_DEBT, key=f"{prefix}_debt",
+        )
+        c2.number_input(
+            UISharedTexts.INP_CASH, value=None, format="%.0f",
+            help=UISharedTexts.HELP_CASH, key=f"{prefix}_cash",
+        )
 
         c3, c4, c5 = st.columns(3)
         c3.number_input(UISharedTexts.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_min")
         c4.number_input(UISharedTexts.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_pen")
-        c5.number_input(UISharedTexts.INP_SHARES, value=None, format="%.0f", help=UISharedTexts.HELP_SHARES, key=f"{prefix}_shares")
+        c5.number_input(
+            UISharedTexts.INP_SHARES, value=None, format="%.0f",
+            help=UISharedTexts.HELP_SHARES, key=f"{prefix}_shares",
+        )
 
     st.number_input(
         UISharedTexts.INP_SBC_DILUTION,
@@ -230,14 +257,17 @@ def widget_sensitivity(
 
 def widget_monte_carlo(
     mode: ValuationMethodology,
-    terminal_method: Optional[TerminalValueMethod],
-    custom_vols: Optional[Dict[str, str]] = None
+    terminal_method: TerminalValueMethod | None,
+    custom_vols: dict[str, str] | None = None
 ) -> None:
     """Renders Monte Carlo simulation parameters."""
     prefix = "mc"
     st.markdown(UISharedTexts.SEC_6_MC)
 
-    if not st.toggle(UISharedTexts.MC_CALIBRATION, value=False, help=UISharedTexts.HELP_MC_ENABLE, key=f"{prefix}_enable"):
+    if not st.toggle(
+        UISharedTexts.MC_CALIBRATION, value=False,
+        help=UISharedTexts.HELP_MC_ENABLE, key=f"{prefix}_enable",
+    ):
         return
 
     st.select_slider(
@@ -250,31 +280,56 @@ def widget_monte_carlo(
 
     col1, col2 = st.columns(2)
     # Dynamic Labels from BaseTerminal
-    label_flow = custom_vols.get("base_flow_volatility", UISharedTexts.MC_VOL_BASE_FLOW) if custom_vols else UISharedTexts.MC_VOL_BASE_FLOW
+    label_flow = (
+        custom_vols.get("base_flow_volatility", UISharedTexts.MC_VOL_BASE_FLOW)
+        if custom_vols else UISharedTexts.MC_VOL_BASE_FLOW
+    )
 
-    col1.number_input(label_flow, value=None, format="%.2f", help=UISharedTexts.HELP_MC_VOL_FLOW, key=f"{prefix}_vol_flow")
-    col1.number_input(UISharedTexts.MC_VOL_G, value=None, format="%.2f", help=UISharedTexts.HELP_MC_VOL_G, key=f"{prefix}_vol_growth")
+    col1.number_input(
+        label_flow, value=None, format="%.2f",
+        help=UISharedTexts.HELP_MC_VOL_FLOW, key=f"{prefix}_vol_flow",
+    )
+    col1.number_input(
+        UISharedTexts.MC_VOL_G, value=None, format="%.2f",
+        help=UISharedTexts.HELP_MC_VOL_G, key=f"{prefix}_vol_growth",
+    )
 
     if mode != ValuationMethodology.GRAHAM:
-        col2.number_input(UISharedTexts.MC_VOL_BETA, value=None, format="%.2f", help=UISharedTexts.HELP_MC_VOL_BETA, key=f"{prefix}_vol_beta")
+        col2.number_input(
+            UISharedTexts.MC_VOL_BETA, value=None, format="%.2f",
+            help=UISharedTexts.HELP_MC_VOL_BETA, key=f"{prefix}_vol_beta",
+        )
 
     if terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
         col2.number_input(UISharedTexts.LBL_VOL_EXIT_M, value=None, format="%.2f", key=f"{prefix}_vol_exit_m")
     elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
         # STRICT ACCESS: LBL_VOL_GN must exist in SharedTexts
-        col2.number_input(UISharedTexts.LBL_VOL_GN, value=None, format="%.2f", help=UISharedTexts.HELP_MC_VOL_GN, key=f"{prefix}_vol_gn")
+        col2.number_input(
+            UISharedTexts.LBL_VOL_GN, value=None, format="%.2f",
+            help=UISharedTexts.HELP_MC_VOL_GN, key=f"{prefix}_vol_gn",
+        )
 
 def widget_backtest() -> None:
     """Renders historical backtest activation."""
     st.markdown(UISharedTexts.SEC_10_BACKTEST)
-    if st.toggle(UISharedTexts.LBL_BACKTEST_ENABLE, value=False, help=UISharedTexts.HELP_BACKTEST_ENABLE, key="bt_enable"):
+    if st.toggle(
+        UISharedTexts.LBL_BACKTEST_ENABLE, value=False,
+        help=UISharedTexts.HELP_BACKTEST_ENABLE, key="bt_enable",
+    ):
         st.number_input(UISharedTexts.LBL_LOOKBACK, min_value=1, max_value=10, value=3, key="bt_lookback")
 
 def widget_peer_triangulation() -> None:
     """Renders peer selection for relative valuation."""
     st.markdown(UISharedTexts.SEC_7_PEERS)
-    if st.toggle(UISharedTexts.LBL_PEER_ENABLE, value=False, help=UISharedTexts.HELP_PEER_TRIANGULATION, key="peer_peer_enable"):
-        raw_input = st.text_input(UISharedTexts.INP_MANUAL_PEERS, placeholder=UISharedTexts.PLACEHOLDER_PEERS, help=UISharedTexts.HELP_MANUAL_PEERS, key="peer_input")
+    if st.toggle(
+        UISharedTexts.LBL_PEER_ENABLE, value=False,
+        help=UISharedTexts.HELP_PEER_TRIANGULATION, key="peer_peer_enable",
+    ):
+        raw_input = st.text_input(
+            UISharedTexts.INP_MANUAL_PEERS,
+            placeholder=UISharedTexts.PLACEHOLDER_PEERS,
+            help=UISharedTexts.HELP_MANUAL_PEERS, key="peer_input",
+        )
         # Processed into a list for the Binder
         if raw_input:
             st.session_state["peer_list"] = [t.strip().upper() for t in raw_input.split(",") if t.strip()]
@@ -282,7 +337,10 @@ def widget_peer_triangulation() -> None:
 def widget_scenarios(mode: ValuationMethodology) -> None:
     """Renders probabilistic scenario variants."""
     st.markdown(UISharedTexts.SEC_8_SCENARIOS)
-    if not st.toggle(UISharedTexts.INP_SCENARIO_ENABLE, value=False, help=UISharedTexts.HELP_SCENARIO_ENABLE, key="scenario_scenario_enable"):
+    if not st.toggle(
+        UISharedTexts.INP_SCENARIO_ENABLE, value=False,
+        help=UISharedTexts.HELP_SCENARIO_ENABLE, key="scenario_scenario_enable",
+    ):
         return
 
     for case in ["bull", "base", "bear"]:

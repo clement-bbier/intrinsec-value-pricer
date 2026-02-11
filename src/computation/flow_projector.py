@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, Field
 
-# i18n Imports for UI-facing elements
-from src.i18n import StrategyInterpretations, StrategyFormulas, KPITexts, RegistryTexts, SharedTexts
 from src.core.formatting import format_smart_number
+
+# i18n Imports for UI-facing elements
+from src.i18n import KPITexts, RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations
 from src.models import VariableInfo, VariableSource
 
 if TYPE_CHECKING:
@@ -50,12 +52,12 @@ class ProjectionOutput(BaseModel):
     variables : Dict[str, VariableInfo]
         Traceability map for all parameters used during the projection.
     """
-    flows: List[float]
+    flows: list[float]
     method_label: str = ""
     theoretical_formula: str = ""
     actual_calculation: str = ""
     interpretation: str = ""
-    variables: Dict[str, VariableInfo] = Field(default_factory=dict)
+    variables: dict[str, VariableInfo] = Field(default_factory=dict)
 
 
 # ==============================================================================
@@ -93,8 +95,8 @@ class FlowProjector(ABC):
     def _build_trace_variable(
         symbol: str,
         value: float,
-        manual_value: Optional[float],
-        provider_value: Optional[float],
+        manual_value: float | None,
+        provider_value: float | None,
         description: str,
         is_pct: bool = False
     ) -> VariableInfo:
@@ -260,8 +262,8 @@ def project_flows(
         years: int,
         g_start: float,
         g_term: float,
-        high_growth_years: Optional[int] = 0
-) -> List[float]:
+        high_growth_years: int | None = 0
+) -> list[float]:
     """
     Atomic engine for financial flow projection.
     Supports a 'High Growth' plateau followed by a linear 'Fade-Down'.
@@ -269,7 +271,7 @@ def project_flows(
     if years <= 0:
         return []
 
-    flows: List[float] = []
+    flows: list[float] = []
     current_flow = base_flow
 
     # If high_growth_years is not set (None), assume full period is high growth

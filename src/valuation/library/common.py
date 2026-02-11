@@ -13,23 +13,17 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import Tuple
-
-from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource
-from src.core.formatting import format_smart_number
-
 # Atomic imports for pure math
-from src.computation.financial_math import (
-    calculate_cost_of_equity_capm,
-    calculate_synthetic_cost_of_debt
-)
+from src.computation.financial_math import calculate_cost_of_equity_capm, calculate_synthetic_cost_of_debt
 
 # Configuration and i18n imports
 from src.config.constants import MacroDefaults, ModelDefaults
-from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, KPITexts, StrategySources
+from src.core.formatting import format_smart_number
+from src.i18n import KPITexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.company import Company
+from src.models.enums import VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
 
 
 class CommonLibrary:
@@ -42,7 +36,7 @@ class CommonLibrary:
         financials: Company,
         params: Parameters,
         use_cost_of_equity_only: bool = False
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """
         Computes the appropriate discount rate (WACC or Ke) with full provenance.
         """
@@ -163,7 +157,7 @@ class CommonLibrary:
     def compute_equity_bridge(
         enterprise_value: float,
         params: Parameters
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """
         Walks from Enterprise Value (EV) to Equity Value using the Bridge.
         """
@@ -197,7 +191,11 @@ class CommonLibrary:
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
-            actual_calculation=f"{format_smart_number(enterprise_value)} - {format_smart_number(debt)} + {format_smart_number(cash)}...",
+            actual_calculation=(
+                f"{format_smart_number(enterprise_value)}"
+                f" - {format_smart_number(debt)}"
+                f" + {format_smart_number(cash)}..."
+            ),
             result=equity_value,
             unit="currency",
             interpretation=StrategyInterpretations.BRIDGE,

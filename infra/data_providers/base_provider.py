@@ -11,8 +11,9 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional
+
 from src.models.company import CompanySnapshot
 
 
@@ -20,12 +21,12 @@ class FinancialDataProvider(ABC):
     """
     Strict abstract interface for financial data acquisition.
 
-    Implementing classes must return a CompanySnapshot DTO to ensure 
+    Implementing classes must return a CompanySnapshot DTO to ensure
     compatibility with the Resolution Engine.
     """
 
     @abstractmethod
-    def get_company_snapshot(self, ticker: str) -> Optional[CompanySnapshot]:
+    def get_company_snapshot(self, ticker: str) -> CompanySnapshot | None:
         """
         Retrieves a complete raw financial snapshot for a given ticker.
 

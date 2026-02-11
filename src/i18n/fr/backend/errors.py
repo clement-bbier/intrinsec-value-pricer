@@ -103,6 +103,10 @@ class CalculationErrors:
     NEGATIVE_FCFE = "Le flux FCFE est négatif. Le modèle est inapplicable."
     MISSING_NET_BORROWING = "Donnee de variation de dette (Net Borrowing) manquante."
     INVALID_DIVIDEND = "Dividende de base nul ou invalide pour le modèle DDM."
-    NEGATIVE_FLUX_AUTO = "Impossible de valoriser via {model} en mode Auto : le flux de base est négatif ou nul ({val:.2f}). Veuillez utiliser un modèle alternatif (RIM, Multiples) ou saisir un flux normatif en mode Expert."
+    NEGATIVE_FLUX_AUTO = (
+        "Impossible de valoriser via {model} en mode Auto : le flux de base est"
+        " négatif ou nul ({val:.2f}). Veuillez utiliser un modèle alternatif"
+        " (RIM, Multiples) ou saisir un flux normatif en mode Expert."
+    )
     RIM_NEGATIVE_BV = "Le modèle RIM necessite une valeur comptable positive pour calculer le revenu residuel."
     NEGATIVE_PE_RATIO = "Le multiple P/E doit être strictement positif."

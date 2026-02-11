@@ -11,15 +11,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
 
+from pydantic import BaseModel, ConfigDict, Field
+
+from src.core.diagnostics import DiagnosticEvent
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
-from src.core.diagnostics import DiagnosticEvent
 
 # IMPORTANT: Import the new Results structure
 from src.models.results.base_result import Results
+
 
 class ValuationRequest(BaseModel):
     """
@@ -34,7 +35,7 @@ class ValuationRequest(BaseModel):
 class ValuationRunMetadata(BaseModel):
     """
     Immutable provenance record for every valuation run.
-    
+
     Attributes
     ----------
     run_id : str
@@ -61,15 +62,15 @@ class ValuationRunMetadata(BaseModel):
     engine_version: str = "12.0.0"
     model_name: str
     ticker: str
-    random_seed: Optional[int] = None
+    random_seed: int | None = None
     input_hash: str = ""
-    execution_time_ms: Optional[int] = None
+    execution_time_ms: int | None = None
 
 class AuditReport(BaseModel):
     """Summary of the validation checks performed during valuation."""
     global_score: float = 100.0
     critical_warnings: int = 0
-    events: List[DiagnosticEvent] = Field(default_factory=list)
+    events: list[DiagnosticEvent] = Field(default_factory=list)
 
 class ValuationResult(BaseModel):
     """
@@ -83,9 +84,9 @@ class ValuationResult(BaseModel):
     results: Results
 
     # Metadata & Reporting (Optional / Computed)
-    audit_report: Optional[AuditReport] = None
-    upside_pct: Optional[float] = None
-    metadata: Optional[ValuationRunMetadata] = None
+    audit_report: AuditReport | None = None
+    upside_pct: float | None = None
+    metadata: ValuationRunMetadata | None = None
 
     # Optional: Helper to access IV quickly without digging into results.common
     # Can be populated post-init or computed property.

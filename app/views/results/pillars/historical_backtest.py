@@ -7,13 +7,15 @@ Architecture: Injectable Grade-A Component.
 """
 
 from typing import Any, Literal
-import streamlit as st
-import pandas as pd
 
-from src.models import ValuationResult
-from src.i18n import QuantTexts, BacktestTexts, CommonTexts, BenchmarkTexts
-from app.views.components.ui_kpis import atom_kpi_metric
+import pandas as pd
+import streamlit as st
+
 from app.views.components.ui_charts import display_backtest_convergence_chart
+from app.views.components.ui_kpis import atom_kpi_metric
+from src.i18n import BacktestTexts, BenchmarkTexts, CommonTexts, QuantTexts
+from src.models import ValuationResult
+
 
 class HistoricalBacktestTab:
     """

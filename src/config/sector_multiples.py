@@ -9,7 +9,6 @@ Style: Immutable Python Data Structures.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict
 
 # ==============================================================================
 # 1. DATA STRUCTURE DEFINITION
@@ -19,9 +18,9 @@ from typing import Optional, Dict
 class SectorBenchmarks:
     """Standardized financial multiples for a specific industry."""
     pe_ratio: float
-    ev_ebitda: Optional[float]
-    ev_revenue: Optional[float]
-    pb_ratio: Optional[float] = None  # Price to Book (Banks/Insurance)
+    ev_ebitda: float | None
+    ev_revenue: float | None
+    pb_ratio: float | None = None  # Price to Book (Banks/Insurance)
     source: str = "Consensus 2026"
 
 
@@ -39,7 +38,7 @@ SECTOR_METADATA = {
 # 3. SECTOR DATA (SINGLE SOURCE OF TRUTH)
 # ==============================================================================
 
-SECTORS: Dict[str, SectorBenchmarks] = {
+SECTORS: dict[str, SectorBenchmarks] = {
     # --- TECHNOLOGY ---
     "technology": SectorBenchmarks(
         pe_ratio=28.5, ev_ebitda=19.2, ev_revenue=5.1, source="Tech Macro"

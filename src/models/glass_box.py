@@ -10,12 +10,13 @@ Architecture: Pydantic V2 containers for traceable calculation chains.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from src.models.enums import VariableSource, ParametersSource
 from src.config.constants import ModelDefaults
 from src.core.formatting import format_smart_number
+from src.models.enums import ParametersSource, VariableSource
 
 
 class VariableInfo(BaseModel):
@@ -29,7 +30,7 @@ class VariableInfo(BaseModel):
     source: VariableSource = VariableSource.SYSTEM
     description: str = ""
     is_overridden: bool = False
-    original_value: Optional[float] = None
+    original_value: float | None = None
 
     def model_post_init(self, __context: Any) -> None:
         """Delegates formatting to the central utility."""
@@ -47,7 +48,7 @@ class TraceHypothesis(BaseModel):
     value: Any
     unit: str = ""
     source: ParametersSource = ParametersSource.SYSTEM
-    comment: Optional[str] = None
+    comment: str | None = None
 
 class CalculationStep(BaseModel):
     """
@@ -59,13 +60,13 @@ class CalculationStep(BaseModel):
     label: str = ""
     theoretical_formula: str = ""  # LaTeX
     actual_calculation: str = ""    # Substituted values
-    variables_map: Dict[str, VariableInfo] = Field(default_factory=dict)
-    hypotheses: List[TraceHypothesis] = Field(default_factory=list)
+    variables_map: dict[str, VariableInfo] = Field(default_factory=dict)
+    hypotheses: list[TraceHypothesis] = Field(default_factory=list)
     result: float = ModelDefaults.DEFAULT_RESULT_VALUE
     unit: str = ""
     interpretation: str = ""
     source: str = ""
 
-    def get_variable(self, symbol: str) -> Optional[VariableInfo]:
+    def get_variable(self, symbol: str) -> VariableInfo | None:
         """Retrieves variable metadata by its mathematical symbol."""
         return self.variables_map.get(symbol)

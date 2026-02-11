@@ -16,18 +16,19 @@ _ROOT_PATH = _FILE_PATH.parent.parent
 if str(_ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(_ROOT_PATH))
 
-import streamlit as st
+import streamlit as st  # noqa: E402
+
+from app.assets.style_system import inject_institutional_design  # noqa: E402
 
 # MVC Imports
-from app.state.session_manager import SessionManager
-from app.state.store import get_state
-from app.assets.style_system import inject_institutional_design
-from app.views.common.sidebar import render_sidebar
+from app.state.session_manager import SessionManager  # noqa: E402
+from app.state.store import get_state  # noqa: E402
+from app.views.common.sidebar import render_sidebar  # noqa: E402
+from app.views.inputs.auto_form import render_auto_form  # noqa: E402
+from app.views.inputs.expert_form import render_expert_form  # noqa: E402
 
 # Views Imports
-from app.views.results.orchestrator import render_valuation_results
-from app.views.inputs.expert_form import render_expert_form
-from app.views.inputs.auto_form import render_auto_form
+from app.views.results.orchestrator import render_valuation_results  # noqa: E402
 
 # Configuration of the page must be the first Streamlit command
 st.set_page_config(

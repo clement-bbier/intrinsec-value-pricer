@@ -7,15 +7,17 @@ Architecture: Injectable Spoke.
 Style: Institutional Heatmap with conditional formatting.
 """
 
-from typing import Any, List, Dict, Literal
-import pandas as pd
+from typing import Any, Literal
+
 import altair as alt
+import pandas as pd
 import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import QuantTexts, ChartTexts
-from src.core.formatting import format_smart_number
 from app.views.components.ui_kpis import atom_kpi_metric
+from src.core.formatting import format_smart_number
+from src.i18n import ChartTexts, QuantTexts
+from src.models import ValuationResult
+
 
 class SensitivityAnalysisTab:
     """
@@ -85,7 +87,7 @@ class SensitivityAnalysisTab:
         # --- 2. HEATMAP CONSTRUCTION (Altair) ---
         with col_chart:
             # Data Transformation: Matrix -> Long Format DataFrame for Altair
-            heatmap_data: List[Dict[str, Any]] = []
+            heatmap_data: list[dict[str, Any]] = []
 
             # data.values is List[List[float]] -> [row][col]
             for i, y_val in enumerate(data.y_values):

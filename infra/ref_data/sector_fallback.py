@@ -14,7 +14,6 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 # Import the new typed configuration (No more YAML reading)
 from src.config.sector_multiples import SECTORS, SectorBenchmarks
@@ -44,7 +43,7 @@ def _normalize_sector_key(sector: str) -> str:
     return mapping.get(normalized, "default")
 
 
-def _slugify(text: Optional[str]) -> str:
+def _slugify(text: str | None) -> str:
     """
     Normalizes raw API strings into canonical configuration keys.
     """
@@ -61,7 +60,7 @@ def _slugify(text: Optional[str]) -> str:
     )
 
 
-def get_sector_data(industry: Optional[str], sector: Optional[str]) -> SectorBenchmarks:
+def get_sector_data(industry: str | None, sector: str | None) -> SectorBenchmarks:
     """
     Retrieves valuation benchmarks using a hierarchical fallback strategy.
 

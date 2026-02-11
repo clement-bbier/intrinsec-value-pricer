@@ -8,9 +8,11 @@ Architecture: Strategy Pattern.
 """
 
 from abc import ABC, abstractmethod
+
 from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
 from src.models.valuation import ValuationResult
+
 
 class IValuationRunner(ABC):
     """
