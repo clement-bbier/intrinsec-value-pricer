@@ -184,6 +184,27 @@ class QuantLogger:
         )
         _logger.error(msg)
 
+    @classmethod
+    def log_json(cls, event: str, **data: Any) -> None:
+        """
+        Emit a structured JSON log line for audit trail.
+
+        Parameters
+        ----------
+        event : str
+            Event type identifier (e.g., "valuation_completed").
+        **data
+            Arbitrary key-value pairs to include in the JSON record.
+        """
+        import json
+        from datetime import timezone
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "event": event,
+            **data
+        }
+        _logger.info(json.dumps(record, default=str))
+
 
 def log_valuation(func: F) -> F:
     """

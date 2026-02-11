@@ -60,6 +60,8 @@ class MCParameters(BaseNormalizedModel):
         Number of random draws (e.g., 5000).
     shocks : MCShockUnion | None
         Polymorphic container for volatility settings based on the strategy.
+    random_seed : int | None
+        Random seed for reproducibility (default: 42).
     """
     enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
     iterations: Annotated[int, UIKey("sims", scale="raw")] = Field(
@@ -68,6 +70,7 @@ class MCParameters(BaseNormalizedModel):
         le=MonteCarloDefaults.MAX_SIMULATIONS
     )
     shocks: Optional[MCShockUnion] = None
+    random_seed: Optional[int] = 42
 
 
 # ==============================================================================

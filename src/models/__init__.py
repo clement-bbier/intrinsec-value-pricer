@@ -56,6 +56,7 @@ from .results.base_result import Results
 from .valuation import (
     ValuationRequest,
     ValuationResult,
+    ValuationRunMetadata,
     AuditReport
 )
 
@@ -84,6 +85,7 @@ __all__ = [
     "Results",
     "ValuationRequest",
     "ValuationResult",
+    "ValuationRunMetadata",
     "AuditReport",
 
     # Parameters Sub-structures
