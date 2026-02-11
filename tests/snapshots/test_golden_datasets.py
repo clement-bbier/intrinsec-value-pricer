@@ -14,7 +14,7 @@ from src.models.company import Company, CompanySnapshot
 from src.models.valuation import ValuationRequest
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.strategies import FCFFStandardParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
+
 from src.models.parameters.options import ExtensionBundleParameters, MCParameters, StandardMCShocksParameters
 from src.models.enums import ValuationMethodology, CompanySector
 from src.valuation.orchestrator import ValuationOrchestrator
