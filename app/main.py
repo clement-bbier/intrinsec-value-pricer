@@ -18,16 +18,17 @@ if str(_ROOT_PATH) not in sys.path:
 
 import streamlit as st
 
+from app.assets.style_system import inject_institutional_design
+
 # MVC Imports
 from app.state.session_manager import SessionManager
 from app.state.store import get_state
-from app.assets.style_system import inject_institutional_design
 from app.views.common.sidebar import render_sidebar
+from app.views.inputs.auto_form import render_auto_form
+from app.views.inputs.expert_form import render_expert_form
 
 # Views Imports
 from app.views.results.orchestrator import render_valuation_results
-from app.views.inputs.expert_form import render_expert_form
-from app.views.inputs.auto_form import render_auto_form
 
 # Configuration of the page must be the first Streamlit command
 st.set_page_config(

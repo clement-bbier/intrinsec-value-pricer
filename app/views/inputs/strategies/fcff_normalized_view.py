@@ -1,8 +1,10 @@
 import streamlit as st
-from src.models import ValuationMethodology
-from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
+
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_projection_years
+from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
+from src.models import ValuationMethodology
+
 
 class FCFFNormalizedView(BaseStrategyView):
     MODE = ValuationMethodology.FCFF_NORMALIZED
@@ -25,6 +27,8 @@ class FCFFNormalizedView(BaseStrategyView):
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
-        with c1: widget_projection_years(default=5, key_prefix=prefix)
-        with c2: st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_growth_rate")
+        with c1:
+            widget_projection_years(default=5, key_prefix=prefix)
+        with c2:
+            st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_growth_rate")
         st.divider()

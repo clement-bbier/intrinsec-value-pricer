@@ -9,15 +9,15 @@ Architecture: ST-4.2 Compliant Hub & Spokes logic.
 """
 
 from typing import Any
-import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import PillarLabels, KPITexts, MarketTexts
+import streamlit as st
 
 # Internal rendering engines (Spokes)
 # These components must implement static methods: .is_visible() and .render()
 from app.views.results.pillars.peer_multiples import PeerMultiples
 from app.views.results.pillars.sotp_breakdown import SOTPBreakdownTab
+from src.i18n import KPITexts, MarketTexts, PillarLabels
+from src.models import ValuationResult
 
 
 def render_market_context(result: ValuationResult, **kwargs: Any) -> None:

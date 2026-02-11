@@ -9,17 +9,18 @@ Architecture: ST-4.2 Compliant Hub & Spokes logic.
 """
 
 from typing import Any
+
 import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import PillarLabels, QuantTexts, BacktestTexts
+from app.views.results.pillars.historical_backtest import HistoricalBacktestTab
 
 # Internal rendering engines (Spokes)
 # Note: These components use static methods (_render, _is_visible)
 from app.views.results.pillars.monte_carlo_distribution import MonteCarloDistributionTab
-from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
 from app.views.results.pillars.scenario_analysis import ScenarioAnalysisTab
-from app.views.results.pillars.historical_backtest import HistoricalBacktestTab
+from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
+from src.i18n import BacktestTexts, PillarLabels, QuantTexts
+from src.models import ValuationResult
 
 
 def render_risk_analysis(result: ValuationResult, **kwargs: Any) -> None:

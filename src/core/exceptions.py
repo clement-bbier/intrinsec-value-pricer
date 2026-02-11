@@ -12,14 +12,8 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
-from src.core.diagnostics import (
-    DiagnosticEvent,
-    SeverityLevel,
-    DiagnosticDomain,
-    DiagnosticRegistry
-)
+from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, DiagnosticRegistry, SeverityLevel
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +84,7 @@ class TickerNotFoundError(ValuationException):
 
 class DataMissingError(ValuationException):
     """Raised when a mandatory financial field is absent from the dataset."""
-    def __init__(self, missing_field: str, ticker: str, year: Optional[int] = None):
+    def __init__(self, missing_field: str, ticker: str, year: int | None = None):
         if year:
             msg = f"Missing data for {ticker}: Field '{missing_field}' (Year: {year})."
         else:

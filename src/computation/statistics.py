@@ -13,11 +13,11 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple, Optional, Dict, List
+
 import numpy as np
 
-from src.models import ValuationResult, Parameters, ValuationMethodology
-from src.config.constants import MonteCarloDefaults, MacroDefaults
+from src.config.constants import MacroDefaults, MonteCarloDefaults
+from src.models import Parameters, ValuationMethodology, ValuationResult
 
 
 @dataclass
@@ -32,8 +32,8 @@ class StochasticOutput:
     quantiles : Dict[str, float]
         Key statistical percentiles (p10, p50, p90, std).
     """
-    values: List[float]
-    quantiles: Dict[str, float]
+    values: list[float]
+    quantiles: dict[str, float]
 
 
 # ============================================================================
@@ -249,8 +249,8 @@ def generate_multivariate_samples(
         sigma_growth: float,
         rho: float,
         num_simulations: int,
-        seed: Optional[int] = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+        seed: int | None = 42
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Generates correlated random samples for Beta and Growth using Cholesky or SVD.
 
@@ -303,9 +303,9 @@ def generate_independent_samples(
         mean: float,
         sigma: float,
         num_simulations: int,
-        clip_min: Optional[float] = None,
-        clip_max: Optional[float] = None,
-        seed: Optional[int] = None
+        clip_min: float | None = None,
+        clip_max: float | None = None,
+        seed: int | None = None
 ) -> np.ndarray:
     """
     Generates independent normal distribution samples.

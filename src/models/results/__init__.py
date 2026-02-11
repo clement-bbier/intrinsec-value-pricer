@@ -7,30 +7,26 @@ Exposes the output data structures for all valuation engines.
 """
 
 from src.models.results.base_result import Results
-from src.models.results.common import (
-    CommonResults,
-    ResolvedRates,
-    ResolvedCapital
-)
-from src.models.results.strategies import (
-    StrategyUnionResults,
-    BaseFlowResults,
-    FCFFStandardResults,
-    FCFFNormalizedResults,
-    FCFFGrowthResults,
-    FCFEResults,
-    DDMResults,
-    RIMResults,
-    GrahamResults
-)
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import (
+    BacktestResults,
     ExtensionBundleResults,
     MCResults,
-    SensitivityResults,
-    ScenariosResults,
-    BacktestResults,
     PeersResults,
-    SOTPResults
+    ScenariosResults,
+    SensitivityResults,
+    SOTPResults,
+)
+from src.models.results.strategies import (
+    BaseFlowResults,
+    DDMResults,
+    FCFEResults,
+    FCFFGrowthResults,
+    FCFFNormalizedResults,
+    FCFFStandardResults,
+    GrahamResults,
+    RIMResults,
+    StrategyUnionResults,
 )
 
 __all__ = [

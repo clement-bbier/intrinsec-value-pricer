@@ -11,8 +11,8 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import List, Optional
 from pydantic import BaseModel, Field
+
 from src.models.glass_box import CalculationStep
 
 
@@ -34,7 +34,7 @@ class ResolvedRates(BaseModel):
     cost_of_equity: float = Field(..., description="Calculated Ke (CAPM result).")
     cost_of_debt_after_tax: float = Field(..., description="Resolved Kd after tax shield.")
     wacc: float = Field(..., description="Final WACC result.")
-    corporate_aaa_yield: Optional[float] = None
+    corporate_aaa_yield: float | None = None
 
 
 class ResolvedCapital(BaseModel):
@@ -83,4 +83,4 @@ class CommonResults(BaseModel):
     upside_pct: float
 
     # --- Pillar 2: The Audit Trail ---
-    bridge_trace: List[CalculationStep] = Field(default_factory=list)
+    bridge_trace: list[CalculationStep] = Field(default_factory=list)

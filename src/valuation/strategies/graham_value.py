@@ -15,27 +15,26 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict
 
-from src.models.parameters.base_parameter import Parameters
+# Config & i18n
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.models.company import Company
-from src.models.glass_box import CalculationStep
 from src.models.enums import ValuationMethodology
+from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
+from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import GrahamResults
 
 # Models Results (Nested Architecture)
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import GrahamResults
-from src.models.results.options import ExtensionBundleResults
+from src.models.valuation import ValuationRequest, ValuationResult
 
 # Libraries (DRY Logic)
 from src.valuation.library.graham import GrahamLibrary
+
 # CORRECTIF 1: On utilise IValuationRunner pour la cohérence avec standard_fcff.py
 from src.valuation.strategies.interface import IValuationRunner
-
-# Config & i18n
-from src.config.constants import ModelDefaults, MacroDefaults
 
 
 class GrahamNumberStrategy(IValuationRunner):
@@ -63,7 +62,7 @@ class GrahamNumberStrategy(IValuationRunner):
         """
         Executes the Graham valuation sequence.
         """
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: Intrinsic Value Calculation ---
         # Delegate pure math to the Library
@@ -157,7 +156,7 @@ class GrahamNumberStrategy(IValuationRunner):
         )
 
     @staticmethod
-    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         Vectorized Graham Formula Execution for Monte Carlo.
 

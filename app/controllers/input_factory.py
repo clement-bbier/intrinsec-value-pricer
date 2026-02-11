@@ -8,22 +8,28 @@ Mechanism: Uses Pydantic introspection (UIKey) to map flat session keys
            to hierarchical backend parameters.
 """
 
-from typing import Type, TypeVar, Optional, Any, Dict, cast
+from typing import Any, TypeVar, cast
+
 import streamlit as st
 from pydantic import BaseModel
 
-from src.models.valuation import ValuationRequest, ValuationMethodology
+from app.state.store import get_state
 from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.common import CommonParameters
+from src.models.parameters.input_metadata import UIKey
 from src.models.parameters.options import ExtensionBundleParameters
 from src.models.parameters.strategies import (
-    FCFFStandardParameters, FCFFNormalizedParameters, FCFFGrowthParameters,
-    FCFEParameters, DDMParameters, RIMParameters, GrahamParameters,
-    StrategyUnionParameters
+    DDMParameters,
+    FCFEParameters,
+    FCFFGrowthParameters,
+    FCFFNormalizedParameters,
+    FCFFStandardParameters,
+    GrahamParameters,
+    RIMParameters,
+    StrategyUnionParameters,
 )
-from src.models.parameters.input_metadata import UIKey
-from app.state.store import get_state
+from src.models.valuation import ValuationMethodology, ValuationRequest
 
 # Generic Type Variable bound to Pydantic Models
 T = TypeVar("T", bound=BaseModel)
@@ -81,7 +87,7 @@ class InputFactory:
 
         # Map Enum to Pydantic Class
         # Uses the exact mapping defined in src.valuation.registry but static here for simplicity
-        mapping: Dict[ValuationMethodology, Type[BaseModel]] = {
+        mapping: dict[ValuationMethodology, type[BaseModel]] = {
             ValuationMethodology.FCFF_STANDARD: FCFFStandardParameters,
             ValuationMethodology.FCFF_NORMALIZED: FCFFNormalizedParameters,
             ValuationMethodology.FCFF_GROWTH: FCFFGrowthParameters,
@@ -103,12 +109,12 @@ class InputFactory:
         return cast(StrategyUnionParameters, InputFactory._pull_model(model_cls, prefix=prefix))
 
     @staticmethod
-    def _pull_model(model_cls: Type[T], prefix: Optional[str] = None) -> T:
+    def _pull_model(model_cls: type[T], prefix: str | None = None) -> T:
         """
         Generic extractor: Inspects a Pydantic model for UIKey annotations
         and fetches corresponding values from Streamlit Session State.
         """
-        extracted_data: Dict[str, Any] = {}
+        extracted_data: dict[str, Any] = {}
 
         for name, field_info in model_cls.model_fields.items():
             # 1. Recursion for nested models (e.g. Common -> Rates)

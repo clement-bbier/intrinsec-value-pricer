@@ -11,9 +11,10 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
@@ -32,7 +33,7 @@ class RawFinancialData:
     instead of loose variables.
     """
     ticker: str
-    info: Dict[str, Any] = field(default_factory=dict)
+    info: dict[str, Any] = field(default_factory=dict)
     balance_sheet: pd.DataFrame = field(default_factory=pd.DataFrame)
     income_stmt: pd.DataFrame = field(default_factory=pd.DataFrame)
     cash_flow: pd.DataFrame = field(default_factory=pd.DataFrame)

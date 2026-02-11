@@ -11,18 +11,19 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 from src.models.results.common import CommonResults
-from src.models.results.strategies import StrategyUnionResults
 from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import StrategyUnionResults
 
 
 class Results(BaseModel):
     """
     Unified container for a complete valuation session's outputs.
 
-    This model acts as the 'Mirror' of the Parameters object, storing only 
+    This model acts as the 'Mirror' of the Parameters object, storing only
     the resolved and calculated data generated during the valuation process.
     """
 

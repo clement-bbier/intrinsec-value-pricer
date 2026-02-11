@@ -6,10 +6,11 @@ Role: Visual component to render a single calculation step in the Glass Box.
 Focus: Presentation logic only. Uses Registry for data.
 """
 
+
 import streamlit as st
-from typing import Union
-from src.models import CalculationStep
+
 from app.views.components.ui_glass_box_registry import get_step_metadata
+from src.models import CalculationStep
 
 
 def render_calculation_step(index: int, step: CalculationStep) -> None:
@@ -58,7 +59,7 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
         st.divider()
 
 
-def _format_value(value: Union[float, int, str], unit: str) -> str:
+def _format_value(value: float | int | str, unit: str) -> str:
     """Helper to format numerical values based on metadata unit."""
     if not isinstance(value, (int, float)):
         return str(value)

@@ -15,12 +15,12 @@ Style: Institutional Design.
 
 import streamlit as st
 
-from app.state.store import get_state
-from app.state.session_manager import SessionManager
 from app.controllers.app_controller import AppController
+from app.state.session_manager import SessionManager
+from app.state.store import get_state
+from src.i18n import CommonTexts, SidebarTexts
 from src.models.enums import ValuationMethodology
 from src.valuation.registry import get_display_names
-from src.i18n import CommonTexts, SidebarTexts
 
 
 def render_sidebar():

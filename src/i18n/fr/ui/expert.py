@@ -291,15 +291,15 @@ class FCFFGrowthTexts(UISharedTexts):
     HELP_REV_GROWTH = "Taux de croissance annuel projeté pour les ventes."
     INP_MARGIN_TARGET = "Marge FCF cible (%)"
     HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée à la fin de l'horizon de projection."
-    
+
     # Disclaimer about margin simplification
-    MARGIN_DISCLAIMER = """⚠️ Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible 
+    MARGIN_DISCLAIMER = """⚠️ Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible
 suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.
 
 Formule complète professionnelle :
 FCFF = Revenue × Marge_EBIT × (1-T) - Réinvestissements
 
-Cette simplification est appropriée pour les analyses rapides ou lorsque les données détaillées 
+Cette simplification est appropriée pour les analyses rapides ou lorsque les données détaillées
 ne sont pas disponibles."""
 
 
@@ -334,7 +334,7 @@ class RIMTexts(UISharedTexts):
     STEP_2_DESC = "Estimation de la durée pendant laquelle l'entreprise génère un rendement supérieur à son coût du capital (Facteur Omega)."
 
     HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
-    
+
     # Omega (persistence factor) explanation
     HELP_OMEGA = """Facteur de persistance des profits anormaux : ω (0 < ω < 1), issu du modèle Ohlson (1995) AR(1).
 - ω = 1 : les profits anormaux persistent indéfiniment (scénario agressif, avantage compétitif durable)

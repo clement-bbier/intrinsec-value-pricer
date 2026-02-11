@@ -11,14 +11,14 @@ Standards: McKinsey/Damodaran institutional frameworks.
 from __future__ import annotations
 
 import logging
-from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
+
+from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
+from src.core.exceptions import CalculationError
 
 # DT-001/002: Internal i18n imports for UI-facing error messages
 from src.i18n import CalculationErrors, StrategySources
-from src.core.exceptions import CalculationError
 from src.models import Company, Parameters
-from src.config.constants import ValuationEngineDefaults, MacroDefaults, ModelDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class WACCBreakdown:
 # 1. TIME VALUE OF MONEY & TERMINAL VALUES
 # ==============================================================================
 
-def calculate_discount_factors(rate: float, years: int) -> List[float]:
+def calculate_discount_factors(rate: float, years: int) -> list[float]:
     r"""
     Generates discount factors for a specific horizon.
 
@@ -97,7 +97,7 @@ def calculate_discount_factors(rate: float, years: int) -> List[float]:
         raise CalculationError(CalculationErrors.INVALID_DISCOUNT_RATE.format(rate=rate))
     return [1.0 / ((1.0 + rate) ** t) for t in range(1, years + 1)]
 
-def calculate_npv(flows: List[float], rate: float) -> float:
+def calculate_npv(flows: list[float], rate: float) -> float:
     r"""
     Calculates the Net Present Value (NPV) of a series of cash flows.
 
@@ -205,7 +205,7 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
 # 2. STRUCTURE ADJUSTMENTS & DILUTION
 # ==============================================================================
 
-def calculate_historical_share_growth(shares_series: List[float]) -> float:
+def calculate_historical_share_growth(shares_series: list[float]) -> float:
     r"""
     Calculates the historical CAGR of shares outstanding to estimate dilution.
 
@@ -237,7 +237,7 @@ def calculate_historical_share_growth(shares_series: List[float]) -> float:
     return max(0.0, min(ValuationEngineDefaults.MAX_DILUTION_CLAMPING, cagr))
 
 
-def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float:
+def calculate_dilution_factor(annual_rate: float | None, years: int) -> float:
     r"""
     Calculates the cumulative dilution factor over the projection horizon.
 
@@ -260,7 +260,7 @@ def calculate_dilution_factor(annual_rate: Optional[float], years: int) -> float
     return (1.0 + annual_rate) ** years
 
 
-def compute_diluted_shares(current_shares: float, annual_rate: Optional[float], years: int) -> float:
+def compute_diluted_shares(current_shares: float, annual_rate: float | None, years: int) -> float:
     r"""
     Computes the projected total share count after n years of dilution.
 
@@ -399,8 +399,8 @@ def calculate_cost_of_equity(params: Parameters) -> float:
 
     return calculate_cost_of_equity_capm(rf, beta, mrp)
 
-def calculate_synthetic_cost_of_debt(rf: float, ebit: Optional[float],
-                                     interest_expense: Optional[float], market_cap: float) -> float:
+def calculate_synthetic_cost_of_debt(rf: float, ebit: float | None,
+                                     interest_expense: float | None, market_cap: float) -> float:
     r"""
     Estimates pre-tax cost of debt using the Interest Coverage Ratio (ICR).
 
@@ -594,7 +594,7 @@ def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
 def calculate_rim_vectors(current_bv: float, ke: float,
-                          earnings: List[float], payout: float) -> Tuple[List[float], List[float]]:
+                          earnings: list[float], payout: float) -> tuple[list[float], list[float]]:
     r"""
     Generates Residual Income (RI) and Book Value (BV) time series.
 
@@ -626,7 +626,7 @@ def calculate_rim_vectors(current_bv: float, ke: float,
         prev_bv = new_bv
     return residual_incomes, book_values
 
-def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> List[float]:
+def compute_proportions(*values: float | None, fallback_index: int = 0) -> list[float]:
     r"""
     Normalizes a list of values into weights that sum to 100%.
 
@@ -645,7 +645,9 @@ def compute_proportions(*values: Optional[float], fallback_index: int = 0) -> Li
     clean_values = [v or 0.0 for v in values]
     total = sum(clean_values)
     if total <= 0:
-        res = [0.0] * len(clean_values); res[fallback_index] = 1.0; return res
+        res = [0.0] * len(clean_values)
+        res[fallback_index] = 1.0
+        return res
     return [v / total for v in clean_values]
 
 # ==============================================================================
@@ -717,8 +719,8 @@ def calculate_price_from_ev_multiple(
     return max(0.0, equity_value / shares)
 
 def calculate_triangulated_price(
-    valuation_signals: Dict[str, float],
-    weights: Optional[Dict[str, float]] = None
+    valuation_signals: dict[str, float],
+    weights: dict[str, float] | None = None
 ) -> float:
     r"""
     Performs weighted synthesis of multiple valuation price signals.

@@ -13,17 +13,15 @@ Standard: SOLID, i18n Secured, NumPy Style.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Dict
-
-from src.models.company import Company
-from src.models.results.options import PeersResults
-from src.models.market_data import MultiplesData
 
 from src.computation.financial_math import (
-    calculate_price_from_pe_multiple,
     calculate_price_from_ev_multiple,
-    calculate_triangulated_price
+    calculate_price_from_pe_multiple,
+    calculate_triangulated_price,
 )
+from src.models.company import Company
+from src.models.market_data import MultiplesData
+from src.models.results.options import PeersResults
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,7 @@ class PeersRunner:
     """
 
     @staticmethod
-    def execute(financials: Company, multiples_data: Optional[MultiplesData]) -> Optional[PeersResults]:
+    def execute(financials: Company, multiples_data: MultiplesData | None) -> PeersResults | None:
         """
         Execute the multiples-based valuation sequence.
 
@@ -72,7 +70,7 @@ class PeersRunner:
         pensions = f.pension_provisions or 0.0
 
         # --- 2. INDIVIDUAL PRICE SIGNAL COMPUTATION ---
-        signals: Dict[str, float] = {}
+        signals: dict[str, float] = {}
 
         # Signal A: P/E (Equity-based)
         if m.median_pe and m.median_pe > 0:

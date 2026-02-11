@@ -15,29 +15,28 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict
 
-from src.models.parameters.base_parameter import Parameters
+from src.computation.financial_math import calculate_discount_factors
+
+# Config & i18n
+from src.config.constants import ModelDefaults
+from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
-from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.enums import ValuationMethodology, VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
+from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import DDMResults
 
 # Models Results
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import DDMResults
-from src.models.results.options import ExtensionBundleResults
+from src.models.valuation import ValuationRequest, ValuationResult
 
 # Libraries
 from src.valuation.library.common import CommonLibrary
 from src.valuation.library.dcf import DCFLibrary
 from src.valuation.strategies.interface import IValuationRunner
-from src.computation.financial_math import calculate_discount_factors
-
-# Config & i18n
-from src.config.constants import ModelDefaults
-from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations, SharedTexts
 
 
 class DividendDiscountStrategy(IValuationRunner):
@@ -61,7 +60,7 @@ class DividendDiscountStrategy(IValuationRunner):
         """
         Executes DDM valuation sequence.
         """
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # DDM uses Cost of Equity as the discount rate.
@@ -70,7 +69,8 @@ class DividendDiscountStrategy(IValuationRunner):
             params=params,
             use_cost_of_equity_only=True
         )
-        if self._glass_box: steps.append(step_ke)
+        if self._glass_box:
+            steps.append(step_ke)
 
         # --- STEP 2: Dividend Anchor Selection ---
         # We resolve the starting Dividend per Share (D0).
@@ -114,23 +114,27 @@ class DividendDiscountStrategy(IValuationRunner):
             # Uses standard growth parameters (Linear Fade-Down) applied to Dividends
             flows, step_proj = DCFLibrary.project_flows_simple(total_dividend_mass, params)
 
-        if self._glass_box: steps.append(step_proj)
+        if self._glass_box:
+            steps.append(step_proj)
 
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else total_dividend_mass
         # TV calculated with Ke (not WACC)
         tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, ke, params)
-        if self._glass_box: steps.append(step_tv)
+        if self._glass_box:
+            steps.append(step_tv)
 
         # --- STEP 5: Discounting ---
         # Discount at Ke. Result is Total Equity Value.
         equity_value_total, step_ev = DCFLibrary.compute_discounting(flows, tv, ke)
-        if self._glass_box: steps.append(step_ev)
+        if self._glass_box:
+            steps.append(step_ev)
 
         # --- STEP 6: Per Share Value ---
         # Simply divide Total Equity by Shares. No Bridge needed for DDM.
         iv_per_share, step_iv = DCFLibrary.compute_value_per_share(equity_value_total, params)
-        if self._glass_box: steps.append(step_iv)
+        if self._glass_box:
+            steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
 
@@ -196,7 +200,7 @@ class DividendDiscountStrategy(IValuationRunner):
         )
 
     @staticmethod
-    def execute_stochastic(_financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         High-Performance Vectorized Execution for Monte Carlo (DDM).
 

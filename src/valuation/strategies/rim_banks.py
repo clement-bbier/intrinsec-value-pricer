@@ -14,29 +14,28 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 from __future__ import annotations
 
 import numpy as np
-from typing import List, Dict
 
-from src.models.parameters.base_parameter import Parameters
-from src.models.company import Company
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import ValuationMethodology, VariableSource
-
-# Models Results
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import RIMResults
-from src.models.results.options import ExtensionBundleResults
-
-# Libraries
-from src.valuation.library.common import CommonLibrary
-from src.valuation.library.rim import RIMLibrary
-from src.valuation.library.dcf import DCFLibrary # Used for Per Share Dilution
-from src.valuation.strategies.interface import IValuationRunner
 from src.computation.financial_math import calculate_discount_factors
 
 # Config & i18n
-from src.i18n import RegistryTexts, StrategySources, StrategyFormulas, StrategyInterpretations
+from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.company import Company
+from src.models.enums import ValuationMethodology, VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.base_result import Results
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
+from src.models.results.options import ExtensionBundleResults
+from src.models.results.strategies import RIMResults
+
+# Models Results
+from src.models.valuation import ValuationRequest, ValuationResult
+
+# Libraries
+from src.valuation.library.common import CommonLibrary
+from src.valuation.library.dcf import DCFLibrary  # Used for Per Share Dilution
+from src.valuation.library.rim import RIMLibrary
+from src.valuation.strategies.interface import IValuationRunner
 
 
 class RIMBankingStrategy(IValuationRunner):
@@ -61,7 +60,7 @@ class RIMBankingStrategy(IValuationRunner):
         """
         Executes RIM valuation sequence.
         """
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # RIM is a Direct Equity method -> Discount at Cost of Equity
@@ -70,7 +69,8 @@ class RIMBankingStrategy(IValuationRunner):
             params=params,
             use_cost_of_equity_only=True
         )
-        if self._glass_box: steps.append(step_ke)
+        if self._glass_box:
+            steps.append(step_ke)
 
         # --- STEP 2: Anchors Selection (BVPS & EPS) ---
         # A. Book Value Per Share (B0)
@@ -111,12 +111,14 @@ class RIMBankingStrategy(IValuationRunner):
             cost_of_equity=ke,
             params=params
         )
-        if self._glass_box: steps.append(step_proj)
+        if self._glass_box:
+            steps.append(step_proj)
 
         # --- STEP 4: Terminal Value (Ohlson) ---
         final_ri = ri_flows[-1] if ri_flows else 0.0
         tv, step_tv = RIMLibrary.compute_terminal_value_ohlson(final_ri, ke, params)
-        if self._glass_box: steps.append(step_tv)
+        if self._glass_box:
+            steps.append(step_tv)
 
         # --- STEP 5: Aggregation (Total Value) ---
         # Note: The result is directly Value Per Share because inputs were Per Share
@@ -126,7 +128,8 @@ class RIMBankingStrategy(IValuationRunner):
             terminal_value=tv,
             cost_of_equity=ke
         )
-        if self._glass_box: steps.append(step_agg)
+        if self._glass_box:
+            steps.append(step_agg)
 
         # --- STEP 6: Dilution Adjustment ---
         # RIM computes raw equity value. We still need to account for SBC dilution.
@@ -138,7 +141,8 @@ class RIMBankingStrategy(IValuationRunner):
         # Note: compute_value_per_share divides by shares again.
         # Optimization: Call simple dilution utility directly?
         # For consistency, we pass Total Equity to `compute_value_per_share` which handles everything nicely.
-        if self._glass_box: steps.append(step_dil)
+        if self._glass_box:
+            steps.append(step_dil)
 
         # --- RESULT CONSTRUCTION ---
 
@@ -196,7 +200,7 @@ class RIMBankingStrategy(IValuationRunner):
         )
 
     @staticmethod
-    def execute_stochastic(financials: Company, params: Parameters, vectors: Dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         High-Performance Vectorized Execution for Monte Carlo (RIM).
 

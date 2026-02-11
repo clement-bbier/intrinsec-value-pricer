@@ -11,19 +11,12 @@ Style: Numpy docstrings, type-safe, institutional-grade validations.
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Any
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
-from src.models.parameters.base_parameter import Parameters
 from src.models.company import Company
-from src.models.parameters.strategies import (
-    FCFFStandardParameters,
-    FCFFNormalizedParameters,
-    FCFFGrowthParameters,
-    FCFEParameters,
-    DDMParameters,
-    RIMParameters,
-)
+from src.models.parameters.base_parameter import Parameters
 
 
 class GuardrailCheckResult(BaseModel):
@@ -448,7 +441,7 @@ def validate_scenario_probabilities(params: Parameters) -> GuardrailCheckResult:
     )
 
 
-def _extract_growth_rate(strategy: Any) -> Optional[float]:
+def _extract_growth_rate(strategy: Any) -> float | None:
     """
     Extracts the primary growth rate from a strategy parameter object.
 

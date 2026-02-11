@@ -10,18 +10,13 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import List, Optional, Union, Literal, Annotated
-from pydantic import Field, BaseModel
+from typing import Annotated, Literal, Union
 
-from src.models.parameters.input_metadata import UIKey
+from pydantic import BaseModel, Field
+
+from src.config.constants import BacktestDefaults, MonteCarloDefaults, SensitivityDefaults, SOTPDefaults
 from src.models.parameters.common import BaseNormalizedModel
-from src.config.constants import (
-    MonteCarloDefaults,
-    SensitivityDefaults,
-    BacktestDefaults,
-    SOTPDefaults
-)
-
+from src.models.parameters.input_metadata import UIKey
 
 # ==============================================================================
 # 1. MONTE CARLO (STOCHASTIC)
@@ -29,22 +24,22 @@ from src.config.constants import (
 
 class BaseMCShocksParameters(BaseNormalizedModel):
     """Universal stochastic foundation."""
-    growth_volatility: Annotated[Optional[float], UIKey("vol_growth", scale="pct")] = None
+    growth_volatility: Annotated[float | None, UIKey("vol_growth", scale="pct")] = None
 
 class BetaModelMCShocksParameters(BaseMCShocksParameters):
     """Models requiring Beta sensitivity."""
-    beta_volatility: Annotated[Optional[float], UIKey("vol_beta", scale="pct")] = None
+    beta_volatility: Annotated[float | None, UIKey("vol_beta", scale="pct")] = None
 
 class StandardMCShocksParameters(BetaModelMCShocksParameters):
     """Shocks for standard DCF models."""
     type: Literal["standard"] = "standard"
-    fcf_volatility: Annotated[Optional[float], UIKey("vol_flow", scale="pct")] = None
-    dividend_volatility: Annotated[Optional[float], UIKey("vol_flow", scale="pct")] = None
+    fcf_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
+    dividend_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
 
 class GrahamMCShocksParameters(BaseMCShocksParameters):
     """Shocks specific to Graham formula."""
     type: Literal["graham"] = "graham"
-    eps_volatility: Annotated[Optional[float], UIKey("vol_flow", scale="pct")] = None
+    eps_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
 
 MCShockUnion = Union[StandardMCShocksParameters, GrahamMCShocksParameters]
 
@@ -69,8 +64,8 @@ class MCParameters(BaseNormalizedModel):
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
         le=MonteCarloDefaults.MAX_SIMULATIONS
     )
-    shocks: Optional[MCShockUnion] = None
-    random_seed: Optional[int] = 42
+    shocks: MCShockUnion | None = None
+    random_seed: int | None = 42
 
 
 # ==============================================================================
@@ -97,8 +92,8 @@ class SensitivityParameters(BaseNormalizedModel):
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
-    wacc_span: Annotated[Optional[float], UIKey("sensi_wacc", scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
-    growth_span: Annotated[Optional[float], UIKey("sensi_growth", scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
+    wacc_span: Annotated[float | None, UIKey("sensi_wacc", scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
+    growth_span: Annotated[float | None, UIKey("sensi_growth", scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
 
 # ==============================================================================
@@ -121,14 +116,14 @@ class ScenarioParameters(BaseNormalizedModel):
         Hard adjustment to the base margins.
     """
     name: str = "Base Case"
-    probability: Annotated[Optional[float], UIKey("p", scale="raw")] = None
-    growth_override: Annotated[Optional[float], UIKey("g", scale="pct")] = None
-    margin_override: Annotated[Optional[float], UIKey("m", scale="pct")] = None
+    probability: Annotated[float | None, UIKey("p", scale="raw")] = None
+    growth_override: Annotated[float | None, UIKey("g", scale="pct")] = None
+    margin_override: Annotated[float | None, UIKey("m", scale="pct")] = None
 
 class ScenariosParameters(BaseNormalizedModel):
     """Collection of deterministic scenarios."""
     enabled: Annotated[bool, UIKey("scenario_enable", scale="raw")] = False
-    cases: List[ScenarioParameters] = Field(default_factory=list)
+    cases: list[ScenarioParameters] = Field(default_factory=list)
 
 class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
@@ -141,12 +136,12 @@ class BacktestParameters(BaseNormalizedModel):
 class PeersParameters(BaseNormalizedModel):
     """Configuration for peer-based relative valuation."""
     enabled: Annotated[bool, UIKey("peer_enable", scale="raw")] = False
-    tickers: Annotated[List[str], UIKey("peer_list")] = Field(default_factory=list)
+    tickers: Annotated[list[str], UIKey("peer_list")] = Field(default_factory=list)
 
 class BusinessUnit(BaseModel):
     """A single segment in Sum-Of-The-Parts."""
     name: str
-    value: Optional[float] = None
+    value: float | None = None
 
 class SOTPParameters(BaseNormalizedModel):
     """
@@ -163,7 +158,7 @@ class SOTPParameters(BaseNormalizedModel):
     """
     enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
     conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
-    segments: Annotated[List[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
+    segments: Annotated[list[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
 
 
 # ==============================================================================

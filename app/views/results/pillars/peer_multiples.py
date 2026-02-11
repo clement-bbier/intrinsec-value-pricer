@@ -8,15 +8,16 @@ Architecture: Injectable Grade-A Component (Stateless).
 Style: Numpy docstrings.
 """
 
-from typing import Any, List, Dict
+from typing import Any
+
 import pandas as pd
 import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import MarketTexts, KPITexts, PeersTexts
-from src.core.formatting import format_smart_number
-from app.views.components.ui_kpis import atom_kpi_metric
 from app.views.components.ui_charts import display_football_field
+from app.views.components.ui_kpis import atom_kpi_metric
+from src.core.formatting import format_smart_number
+from src.i18n import KPITexts, MarketTexts, PeersTexts
+from src.models import ValuationResult
 
 
 class PeerMultiples:
@@ -127,7 +128,7 @@ class PeerMultiples:
                 st.markdown(f"##### {MarketTexts.COL_MULTIPLE}s & {MarketTexts.COL_PEER}s")
 
                 # Remplacement de l'initialisation multi-étapes par un List Literal
-                comps_data: List[Dict[str, Any]] = [
+                comps_data: list[dict[str, Any]] = [
                     # Target Row (First element)
                     {
                         "Name": f"{ticker} ({MarketTexts.LBL_TARGET})",

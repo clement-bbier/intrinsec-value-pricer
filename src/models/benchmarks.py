@@ -11,7 +11,6 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import Optional, Dict
 from pydantic import BaseModel, Field
 
 
@@ -30,10 +29,10 @@ class SectorMultiples(BaseModel):
     pb_ratio : float | None
         Price to Book ratio (P/B).
     """
-    pe_ratio: Optional[float] = None
-    ev_ebitda: Optional[float] = None
-    ev_revenue: Optional[float] = None
-    pb_ratio: Optional[float] = None
+    pe_ratio: float | None = None
+    ev_ebitda: float | None = None
+    ev_revenue: float | None = None
+    pb_ratio: float | None = None
 
 
 class SectorPerformance(BaseModel):
@@ -51,10 +50,10 @@ class SectorPerformance(BaseModel):
     net_margin : float | None
         Average Net Income margin.
     """
-    fcf_margin: Optional[float] = Field(None, description="Average FCF margin of the sector.")
-    revenue_growth: Optional[float] = Field(None, description="Average revenue growth (3Y/5Y).")
-    roe: Optional[float] = Field(None, description="Average Return on Equity.")
-    net_margin: Optional[float] = None
+    fcf_margin: float | None = Field(None, description="Average FCF margin of the sector.")
+    revenue_growth: float | None = Field(None, description="Average revenue growth (3Y/5Y).")
+    roe: float | None = Field(None, description="Average Return on Equity.")
+    net_margin: float | None = None
 
 
 class MarketContext(BaseModel):
@@ -92,7 +91,7 @@ class MarketContext(BaseModel):
     equity_risk_premium: float
 
     # --- Statistical Distribution (Optional) ---
-    percentiles: Dict[str, Dict[str, float]] = Field(
+    percentiles: dict[str, dict[str, float]] = Field(
         default_factory=dict,
         description="Percentile thresholds for key metrics (e.g., {'fcf_margin': {'p75': 0.18}})."
     )

@@ -2,9 +2,10 @@
 infra/macro/default_macro_provider.py
 """
 
-from src.models.company import CompanySnapshot
-from .base_macro_provider import MacroDataProvider
 from infra.ref_data.country_matrix import get_country_context
+from src.models.company import CompanySnapshot
+
+from .base_macro_provider import MacroDataProvider
 
 
 class DefaultMacroProvider(MacroDataProvider):

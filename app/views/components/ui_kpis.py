@@ -6,7 +6,9 @@ Aggnostic of specific business logic (Audit/Comparison), focused on rendering da
 """
 
 from __future__ import annotations
+
 from typing import Literal
+
 import streamlit as st
 
 # On retire les dépendances "Audit" (AuditStep, AuditTexts) pour rendre le fichier générique.

@@ -4,22 +4,22 @@ Point d'entrée des traductions de l'interface utilisateur.
 """
 
 from .common import CommonTexts, LegalTexts
-from .results import (
-    ResultsTexts,
-    KPITexts,
-    QuantTexts,
-    ChartTexts,
-    BacktestTexts,
-    PillarLabels,
-    InputLabels,
-    SOTPTexts,
-    MarketTexts,
-    BenchmarkTexts,
-    UIRegistryTexts,
-    UIStrategyFormulas
-)
 from .expert import ExpertTexts, UISharedTexts
 from .extensions import ExtensionTexts, PeersTexts
+from .results import (
+    BacktestTexts,
+    BenchmarkTexts,
+    ChartTexts,
+    InputLabels,
+    KPITexts,
+    MarketTexts,
+    PillarLabels,
+    QuantTexts,
+    ResultsTexts,
+    SOTPTexts,
+    UIRegistryTexts,
+    UIStrategyFormulas,
+)
 from .sidebar import SidebarTexts
 
 __all__ = [

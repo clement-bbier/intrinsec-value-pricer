@@ -11,27 +11,26 @@ Style: NumPy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Dict
 
 import streamlit as st
 
-from src.models import ValuationMethodology
-from src.i18n import UISharedTexts
-
 from app.views.inputs.strategies.shared_widgets import (
+    widget_backtest,
     widget_cost_of_capital,
-    widget_terminal_value_rim,
-    widget_terminal_value_dcf,
     widget_equity_bridge,
     widget_monte_carlo,
-    widget_scenarios,
     widget_peer_triangulation,
-    widget_backtest,
+    widget_scenarios,
+    widget_sensitivity,
     widget_sotp,
-    widget_sensitivity
+    widget_terminal_value_dcf,
+    widget_terminal_value_rim,
 )
+from src.i18n import UISharedTexts
+from src.models import ValuationMethodology
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +179,7 @@ class BaseStrategyView(ABC):
     # UI LOGIC MAPPING
     # ══════════════════════════════════════════════════════════════════════════
 
-    def get_custom_monte_carlo_vols(self) -> Optional[Dict[str, str]]:
+    def get_custom_monte_carlo_vols(self) -> dict[str, str] | None:
         """
         Maps Methodology to specific UI labels for Monte Carlo volatilities.
         """

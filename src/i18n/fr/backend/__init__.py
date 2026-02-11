@@ -5,12 +5,7 @@ src/i18n/fr/backend/__init__.py
 from src.i18n.fr.backend.errors import CalculationErrors, DiagnosticTexts
 from src.i18n.fr.backend.models import ModelTexts
 from src.i18n.fr.backend.registry import RegistryTexts
-from src.i18n.fr.backend.strategies import (
-    StrategyFormulas,
-    StrategyInterpretations,
-    StrategySources,
-    SharedTexts
-)
+from src.i18n.fr.backend.strategies import SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.i18n.fr.backend.workflow import WorkflowTexts
 
 __all__ = [

@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 
 from src.models.company import Company
 from src.models.parameters.common import CommonParameters
-from src.models.parameters.strategies import StrategyUnionParameters
 from src.models.parameters.options import ExtensionBundleParameters
+from src.models.parameters.strategies import StrategyUnionParameters
 
 
 class Parameters(BaseModel):

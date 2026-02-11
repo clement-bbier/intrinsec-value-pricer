@@ -12,19 +12,20 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import List, Optional
+
 import pandas as pd
 
-from src.models.company import CompanySnapshot
-from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
 from infra.data_providers.extraction_utils import (
+    CAPEX_KEYS,
+    DEBT_KEYS,
+    OCF_KEYS,
     extract_most_recent_value,
     normalize_currency_and_price,
-    OCF_KEYS,
-    CAPEX_KEYS,
-    DEBT_KEYS
 )
+from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
+from src.models.company import CompanySnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class YahooSnapshotMapper:
     # =========================================================================
 
     @staticmethod
-    def _sum_last_4_quarters(df: Optional[pd.DataFrame], keys: List[str]) -> Optional[float]:
+    def _sum_last_4_quarters(df: pd.DataFrame | None, keys: list[str]) -> float | None:
         """
         Aggregates the last 4 quarters for a given metric to build TTM values.
 

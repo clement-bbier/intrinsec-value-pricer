@@ -5,6 +5,7 @@ Note : Version Institutionnelle - Zéro émoji - Terminologie Finance de Marché
 """
 from src.models import VariableSource
 
+
 class CommonTexts:
     """Référentiel des textes génériques et statuts institutionnels."""
 

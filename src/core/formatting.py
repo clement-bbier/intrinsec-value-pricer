@@ -15,7 +15,6 @@ that magnitudes are immediately recognizable by the analyst.
 from __future__ import annotations
 
 import math
-from typing import Optional, Union
 
 # Standard Institutional Colors (Tailwind CSS Palette)
 COLOR_POSITIVE = "#22C55E"  # Green-500
@@ -24,7 +23,7 @@ COLOR_NEUTRAL = "#808080"   # Gray-500
 
 
 def format_smart_number(
-    val: Optional[Union[float, int]],
+    val: float | int | None,
     currency: str = "",
     is_pct: bool = False,
     decimals: int = 2

@@ -19,31 +19,22 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
-from typing import Tuple, List
-
-from src.models.parameters.base_parameter import Parameters
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import TerminalValueMethod, VariableSource
-from src.core.formatting import format_smart_number
-
 # Atomic Math Imports
 from src.computation.financial_math import (
-    calculate_terminal_value_gordon,
-    calculate_terminal_value_exit_multiple,
-    calculate_discount_factors,
+    apply_dilution_adjustment,
     calculate_dilution_factor,
-    apply_dilution_adjustment
+    calculate_discount_factors,
+    calculate_terminal_value_exit_multiple,
+    calculate_terminal_value_gordon,
 )
 
 # Configuration & i18n
 from src.config.constants import ModelDefaults
-from src.i18n import (
-    RegistryTexts,
-    StrategyFormulas,
-    StrategyInterpretations,
-    SharedTexts,
-    StrategySources
-)
+from src.core.formatting import format_smart_number
+from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.enums import TerminalValueMethod, VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
 
 
 class DCFLibrary:
@@ -55,7 +46,7 @@ class DCFLibrary:
     def project_flows_simple(
         base_flow: float,
         params: Parameters
-    ) -> Tuple[List[float], CalculationStep]:
+    ) -> tuple[list[float], CalculationStep]:
         """
         Projects cash flows using a standard growth rate with linear fade-down.
         """
@@ -127,8 +118,8 @@ class DCFLibrary:
     @staticmethod
     def project_flows_manual(
             base_flow: float,
-            growth_vector: List[float]
-    ) -> Tuple[List[float], CalculationStep]:
+            growth_vector: list[float]
+    ) -> tuple[list[float], CalculationStep]:
         """
         Projects flows using an explicit year-by-year growth vector.
         """
@@ -166,7 +157,7 @@ class DCFLibrary:
             current_margin: float,
             target_margin: float,
             params: Parameters
-    ) -> Tuple[List[float], List[float], List[float], CalculationStep]:
+    ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
         """
@@ -234,7 +225,7 @@ class DCFLibrary:
         final_flow: float,
         discount_rate: float,
         params: Parameters
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """Calculates Terminal Value based on Strategy selection."""
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
@@ -276,10 +267,10 @@ class DCFLibrary:
 
     @staticmethod
     def compute_discounting(
-        flows: List[float],
+        flows: list[float],
         terminal_value: float,
         discount_rate: float
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """Calculates the Enterprise Value (NPV of Flows + PV of TV)."""
         years_count = len(flows)
         factors = calculate_discount_factors(discount_rate, years_count)
@@ -307,7 +298,7 @@ class DCFLibrary:
     def compute_value_per_share(
         equity_value: float,
         params: Parameters
-    ) -> Tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep]:
         """Calculates final price per share, applying SBC dilution adjustment."""
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING

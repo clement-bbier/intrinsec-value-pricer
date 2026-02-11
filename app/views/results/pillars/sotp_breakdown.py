@@ -9,13 +9,14 @@ Style: Numpy docstrings.
 """
 
 from typing import Any
+
 import pandas as pd
 import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import MarketTexts, SOTPTexts, KPITexts
-from src.core.formatting import format_smart_number
 from app.views.components.ui_charts import display_sotp_waterfall
+from src.core.formatting import format_smart_number
+from src.i18n import KPITexts, MarketTexts, SOTPTexts
+from src.models import ValuationResult
 
 
 class SOTPBreakdownTab:

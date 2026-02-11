@@ -11,21 +11,22 @@ Style: Numpy docstrings.
 """
 
 from __future__ import annotations
-import logging
-from typing import Any, Optional
 
-from src.models.parameters.base_parameter import Parameters
+import logging
+from typing import Any
+
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.models.company import Company, CompanySnapshot
+from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.strategies import (
-    FCFFStandardParameters,
-    FCFFNormalizedParameters,
-    FCFFGrowthParameters,
     DDMParameters,
-    RIMParameters,
     FCFEParameters,
-    GrahamParameters
+    FCFFGrowthParameters,
+    FCFFNormalizedParameters,
+    FCFFStandardParameters,
+    GrahamParameters,
+    RIMParameters,
 )
-from src.config.constants import ModelDefaults, MacroDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +165,7 @@ class Resolver:
             strat.eps_normalized = self._pick(strat.eps_normalized, snap.eps_ttm, ModelDefaults.DEFAULT_EPS_TTM)
 
     @staticmethod
-    def _pick(user_val: Optional[Any], provider_val: Optional[Any], fallback: Any) -> Any:
+    def _pick(user_val: Any | None, provider_val: Any | None, fallback: Any) -> Any:
         """
         Enforces the 'USER > PROVIDER > SYSTEM' priority chain.
 

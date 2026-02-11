@@ -7,7 +7,9 @@ Role: Contract for fetching regional economic indicators (Rf, MRP, Tax).
 """
 
 from abc import ABC, abstractmethod
+
 from src.models.company import CompanySnapshot
+
 
 class MacroDataProvider(ABC):
     @abstractmethod

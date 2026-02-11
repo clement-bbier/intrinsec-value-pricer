@@ -6,13 +6,15 @@ Role: Visualization of stochastic dispersion and Value at Risk (VaR) metrics.
 Architecture: Statistical Risk Hub (Grade-A compliance).
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
+
 import streamlit as st
 
-from src.models import ValuationResult
-from src.i18n import QuantTexts
-from src.core.formatting import format_smart_number
 from app.views.components.ui_charts import display_simulation_chart
+from src.core.formatting import format_smart_number
+from src.i18n import QuantTexts
+from src.models import ValuationResult
+
 
 class MonteCarloDistributionTab:
     """
@@ -32,7 +34,7 @@ class MonteCarloDistributionTab:
     def render(result: ValuationResult, **kwargs: Any) -> None:
         """Institutional rendering of the Monte Carlo Risk Hub."""
 
-        stats: Optional[Dict[str, Any]] = kwargs.get("mc_stats")
+        stats: dict[str, Any] | None = kwargs.get("mc_stats")
         currency = result.financials.currency
         mc_params = result.params.extensions.monte_carlo
 

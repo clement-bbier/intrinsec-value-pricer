@@ -14,11 +14,10 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 from datetime import date
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from src.models.glass_box import CalculationStep
-
 
 # ==============================================================================
 # PILLAR 4: RISK ENGINEERING (Simulation, Sensitivity, Scenarios & Backtest)
@@ -39,8 +38,8 @@ class MCResults(BaseModel):
     std_dev : float
         Standard deviation of the distribution (Volatility).
     """
-    simulation_values: List[float] = Field(..., description="Raw intrinsic values from all iterations.")
-    quantiles: Dict[str, float] = Field(..., description="Key probability points (P10, P50, P90).")
+    simulation_values: list[float] = Field(..., description="Raw intrinsic values from all iterations.")
+    quantiles: dict[str, float] = Field(..., description="Key probability points (P10, P50, P90).")
     mean: float = Field(..., description="Arithmetic average of all simulations.")
     std_dev: float = Field(..., description="Standard deviation of the distribution.")
 
@@ -68,9 +67,9 @@ class SensitivityResults(BaseModel):
     """
     x_axis_name: str = Field(..., description="Name of the parameter on X axis (e.g. 'WACC').")
     y_axis_name: str = Field(..., description="Name of the parameter on Y axis (e.g. 'Growth').")
-    x_values: List[float] = Field(..., description="The variation steps for X axis.")
-    y_values: List[float] = Field(..., description="The variation steps for Y axis.")
-    values: List[List[float]] = Field(..., description="2D Array of intrinsic values.")
+    x_values: list[float] = Field(..., description="The variation steps for X axis.")
+    y_values: list[float] = Field(..., description="The variation steps for Y axis.")
+    values: list[list[float]] = Field(..., description="2D Array of intrinsic values.")
     center_value: float = Field(..., description="The value at the center (Base Case).")
     sensitivity_score: float = Field(0.0, description="Metric of volatility (Spread / Base).")
 
@@ -108,7 +107,7 @@ class ScenariosResults(BaseModel):
         Detailed results for each scenario.
     """
     expected_intrinsic_value: float = Field(..., description="Weighted average IV across all cases.")
-    outcomes: List[ScenarioOutcome] = Field(default_factory=list)
+    outcomes: list[ScenarioOutcome] = Field(default_factory=list)
 
 
 class HistoricalPoint(BaseModel):
@@ -145,7 +144,7 @@ class BacktestResults(BaseModel):
     accuracy_score : float
         A computed score (0-100) reflecting model predictive power.
     """
-    points: List[HistoricalPoint] = Field(default_factory=list)
+    points: list[HistoricalPoint] = Field(default_factory=list)
     mean_absolute_error: float = Field(..., description="Average error over the period.")
     accuracy_score: float = Field(..., ge=0, le=100)
 
@@ -187,9 +186,9 @@ class PeersResults(BaseModel):
     final_relative_iv : float
         Synthesized Intrinsic Value from peer triangulation.
     """
-    median_multiples_used: Dict[str, float] = Field(..., description="Medians (P/E, EV/EBITDA, etc.) extracted from the peer group.")
-    implied_prices: Dict[str, float] = Field(..., description="Calculated prices for our target based on peer multiples.")
-    peer_valuations: List[PeerIntrinsicDetail] = Field(default_factory=list, description="Full intrinsic results for each peer defined in Parameters.")
+    median_multiples_used: dict[str, float] = Field(..., description="Medians (P/E, EV/EBITDA, etc.) extracted from the peer group.")
+    implied_prices: dict[str, float] = Field(..., description="Calculated prices for our target based on peer multiples.")
+    peer_valuations: list[PeerIntrinsicDetail] = Field(default_factory=list, description="Full intrinsic results for each peer defined in Parameters.")
     final_relative_iv: float = Field(..., description="Synthesized Intrinsic Value from peer triangulation.")
 
 
@@ -211,10 +210,10 @@ class SOTPResults(BaseModel):
         Glass Box steps for the SOTP aggregation.
     """
     total_enterprise_value: float = Field(..., description="Sum of all operating segment values.")
-    segment_values: Dict[str, float] = Field(..., description="Final value attributed to each segment name.")
+    segment_values: dict[str, float] = Field(..., description="Final value attributed to each segment name.")
     implied_equity_value: float = Field(..., description="Final Equity Value after Bridge.")
     equity_value_per_share: float = Field(..., description="Implied share price.")
-    sotp_trace: List[CalculationStep] = Field(default_factory=list, description="Glass Box steps.")
+    sotp_trace: list[CalculationStep] = Field(default_factory=list, description="Glass Box steps.")
 
 
 # ==============================================================================
@@ -227,11 +226,11 @@ class ExtensionBundleResults(BaseModel):
     Attributes remain None if the corresponding extension was not executed.
     """
     # Pillar 4: Risk Engineering
-    monte_carlo: Optional[MCResults] = None
-    sensitivity: Optional[SensitivityResults] = None
-    scenarios: Optional[ScenariosResults] = None
-    backtest: Optional[BacktestResults] = None
+    monte_carlo: MCResults | None = None
+    sensitivity: SensitivityResults | None = None
+    scenarios: ScenariosResults | None = None
+    backtest: BacktestResults | None = None
 
     # Pillar 5: Market Analysis
-    peers: Optional[PeersResults] = None
-    sotp: Optional[SOTPResults] = None
+    peers: PeersResults | None = None
+    sotp: SOTPResults | None = None

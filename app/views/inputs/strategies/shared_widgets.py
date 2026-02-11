@@ -12,18 +12,18 @@ Style: Numpy docstrings
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Dict, Optional
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
-from src.models import (
-    ValuationMethodology,
-    TerminalValueMethod,
-)
-from src.i18n import UISharedTexts
 from src.config.constants import UIWidgetDefaults
+from src.i18n import UISharedTexts
+from src.models import (
+    TerminalValueMethod,
+    ValuationMethodology,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,8 +230,8 @@ def widget_sensitivity(
 
 def widget_monte_carlo(
     mode: ValuationMethodology,
-    terminal_method: Optional[TerminalValueMethod],
-    custom_vols: Optional[Dict[str, str]] = None
+    terminal_method: TerminalValueMethod | None,
+    custom_vols: dict[str, str] | None = None
 ) -> None:
     """Renders Monte Carlo simulation parameters."""
     prefix = "mc"

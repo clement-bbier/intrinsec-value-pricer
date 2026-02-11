@@ -13,13 +13,12 @@ Standard: SOLID, i18n Secured, NumPy Style.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
-from src.models.parameters.base_parameter import Parameters
-from src.models.company import Company
-from src.models.results.options import ScenariosResults, ScenarioOutcome
-from src.valuation.strategies.interface import IValuationRunner
 from src.core.exceptions import CalculationError
+from src.models.company import Company
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.options import ScenarioOutcome, ScenariosResults
+from src.valuation.strategies.interface import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class ScenariosRunner:
         """
         self.strategy = strategy
 
-    def execute(self, params: Parameters, financials: Company) -> Optional[ScenariosResults]:
+    def execute(self, params: Parameters, financials: Company) -> ScenariosResults | None:
         """
         Execute the scenario analysis.
 
@@ -74,7 +73,7 @@ class ScenariosRunner:
         if not sc_cfg.enabled or not sc_cfg.cases:
             return None
 
-        outcomes: List[ScenarioOutcome] = []
+        outcomes: list[ScenarioOutcome] = []
         weighted_sum = 0.0
         total_prob = 0.0
         market_price = params.structure.current_price or 1.0

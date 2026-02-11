@@ -11,18 +11,17 @@ Style: Numpy Style docstrings.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Any
 
 # Use specific imports to avoid circular dependencies if possible,
 # or use full paths inside methods.
 from src.config.constants import (
+    ModelDefaults,
     MonteCarloDefaults,
+    SystemDefaults,
     ValidationThresholds,
     ValuationEngineDefaults,
-    SystemDefaults,
-    ModelDefaults
 )
-
 
 # ==============================================================================
 # 1. MONTE CARLO SIMULATION CONFIGURATION
@@ -40,7 +39,7 @@ class MonteCarloSimulationConfig:
 
     # Correlation Parameters
     default_rho: float = MonteCarloDefaults.DEFAULT_RHO
-    rho_bounds: Tuple[float, float] = (-1.0, 1.0)
+    rho_bounds: tuple[float, float] = (-1.0, 1.0)
 
     # Standard Deviation Defaults (Volatility)
     default_volatility_beta: float = 0.10
@@ -142,7 +141,7 @@ SYSTEM_CONFIG = SystemPerformanceConfig()
 VALUATION_CONFIG = ValuationModelConfig()
 
 # Registry for programmatic access
-CONFIG_REGISTRY: Dict[str, Any] = {
+CONFIG_REGISTRY: dict[str, Any] = {
     "simulation": SIMULATION_CONFIG,
     "validation": VALIDATION_CONFIG,
     "system": SYSTEM_CONFIG,

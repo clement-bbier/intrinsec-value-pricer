@@ -8,12 +8,13 @@ Focus: Input traceability (Structures, Rates, Growth, Financials).
 Style: Institutional "Fact Sheet" layout using structured tables.
 """
 
-import streamlit as st
-import pandas as pd
-from typing import Dict, Optional, List
 
-from src.models import ValuationResult, ValuationMethodology
+import pandas as pd
+import streamlit as st
+
 from src.i18n import InputLabels, KPITexts
+from src.models import ValuationMethodology, ValuationResult
+
 
 def render_detailed_inputs(result: ValuationResult) -> None:
     """
@@ -78,7 +79,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 # SUB-RENDERERS (Private Helpers)
 # ==============================================================================
 
-def _safe_fmt(value: Optional[float], fmt: str, default: str = "-") -> str:
+def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
     """Safely formats a value handling None types."""
     if value is None:
         return default
@@ -155,7 +156,7 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
     strat_params = result.request.parameters.strategy
     mode = result.request.mode
 
-    data: List[Dict[str, str]]
+    data: list[dict[str, str]]
 
     if mode == ValuationMethodology.RIM:
         data = [

@@ -9,16 +9,18 @@ Standards: SOLID, Clean Code, No IDE warnings.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import streamlit as st
-from .base_provider import FinancialDataProvider
-from src.models.company import CompanySnapshot
+
 from infra.macro.base_macro_provider import MacroDataProvider
+from infra.ref_data.sector_fallback import get_sector_data
+from src.models.company import CompanySnapshot
+
+from .base_provider import FinancialDataProvider
 from .yahoo_raw_fetcher import YahooRawFetcher
 from .yahoo_snapshot_mapper import YahooSnapshotMapper
-from infra.ref_data.sector_fallback import get_sector_data
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,7 @@ def _get_cached_snapshot(
     _fetcher: YahooRawFetcher,
     _mapper: YahooSnapshotMapper,
     _macro_provider: MacroDataProvider
-) -> Optional[CompanySnapshot]:
+) -> CompanySnapshot | None:
     """
     Module-level private function to handle Streamlit caching.
 
@@ -71,7 +73,7 @@ class YahooFinancialProvider(FinancialDataProvider):
         self.mapper = YahooSnapshotMapper()
         self.macro_provider = macro_provider
 
-    def get_company_snapshot(self, ticker: str) -> Optional[CompanySnapshot]:
+    def get_company_snapshot(self, ticker: str) -> CompanySnapshot | None:
         """
         Public entry point. Delegates to a cached module function.
         """

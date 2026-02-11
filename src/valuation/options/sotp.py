@@ -14,16 +14,15 @@ Style: Numpy docstrings.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
-from src.models.parameters.base_parameter import Parameters
-from src.models.results.options import SOTPResults
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource
 from src.core.formatting import format_smart_number
 
 # Centralized i18n imports
-from src.i18n import SOTPTexts, RegistryTexts, KPITexts
+from src.i18n import KPITexts, RegistryTexts, SOTPTexts
+from src.models.enums import VariableSource
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.parameters.base_parameter import Parameters
+from src.models.results.options import SOTPResults
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class SOTPRunner:
     """
 
     @staticmethod
-    def execute(params: Parameters) -> Optional[SOTPResults]:
+    def execute(params: Parameters) -> SOTPResults | None:
         """
         Runs the SOTP logic using fully hydrated parameters.
 
@@ -59,7 +58,7 @@ class SOTPRunner:
         if not sotp_cfg.enabled or not sotp_cfg.segments:
             return None
 
-        steps: List[CalculationStep] = []
+        steps: list[CalculationStep] = []
 
         # --- STEP 1: EV CONSOLIDATION & DISCOUNTING ---
         # Sum individual segment values (handling potential Nones as 0.0)

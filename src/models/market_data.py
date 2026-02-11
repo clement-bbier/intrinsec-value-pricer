@@ -11,7 +11,6 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -33,10 +32,10 @@ class PeerMetric(BaseModel):
         Enterprise Value to Revenue ratio.
     """
     ticker: str
-    company_name: Optional[str] = None
-    pe_ratio: Optional[float] = None
-    ev_ebitda: Optional[float] = None
-    ev_revenue: Optional[float] = None
+    company_name: str | None = None
+    pe_ratio: float | None = None
+    ev_ebitda: float | None = None
+    ev_revenue: float | None = None
 
 
 class MultiplesData(BaseModel):
@@ -60,5 +59,5 @@ class MultiplesData(BaseModel):
     median_pe: float = 0.0
     median_ev_ebitda: float = 0.0
     median_ev_rev: float = 0.0
-    peers: List[PeerMetric] = Field(default_factory=list)
+    peers: list[PeerMetric] = Field(default_factory=list)
     is_valid: bool = False

@@ -11,10 +11,11 @@ Style: Numpy docstrings.
 
 from __future__ import annotations
 
-from typing import List, Union
-from pydantic import BaseModel, Field
-from src.models.glass_box import CalculationStep
+from typing import Union
 
+from pydantic import BaseModel, Field
+
+from src.models.glass_box import CalculationStep
 
 # --- Reusable DCF Components ---
 
@@ -37,12 +38,12 @@ class BaseFlowResults(BaseModel):
     strategy_trace : List[CalculationStep]
         Detailed audit trail of the projection steps.
     """
-    projected_flows: List[float] = Field(..., description="The sequence of projected flows (FCF, Dividends, etc.).")
-    discount_factors: List[float] = Field(..., description="The discount factors (1/(1+r)^n) used for NPV.")
+    projected_flows: list[float] = Field(..., description="The sequence of projected flows (FCF, Dividends, etc.).")
+    discount_factors: list[float] = Field(..., description="The discount factors (1/(1+r)^n) used for NPV.")
     terminal_value: float = Field(..., description="The calculated exit value (Gordon or Multiple).")
     discounted_terminal_value: float = Field(..., description="PV of the Terminal Value.")
     tv_weight_pct: float = Field(..., description="Contribution of TV to total value (Audit Risk).")
-    strategy_trace: List[CalculationStep] = Field(default_factory=list)
+    strategy_trace: list[CalculationStep] = Field(default_factory=list)
 
 
 # --- Concrete Strategy Results ---
@@ -80,8 +81,8 @@ class FCFFGrowthResults(BaseFlowResults):
     target_margin_reached : float
         The final margin achieved in the terminal year.
     """
-    projected_revenues: List[float] = Field(..., description="Revenue trajectory used to derive FCF.")
-    projected_margins: List[float] = Field(..., description="FCF Margin evolution.")
+    projected_revenues: list[float] = Field(..., description="Revenue trajectory used to derive FCF.")
+    projected_margins: list[float] = Field(..., description="FCF Margin evolution.")
     target_margin_reached: float
 
 
@@ -94,7 +95,7 @@ class FCFEResults(BaseFlowResults):
     projected_net_borrowing : List[float]
         The net debt issuance/repayment projected each year.
     """
-    projected_net_borrowing: List[float]
+    projected_net_borrowing: list[float]
 
 
 class DDMResults(BaseFlowResults):
@@ -108,7 +109,7 @@ class DDMResults(BaseFlowResults):
     payout_ratio_observed : float
         The payout ratio used to derive dividends from earnings.
     """
-    projected_dividends: List[float]
+    projected_dividends: list[float]
     payout_ratio_observed: float
 
 
@@ -133,11 +134,11 @@ class RIMResults(BaseModel):
         Audit trail specific to RIM.
     """
     current_book_value: float
-    projected_book_values: List[float] = Field(..., description="Evolution of Equity Book Value.")
-    projected_residual_incomes: List[float] = Field(..., description="Net Income - (Ke * BV).")
+    projected_book_values: list[float] = Field(..., description="Evolution of Equity Book Value.")
+    projected_residual_incomes: list[float] = Field(..., description="Net Income - (Ke * BV).")
     terminal_value_ri: float
     discounted_terminal_value: float
-    strategy_trace: List[CalculationStep] = Field(default_factory=list)
+    strategy_trace: list[CalculationStep] = Field(default_factory=list)
 
 
 class GrahamResults(BaseModel):
@@ -161,7 +162,7 @@ class GrahamResults(BaseModel):
     growth_estimate: float
     aaa_yield_used: float
     graham_multiplier: float
-    strategy_trace: List[CalculationStep] = Field(default_factory=list)
+    strategy_trace: list[CalculationStep] = Field(default_factory=list)
 
 
 # --- The Orchestrator ---
