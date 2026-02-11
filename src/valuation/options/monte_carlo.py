@@ -11,7 +11,7 @@ from src.computation.financial_math import calculate_cost_of_equity_capm
 from src.computation.statistics import generate_independent_samples, generate_multivariate_samples
 
 from src.config.constants import MonteCarloDefaults, ModelDefaults, MacroDefaults
-from src.core.exceptions import CalculationError, ModelDivergenceError
+from src.core.exceptions import CalculationError
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ class MonteCarloRunner:
         num_simulations = mc_cfg.iterations or MonteCarloDefaults.DEFAULT_SIMULATIONS
         seed = mc_cfg.random_seed if mc_cfg.random_seed is not None else 42
 
-        # 1. Economic Clamping Reference (WACC Guardrail)
-        # We need a stable discount rate to cap terminal growth (g < WACC).
+        # Note: WACC-based validation is now centralized in the orchestrator guardrails.
+        # We calculate base_wacc here only for reference/logging purposes.
         r = params.common.rates
 
         try:
@@ -49,7 +49,7 @@ class MonteCarloRunner:
                 base_wacc = ModelDefaults.DEFAULT_WACC
 
         except (ArithmeticError, TypeError, ValueError) as e:
-            logger.warning(f"Failed to calculate base WACC for MC clamping, using default: {e}")
+            logger.warning(f"Failed to calculate base WACC for MC reference, using default: {e}")
             base_wacc = ModelDefaults.DEFAULT_WACC
 
         # 2. Sampling
@@ -106,12 +106,14 @@ class MonteCarloRunner:
         if hasattr(st, 'terminal_value'):
             mean_gn = st.terminal_value.perpetual_growth_rate or mean_gn
 
+        # Note: Terminal growth validation (g < WACC) is now enforced by guardrails
+        # in the orchestrator before MC execution, so no need to clamp here.
         terminal_growths = generate_independent_samples(
             mean=mean_gn,
             sigma=sig_gn,
             num_simulations=num_sims,
             clip_min=0.0,
-            clip_max=max(0.0, base_wacc - 0.01),
+            clip_max=None,  # No clamping - guardrails ensure g < WACC upstream
             seed=seed
         )
 
@@ -153,7 +155,9 @@ class MonteCarloRunner:
                 iv = res.results.common.intrinsic_value_per_share
                 if 0 < iv < 1_000_000:
                     sim_values.append(iv)
-            except (CalculationError, ModelDivergenceError, ValueError, ZeroDivisionError):
+            except (CalculationError, ValueError, ZeroDivisionError):
+                # Note: ModelDivergenceError (g >= WACC) is now prevented by 
+                # guardrails in the orchestrator, so we don't catch it here.
                 continue
 
         self.strategy.glass_box_enabled = True

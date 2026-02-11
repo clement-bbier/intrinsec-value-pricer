@@ -42,6 +42,7 @@ share/
 .pytest_cache/
 .coverage
 htmlcov/
+.hypothesis/
 *.pkl
 *.csv
 *.json
