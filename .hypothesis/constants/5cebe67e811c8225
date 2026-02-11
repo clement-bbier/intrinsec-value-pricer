@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/models/parameters/common.py
+# hypothesis_version: 6.151.6
+
+[1.0, 100.0, 1000000.0, 'before', 'beta', 'cash', 'debt', 'kd', 'ke_override', 'million', 'min', 'mrp', 'pct', 'pen', 'raw', 'rf', 'sbc_rate', 'shares', 'tax', 'wacc_override', 'yield_aaa']

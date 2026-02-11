@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/core/formatting.py
+# hypothesis_version: 6.151.6
+
+[1000000.0, 1000000000.0, 1000000000000.0, '#22C55E', '#808080', '#EF4444', '-', 'B', 'M', 'T']

@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/models/parameters/input_metadata.py
+# hypothesis_version: 6.151.6
+
+['million', 'pct', 'raw']

@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/models/glass_box.py
+# hypothesis_version: 6.151.6
+
+['Kd', 'Kd(1-t)', 'Ke', 'MRP', 'Rf', 'WACC', 'g', 'g_perp', 'r', 'tax']

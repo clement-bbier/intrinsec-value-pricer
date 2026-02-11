@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/core/quant_logger.py
+# hypothesis_version: 6.151.6
+
+[1000000.0, 1000000000.0, 1000, ' | ', 'AUDIT', 'DATA', 'DEBUG', 'ENGINE', 'ERROR', 'F', 'INFO', 'MC', 'N/A', 'PROVIDER', 'SUCCESS', 'UNKNOWN', 'VALUATION', 'WARNING', '_', 'accuracy', 'audit_report', 'event', 'growth', 'mode', 'pct', 'percent', 'quant', 'rate', 'ratio', 'request', 'score', 'spread', 'ticker', 'timestamp', 'upside_pct', 'value', 'yield']

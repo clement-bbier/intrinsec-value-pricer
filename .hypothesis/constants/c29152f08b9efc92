@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/models/parameters/strategies.py
+# hypothesis_version: 6.151.6
+
+['bv_anchor', 'div_base', 'eps_normalized', 'exit_mult', 'fcf_base', 'fcf_margin', 'fcf_norm', 'fcfe_anchor', 'gn', 'growth_estimate', 'growth_rate', 'growth_vector', 'million', 'omega', 'pct', 'raw', 'revenue_ttm', 'years']

@@ -1,0 +1,4 @@
+# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/core/diagnostics.py
+# hypothesis_version: 6.151.6
+
+[0.0, 0.01, 0.02, 0.03, 0.05, 0.08, 0.9, 1.0, 'CONFIG', 'CRITICAL', 'DATA', 'ENGINE', 'ERROR', 'FCFE_NEGATIVE_FLOW', 'Flow Growth Rate', 'INFO', 'MODEL', 'MODEL_G_DIVERGENCE', 'MODEL_MC_INSTABILITY', 'PROVIDER', 'SYSTEM', 'USER_INPUT', 'WARNING', 'code', 'domain', 'financial_context', 'inf', 'is_blocking', 'message', 'parameter', 'recommendation', 'risk', 'severity', 'typical_range', 'value']
