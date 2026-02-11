@@ -25,8 +25,6 @@ from src.i18n.fr import (
     PillarLabels,
     SOTPTexts,
     InputLabels,
-    RegistryTexts,
-    StrategyFormulas,
     BenchmarkTexts,
     MarketTexts,
     PeersTexts
@@ -56,8 +54,6 @@ __all__ = [
     "PillarLabels",
     "SOTPTexts",
     "InputLabels",
-    "RegistryTexts",
-    "StrategyFormulas",
     "BenchmarkTexts",
     "MarketTexts",
     "PeersTexts"

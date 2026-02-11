@@ -27,8 +27,6 @@ from src.i18n.fr.ui import (
     PillarLabels,
     InputLabels,
     SOTPTexts,
-    RegistryTexts,
-    StrategyFormulas,
     BenchmarkTexts,
     MarketTexts,
     PeersTexts
@@ -58,8 +56,6 @@ __all__ = [
     "PillarLabels",
     "InputLabels",
     "SOTPTexts",
-    "RegistryTexts",
-    "StrategyFormulas",
     "BenchmarkTexts",
     "MarketTexts",
     "PeersTexts"
