@@ -22,6 +22,15 @@ from src.core.exceptions import CalculationError
 
 
 # ==============================================================================
+# MODULE-LEVEL CONSTANTS
+# ==============================================================================
+
+DEFAULT_RISK_FREE_RATE = 0.04  # 4%
+DEFAULT_MARKET_RISK_PREMIUM = 0.05  # 5%
+DEFAULT_TAX_RATE = 0.21  # 21%
+
+
+# ==============================================================================
 # GOLDEN DATASET FIXTURES
 # ==============================================================================
 
@@ -56,9 +65,9 @@ def golden_aapl_large_cap_tech():
         
         # Market Rates
         beta=1.2,
-        risk_free_rate=0.04,           # 4%
-        market_risk_premium=0.05,      # 5%
-        tax_rate=0.21                  # 21%
+        risk_free_rate=DEFAULT_RISK_FREE_RATE,
+        market_risk_premium=DEFAULT_MARKET_RISK_PREMIUM,
+        tax_rate=DEFAULT_TAX_RATE
     )
 
 
@@ -93,9 +102,9 @@ def golden_high_growth_tech():
         
         # Market Rates - High Risk
         beta=1.8,
-        risk_free_rate=0.04,           # 4%
+        risk_free_rate=DEFAULT_RISK_FREE_RATE,
         market_risk_premium=0.055,     # 5.5%
-        tax_rate=0.21
+        tax_rate=DEFAULT_TAX_RATE
     )
 
 
@@ -130,9 +139,9 @@ def golden_mature_utility():
         
         # Market Rates - Low Risk
         beta=0.5,
-        risk_free_rate=0.04,           # 4%
-        market_risk_premium=0.05,      # 5%
-        tax_rate=0.21
+        risk_free_rate=DEFAULT_RISK_FREE_RATE,
+        market_risk_premium=DEFAULT_MARKET_RISK_PREMIUM,
+        tax_rate=DEFAULT_TAX_RATE
     )
 
 
@@ -167,9 +176,9 @@ def golden_distressed_company():
         
         # Market Rates - Very High Risk
         beta=2.5,
-        risk_free_rate=0.04,           # 4%
+        risk_free_rate=DEFAULT_RISK_FREE_RATE,
         market_risk_premium=0.06,      # 6%
-        tax_rate=0.21
+        tax_rate=DEFAULT_TAX_RATE
     )
 
 
@@ -201,10 +210,18 @@ def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
     ValuationRequest
         Complete request object.
     """
+    # Map sector strings to enums
+    sector_map = {
+        "Technology": CompanySector.TECHNOLOGY,
+        "Utilities": CompanySector.UTILITIES,
+        "Retail": CompanySector.CONSUMER_CYCLICAL,
+    }
+    sector_enum = sector_map.get(snapshot.sector, CompanySector.TECHNOLOGY)
+    
     company = Company(
         ticker=snapshot.ticker,
         name=snapshot.name,
-        sector=CompanySector.TECHNOLOGY if "Tech" in snapshot.name else CompanySector.UTILITIES,
+        sector=sector_enum,
         current_price=snapshot.current_price,
         currency="USD",
         last_update=datetime.now(timezone.utc)
@@ -413,12 +430,14 @@ class TestMonteCarloReproducibility:
         assert mc1 is not None
         assert mc2 is not None
         
-        # Assert identical simulation values
+        # Assert identical simulation values (check all values for full reproducibility)
         assert len(mc1.simulation_values) == len(mc2.simulation_values)
         
-        # Check that values are identical (deterministic)
-        for v1, v2 in zip(mc1.simulation_values[:10], mc2.simulation_values[:10]):
-            assert abs(v1 - v2) < 0.01, "MC values should be identical with same seed"
+        # Check that all values are identical (deterministic) using numpy for precision
+        import numpy as np
+        values1 = np.array(mc1.simulation_values)
+        values2 = np.array(mc2.simulation_values)
+        assert np.allclose(values1, values2, rtol=1e-9), "MC values should be identical with same seed"
         
         # Check quantiles are identical
         assert abs(mc1.quantiles["P50"] - mc2.quantiles["P50"]) < 0.01

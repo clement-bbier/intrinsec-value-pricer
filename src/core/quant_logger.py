@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import logging
 import functools
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from typing import Any, Callable, TypeVar, Union, Optional
 from enum import Enum
 
@@ -196,8 +197,6 @@ class QuantLogger:
         **data
             Arbitrary key-value pairs to include in the JSON record.
         """
-        import json
-        from datetime import timezone
         record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "event": event,

@@ -110,7 +110,7 @@ class ValuationOrchestrator:
             # --- PHASE 4: METADATA ATTACHMENT ---
             # Capture random seed if MC is enabled
             random_seed = None
-            if params.extensions.monte_carlo.enabled:
+            if params.extensions.monte_carlo and params.extensions.monte_carlo.enabled:
                 random_seed = params.extensions.monte_carlo.random_seed
 
             metadata = ValuationRunMetadata(
