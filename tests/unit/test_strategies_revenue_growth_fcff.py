@@ -386,10 +386,12 @@ class TestRevenueGrowthFCFFStrategy:
         result = strategy.execute(basic_company, basic_params)
 
         # Verify capital structure
+        # Note: Parameters are automatically scaled by 1e6 (scale="million")
+        # shares_outstanding=3000 -> 3000000000, total_debt=15000 -> 15000000000, cash=5000 -> 5000000000
         assert result.results.common.capital.enterprise_value == 150000
         assert result.results.common.capital.equity_value_total == 140000
-        assert result.results.common.capital.net_debt_resolved == 10000  # 15000 - 5000
-        assert result.results.common.capital.market_cap == 600000  # 3000 * 200.0
+        assert result.results.common.capital.net_debt_resolved == 10000000000.0  # 15000000000 - 5000000000
+        assert result.results.common.capital.market_cap == 600000000000.0  # 3000000000 * 200.0
 
     @patch('src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate')
     @patch('src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model')

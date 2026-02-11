@@ -334,10 +334,12 @@ class TestFundamentalFCFFStrategy:
         result = strategy.execute(basic_company, basic_params)
 
         # Verify capital structure
+        # Note: Parameters are automatically scaled by 1e6 (scale="million")
+        # total_debt=120000 -> 120000000000, cash=50000 -> 50000000000, shares=16000 -> 16000000000
         assert result.results.common.capital.enterprise_value == 1500000
         assert result.results.common.capital.equity_value_total == 1430000
-        assert result.results.common.capital.net_debt_resolved == 70000  # 120000 - 50000
-        assert result.results.common.capital.market_cap == 2400000  # 16000 * 150.0
+        assert result.results.common.capital.net_debt_resolved == 70000000000.0  # 120000000000 - 50000000000
+        assert result.results.common.capital.market_cap == 2400000000000.0  # 16000000000 * 150.0
 
     @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
     @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
@@ -367,7 +369,9 @@ class TestFundamentalFCFFStrategy:
         result = strategy.execute(basic_company, basic_params)
 
         # Verify normalized FCF is stored
-        assert result.results.strategy.normalized_fcf_used == 95000.0
+        # Note: Parameters are automatically scaled by 1e6 (scale="million")
+        # fcf_norm=95000 -> 95000000000
+        assert result.results.strategy.normalized_fcf_used == 95000000000.0
 
     @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
     @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')

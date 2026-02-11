@@ -14,8 +14,6 @@ from .results import (
     InputLabels,
     SOTPTexts,
     MarketTexts,
-    RegistryTexts,
-    StrategyFormulas,
     BenchmarkTexts
 )
 from .expert import ExpertTexts
@@ -38,7 +36,5 @@ __all__ = [
     "ExtensionTexts",
     "PeersTexts",
     "SidebarTexts",
-    "RegistryTexts",
-    "StrategyFormulas",
     "BenchmarkTexts"
 ]
