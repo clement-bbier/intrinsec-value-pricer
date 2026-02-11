@@ -1,5 +1,10 @@
 # Intrinsic Value Pricer
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Coverage](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
+![License](https://img.shields.io/badge/license-Educational-orange)
+
 Application de valorisation d'entreprises cotées avec transparence totale des calculs.
 
 ---
@@ -160,8 +165,54 @@ Le rapport d'audit fournit un score de confiance pondéré selon ces critères.
 - `docs/usage/` : Guides utilisateur détaillés
 - `docs/references/` : Sources académiques et bibliographiques
 
+---
+
+## Références Académiques
+
+Les méthodologies de valorisation implémentées dans cette application s'appuient sur des travaux académiques et professionnels reconnus :
+
+### Ouvrages de Référence
+
+1. **Damodaran, A. (2012).** *Investment Valuation: Tools and Techniques for Determining the Value of Any Asset*. 3rd Edition. Wiley Finance.
+   - Référence principale pour les méthodologies DCF et l'estimation du coût du capital
+
+2. **McKinsey & Company, Koller, T., Goedhart, M., & Wessels, D. (2020).** *Valuation: Measuring and Managing the Value of Companies*. 7th Edition. Wiley.
+   - Standard de l'industrie pour la valorisation d'entreprise et les flux de trésorerie
+
+3. **Graham, B., & Dodd, D. (1974).** *Security Analysis: Principles and Technique*. 4th Edition. McGraw-Hill.
+   - Fondation de l'analyse fondamentale et de la formule de Benjamin Graham
+
+### Publications Académiques
+
+4. **Ohlson, J. A. (1995).** *Earnings, Book Values, and Dividends in Equity Valuation*. Contemporary Accounting Research, 11(2), 661-687.
+   - Modèle du revenu résiduel (RIM) pour la valorisation bancaire
+
+5. **Hamada, R. S. (1972).** *The Effect of the Firm's Capital Structure on the Systematic Risk of Common Stocks*. The Journal of Finance, 27(2), 435-452.
+   - Formule de Hamada pour l'ajustement du bêta en fonction du levier financier
+
+### Standards Professionnels
+
+- **CFA Institute (2015).** *Equity Asset Valuation*. 3rd Edition.
+- **IASB.** International Financial Reporting Standards (IFRS)
+- **AMF (Autorité des Marchés Financiers).** Bonnes pratiques de l'analyse financière
+
+### Ressources en Ligne
+
+- **Damodaran Online:** http://pages.stern.nyu.edu/~adamodar/
+  - Données de marché, primes de risque par pays, multiples sectoriels
+
+---
+
 ## Licence et Usage
 
 Ce projet est fourni à des fins éducatives, analytiques et de recherche. Il ne constitue en aucun cas un conseil financier, une incitation à investir, ou une recommandation d'achat ou de vente de titres financiers.
 
 La valeur intrinsèque est un outil d'analyse permettant d'évaluer la décote ou la prime d'un titre par rapport à ses fondamentaux économiques. Elle ne constitue pas une prédiction de cours ni une garantie de performance.
+
+---
+
+## Contributeurs
+
+- **@clement-bbier**: Mainteneur du projet et développeur principal
+
+Pour contribuer au projet, consultez `CONTRIBUTING.md`.
