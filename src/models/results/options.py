@@ -186,9 +186,18 @@ class PeersResults(BaseModel):
     final_relative_iv : float
         Synthesized Intrinsic Value from peer triangulation.
     """
-    median_multiples_used: dict[str, float] = Field(..., description="Medians (P/E, EV/EBITDA, etc.) extracted from the peer group.")
-    implied_prices: dict[str, float] = Field(..., description="Calculated prices for our target based on peer multiples.")
-    peer_valuations: list[PeerIntrinsicDetail] = Field(default_factory=list, description="Full intrinsic results for each peer defined in Parameters.")
+    median_multiples_used: dict[str, float] = Field(
+        ...,
+        description="Medians (P/E, EV/EBITDA, etc.) extracted from the peer group.",
+    )
+    implied_prices: dict[str, float] = Field(
+        ...,
+        description="Calculated prices for our target based on peer multiples.",
+    )
+    peer_valuations: list[PeerIntrinsicDetail] = Field(
+        default_factory=list,
+        description="Full intrinsic results for each peer defined in Parameters.",
+    )
     final_relative_iv: float = Field(..., description="Synthesized Intrinsic Value from peer triangulation.")
 
 

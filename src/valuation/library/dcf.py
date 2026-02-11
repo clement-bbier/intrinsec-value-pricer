@@ -55,7 +55,10 @@ class DCFLibrary:
 
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
         # We look for 'growth_rate_p1' (Standard DCF) or 'growth_rate' (FCFE/DDM)
-        g_start = getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None)) or ModelDefaults.DEFAULT_GROWTH_RATE
+        g_start = (
+            getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None))
+            or ModelDefaults.DEFAULT_GROWTH_RATE
+        )
 
         # Access Terminal Value params
         tv_params = strat.terminal_value
@@ -134,8 +137,17 @@ class DCFLibrary:
         avg_growth = sum(growth_vector) / years if years > 0 else 0.0
 
         variables = {
-            "FCF_0": VariableInfo(symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"),
-            "g_avg": VariableInfo(symbol="g_avg", value=avg_growth, formatted_value=f"{avg_growth:.1%}", source=VariableSource.MANUAL_OVERRIDE, description="Average Custom Growth")
+            "FCF_0": VariableInfo(
+                symbol="FCF_0", value=base_flow,
+                source=VariableSource.SYSTEM, description="Base Year Flow",
+            ),
+            "g_avg": VariableInfo(
+                symbol="g_avg",
+                value=avg_growth,
+                formatted_value=f"{avg_growth:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Average Custom Growth",
+            )
         }
 
         step = CalculationStep(
@@ -202,9 +214,22 @@ class DCFLibrary:
             fcfs.append(current_rev * current_m)
 
         variables = {
-            "Rev_0": VariableInfo(symbol="Rev_0", value=base_revenue, source=VariableSource.SYSTEM, description="Base Revenue"),
-            "M_target": VariableInfo(symbol="M_n", value=target_margin, formatted_value=f"{target_margin:.1%}", source=VariableSource.MANUAL_OVERRIDE, description="Target FCF Margin"),
-            "g_rev": VariableInfo(symbol="g_rev", value=g_start, formatted_value=f"{g_start:.1%}", source=VariableSource.MANUAL_OVERRIDE, description="Initial Revenue Growth")
+            "Rev_0": VariableInfo(
+                symbol="Rev_0", value=base_revenue,
+                source=VariableSource.SYSTEM, description="Base Revenue",
+            ),
+            "M_target": VariableInfo(
+                symbol="M_n", value=target_margin,
+                formatted_value=f"{target_margin:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Target FCF Margin",
+            ),
+            "g_rev": VariableInfo(
+                symbol="g_rev", value=g_start,
+                formatted_value=f"{g_start:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Initial Revenue Growth",
+            )
         }
 
         step = CalculationStep(
@@ -238,12 +263,25 @@ class DCFLibrary:
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})",
+                actual_calculation=(
+                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
+                    f" / ({discount_rate:.1%} - {g_perp:.1%})"
+                ),
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
-                    "g_perp": VariableInfo(symbol="g", value=g_perp, formatted_value=f"{g_perp:.2%}", source=VariableSource.MANUAL_OVERRIDE, description=SharedTexts.INP_PERP_G),
-                    "r": VariableInfo(symbol="r", value=discount_rate, formatted_value=f"{discount_rate:.2%}", source=VariableSource.CALCULATED, description="Discount Rate")
+                    "g_perp": VariableInfo(
+                        symbol="g", value=g_perp,
+                        formatted_value=f"{g_perp:.2%}",
+                        source=VariableSource.MANUAL_OVERRIDE,
+                        description=SharedTexts.INP_PERP_G,
+                    ),
+                    "r": VariableInfo(
+                        symbol="r", value=discount_rate,
+                        formatted_value=f"{discount_rate:.2%}",
+                        source=VariableSource.CALCULATED,
+                        description="Discount Rate",
+                    )
                 }
             )
             return tv, step
@@ -260,7 +298,12 @@ class DCFLibrary:
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
-                    "M": VariableInfo(symbol="M", value=multiple, formatted_value=f"{multiple:.1f}x", source=VariableSource.MANUAL_OVERRIDE, description="Exit Multiple")
+                    "M": VariableInfo(
+                        symbol="M", value=multiple,
+                        formatted_value=f"{multiple:.1f}x",
+                        source=VariableSource.MANUAL_OVERRIDE,
+                        description="Exit Multiple",
+                    )
                 }
             )
             return tv, step
@@ -287,9 +330,22 @@ class DCFLibrary:
             interpretation=StrategyInterpretations.EV_CONTEXT,
             source=StrategySources.EV_CALC,
             variables_map={
-                "r": VariableInfo(symbol="r", value=discount_rate, formatted_value=f"{discount_rate:.2%}", source=VariableSource.CALCULATED, description="Discount Rate"),
-                "ΣPV": VariableInfo(symbol="ΣPV", value=sum_pv_flows, source=VariableSource.CALCULATED, description="PV of Explicit Period"),
-                "PV_TV": VariableInfo(symbol="PV_TV", value=pv_tv, source=VariableSource.CALCULATED, description="PV of Terminal Value")
+                "r": VariableInfo(
+                    symbol="r", value=discount_rate,
+                    formatted_value=f"{discount_rate:.2%}",
+                    source=VariableSource.CALCULATED,
+                    description="Discount Rate",
+                ),
+                "ΣPV": VariableInfo(
+                    symbol="ΣPV", value=sum_pv_flows,
+                    source=VariableSource.CALCULATED,
+                    description="PV of Explicit Period",
+                ),
+                "PV_TV": VariableInfo(
+                    symbol="PV_TV", value=pv_tv,
+                    source=VariableSource.CALCULATED,
+                    description="PV of Terminal Value",
+                )
             }
         )
         return total_ev, step
@@ -321,8 +377,18 @@ class DCFLibrary:
                 result=final_iv,
                 interpretation=StrategyInterpretations.SBC_DILUTION_INTERP.format(pct=f"{(dilution_factor-1):.1%}"),
                 variables_map={
-                    "Shares": VariableInfo(symbol="Shares", value=shares, formatted_value=f"{shares:,.0f}", source=VariableSource.SYSTEM, description=SharedTexts.INP_SHARES),
-                    "Dilution": VariableInfo(symbol="δ", value=dilution_rate, formatted_value=f"{dilution_rate:.1%}", source=VariableSource.MANUAL_OVERRIDE, description="Annual SBC Dilution")
+                    "Shares": VariableInfo(
+                        symbol="Shares", value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                        description=SharedTexts.INP_SHARES,
+                    ),
+                    "Dilution": VariableInfo(
+                        symbol="δ", value=dilution_rate,
+                        formatted_value=f"{dilution_rate:.1%}",
+                        source=VariableSource.MANUAL_OVERRIDE,
+                        description="Annual SBC Dilution",
+                    )
                 }
             )
         else:
@@ -334,8 +400,15 @@ class DCFLibrary:
                 result=final_iv,
                 interpretation="Final Intrinsic Value per share.",
                 variables_map={
-                    "Equity": VariableInfo(symbol="Eq", value=equity_value, source=VariableSource.CALCULATED),
-                    "Shares": VariableInfo(symbol="Shares", value=shares, formatted_value=f"{shares:,.0f}", source=VariableSource.SYSTEM)
+                    "Equity": VariableInfo(
+                        symbol="Eq", value=equity_value,
+                        source=VariableSource.CALCULATED,
+                    ),
+                    "Shares": VariableInfo(
+                        symbol="Shares", value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                    )
                 }
             )
 

@@ -157,7 +157,9 @@ class SOTPParameters(BaseNormalizedModel):
         List of manual valuations per business unit.
     """
     enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
-    conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
+    conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = (
+        SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
+    )
     segments: Annotated[list[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
 
 

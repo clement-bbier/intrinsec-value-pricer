@@ -53,10 +53,15 @@ class CommonTexts:
 
 class OnboardingTexts:
     """Contenu structurel de la page d'accueil et des piliers."""
-    INTRO_INFO = "Solution d'analyse fondamentale quantitative pour l'estimation de la valeur intrinsèque des capitaux propres."
+    INTRO_INFO = (
+        "Solution d'analyse fondamentale quantitative pour l'estimation"
+        " de la valeur intrinsèque des capitaux propres."
+    )
     COMPLIANCE_BODY = (
-        "Les modélisations produites reposent sur des algorithmes de flux actualisés (DCF) et de profits résiduels (RIM). "
-        "Ces résultats constituent des outils d'aide à la décision et non des recommandations d'investissement."
+        "Les modélisations produites reposent sur des algorithmes de flux"
+        " actualisés (DCF) et de profits résiduels (RIM). "
+        "Ces résultats constituent des outils d'aide à la décision"
+        " et non des recommandations d'investissement."
     )
 
     # Section : Méthodes
@@ -64,27 +69,48 @@ class OnboardingTexts:
     DESC_METHODS = "Architecture multi-modèles pour une triangulation de la valeur :"
 
     MODEL_DCF_TITLE = "Approche Entité (FCFF)"
-    MODEL_DCF_DESC = "Valeur de l'actif économique. Flux opérationnels actualisés au coût moyen pondéré du capital (WACC)."
+    MODEL_DCF_DESC = (
+        "Valeur de l'actif économique. Flux opérationnels actualisés"
+        " au coût moyen pondéré du capital (WACC)."
+    )
 
     MODEL_EQUITY_TITLE = "Approche Actionnaire (FCFE/DDM)"
-    MODEL_EQUITY_DESC = "Valeur directe des fonds propres. Actualisation des flux nets de dette au coût des fonds propres (Ke)."
+    MODEL_EQUITY_DESC = (
+        "Valeur directe des fonds propres. Actualisation des flux nets"
+        " de dette au coût des fonds propres (Ke)."
+    )
 
     MODEL_RIM_TITLE = "Revenu Résiduel (Residual Income)"
-    MODEL_RIM_DESC = "Méthode comptable avancée. Valorisation basée sur la création de valeur excédentaire par rapport au coût du capital."
+    MODEL_RIM_DESC = (
+        "Méthode comptable avancée. Valorisation basée sur la création de valeur"
+        " excédentaire par rapport au coût du capital."
+    )
 
     MODEL_GRAHAM_TITLE = "Formule de Benjamin Graham"
-    MODEL_GRAHAM_DESC = "Approche sécuritaire reliant la capacité bénéficiaire normalisée aux taux obligataires sans risque."
+    MODEL_GRAHAM_DESC = (
+        "Approche sécuritaire reliant la capacité bénéficiaire normalisée"
+        " aux taux obligataires sans risque."
+    )
 
     # Section : Intelligence de Données
     TITLE_PROCESS = "Acquisition des données"
     STRATEGY_ACQUISITION_TITLE = "Extraction Automatisée"
-    STRATEGY_ACQUISITION_DESC = "Récupération des états financiers et données macro via fournisseurs de données institutionnels."
+    STRATEGY_ACQUISITION_DESC = (
+        "Récupération des états financiers et données macro"
+        " via fournisseurs de données institutionnels."
+    )
 
     STRATEGY_MANUAL_TITLE = "Mode Ingénierie (Manual Override)"
-    STRATEGY_MANUAL_DESC = "Permet l'ajustement granulaire des hypothèses de croissance, de marge et de structure du capital."
+    STRATEGY_MANUAL_DESC = (
+        "Permet l'ajustement granulaire des hypothèses de croissance,"
+        " de marge et de structure du capital."
+    )
 
     STRATEGY_FALLBACK_TITLE = "Données de Substitution"
-    STRATEGY_FALLBACK_DESC = "Recours aux benchmarks sectoriels par défaut en cas de données historiques incomplètes ou aberrantes. (Fallback)"
+    STRATEGY_FALLBACK_DESC = (
+        "Recours aux benchmarks sectoriels par défaut en cas de données"
+        " historiques incomplètes ou aberrantes. (Fallback)"
+    )
 
     # Section : Architecture des 5 Piliers
     TITLE_RESULTS = "Organisation des Résultats"
@@ -100,10 +126,16 @@ class OnboardingTexts:
     TAB_3_DESC = "Évaluation de la fiabilité du modèle et détection d'anomalies."
     # Pilier 4 - Risque
     TAB_4_TITLE = "Ingénierie des Risques & Sensibilité"
-    TAB_4_DESC = "Analyse stochastique (Monte Carlo), matrices de sensibilité et backtesting historique pour valider la précision du modèle."
+    TAB_4_DESC = (
+        "Analyse stochastique (Monte Carlo), matrices de sensibilité et backtesting"
+        " historique pour valider la précision du modèle."
+    )
     # Pilier 5 - Marché
     TAB_5_TITLE = "Triangulation de Marché & SOTP"
-    TAB_5_DESC = "Étude comparative des multiples boursiers sectoriels et décomposition segmentée (SOTP) pour une validation extrinsèque."
+    TAB_5_DESC = (
+        "Étude comparative des multiples boursiers sectoriels et décomposition"
+        " segmentée (SOTP) pour une validation extrinsèque."
+    )
 
     # Section : Diagnostics
     DIAGNOSTIC_HEADER = "Système de diagnostics"

@@ -191,7 +191,11 @@ class CommonLibrary:
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
-            actual_calculation=f"{format_smart_number(enterprise_value)} - {format_smart_number(debt)} + {format_smart_number(cash)}...",
+            actual_calculation=(
+                f"{format_smart_number(enterprise_value)}"
+                f" - {format_smart_number(debt)}"
+                f" + {format_smart_number(cash)}..."
+            ),
             result=equity_value,
             unit="currency",
             interpretation=StrategyInterpretations.BRIDGE,

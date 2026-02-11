@@ -25,10 +25,17 @@ class ScenarioTexts:
     METRIC_WEIGHTED_UPSIDE = "Upside Pondéré"
 
 class BacktestTexts:
-    NO_BACKTEST_FOUND = "Données historiques insuffisantes pour générer un audit de performance (Backtest). Cela survient généralement pour les entreprises récemment cotées (IPO) ou si l'historique des prix est incomplet."
+    NO_BACKTEST_FOUND = (
+        "Données historiques insuffisantes pour générer un audit de performance"
+        " (Backtest). Cela survient généralement pour les entreprises récemment"
+        " cotées (IPO) ou si l'historique des prix est incomplet."
+    )
     LABEL = "Backtest"
     TITLE = "Validation Historique (Backtest)"
-    HELP_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) calculée par le modèle aux cours de clôture historiques."
+    HELP_BACKTEST = (
+        "Analyse rétrospective comparant la valeur intrinsèque (IV) calculée"
+        " par le modèle aux cours de clôture historiques."
+    )
     LBL_PERIODS = "Périodes testées"
     METRIC_ACCURACY = "Précision"
     SEC_RESULTS = "Détail des séquences historiques"
@@ -40,7 +47,10 @@ class BacktestTexts:
     GRADE_B = "Grade B"
 
 class PeersTexts:
-    NO_PEERS_FOUND = "Aucune entreprise comparable identifiée ou données sectorielles manquantes. La triangulation par multiples boursiers n'est pas disponible pour ce ticker."
+    NO_PEERS_FOUND = (
+        "Aucune entreprise comparable identifiée ou données sectorielles manquantes."
+        " La triangulation par multiples boursiers n'est pas disponible pour ce ticker."
+    )
 
 class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""

@@ -73,9 +73,18 @@ class YahooSnapshotMapper:
         snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"]) # For Cost of Debt
 
         # TTM Reconstruction (Pillar 3)
-        snapshot.revenue_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"]) or info.get("totalRevenue")
-        snapshot.ebit_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"]) or info.get("operatingCashflow")
-        snapshot.net_income_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"]) or info.get("netIncomeToCommon")
+        snapshot.revenue_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"])
+            or info.get("totalRevenue")
+        )
+        snapshot.ebit_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["EBIT"])
+            or info.get("operatingCashflow")
+        )
+        snapshot.net_income_ttm = (
+            self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Net Income"])
+            or info.get("netIncomeToCommon")
+        )
 
         ocf = self._sum_last_4_quarters(raw.quarterly_cash_flow, OCF_KEYS)
         capex = self._sum_last_4_quarters(raw.quarterly_cash_flow, CAPEX_KEYS)
