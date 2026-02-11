@@ -29,9 +29,15 @@ class GrahamValueView(BaseStrategyView):
         st.latex(Texts.STEP_1_FORMULA)
         c1, c2 = st.columns(2)
         with c1:
-            st.number_input(Texts.INP_EPS, value=None, format="%.2f", help=Texts.HELP_EPS, key=f"{prefix}_eps_normalized")
+            st.number_input(
+                Texts.INP_EPS, value=None, format="%.2f",
+                help=Texts.HELP_EPS, key=f"{prefix}_eps_normalized",
+            )
         with c2:
-            st.number_input(Texts.INP_GROWTH, value=None, format="%.2f", help=Texts.HELP_GROWTH_LT, key=f"{prefix}_growth_estimate")
+            st.number_input(
+                Texts.INP_GROWTH, value=None, format="%.2f",
+                help=Texts.HELP_GROWTH_LT, key=f"{prefix}_growth_estimate",
+            )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)

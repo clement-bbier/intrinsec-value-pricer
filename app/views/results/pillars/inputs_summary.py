@@ -136,10 +136,13 @@ def _render_rates_table(params, resolved_rates) -> None:
     kd_display = _safe_fmt(p_rates.cost_of_debt, ".2%", default="Auto")
 
     data = [
-        {"Parameter": InputLabels.RISK_FREE_RATE, "Value": fmt_rate(p_rates.risk_free_rate, getattr(resolved_rates, 'risk_free_rate', None))},
+        {"Parameter": InputLabels.RISK_FREE_RATE,
+         "Value": fmt_rate(p_rates.risk_free_rate, getattr(resolved_rates, 'risk_free_rate', None))},
         {"Parameter": InputLabels.BETA,           "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
-        {"Parameter": InputLabels.ERP,            "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
-        {"Parameter": InputLabels.COST_OF_EQUITY, "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity)},
+        {"Parameter": InputLabels.ERP,
+         "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {"Parameter": InputLabels.COST_OF_EQUITY,
+         "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity)},
         {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX,   "Value": kd_display},
         {"Parameter": InputLabels.WACC_CALC,      "Value": f"**{resolved_rates.wacc:.2%}**"} # WACC is always calculated
     ]
@@ -161,7 +164,8 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
     if mode == ValuationMethodology.RIM:
         data = [
             {"Assumption": "Anchor (Book Value)", "Value": f"{getattr(strat_params, 'book_value_anchor', 0):,.0f} M"},
-            {"Assumption": "Persistence Factor (ω)", "Value": _safe_fmt(getattr(strat_params, 'persistence_factor', None), ".2f")},
+            {"Assumption": "Persistence Factor (ω)",
+             "Value": _safe_fmt(getattr(strat_params, 'persistence_factor', None), ".2f")},
             {"Assumption": "Growth (g)", "Value": _safe_fmt(getattr(strat_params, 'growth_rate', None), ".2%")}
         ]
 
@@ -173,7 +177,8 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         data = [
             {"Assumption": "Normalized EPS", "Value": _safe_fmt(getattr(strat_params, 'eps_normalized', None), ".2f")},
-            {"Assumption": "Conservative Growth", "Value": _safe_fmt(getattr(strat_params, 'growth_estimate', None), ".2%")},
+            {"Assumption": "Conservative Growth",
+             "Value": _safe_fmt(getattr(strat_params, 'growth_estimate', None), ".2%")},
             {"Assumption": "AAA Corp Rate", "Value": _safe_fmt(aaa_yield, ".2%")}
         ]
 
@@ -194,7 +199,8 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
             {"Assumption": "Base Flow (FCF/Div/EPS)", "Value": f"{anchor_val:,.2f} M"},
             {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
             {"Assumption": "Projection Years", "Value": f"{getattr(strat_params, 'projection_years', 5)} years"},
-            {"Assumption": "Terminal Growth (g)", "Value": _safe_fmt(getattr(strat_params, 'perpetual_growth_rate', 0.02), ".2%")},
+            {"Assumption": "Terminal Growth (g)",
+             "Value": _safe_fmt(getattr(strat_params, 'perpetual_growth_rate', 0.02), ".2%")},
             {"Assumption": "Terminal Method", "Value": str(getattr(strat_params, 'terminal_method', 'Gordon Growth'))}
         ]
 

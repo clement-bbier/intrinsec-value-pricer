@@ -31,14 +31,23 @@ class FCFEView(BaseStrategyView):
         st.latex(Texts.STEP_1_FORMULA)
         c1, c2 = st.columns(2)
         with c1:
-            st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_FCFE_BASE, key=f"{prefix}_fcfe_anchor")
+            st.number_input(
+                Texts.INP_BASE, value=None, format="%.0f",
+                help=Texts.HELP_FCFE_BASE, key=f"{prefix}_fcfe_anchor",
+            )
         with c2:
-            st.number_input(Texts.INP_NET_BORROWING, value=None, format="%.0f", help=Texts.HELP_NET_BORROWING, key=f"{prefix}_net_borrowing_delta")
+            st.number_input(
+                Texts.INP_NET_BORROWING, value=None, format="%.0f",
+                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_net_borrowing_delta",
+            )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
         with c1:
             widget_projection_years(default=5, key_prefix=prefix)
         with c2:
-            st.number_input(UISharedTexts.INP_GROWTH_G, value=None, format="%.2f", help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate")
+            st.number_input(
+                UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
+                help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate",
+            )
         st.divider()

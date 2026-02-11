@@ -58,7 +58,10 @@ def render_score_gauge(score: float, label: str, context_label: str = "PERFORMAN
     with st.container(border=True):
         c1, c2 = st.columns([0.7, 0.3])
         c1.markdown(f"**{context_label.upper()}**")
-        c2.markdown(f"<div style='text-align:right; color:{color}; font-weight:bold;'>{score:.1f}/100</div>", unsafe_allow_html=True)
+        c2.markdown(
+            f"<div style='text-align:right; color:{color}; font-weight:bold;'>{score:.1f}/100</div>",
+            unsafe_allow_html=True,
+        )
 
         st.progress(score / 100)
 
@@ -81,8 +84,10 @@ def atom_benchmark_card(
         col_head, col_badge = st.columns([0.7, 0.3])
         col_head.markdown(f"**{label.upper()}**")
         col_badge.markdown(
-            f"<div style='text-align:right; color:{status_color}; font-weight:bold; font-size:0.9em; border:1px solid {status_color}; border-radius:4px; padding:2px 6px; display:inline-block;'>{status}</div>",
-            unsafe_allow_html=True
+            f"<div style='text-align:right; color:{status_color}; font-weight:bold;"
+            f" font-size:0.9em; border:1px solid {status_color}; border-radius:4px;"
+            f" padding:2px 6px; display:inline-block;'>{status}</div>",
+            unsafe_allow_html=True,
         )
 
         if description:

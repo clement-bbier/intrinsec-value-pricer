@@ -123,7 +123,10 @@ class MonteCarloDistributionTab:
 
                 # 80% Confidence Interval
                 if stats:
-                    range_str = f"{format_smart_number(stats.get('p10', 0))} — {format_smart_number(stats.get('p90', 0))}"
+                    range_str = (
+                        f"{format_smart_number(stats.get('p10', 0))}"
+                        f" — {format_smart_number(stats.get('p90', 0))}"
+                    )
                     p_col2.metric(
                         label=QuantTexts.MC_FILTER_SUB.format(valid=len(sim_array), total=len(sim_array)),
                         value=range_str,

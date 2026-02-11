@@ -30,5 +30,8 @@ class FCFFStandardView(BaseStrategyView):
         with c1:
             widget_projection_years(default=5, key_prefix=prefix)
         with c2:
-            st.number_input(Texts.INP_GROWTH_G, value=None, format="%.2f", help=Texts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate")
+            st.number_input(
+                Texts.INP_GROWTH_G, value=None, format="%.2f",
+                help=Texts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate",
+            )
         st.divider()

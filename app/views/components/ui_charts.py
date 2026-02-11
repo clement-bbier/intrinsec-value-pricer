@@ -100,7 +100,9 @@ def display_simulation_chart(simulation_results: list[float], currency: str) -> 
 
     # Stats Summary HTML block
     st.markdown(f"""
-    <div style="font-size: 0.85rem; color: #64748b; padding: 10px; border-left: 3px solid #1e293b; background: #f8fafc; border-radius: 4px; margin-top: 10px;">
+    <div style="font-size: 0.85rem; color: #64748b; padding: 10px;
+     border-left: 3px solid #1e293b; background: #f8fafc;
+     border-radius: 4px; margin-top: 10px;">
         {len(values):,} {QuantTexts.MC_TITLE} |
         {QuantTexts.MC_MEDIAN} : <b>{p50:,.2f} {currency}</b> |
         {QuantTexts.CONFIDENCE_INTERVAL} 80% : {p10:,.2f} — {p90:,.2f}

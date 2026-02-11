@@ -29,7 +29,10 @@ class DDMView(BaseStrategyView):
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        st.number_input(Texts.INP_BASE, value=None, format="%.2f", help=Texts.HELP_DIVIDEND_BASE, key=f"{prefix}_div_base")
+        st.number_input(
+            Texts.INP_BASE, value=None, format="%.2f",
+            help=Texts.HELP_DIVIDEND_BASE, key=f"{prefix}_div_base",
+        )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
