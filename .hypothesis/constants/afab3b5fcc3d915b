@@ -1,4 +1,0 @@
-# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/valuation/guardrails.py
-# hypothesis_version: 6.151.6
-
-[0.0, 0.005, 0.01, 0.21, 1.0, 5.0, 10.0, 'GUARDRAIL_CAPITAL_OK', 'cash', 'cycle_growth_rate', 'debt_equity_ratio', 'difference', 'dividend_growth_rate', 'ebit_ttm', 'error', 'g', 'growth', 'growth_rate_p1', 'info', 'invested_capital', 'market_equity', 'net_debt', 'num_scenarios', 'prob_sum', 'probabilities', 'ratio', 'revenue_growth_rate', 'roic', 'shares_outstanding', 'spread', 'terminal_value', 'threshold', 'tolerance', 'total_debt', 'wacc', 'warning']

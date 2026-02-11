@@ -1,4 +1,0 @@
-# file: /home/runner/work/intrinsec-value-pricer/intrinsec-value-pricer/src/models/parameters/options.py
-# hypothesis_version: 6.151.6
-
-['Base Case', 'bt_enable', 'bt_lookback', 'enable', 'g', 'graham', 'm', 'p', 'pct', 'peer_enable', 'peer_list', 'raw', 'scenario_enable', 'sensi_enable', 'sensi_growth', 'sensi_steps', 'sensi_wacc', 'sims', 'sotp_disc', 'sotp_enable', 'sotp_segs', 'standard', 'vol_beta', 'vol_flow', 'vol_growth']
