@@ -248,4 +248,4 @@ class TestOrchestratorConstruction:
         # Base result has no MC, no scenarios, no backtest, no peers, no SOTP
         # Only core tabs (executive, inputs, calculation, audit) are visible
         visible = orch.get_visible_count(base_result)
-        assert visible >= 3  # At least executive, inputs, calculation
+        assert visible == 4, f"Expected 4 core tabs visible, got {visible}"

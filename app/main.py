@@ -205,7 +205,7 @@ def _render_sidebar_projection_years() -> int:
 
 
 def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
-    """Rend les options spécifiques au mode Auto (excluding projection years)."""
+    """Rend les options spécifiques au mode Auto (hors horizon de projection)."""
     enable_mc = False
     mc_sims = _DEFAULT_MC_SIMULATIONS
 
