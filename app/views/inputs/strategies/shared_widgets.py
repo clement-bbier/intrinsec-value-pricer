@@ -30,23 +30,8 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 # 1. BASE INPUT WIDGETS
 # ==============================================================================
-
-def widget_projection_years(
-    default: int = UIWidgetDefaults.DEFAULT_PROJECTION_YEARS,
-    key_prefix: str = "strategy"
-) -> None:
-    """
-    Renders a slider for the projection horizon.
-    """
-    st.slider(
-        label=UISharedTexts.INP_PROJ_YEARS,
-        min_value=UIWidgetDefaults.MIN_PROJECTION_YEARS,
-        max_value=UIWidgetDefaults.MAX_PROJECTION_YEARS,
-        value=default,
-        step=1,
-        help=UISharedTexts.HELP_PROJ_YEARS,
-        key=f"{key_prefix}_years"
-    )
+# NOTE: Projection Years slider has been promoted to the global Sidebar.
+# It is no longer duplicated in strategy terminals (DRY compliance).
 
 def widget_growth_rate(
     label: str,

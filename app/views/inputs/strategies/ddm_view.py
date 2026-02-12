@@ -1,14 +1,19 @@
 import streamlit as st
 
-from app.state.store import get_state
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_growth_rate
-from src.i18n import SidebarTexts, UISharedTexts
+from src.i18n import UISharedTexts
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import ValuationMethodology
 
 
 class DDMView(BaseStrategyView):
+    """
+    Expert terminal for Dividend Discount Model (DDM) valuation.
+
+    Projection years are managed globally via the Sidebar slider.
+    """
+
     MODE = ValuationMethodology.DDM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
@@ -23,10 +28,11 @@ class DDMView(BaseStrategyView):
     SHOW_SENSITIVITY = True
     SHOW_BACKTEST = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = False # False : Dividend model is per-share.
+    SHOW_SOTP = False  # Dividend model is per-share.
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
+        """Renders Step 1 (dividend base) and Step 2 (growth rate) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
@@ -36,11 +42,7 @@ class DDMView(BaseStrategyView):
         )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
-        with c2:
-            widget_growth_rate(label=UISharedTexts.INP_GROWTH_G, key_prefix=prefix)
+        widget_growth_rate(label=UISharedTexts.INP_GROWTH_G, key_prefix=prefix)
         if hasattr(Texts, 'NOTE_DDM_SGR') and Texts.NOTE_DDM_SGR:
             st.caption(Texts.NOTE_DDM_SGR)
         st.divider()

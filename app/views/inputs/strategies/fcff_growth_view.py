@@ -1,13 +1,17 @@
 import streamlit as st
 
-from app.state.store import get_state
 from app.views.inputs.base_strategy import BaseStrategyView
-from src.i18n import SidebarTexts
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from src.models import ValuationMethodology
 
 
 class FCFFGrowthView(BaseStrategyView):
+    """
+    Expert terminal for Revenue Growth FCFF valuation.
+
+    Projection years are managed globally via the Sidebar slider.
+    """
+
     MODE = ValuationMethodology.FCFF_GROWTH
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
@@ -21,21 +25,20 @@ class FCFFGrowthView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
+        """Renders Step 1 (revenue base) and Step 2 (growth + margin) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_REV_TTM, key=f"{prefix}_revenue_ttm")
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         with c1:
-            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
-        with c2:
             st.number_input(
                 Texts.INP_REV_GROWTH, value=None, format="%.2f",
                 help=Texts.HELP_REV_GROWTH, key=f"{prefix}_growth_rate",
             )
-        with c3:
+        with c2:
             st.number_input(
                 Texts.INP_MARGIN_TARGET, value=None, format="%.2f",
                 help=Texts.HELP_MARGIN_TARGET, key=f"{prefix}_fcf_margin",

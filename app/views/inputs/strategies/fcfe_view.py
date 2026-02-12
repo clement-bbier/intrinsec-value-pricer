@@ -1,13 +1,18 @@
 import streamlit as st
 
-from app.state.store import get_state
 from app.views.inputs.base_strategy import BaseStrategyView
-from src.i18n import SidebarTexts, UISharedTexts
+from src.i18n import UISharedTexts
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.models import ValuationMethodology
 
 
 class FCFEView(BaseStrategyView):
+    """
+    Expert terminal for Free Cash Flow to Equity (FCFE) valuation.
+
+    Projection years are managed globally via the Sidebar slider.
+    """
+
     MODE = ValuationMethodology.FCFE
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
@@ -22,10 +27,11 @@ class FCFEView(BaseStrategyView):
     SHOW_SENSITIVITY = True
     SHOW_BACKTEST = True
     SHOW_SCENARIOS = True
-    SHOW_SOTP = False # False : SOTP is EV based, FCFE is Equity based.
+    SHOW_SOTP = False  # SOTP is EV based, FCFE is Equity based.
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
+        """Renders Step 1 (FCFE base + borrowing) and Step 2 (growth rate) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
@@ -42,12 +48,8 @@ class FCFEView(BaseStrategyView):
             )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
-        with c2:
-            st.number_input(
-                UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
-                help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate",
-            )
+        st.number_input(
+            UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
+            help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate",
+        )
         st.divider()
