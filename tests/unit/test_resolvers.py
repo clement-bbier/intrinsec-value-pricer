@@ -39,7 +39,7 @@ def resolver():
 def ghost_params():
     """A fully ghost (all None) Parameters object for FCFF Standard."""
     return Parameters(
-        structure=Company(ticker="TEST", current_price=0.0),
+        structure=Company(ticker="TEST", current_price=100.0),
         common=CommonParameters(
             rates=FinancialRatesParameters(),
             capital=CapitalStructureParameters(),

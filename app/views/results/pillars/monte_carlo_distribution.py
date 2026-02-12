@@ -46,7 +46,8 @@ class MonteCarloDistributionTab:
 
         # Dynamic configuration summary from i18n
         shocks = mc_params.shocks
-        sig_b = shocks.beta_volatility if shocks and hasattr(shocks, 'beta_volatility') else 0.10
+        # beta_volatility is only available on BetaModelMCShocksParameters (not Graham)
+        sig_b = getattr(shocks, 'beta_volatility', None) or 0.10 if shocks else 0.10
         sig_g = shocks.growth_volatility if shocks else 0.015
 
         config_sub = QuantTexts.MC_CONFIG_SUB.format(
