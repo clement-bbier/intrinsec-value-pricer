@@ -94,7 +94,7 @@ def _render_capital_structure_table(params) -> None:
     cap = params.common.capital
 
     # On-the-fly calculations for display
-    # Resolver guarantees non-None values for resolved parameters
+    # Fields may still be None if not resolved; default to zero for safe arithmetic
     shares = cap.shares_outstanding if cap.shares_outstanding is not None else 0
     price = struct.current_price if struct.current_price is not None else 0.0
     mkt_cap = price * shares
