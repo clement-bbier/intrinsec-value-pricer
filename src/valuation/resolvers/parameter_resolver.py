@@ -259,8 +259,13 @@ class ParameterResolver:
             resolved_params.rates.risk_free_rate = rates.risk_free_rate
         if resolved_params.rates.market_risk_premium is None:
             resolved_params.rates.market_risk_premium = rates.market_risk_premium
-        if resolved_params.rates.manual_beta is None and (financials.beta is None or financials.beta == 0):
+
+        # Beta: only inject default if neither manual nor snapshot provides one
+        no_manual_beta = resolved_params.rates.manual_beta is None
+        no_snapshot_beta = financials.beta is None or financials.beta == 0
+        if no_manual_beta and no_snapshot_beta:
             resolved_params.rates.manual_beta = rates.beta
+
         if resolved_params.rates.cost_of_debt is None:
             resolved_params.rates.cost_of_debt = rates.cost_of_debt
         if resolved_params.rates.tax_rate is None:

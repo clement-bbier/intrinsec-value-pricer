@@ -44,13 +44,17 @@ class SOTPBreakdownTab(ResultTabBase):
             segments_data = []
             total_ev = sum(seg.enterprise_value for seg in sotp.segments)
             for seg in sotp.segments:
-                contribution = seg.contribution_pct if seg.contribution_pct is not None else (
-                    seg.enterprise_value / total_ev if total_ev > 0 else 0.0
-                )
+                if seg.contribution_pct is not None:
+                    contribution = seg.contribution_pct
+                elif total_ev > 0:
+                    contribution = seg.enterprise_value / total_ev
+                else:
+                    contribution = 0.0
+
                 segments_data.append({
                     "Segment": seg.name,
                     "Revenu": format_smart_number(seg.revenue, currency) if seg.revenue else "—",
-                    "Methode": seg.method.value if hasattr(seg.method, 'value') else str(seg.method),
+                    "Méthode": seg.method.value if hasattr(seg.method, 'value') else str(seg.method),
                     "Valeur": format_smart_number(seg.enterprise_value, currency),
                     "Contribution": f"{contribution:.1%}",
                 })
