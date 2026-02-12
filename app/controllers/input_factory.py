@@ -84,6 +84,7 @@ class InputFactory:
     @staticmethod
     def _build_strategy_params(mode: ValuationMethodology) -> StrategyUnionParameters:
         """Route to the correct Parameter model based on the selected mode."""
+        state = get_state()
 
         # Map Enum to Pydantic Class
         # Uses the exact mapping defined in src.valuation.registry but static here for simplicity
@@ -106,7 +107,13 @@ class InputFactory:
         prefix = mode.value
 
         # We use 'cast' to tell the type checker: "Trust me, this BaseModel is actually a StrategyUnionParameters"
-        return cast(StrategyUnionParameters, InputFactory._pull_model(model_cls, prefix=prefix))
+        strategy = cast(StrategyUnionParameters, InputFactory._pull_model(model_cls, prefix=prefix))
+
+        # Inject global projection_years from Sidebar into projected strategies
+        if hasattr(strategy, "projection_years"):
+            strategy.projection_years = state.projection_years
+
+        return strategy
 
     @staticmethod
     def _pull_model(model_cls: type[T], prefix: str | None = None) -> T:

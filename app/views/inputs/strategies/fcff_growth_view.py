@@ -1,7 +1,8 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
-from app.views.inputs.strategies.shared_widgets import widget_projection_years
+from app.state.store import get_state
+from src.i18n import SidebarTexts
 from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
 from src.models import ValuationMethodology
 
@@ -28,7 +29,7 @@ class FCFFGrowthView(BaseStrategyView):
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2, c3 = st.columns(3)
         with c1:
-            widget_projection_years(default=5, key_prefix=prefix)
+            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
         with c2:
             st.number_input(
                 Texts.INP_REV_GROWTH, value=None, format="%.2f",

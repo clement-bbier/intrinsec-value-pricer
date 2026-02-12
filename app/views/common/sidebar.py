@@ -18,6 +18,7 @@ import streamlit as st
 from app.controllers.app_controller import AppController
 from app.state.session_manager import SessionManager
 from app.state.store import get_state
+from src.config.constants import UIWidgetDefaults
 from src.i18n import CommonTexts, SidebarTexts
 from src.models.enums import ValuationMethodology
 from src.valuation.registry import get_display_names
@@ -57,7 +58,23 @@ def render_sidebar():
             SessionManager.reset_valuation()
             st.rerun()
 
-        # --- 3. METHODOLOGY ---
+        # --- 3. PROJECTION HORIZON ---
+        st.markdown(f"### {SidebarTexts.SEC_4_HORIZON}")
+
+        new_years = st.slider(
+            SidebarTexts.YEARS_LABEL,
+            min_value=UIWidgetDefaults.MIN_PROJECTION_YEARS,
+            max_value=UIWidgetDefaults.MAX_PROJECTION_YEARS,
+            value=state.projection_years,
+            step=1,
+        )
+
+        if new_years != state.projection_years:
+            state.projection_years = new_years
+            SessionManager.reset_valuation()
+            st.rerun()
+
+        # --- 4. METHODOLOGY ---
         st.markdown(f"### {SidebarTexts.SEC_2_METHODOLOGY}")
 
         # Use i18n display names from the Registry instead of raw enum values
@@ -76,7 +93,7 @@ def render_sidebar():
             SessionManager.reset_valuation()
             st.rerun()
 
-        # --- 4. MODE SWITCH (Auto vs Expert) ---
+        # --- 5. MODE SWITCH (Auto vs Expert) ---
         st.divider()
         st.markdown(f"### {SidebarTexts.SETTINGS}")
 
@@ -90,7 +107,7 @@ def render_sidebar():
             state.is_expert_mode = is_expert
             st.rerun()
 
-        # --- 5. EXECUTION ---
+        # --- 6. EXECUTION ---
         st.divider()
 
         # Primary Action Button
