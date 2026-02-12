@@ -42,13 +42,17 @@ class SOTPBreakdownTab(ResultTabBase):
         # Tableau des segments
         with st.container(border=True):
             segments_data = []
+            total_ev = sum(seg.enterprise_value for seg in sotp.segments)
             for seg in sotp.segments:
+                contribution = seg.contribution_pct if seg.contribution_pct is not None else (
+                    seg.enterprise_value / total_ev if total_ev > 0 else 0.0
+                )
                 segments_data.append({
                     "Segment": seg.name,
-                    "Revenu": format_smart_number(seg.revenue, currency),
-                    "Multiple": f"{seg.multiple:.1f}x",
-                    "Valeur": format_smart_number(seg.value, currency),
-                    "Contribution": f"{seg.contribution_pct:.1%}",
+                    "Revenu": format_smart_number(seg.revenue, currency) if seg.revenue else "—",
+                    "Methode": seg.method.value if hasattr(seg.method, 'value') else str(seg.method),
+                    "Valeur": format_smart_number(seg.enterprise_value, currency),
+                    "Contribution": f"{contribution:.1%}",
                 })
             
             df = pd.DataFrame(segments_data)
@@ -56,19 +60,23 @@ class SOTPBreakdownTab(ResultTabBase):
         
         # Synthèse
         with st.container(border=True):
+            gross_value = total_ev
+            discount = sotp.conglomerate_discount
+            net_value = gross_value * (1.0 - discount)
+
             col1, col2, col3 = st.columns(3)
             
             col1.metric(
                 "Valeur Brute SOTP",
-                format_smart_number(sotp.gross_value, currency)
+                format_smart_number(gross_value, currency)
             )
             col2.metric(
                 "Décote Holding",
-                f"{sotp.holding_discount:.1%}"
+                f"{discount:.1%}"
             )
             col3.metric(
                 "Valeur Nette SOTP",
-                format_smart_number(sotp.net_value, currency)
+                format_smart_number(net_value, currency)
             )
     
     def get_display_label(self) -> str:

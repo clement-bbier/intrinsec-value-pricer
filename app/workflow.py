@@ -96,6 +96,10 @@ def run_workflow(
         status.write(WorkflowTexts.STATUS_SMART_MERGE)
         final_params = map_request_to_params(request, auto_params)
 
+        # --- ÉTAPE 2b : RESOLUTION CASCADE (Override > Snapshot > Fallback > Default) ---
+        from src.valuation.resolvers import ParameterResolver
+        final_params = ParameterResolver.apply_resolved_params(final_params, financials)
+
         # --- ÉTAPE 3 : ANALYSE DU PRÉSENT (BASE CASE) ---
         status.write(WorkflowTexts.STATUS_ENGINE_RUN.format(mode=request.mode.value))
         if final_params.monte_carlo.enable_monte_carlo:

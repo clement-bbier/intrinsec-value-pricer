@@ -74,15 +74,11 @@ logger = logging.getLogger(__name__)
 # DT-008: Ces registres sont maintenant des facades vers le registre centralisé
 VALUATION_DISPLAY_NAMES: Dict[ValuationMode, str] = get_display_names()
 
-# Registre des terminaux expert (maintenu pour compatibilité)
+# Registre des terminaux expert (facade vers ExpertTerminalFactory)
+from app.ui.expert.factory import ExpertTerminalFactory
 EXPERT_UI_REGISTRY = {
-    ValuationMode.FCFF_STANDARD: "render_expert_fcff_standard",
-    ValuationMode.FCFF_NORMALIZED: "render_expert_fcff_normalized",
-    ValuationMode.FCFF_GROWTH: "render_expert_fcff_growth",
-    ValuationMode.FCFE: "render_expert_fcfe",
-    ValuationMode.DDM: "render_expert_ddm",
-    ValuationMode.RIM: "render_expert_rim",
-    ValuationMode.GRAHAM: "render_expert_graham",
+    mode: ExpertTerminalFactory.create
+    for mode in ExpertTerminalFactory.get_available_modes()
 }
 
 

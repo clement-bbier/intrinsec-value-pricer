@@ -458,7 +458,10 @@ class SystemDefaults:
     
     # Taux par défaut (fallback)
     DEFAULT_RISK_FREE_RATE: float = 0.04  # 4%
+    DEFAULT_MARKET_RISK_PREMIUM: float = 0.05  # 5%
     DEFAULT_TAX_RATE: float = 0.25  # 25%
+    DEFAULT_COST_OF_DEBT: float = 0.05  # 5%
+    DEFAULT_BETA: float = 1.0  # Market beta
     
     # Croissance terminale par défaut
     DEFAULT_PERPETUAL_GROWTH: float = 0.02  # 2%
