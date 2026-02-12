@@ -1,13 +1,17 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
-from app.state.store import get_state
-from src.i18n import SidebarTexts
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
 from src.models import ValuationMethodology
 
 
 class FCFFNormalizedView(BaseStrategyView):
+    """
+    Expert terminal for Normalized FCFF valuation.
+
+    Projection years are managed globally via the Sidebar slider.
+    """
+
     MODE = ValuationMethodology.FCFF_NORMALIZED
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
@@ -21,15 +25,12 @@ class FCFFNormalizedView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
+        """Renders Step 1 (normalized FCF) and Step 2 (growth rate) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_BASE, key=f"{prefix}_fcf_norm")
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
-        with c2:
-            st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_growth_rate")
+        st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_growth_rate")
         st.divider()

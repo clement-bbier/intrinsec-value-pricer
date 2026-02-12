@@ -72,7 +72,8 @@ class HistoricalBacktestTab:
             c1, c2, c3, c4 = st.columns(4)
 
             # Hit Rate calculation (IV > Market Price historically)
-            hit_rate = sum(1 for p in bt.points if p.calculated_iv > p.market_price) / len(bt.points) if bt.points else 0.0
+            hits = sum(1 for p in bt.points if p.calculated_iv > p.market_price)
+            hit_rate = hits / len(bt.points) if bt.points else 0.0
 
             with c1:
                 atom_kpi_metric(label=BacktestTexts.LBL_PERIODS, value=str(len(bt.points)))

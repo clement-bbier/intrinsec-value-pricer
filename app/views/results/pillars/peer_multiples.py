@@ -67,7 +67,6 @@ class PeerMultiples:
             return
 
         currency = result.request.parameters.structure.currency
-        ticker = result.request.parameters.structure.ticker
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {MarketTexts.MARKET_TITLE}")
@@ -94,7 +93,10 @@ class PeerMultiples:
             # EV/EBITDA Implied Value
             val_ebitda = peers_res.implied_prices.get("EV/EBITDA", 0.0)
             median_ebitda = medians.get("EV/EBITDA", 0.0)
-            help_ebitda = MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x") if median_ebitda else ""
+            help_ebitda = (
+                MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x")
+                if median_ebitda else ""
+            )
 
             with c1:
                 atom_kpi_metric(

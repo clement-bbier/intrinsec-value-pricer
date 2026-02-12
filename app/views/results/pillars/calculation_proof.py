@@ -11,7 +11,7 @@ import streamlit as st
 
 from app.views.components.step_renderer import render_calculation_step
 from src.i18n import KPITexts, PillarLabels, ResultsTexts, UIMessages
-from src.models import ValuationResult, CalculationStep
+from src.models import CalculationStep, ValuationResult
 
 # Constants for filtering internal/technical steps that shouldn't appear in the audit
 EXCLUDED_STEP_PREFIXES = ("_meta", "internal_", "debug_")
