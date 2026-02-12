@@ -63,7 +63,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
         """
         # Type narrowing pour mypy
         strategy_params = cast(FCFFNormalizedParameters, params.strategy)
-        
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
@@ -133,7 +133,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
         # --- RESULT CONSTRUCTION ---
         ke_var = step_wacc.get_variable("Ke")
         kd_var = step_wacc.get_variable("Kd(1-t)")
-        
+
         res_rates = ResolvedRates(
             cost_of_equity=ke_var.value if ke_var and self._glass_box else 0.0,
             cost_of_debt_after_tax=kd_var.value if kd_var and self._glass_box else 0.0,

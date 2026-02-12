@@ -25,6 +25,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import RIMParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -62,6 +63,9 @@ class RIMBankingStrategy(IValuationRunner):
         """
         Executes RIM valuation sequence.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(RIMParameters, params.strategy)
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
@@ -77,7 +81,7 @@ class RIMBankingStrategy(IValuationRunner):
         # --- STEP 2: Anchors Selection (BVPS & EPS) ---
         # A. Book Value Per Share (B0)
         # Priority: Strategy Input > TTM Snapshot
-        user_bv = params.strategy.book_value_anchor
+        user_bv = strategy_params.book_value_anchor
         bv_anchor = user_bv if user_bv is not None else (getattr(financials, 'book_value_ps', None) or 0.0)
 
         # B. Earnings Per Share (E0)
@@ -226,13 +230,16 @@ class RIMBankingStrategy(IValuationRunner):
         np.ndarray
             Array of Intrinsic Values per Share.
         """
+        # Type narrowing for mypy
+        strategy_params = cast(RIMParameters, params.strategy)
+
         # 1. Unpack Vectors
         ke_vec = vectors['wacc'] # Cost of Equity
         g_p1 = vectors['growth'] # Growth of EPS/Book
 
         # 2. Establish Anchors (B0 and EPS0)
         # Note: We use 'financials' here because params might not have the anchor set.
-        b0 = params.strategy.book_value_anchor or (getattr(financials, 'book_value_ps', None) or 10.0)
+        b0 = strategy_params.book_value_anchor or (getattr(financials, 'book_value_ps', None) or 10.0)
 
         # Base Flow Vector represents the shocked starting Earnings Power (EPS)
         # Assumes vectors['base_flow'] is centered around the TTM EPS or 1.0 multiplier

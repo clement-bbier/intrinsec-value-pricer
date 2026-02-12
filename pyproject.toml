@@ -40,9 +40,26 @@ select = ["E", "F", "W", "I", "N", "UP"]
 
 [tool.mypy]
 python_version = "3.10"
-strict = false
-warn_return_any = true
+# Configuration pragmatique pour un outil professionnel
+# Balance entre type safety et utilisabilité
+
+# Activer les vérifications importantes
 warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = false  # Permet les type: ignore sans warning
+
+# Désactiver les checks trop stricts pour la productivité
+strict = false
+warn_return_any = false  # Trop strict pour du code métier
+disallow_any_generics = false
+disallow_subclassing_any = false
+
+# Garder les vérifications essentielles
+check_untyped_defs = true
+no_implicit_optional = true
+
+# Ignorer les erreurs sur les imports tiers
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

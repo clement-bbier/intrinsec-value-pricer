@@ -62,7 +62,7 @@ class StandardFCFFStrategy(IValuationRunner):
         """
         # Type narrowing pour mypy
         strategy_params = cast(FCFFStandardParameters, params.strategy)
-        
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---

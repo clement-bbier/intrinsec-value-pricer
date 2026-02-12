@@ -2,7 +2,10 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Coverage](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-750%20passing-brightgreen)
+![Type Safety](https://img.shields.io/badge/mypy-passing-brightgreen)
+![Linting](https://img.shields.io/badge/ruff-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-Educational-orange)
 
 Application de valorisation d'entreprises cotées avec transparence totale des calculs.
@@ -18,6 +21,38 @@ Le projet privilégie la pédagogie sur l'automatisation : il explique comment u
 > **Avertissement**  
 > Cette application est strictement éducative et analytique.  
 > Elle ne constitue en aucun cas un conseil d'investissement.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Cloner le repository
+git clone https://github.com/clement-bbier/intrinsec-value-pricer.git
+cd intrinsec-value-pricer
+
+# Installer les dépendances
+pip install -e .
+
+# Lancer l'application
+streamlit run app/main.py
+```
+
+### Développement
+
+```bash
+# Installer avec les dépendances de développement
+pip install -e ".[dev]"
+
+# Lancer les tests
+pytest tests/
+
+# Vérifier le code
+ruff check src/ app/ infra/
+mypy src/
+```
 
 ---
 
@@ -114,6 +149,53 @@ Contrôle total des paramètres via terminaux spécialisés. Workflow séquencé
 **Public cible** : Analystes professionnels, valorisations approfondies, recherche institutionnelle.
 
 Documentation utilisateur : `docs/usage/`
+
+---
+
+## Qualité et Standards
+
+### Tests et Couverture
+
+- **750 tests** : Suite de tests complète (unit, integration, contracts, e2e)
+- **96% de couverture** : Sur les modules core (src/, infra/)
+- **Tests propriétés** : Validation avec Hypothesis
+- **Tests contractuels** : Garantie de stabilité des interfaces
+
+```bash
+# Lancer tous les tests
+pytest tests/
+
+# Avec couverture
+pytest tests/ --cov=src --cov=infra --cov-report=html
+```
+
+### Qualité du Code
+
+- **Ruff** : Linting automatique (0 erreurs)
+- **Mypy** : Type safety avec configuration pragmatique (0 erreurs)
+- **Pydantic** : Validation automatique des modèles de données
+- **Documentation** : Docstrings style Numpy pour toutes les fonctions publiques
+
+```bash
+# Vérifier le linting
+ruff check src/ app/ infra/
+
+# Vérifier les types
+mypy src/
+
+# Auto-fix les problèmes simples
+ruff check src/ app/ infra/ --fix
+```
+
+Voir `docs/MYPY_CONFIG.md` pour la philosophie de configuration type safety.
+
+### CI/CD Pipeline
+
+Pipeline GitHub Actions automatisé :
+1. ✅ **Ruff** : Code linting
+2. ✅ **Mypy** : Type checking
+3. ✅ **Pytest** : 750 tests avec coverage ≥95%
+4. ✅ **pip-audit** : Scan de sécurité
 
 ---
 

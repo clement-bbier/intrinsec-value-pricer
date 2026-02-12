@@ -65,7 +65,7 @@ class DividendDiscountStrategy(IValuationRunner):
         """
         # Type narrowing pour mypy
         strategy_params = cast(DDMParameters, params.strategy)
-        
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---

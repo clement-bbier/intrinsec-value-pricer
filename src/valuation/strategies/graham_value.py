@@ -67,7 +67,7 @@ class GrahamNumberStrategy(IValuationRunner):
         """
         # Type narrowing pour mypy
         strategy_params = cast(GrahamParameters, params.strategy)
-        
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Intrinsic Value Calculation ---
@@ -80,7 +80,7 @@ class GrahamNumberStrategy(IValuationRunner):
         # --- RESULT RECONSTRUCTION ---
         # We need to extract the inputs used to populate the Audit/Results object.
 
-        # Shortcuts for readability  
+        # Shortcuts for readability
         s = strategy_params  # Use type-narrowed version
         r = params.common.rates
 
