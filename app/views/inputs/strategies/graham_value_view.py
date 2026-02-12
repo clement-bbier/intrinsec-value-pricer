@@ -6,6 +6,13 @@ from src.models import ValuationMethodology
 
 
 class GrahamValueView(BaseStrategyView):
+    """
+    Expert terminal for Benjamin Graham Intrinsic Value formula.
+
+    This is a simplified all-in-one formula that does not require
+    discount rates, terminal values, or equity bridge sections.
+    """
+
     MODE = ValuationMethodology.GRAHAM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
@@ -24,6 +31,7 @@ class GrahamValueView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = False # Approche purement intrinsèque
 
     def render_model_inputs(self) -> None:
+        """Renders Step 1 (EPS + growth) and Step 2 (AAA yield + tax) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
