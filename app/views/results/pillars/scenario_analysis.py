@@ -28,8 +28,7 @@ class ScenarioAnalysisTab:
     @staticmethod
     def is_visible(result: ValuationResult) -> bool:
         """Visible only if the scenario engine generated variants."""
-        # Vérification de l'activation ET de la présence des résultats
-        if not result.params.extensions.scenarios.enabled:
+        if not result.request.parameters.extensions.scenarios.enabled:
             return False
         return result.results.extensions.scenarios is not None
 
@@ -39,13 +38,12 @@ class ScenarioAnalysisTab:
         Renders the scenario synthesis with comparative chart, table and weighted expectation.
         Note: _kwargs is strictly typed but unused.
         """
-        # Accès sécurisé aux résultats
         scenarios_res = result.results.extensions.scenarios
         if not scenarios_res:
             return
 
-        currency = result.financials.currency
-        market_price = result.market_price or 0.0
+        currency = result.request.parameters.structure.currency
+        market_price = result.request.parameters.structure.current_price or 0.0
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")

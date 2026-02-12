@@ -25,69 +25,75 @@ class MonteCarloDistributionTab:
 
     @staticmethod
     def is_visible(result: ValuationResult) -> bool:
-        """Visible only if the simulation array is populated and enabled."""
-        if not result.params.extensions or not result.params.extensions.monte_carlo:
-            return False
-        return result.params.extensions.monte_carlo.enabled
+        """Visible only if the simulation was enabled and results exist."""
+        mc_config = result.request.parameters.extensions.monte_carlo
+        mc_results = result.results.extensions.monte_carlo
+        return mc_config.enabled and mc_results is not None
 
     @staticmethod
-    def render(result: ValuationResult, **kwargs: Any) -> None:
+    def render(result: ValuationResult, **_kwargs: Any) -> None:
         """Institutional rendering of the Monte Carlo Risk Hub."""
+        mc_data = result.results.extensions.monte_carlo
+        if not mc_data:
+            return
 
-        stats: dict[str, Any] | None = kwargs.get("mc_stats")
-        currency = result.financials.currency
-        mc_params = result.params.extensions.monte_carlo
+        currency = result.request.parameters.structure.currency
+        mc_params = result.request.parameters.extensions.monte_carlo
+        market_price = result.request.parameters.structure.current_price
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {QuantTexts.MC_TITLE}")
 
         # Dynamic configuration summary from i18n
         shocks = mc_params.shocks
-        sig_b = shocks.beta_volatility if shocks else 0.10
+        sig_b = shocks.beta_volatility if shocks and hasattr(shocks, 'beta_volatility') else 0.10
         sig_g = shocks.growth_volatility if shocks else 0.015
 
         config_sub = QuantTexts.MC_CONFIG_SUB.format(
             sims=mc_params.iterations,
             sig_b=sig_b,
             sig_g=sig_g,
-            rho=0.0  # Default or retrieved if available
+            rho=0.0
         )
         st.caption(config_sub)
         st.write("")
 
+        # Build stats from MCResults
+        median_val = mc_data.quantiles.get("P50", mc_data.mean)
+        var_95 = mc_data.quantiles.get("P5", 0.0)
+        p10 = mc_data.quantiles.get("P10", 0.0)
+        p90 = mc_data.quantiles.get("P90", 0.0)
+
         # 1. RISK HUB (Dispersion & Tail Risk)
-        if stats:
-            with st.container(border=True):
-                c1, c2, c3, c4 = st.columns(4)
+        with st.container(border=True):
+            c1, c2, c3, c4 = st.columns(4)
 
-                c1.metric(
-                    QuantTexts.MC_MEDIAN,
-                    format_smart_number(stats.get("median", 0), currency=currency)
-                )
+            c1.metric(
+                QuantTexts.MC_MEDIAN,
+                format_smart_number(median_val, currency=currency)
+            )
 
-                c2.metric(
-                    QuantTexts.MC_VAR,
-                    format_smart_number(stats.get("var_95", 0), currency=currency),
-                    help=QuantTexts.MC_VAR
-                )
+            c2.metric(
+                QuantTexts.MC_VAR,
+                format_smart_number(var_95, currency=currency),
+                help=QuantTexts.MC_VAR
+            )
 
-                c3.metric(
-                    QuantTexts.MC_VOLATILITY,
-                    format_smart_number(stats.get("std", 0), currency=currency)
-                )
+            c3.metric(
+                QuantTexts.MC_VOLATILITY,
+                format_smart_number(mc_data.std_dev, currency=currency)
+            )
 
-                median = stats.get("median", 1)
-                std_dev = stats.get("std", 0)
-                cv = std_dev / median if median != 0 else 0
-
-                c4.metric(QuantTexts.MC_TAIL_RISK, f"{cv:.1%}")
+            cv = mc_data.std_dev / median_val if median_val != 0 else 0
+            c4.metric(QuantTexts.MC_TAIL_RISK, f"{cv:.1%}")
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
+        ticker = result.request.parameters.structure.ticker
         display_simulation_chart(
-            ticker=result.request.ticker,
-            simulation_results=result.simulation_results,
-            market_price=result.market_price,
+            ticker=ticker,
+            simulation_results=mc_data.simulation_values,
+            market_price=market_price,
             currency=currency
         )
 
@@ -96,10 +102,10 @@ class MonteCarloDistributionTab:
         with st.container(border=True):
             st.markdown(f"**{QuantTexts.MC_PROB_ANALYSIS.upper()}**")
 
-            sim_array = [v for v in result.simulation_results if v is not None]
+            sim_array = mc_data.simulation_values
 
             if sim_array:
-                ref_price = result.market_price if result.market_price else 0.0
+                ref_price = market_price if market_price else 0.0
 
                 # Probability of Value > Price
                 prob_above = sum(1 for v in sim_array if v > ref_price) / len(sim_array)
@@ -110,10 +116,6 @@ class MonteCarloDistributionTab:
                 is_undervalued = prob_above > 0.5
                 delta_txt = QuantTexts.MC_PROB_UNDERVALUATION if is_undervalued else QuantTexts.MC_DOWNSIDE
 
-                # "Normal" = Green if positive delta, Red if negative.
-                # "Inverse" = Red if positive delta, Green if negative.
-                # Here we want Green if Undervalued (High Probability) -> Normal logic fits if we treat prob as score
-
                 p_col1.metric(
                     label=QuantTexts.MC_PROB_UNDERVALUATION,
                     value=f"{prob_above:.1%}",
@@ -122,13 +124,12 @@ class MonteCarloDistributionTab:
                 )
 
                 # 80% Confidence Interval
-                if stats:
-                    range_str = (
-                        f"{format_smart_number(stats.get('p10', 0))}"
-                        f" — {format_smart_number(stats.get('p90', 0))}"
-                    )
-                    p_col2.metric(
-                        label=QuantTexts.MC_FILTER_SUB.format(valid=len(sim_array), total=len(sim_array)),
-                        value=range_str,
-                        help=QuantTexts.CONFIDENCE_INTERVAL
-                    )
+                range_str = (
+                    f"{format_smart_number(p10)}"
+                    f" — {format_smart_number(p90)}"
+                )
+                p_col2.metric(
+                    label=QuantTexts.MC_FILTER_SUB.format(valid=len(sim_array), total=len(sim_array)),
+                    value=range_str,
+                    help=QuantTexts.CONFIDENCE_INTERVAL
+                )

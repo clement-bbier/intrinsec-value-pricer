@@ -29,7 +29,7 @@ class SensitivityAnalysisTab:
     def is_visible(result: ValuationResult) -> bool:
         """Visible only if sensitivity data is computed and available."""
         return (
-            result.params.extensions.sensitivity.enabled
+            result.request.parameters.extensions.sensitivity.enabled
             and result.results.extensions.sensitivity is not None
         )
 
@@ -55,13 +55,13 @@ class SensitivityAnalysisTab:
 
         # Interpretation: <15 Stable (Green), <30 Volatile (Orange), >30 Critical (Red)
         if score < 15:
-            score_delta = getattr(QuantTexts, 'SENS_STABLE', "Stable")
+            score_delta = QuantTexts.SENS_STABLE
             score_color = "green"
         elif score < 30:
-            score_delta = getattr(QuantTexts, 'SENS_VOLATILE', "Volatile")
+            score_delta = QuantTexts.SENS_VOLATILE
             score_color = "orange"
         else:
-            score_delta = getattr(QuantTexts, 'SENS_CRITICAL', "Critique")
+            score_delta = QuantTexts.SENS_CRITICAL
             score_color = "red"
 
         col_kpi, col_chart = st.columns([1, 3])
@@ -106,7 +106,7 @@ class SensitivityAnalysisTab:
             df = pd.DataFrame(heatmap_data)
 
             if df.empty:
-                st.warning(getattr(QuantTexts, 'MSG_SENS_NO_DATA', "Données insuffisantes."))
+                st.warning(QuantTexts.MSG_SENS_NO_DATA)
                 return
 
             # Base Chart
@@ -125,7 +125,7 @@ class SensitivityAnalysisTab:
                 tooltip=[
                     alt.Tooltip('x_axis', title=x_name),
                     alt.Tooltip('y_axis', title=y_name),
-                    alt.Tooltip('label', title=getattr(ChartTexts, 'TOOLTIP_VALUATION', 'Valorisation'))
+                    alt.Tooltip('label', title=ChartTexts.TOOLTIP_VALUATION)
                 ]
             )
 

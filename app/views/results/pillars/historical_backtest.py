@@ -38,10 +38,10 @@ class HistoricalBacktestTab:
         bool
             True if backtest is enabled and contains data points.
         """
-        if not result.params.extensions.backtest.enabled:
+        if not result.request.parameters.extensions.backtest.enabled:
              return False
-        # Check if report exists and has data
-        return result.backtest_report is not None and len(result.backtest_report.points) > 0
+        bt = result.results.extensions.backtest
+        return bt is not None and len(bt.points) > 0
 
     @staticmethod
     def render(result: ValuationResult, **_kwargs: Any) -> None:
@@ -55,13 +55,12 @@ class HistoricalBacktestTab:
         **_kwargs : Any
             Unused but required for signature compatibility.
         """
-        bt = result.backtest_report
-        # Double check for safety, though _is_visible should catch it
+        bt = result.results.extensions.backtest
         if not bt or not bt.points:
             st.info(BacktestTexts.NO_BACKTEST_FOUND)
             return
 
-        currency = result.financials.currency
+        currency = result.request.parameters.structure.currency
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {BacktestTexts.TITLE}")
@@ -72,8 +71,8 @@ class HistoricalBacktestTab:
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
 
-            # Hit Rate calculation (Prediction of Undervaluation)
-            hit_rate = sum(1 for p in bt.points if p.was_undervalued) / len(bt.points) if bt.points else 0.0
+            # Hit Rate calculation (IV > Market Price historically)
+            hit_rate = sum(1 for p in bt.points if p.calculated_iv > p.market_price) / len(bt.points) if bt.points else 0.0
 
             with c1:
                 atom_kpi_metric(label=BacktestTexts.LBL_PERIODS, value=str(len(bt.points)))
@@ -116,7 +115,7 @@ class HistoricalBacktestTab:
             for point in bt.points:
                 periods_data.append({
                     BacktestTexts.LBL_DATE: point.valuation_date.strftime("%Y-%m"),
-                    BacktestTexts.LBL_HIST_IV: point.intrinsic_value,
+                    BacktestTexts.LBL_HIST_IV: point.calculated_iv,
                     BacktestTexts.LBL_REAL_PRICE: point.market_price,
                     BacktestTexts.LBL_ERROR_GAP: point.error_pct
                 })

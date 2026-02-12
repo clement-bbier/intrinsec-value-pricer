@@ -43,18 +43,15 @@ class PeerMultiples:
         bool
             True if peers are enabled and result data is present.
         """
-        # Check configuration AND data existence
-        has_config = result.params.extensions.peers.enabled
-        has_data = (
-                result.results.extensions.peers is not None
-                and result.results.extensions.peers.multiples_data is not None
-        )
+        has_config = result.request.parameters.extensions.peers.enabled
+        has_data = result.results.extensions.peers is not None
         return has_config and has_data
 
     @staticmethod
     def render(result: ValuationResult, **_kwargs: Any) -> None:
         """
-        Renders the relative valuation view: Football Field, Implied Values, and Trading Comps table.
+        Renders the relative valuation view: Football Field, Implied Values,
+        and Trading Comps table.
 
         Parameters
         ----------
@@ -65,45 +62,39 @@ class PeerMultiples:
         """
         peers_res = result.results.extensions.peers
 
-        # Double check data integrity
-        if not peers_res or not peers_res.multiples_data or not peers_res.multiples_data.peers:
+        if not peers_res:
             st.info(PeersTexts.NO_PEERS_FOUND)
             return
 
-        md = peers_res.multiples_data
-        currency = result.financials.currency
-        ticker = result.request.ticker
+        currency = result.request.parameters.structure.currency
+        ticker = result.request.parameters.structure.ticker
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {MarketTexts.MARKET_TITLE}")
 
         # Source & Count Context (Fully i18n)
-        source_lbl = md.source if md.source else MarketTexts.SOURCE_DEFAULT
+        peer_count = len(peers_res.peer_valuations)
         caption_txt = MarketTexts.CAPTION_PEERS_COUNT.format(
-            count=len(md.peers),
+            count=peer_count,
             label=MarketTexts.COL_PEER + "s",
-            source=source_lbl
+            source=MarketTexts.SOURCE_DEFAULT
         )
         st.caption(caption_txt)
 
         # 1. VISUAL TRIANGULATION (Football Field)
-        # This chart compares Intrinsic Value vs Relative Value ranges
         display_football_field(result)
         st.write("")
 
         # 2. IMPLIED VALUE METRICS (The "Output")
+        medians = peers_res.median_multiples_used
+
         with st.container(border=True):
             c1, c2 = st.columns(2)
 
-            # Helper function to format the tooltip string safely
-            def _get_help_text(val: float) -> str:
-                if not val:
-                    return ""
-                return MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{val:.1f}x")
-
             # EV/EBITDA Implied Value
             val_ebitda = peers_res.implied_prices.get("EV/EBITDA", 0.0)
-            help_ebitda = _get_help_text(md.median_ev_ebitda)
+            median_ebitda = medians.get("EV/EBITDA", 0.0)
+            help_ebitda = MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x") if median_ebitda else ""
 
             with c1:
                 atom_kpi_metric(
@@ -114,7 +105,8 @@ class PeerMultiples:
 
             # P/E Implied Value
             val_pe = peers_res.implied_prices.get("P/E", 0.0)
-            help_pe = _get_help_text(md.median_pe)
+            median_pe = medians.get("P/E", 0.0)
+            help_pe = MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_pe:.1f}x") if median_pe else ""
 
             with c2:
                 atom_kpi_metric(
@@ -123,61 +115,51 @@ class PeerMultiples:
                     help_text=help_pe
                 )
 
-                # 3. TRADING COMPS TABLE (Detailed View)
-                st.write("")
-                st.markdown(f"##### {MarketTexts.COL_MULTIPLE}s & {MarketTexts.COL_PEER}s")
+        # 3. PEER VALUATIONS TABLE
+        if peers_res.peer_valuations:
+            st.write("")
+            st.markdown(f"##### {MarketTexts.COL_PEER}s")
 
-                # Remplacement de l'initialisation multi-étapes par un List Literal
-                comps_data: list[dict[str, Any]] = [
-                    # Target Row (First element)
-                    {
-                        "Name": f"{ticker} ({MarketTexts.LBL_TARGET})",
-                        "EV/EBITDA": result.financials.ev_ebitda_ratio or 0.0,
-                        "P/E": result.financials.pe_ratio or 0.0,
-                    },
-                    # Expansion des Peer Rows via une List Comprehension
-                    *[
-                        {
-                            "Name": peer.ticker,
-                            "EV/EBITDA": peer.ev_ebitda or 0.0,
-                            "P/E": peer.pe_ratio or 0.0,
-                        }
-                        for peer in md.peers
-                    ]
-                ]
+            comps_data: list[dict[str, Any]] = [
+                {
+                    "Name": peer.ticker,
+                    KPITexts.LABEL_FOOTBALL_FIELD_PE: peer.intrinsic_value,
+                    MarketTexts.COL_UPSIDE: peer.upside_pct,
+                }
+                for peer in peers_res.peer_valuations
+            ]
 
-                df_comps = pd.DataFrame(comps_data)
+            df_comps = pd.DataFrame(comps_data)
 
-        # Column Configuration
-        column_config = {
-            "Name": st.column_config.TextColumn(
-                label=MarketTexts.COL_PEER,
-                width="medium"
-            ),
-            "EV/EBITDA": st.column_config.NumberColumn(
-                label=KPITexts.LABEL_FOOTBALL_FIELD_EBITDA,
-                format="%.1fx",
-                width="small"
-            ),
-            "P/E": st.column_config.NumberColumn(
-                label=KPITexts.LABEL_FOOTBALL_FIELD_PE,
-                format="%.1fx",
-                width="small"
-            )
-        }
+            column_config = {
+                "Name": st.column_config.TextColumn(
+                    label=MarketTexts.COL_PEER,
+                    width="medium"
+                ),
+                KPITexts.LABEL_FOOTBALL_FIELD_PE: st.column_config.NumberColumn(
+                    label=KPITexts.LABEL_FOOTBALL_FIELD_PE,
+                    format=f"%.2f {currency}",
+                    width="small"
+                ),
+                MarketTexts.COL_UPSIDE: st.column_config.NumberColumn(
+                    label=MarketTexts.COL_UPSIDE,
+                    format="%.1%",
+                    width="small"
+                )
+            }
 
-        with st.container(border=True):
-            st.dataframe(
-                df_comps,
-                hide_index=True,
-                column_config=column_config,
-                use_container_width=True
-            )
+            with st.container(border=True):
+                st.dataframe(
+                    df_comps,
+                    hide_index=True,
+                    column_config=column_config,
+                    use_container_width=True
+                )
 
-            # Median Summary Line (Bottom)
-            summary_txt = MarketTexts.CAPTION_MEDIAN_SUMMARY.format(
-                label=MarketTexts.LBL_SECTOR_MEDIAN,
-                ebitda=f"{md.median_ev_ebitda:.1f}x" if md.median_ev_ebitda else "—",
-                pe=f"{md.median_pe:.1f}x" if md.median_pe else "—"
-            )
-            st.caption(summary_txt)
+                # Median Summary Line
+                summary_txt = MarketTexts.CAPTION_MEDIAN_SUMMARY.format(
+                    label=MarketTexts.LBL_SECTOR_MEDIAN,
+                    ebitda=f"{median_ebitda:.1f}x" if median_ebitda else "—",
+                    pe=f"{median_pe:.1f}x" if median_pe else "—"
+                )
+                st.caption(summary_txt)

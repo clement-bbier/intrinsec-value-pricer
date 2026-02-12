@@ -144,29 +144,29 @@ class Resolver:
         """
         Injects model-specific anchors (TTM data) for Pillar 3.
         Auto-detects the strategy type to apply the correct logic.
+
+        Cascade: 1. User Override > 2. Snapshot (Provider) > 3. System Defaults.
         """
         strat = params.strategy
 
+        # Resolve projection_years if the strategy supports it
+        if hasattr(strat, "projection_years") and strat.projection_years is None:
+            strat.projection_years = ModelDefaults.DEFAULT_PROJECTION_YEARS
+            logger.debug("[Resolver] projection_years resolved to system default: %d", strat.projection_years)
+
         # --- FCFF STANDARD ---
         if isinstance(strat, FCFFStandardParameters):
-            # Le FCFF Standard a besoin du FCF TTM comme point de départ
             strat.fcf_anchor = self._pick(strat.fcf_anchor, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
-            # Il n'utilise PAS ebit_ttm ni capex_ttm directement dans les paramètres de la stratégie
-            # (Ces données servent au WACC qui est déjà résolu dans _resolve_common)
 
         # --- FCFF NORMALIZED ---
         elif isinstance(strat, FCFFNormalizedParameters):
-            # Besoin du FCF lissé (ou TTM par défaut)
             strat.fcf_norm = self._pick(strat.fcf_norm, snap.fcf_ttm, ModelDefaults.DEFAULT_FCF_TTM)
-            # Idem, pas d'EBIT norm ici
 
         # --- FCFF GROWTH (Top-Down) ---
         elif isinstance(strat, FCFFGrowthParameters):
-            # Lui a besoin du CA pour projeter les marges
-            strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, 0.0)
-            # Et de l'EBITDA/EBIT pour la marge initiale
+            strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, ModelDefaults.DEFAULT_REVENUE_TTM)
             if hasattr(strat, 'ebit_ttm'):
-                 strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, 0.0)
+                strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, ModelDefaults.DEFAULT_EBIT_TTM)
 
         # --- DDM ---
         elif isinstance(strat, DDMParameters):
@@ -174,7 +174,7 @@ class Resolver:
                 strat.dividend_per_share, snap.dividend_share,
                 ModelDefaults.DEFAULT_DIVIDEND_PS,
             )
-            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
+            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
 
         # --- RIM (Banks) ---
         elif isinstance(strat, RIMParameters):
@@ -182,7 +182,7 @@ class Resolver:
                 strat.book_value_anchor, snap.book_value_ps,
                 ModelDefaults.DEFAULT_BOOK_VALUE_PS,
             )
-            strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, 0.0)
+            strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
             strat.persistence_factor = self._pick(
                 strat.persistence_factor, None,
                 ModelDefaults.DEFAULT_PERSISTENCE_FACTOR,
@@ -191,7 +191,7 @@ class Resolver:
         # --- FCFE ---
         elif isinstance(strat, FCFEParameters):
             strat.fcfe_anchor = self._pick(strat.fcfe_anchor, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
-            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, 0.0)
+            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
 
         # --- GRAHAM ---
         elif isinstance(strat, GrahamParameters):
@@ -200,16 +200,20 @@ class Resolver:
     @staticmethod
     def _pick(user_val: Any | None, provider_val: Any | None, fallback: Any) -> Any:
         """
-        Enforces the 'USER > PROVIDER > SYSTEM' priority chain.
+        Enforces the strict 'USER > PROVIDER > SYSTEM' priority chain.
 
         Returns
         -------
         Any
             The first non-None value found in the chain.
+            Guaranteed to never return None (fallback is always a concrete value).
         """
         if user_val is not None:
             return user_val
-        return provider_val if provider_val is not None else fallback
+        if provider_val is not None:
+            return provider_val
+        logger.debug("[Resolver] Using system fallback: %s", fallback)
+        return fallback
 
     @staticmethod
     def _calculate_synthetic_kd(snap: CompanySnapshot, rf: float) -> float:
