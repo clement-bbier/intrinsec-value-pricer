@@ -14,6 +14,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 # Config & i18n
@@ -22,6 +24,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology
 from src.models.glass_box import CalculationStep
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import GrahamParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -62,6 +65,9 @@ class GrahamNumberStrategy(IValuationRunner):
         """
         Executes the Graham valuation sequence.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(GrahamParameters, params.strategy)
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Intrinsic Value Calculation ---
@@ -75,7 +81,7 @@ class GrahamNumberStrategy(IValuationRunner):
         # We need to extract the inputs used to populate the Audit/Results object.
 
         # Shortcuts for readability
-        s = params.strategy
+        s = strategy_params  # Use type-narrowed version
         r = params.common.rates
 
         # CORRECTIF 2: Suppression de 'g_param = params.growth' qui n'existe PAS.
@@ -83,7 +89,7 @@ class GrahamNumberStrategy(IValuationRunner):
 
         # 1. Inputs Extraction (for Audit Traceability)
         # Note: We fallback to defaults to ensure safety if params are partial
-        eps_used = s.eps_normalized or financials.eps_ttm or 0.0
+        eps_used = s.eps_normalized or getattr(financials, 'eps_ttm', None) or 0.0
 
         # Growth: Graham uses a specific growth estimate or the generic one
         # CORRECTIF 3: Accès direct propre sans passer par un objet 'growth' inexistant

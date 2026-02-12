@@ -11,6 +11,8 @@ from typing import Literal
 
 import streamlit as st
 
+from src.i18n.fr.ui.results import KPITexts
+
 # On retire les dépendances "Audit" (AuditStep, AuditTexts) pour rendre le fichier générique.
 
 def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=None):
@@ -100,10 +102,12 @@ def atom_benchmark_card(
 
         # Left: Company (You)
         with c1:
-            st.markdown(f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_YOUR_DATA}</span>", unsafe_allow_html=True)
+            label_html = f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_YOUR_DATA}</span>"
+            st.markdown(label_html, unsafe_allow_html=True)
             st.markdown(f"**{company_value}**")
 
         # Right: Market (Them)
         with c2:
-            st.markdown(f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_SECTOR_AVERAGE}</span>", unsafe_allow_html=True)
+            label_html = f"<span style='color:gray; font-size:0.8em;'>{KPITexts.LABEL_SECTOR_AVERAGE}</span>"
+            st.markdown(label_html, unsafe_allow_html=True)
             st.markdown(f"{market_value}")

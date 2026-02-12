@@ -70,7 +70,7 @@ class InputLabels:
     # Données brutes
     VIEW_RAW_DATA = "Voir Compte de Résultat Historique"
     DATA_UNFORMATTED = "Formatage des données requis"
-    
+
     # Raw data source labels (for inputs_summary.py)
     RAW_DATA_SOURCE_TITLE = "Source de Données Brutes"
     DATA_SOURCE = "Source"
@@ -174,7 +174,7 @@ class KPITexts:
     LABEL_FOOTBALL_FIELD_EBITDA = "EV/EBITDA"
     LABEL_FOOTBALL_FIELD_PE = "P/E Ratio"
     LABEL_FOOTBALL_FIELD_PRICE = "Prix de Marché"
-    
+
     # --- Comparison Labels (for ui_kpis.py) ---
     LABEL_YOUR_DATA = "VOTRE DONNÉE"
     LABEL_SECTOR_AVERAGE = "MOYENNE SECTEUR"

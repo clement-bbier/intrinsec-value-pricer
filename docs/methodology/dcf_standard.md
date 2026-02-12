@@ -196,5 +196,20 @@ La somme des valeurs actualisées constitue la **valeur d’entreprise**.
 
 ---
 
+## 9. Références académiques
+
+Cette méthode s'appuie sur les travaux suivants :
+
+1. **Damodaran, A. (2012).** *Investment Valuation*, Chapter 12-15 : DCF Valuation.
+   - Méthodologie complète du DCF et calcul du WACC
+   
+2. **McKinsey & Company (2020).** *Valuation*, Chapter 6-7 : Forecasting Performance and Estimating Continuing Value.
+   - Approche two-stage et valeur terminale
+   
+3. **Modigliani, F., & Miller, M. (1958).** *The Cost of Capital, Corporation Finance and the Theory of Investment*.
+   - Fondements théoriques du WACC
+
+---
+
 📎 **Méthode suivante recommandée**  
 ➡️ `DCF Fondamental — FCFF Normalisé`

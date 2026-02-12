@@ -12,6 +12,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -22,6 +24,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology
 from src.models.glass_box import CalculationStep
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFFStandardParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -57,6 +60,9 @@ class StandardFCFFStrategy(IValuationRunner):
         """
         Executes the DCF Standard sequence (Single Run).
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(FCFFStandardParameters, params.strategy)
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
@@ -69,7 +75,7 @@ class StandardFCFFStrategy(IValuationRunner):
             steps.append(step_wacc)
 
         # --- STEP 2: FCF Projection ---
-        fcf_base = params.strategy.fcf_anchor or ModelDefaults.DEFAULT_FCF_TTM
+        fcf_base = strategy_params.fcf_anchor or ModelDefaults.DEFAULT_FCF_TTM
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
         if manual_vector and len(manual_vector) > 0:

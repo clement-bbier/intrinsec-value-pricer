@@ -183,3 +183,16 @@ TV = \frac{RI_n}{K_e - g}
 
 📎 **Méthode suivante recommandée**  
 ➡️ `Graham Intrinsic Value — Méthode heuristique`
+
+
+## 10. Références académiques
+
+1. **Ohlson, J. A. (1995).** *Earnings, Book Values, and Dividends in Equity Valuation*. Contemporary Accounting Research, 11(2), 661-687.
+   - Modèle théorique du Residual Income Model
+   
+2. **Feltham, G. A., & Ohlson, J. A. (1995).** *Valuation and Clean Surplus Accounting for Operating and Financial Activities*. Contemporary Accounting Research, 11(2), 689-731.
+   - Extensions du RIM pour les institutions financières
+   
+3. **Damodaran, A. (2012).** *Investment Valuation*, Chapter 16 : Valuing Financial Service Firms.
+   - Application pratique du RIM aux banques
+

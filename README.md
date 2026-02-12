@@ -1,5 +1,13 @@
 # Intrinsic Value Pricer
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-750%20passing-brightgreen)
+![Type Safety](https://img.shields.io/badge/mypy-passing-brightgreen)
+![Linting](https://img.shields.io/badge/ruff-passing-brightgreen)
+![License](https://img.shields.io/badge/license-Educational-orange)
+
 Application de valorisation d'entreprises cotées avec transparence totale des calculs.
 
 ---
@@ -13,6 +21,38 @@ Le projet privilégie la pédagogie sur l'automatisation : il explique comment u
 > **Avertissement**  
 > Cette application est strictement éducative et analytique.  
 > Elle ne constitue en aucun cas un conseil d'investissement.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Cloner le repository
+git clone https://github.com/clement-bbier/intrinsec-value-pricer.git
+cd intrinsec-value-pricer
+
+# Installer les dépendances
+pip install -e .
+
+# Lancer l'application
+streamlit run app/main.py
+```
+
+### Développement
+
+```bash
+# Installer avec les dépendances de développement
+pip install -e ".[dev]"
+
+# Lancer les tests
+pytest tests/
+
+# Vérifier le code
+ruff check src/ app/ infra/
+mypy src/
+```
 
 ---
 
@@ -112,6 +152,53 @@ Documentation utilisateur : `docs/usage/`
 
 ---
 
+## Qualité et Standards
+
+### Tests et Couverture
+
+- **750 tests** : Suite de tests complète (unit, integration, contracts, e2e)
+- **96% de couverture** : Sur les modules core (src/, infra/)
+- **Tests propriétés** : Validation avec Hypothesis
+- **Tests contractuels** : Garantie de stabilité des interfaces
+
+```bash
+# Lancer tous les tests
+pytest tests/
+
+# Avec couverture
+pytest tests/ --cov=src --cov=infra --cov-report=html
+```
+
+### Qualité du Code
+
+- **Ruff** : Linting automatique (0 erreurs)
+- **Mypy** : Type safety avec configuration pragmatique (0 erreurs)
+- **Pydantic** : Validation automatique des modèles de données
+- **Documentation** : Docstrings style Numpy pour toutes les fonctions publiques
+
+```bash
+# Vérifier le linting
+ruff check src/ app/ infra/
+
+# Vérifier les types
+mypy src/
+
+# Auto-fix les problèmes simples
+ruff check src/ app/ infra/ --fix
+```
+
+Voir `docs/MYPY_CONFIG.md` pour la philosophie de configuration type safety.
+
+### CI/CD Pipeline
+
+Pipeline GitHub Actions automatisé :
+1. ✅ **Ruff** : Code linting
+2. ✅ **Mypy** : Type checking
+3. ✅ **Pytest** : 750 tests avec coverage ≥95%
+4. ✅ **pip-audit** : Scan de sécurité
+
+---
+
 ## Installation et Utilisation
 
 ### Prérequis
@@ -160,8 +247,54 @@ Le rapport d'audit fournit un score de confiance pondéré selon ces critères.
 - `docs/usage/` : Guides utilisateur détaillés
 - `docs/references/` : Sources académiques et bibliographiques
 
+---
+
+## Références Académiques
+
+Les méthodologies de valorisation implémentées dans cette application s'appuient sur des travaux académiques et professionnels reconnus :
+
+### Ouvrages de Référence
+
+1. **Damodaran, A. (2012).** *Investment Valuation: Tools and Techniques for Determining the Value of Any Asset*. 3rd Edition. Wiley Finance.
+   - Référence principale pour les méthodologies DCF et l'estimation du coût du capital
+
+2. **McKinsey & Company, Koller, T., Goedhart, M., & Wessels, D. (2020).** *Valuation: Measuring and Managing the Value of Companies*. 7th Edition. Wiley.
+   - Standard de l'industrie pour la valorisation d'entreprise et les flux de trésorerie
+
+3. **Graham, B., & Dodd, D. (1974).** *Security Analysis: Principles and Technique*. 4th Edition. McGraw-Hill.
+   - Fondation de l'analyse fondamentale et de la formule de Benjamin Graham
+
+### Publications Académiques
+
+4. **Ohlson, J. A. (1995).** *Earnings, Book Values, and Dividends in Equity Valuation*. Contemporary Accounting Research, 11(2), 661-687.
+   - Modèle du revenu résiduel (RIM) pour la valorisation bancaire
+
+5. **Hamada, R. S. (1972).** *The Effect of the Firm's Capital Structure on the Systematic Risk of Common Stocks*. The Journal of Finance, 27(2), 435-452.
+   - Formule de Hamada pour l'ajustement du bêta en fonction du levier financier
+
+### Standards Professionnels
+
+- **CFA Institute (2015).** *Equity Asset Valuation*. 3rd Edition.
+- **IASB.** International Financial Reporting Standards (IFRS)
+- **AMF (Autorité des Marchés Financiers).** Bonnes pratiques de l'analyse financière
+
+### Ressources en Ligne
+
+- **Damodaran Online:** http://pages.stern.nyu.edu/~adamodar/
+  - Données de marché, primes de risque par pays, multiples sectoriels
+
+---
+
 ## Licence et Usage
 
 Ce projet est fourni à des fins éducatives, analytiques et de recherche. Il ne constitue en aucun cas un conseil financier, une incitation à investir, ou une recommandation d'achat ou de vente de titres financiers.
 
 La valeur intrinsèque est un outil d'analyse permettant d'évaluer la décote ou la prime d'un titre par rapport à ses fondamentaux économiques. Elle ne constitue pas une prédiction de cours ni une garantie de performance.
+
+---
+
+## Contributeurs
+
+- **@clement-bbier**: Mainteneur du projet et développeur principal
+
+Pour contribuer au projet, consultez `CONTRIBUTING.md`.

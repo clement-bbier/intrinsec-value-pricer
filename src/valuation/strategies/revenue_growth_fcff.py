@@ -20,6 +20,8 @@ adjustments.
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -31,6 +33,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFFGrowthParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -66,6 +69,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         """
         Executes the Revenue-Driven DCF sequence.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(FCFFGrowthParameters, params.strategy)
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
@@ -78,12 +84,13 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             steps.append(step_wacc)
 
         # --- STEP 2: Revenue Anchor Selection ---
-        user_rev = params.strategy.revenue_ttm
-        rev_anchor = user_rev if user_rev is not None else (financials.revenue_ttm or 0.0)
+        user_rev = strategy_params.revenue_ttm
+        # Use getattr for Company fields that may not be defined in type annotation
+        rev_anchor = user_rev if user_rev is not None else (getattr(financials, 'revenue_ttm', None) or 0.0)
 
-        fcf_ttm = financials.fcf_ttm or 0.0
+        fcf_ttm = getattr(financials, 'fcf_ttm', None) or 0.0
         current_margin = (fcf_ttm / rev_anchor) if rev_anchor > 0 else 0.0
-        target_margin = params.strategy.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
+        target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         if self._glass_box:
             steps.append(CalculationStep(
@@ -133,9 +140,12 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
+        ke_var = step_wacc.get_variable("Ke")
+        kd_var = step_wacc.get_variable("Kd(1-t)")
+
         res_rates = ResolvedRates(
-            cost_of_equity=step_wacc.get_variable("Ke").value if self._glass_box else 0.0,
-            cost_of_debt_after_tax=step_wacc.get_variable("Kd(1-t)").value if self._glass_box else 0.0,
+            cost_of_equity=ke_var.value if ke_var and self._glass_box else 0.0,
+            cost_of_debt_after_tax=kd_var.value if kd_var and self._glass_box else 0.0,
             wacc=wacc
         )
 
@@ -207,16 +217,17 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # 2. Resolve Margins (Static Profile applied to Dynamic Revenue)
         # We need to construct the margin curve [Years]
-        years = getattr(params.strategy, 'projection_years', 5) or 5
+        strategy_params = cast(FCFFGrowthParameters, params.strategy)
+        years = strategy_params.projection_years or 5
 
         # Current Margin (Scalar)
         # We use TTM values from financials as the anchor for margin calculation
         # This keeps the margin profile consistent with the fundamental view
-        base_rev_static = financials.revenue_ttm or 1.0
-        fcf_ttm = financials.fcf_ttm or 0.0
+        base_rev_static = getattr(financials, 'revenue_ttm', None) or 1.0
+        fcf_ttm = getattr(financials, 'fcf_ttm', None) or 0.0
         current_margin = fcf_ttm / base_rev_static
 
-        target_margin = params.strategy.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
+        target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         # Create Margin Vector [Years] via linear interpolation
         # shape: (Years,) e.g. [0.12, 0.14, 0.16, 0.18, 0.20]
@@ -251,6 +262,6 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         net_debt = (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
 
         equity_value = ev - net_debt
-        iv_per_share = equity_value / shares
+        iv_per_share: np.ndarray = equity_value / shares
 
         return iv_per_share

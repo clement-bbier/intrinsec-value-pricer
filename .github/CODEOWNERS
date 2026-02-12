@@ -1,0 +1,5 @@
+# CODEOWNERS - Institutional Responsibility Matrix
+# Owner: @clement-bbier
+
+# Default: All files are owned by the repository maintainer
+* @clement-bbier

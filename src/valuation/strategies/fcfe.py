@@ -13,6 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -23,6 +25,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFEParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -59,6 +62,9 @@ class FCFEStrategy(IValuationRunner):
         Executes FCFE valuation sequence.
         Note: Discounts at Ke, not WACC.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(FCFEParameters, params.strategy)
+
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
@@ -71,7 +77,7 @@ class FCFEStrategy(IValuationRunner):
             steps.append(step_ke)
 
         # --- STEP 2: Anchor Selection ---
-        fcfe_base = params.strategy.fcfe_anchor or 0.0
+        fcfe_base = strategy_params.fcfe_anchor or 0.0
 
         if self._glass_box:
             steps.append(CalculationStep(
@@ -233,6 +239,6 @@ class FCFEStrategy(IValuationRunner):
 
         # 6. Intrinsic Value Per Share
         shares = params.common.capital.shares_outstanding or 1.0
-        iv_per_share = total_equity / shares
+        iv_per_share: np.ndarray = total_equity / shares
 
         return iv_per_share

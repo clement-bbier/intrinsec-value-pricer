@@ -147,3 +147,13 @@ sans actualisation explicite des flux.
 
 📎 **Méthode suivante recommandée**  
 ➡️ `Extension Monte Carlo — Analyse d’incertitude`
+
+
+## 10. Références académiques
+
+1. **Graham, B., & Dodd, D. (1974).** *Security Analysis: Principles and Technique*. 4th Edition. McGraw-Hill.
+   - Chapitre 39 : La formule de valorisation révisée
+   
+2. **Graham, B. (1973).** *The Intelligent Investor*. Revised Edition. Harper Business.
+   - Approche value investing et marge de sécurité
+
