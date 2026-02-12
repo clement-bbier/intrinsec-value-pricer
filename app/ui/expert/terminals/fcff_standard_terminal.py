@@ -32,7 +32,6 @@ from src.domain.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
     widget_growth_rate,
 )
 
@@ -73,14 +72,12 @@ class FCFFStandardTerminal(ExpertTerminalBase):
 
         Collecte :
         - FCF de base (TTM ou manuel)
-        - Horizon de projection
         - Taux de croissance Phase 1
 
         Returns
         -------
         Dict[str, Any]
             - manual_fcf_base : FCF de départ
-            - projection_years : Horizon explicite
             - fcf_growth_rate : Croissance Phase 1
         """
         # Formule du modèle
@@ -102,23 +99,16 @@ class FCFFStandardTerminal(ExpertTerminalBase):
         # Section croissance
         st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ}**")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            n_years = widget_projection_years(default=5, key="fcff_std_years")
-
-        with col2:
-            g_rate = widget_growth_rate(
-                label=ExpertTerminalTexts.INP_GROWTH_G,
-                min_val=-0.50,
-                max_val=1.0,
-                key="fcff_std_growth"
-            )
+        g_rate = widget_growth_rate(
+            label=ExpertTerminalTexts.INP_GROWTH_G,
+            min_val=-0.50,
+            max_val=1.0,
+            key="fcff_std_growth"
+        )
 
         st.divider()
 
         return {
             "manual_fcf_base": fcf_base,
-            "projection_years": n_years,
             "fcf_growth_rate": g_rate,
         }

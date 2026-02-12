@@ -19,7 +19,6 @@ import streamlit as st
 from src.domain.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
-from app.ui.expert.terminals.shared_widgets import widget_projection_years
 
 
 class FCFFGrowthTerminal(ExpertTerminalBase):
@@ -57,7 +56,6 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
         - Chiffre d'affaires de base
         - Croissance du CA
         - Marge FCF cible à atteindre
-        - Horizon de convergence
 
         Returns
         -------
@@ -65,7 +63,6 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
             - manual_fcf_base : Revenue de base (utilisé comme proxy)
             - fcf_growth_rate : Croissance CA
             - target_fcf_margin : Marge FCF cible
-            - projection_years : Horizon
         """
         st.markdown(f"**{ExpertTerminalTexts.SEC_1_REV_BASE}**")
         st.latex(
@@ -83,12 +80,9 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
         st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_GROWTH}**")
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
 
         with col1:
-            n_years = widget_projection_years(default=5, key="fcff_growth_years")
-
-        with col2:
             g_rev = st.number_input(
                 ExpertTerminalTexts.INP_REV_GROWTH,
                 min_value=0.0,
@@ -98,7 +92,7 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
                 help=ExpertTerminalTexts.HELP_REV_GROWTH
             )
 
-        with col3:
+        with col2:
             m_target = st.number_input(
                 ExpertTerminalTexts.INP_MARGIN_TARGET,
                 min_value=0.0,
@@ -112,7 +106,6 @@ class FCFFGrowthTerminal(ExpertTerminalBase):
 
         return {
             "manual_fcf_base": rev_base,
-            "projection_years": n_years,
             "fcf_growth_rate": g_rev,
             "target_fcf_margin": m_target,
         }

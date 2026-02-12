@@ -21,7 +21,6 @@ from src.domain.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
     widget_growth_rate,
 )
 
@@ -73,7 +72,6 @@ class DDMTerminal(ExpertTerminalBase):
         -------
         Dict[str, Any]
             - manual_dividend_base : Dividende D0
-            - projection_years : Horizon
             - fcf_growth_rate : Croissance dividendes
         """
         st.markdown(f"**{ExpertTerminalTexts.SEC_1_DDM_BASE}**")
@@ -93,18 +91,12 @@ class DDMTerminal(ExpertTerminalBase):
 
         st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ}**")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            n_years = widget_projection_years(default=5, key="ddm_years")
-
-        with col2:
-            g_rate = widget_growth_rate(
-                label="Croissance dividendes (g)",
-                min_val=0.0,
-                max_val=0.20,
-                key="ddm_growth"
-            )
+        g_rate = widget_growth_rate(
+            label="Croissance dividendes (g)",
+            min_val=0.0,
+            max_val=0.20,
+            key="ddm_growth"
+        )
 
         st.caption(
             "*Rappel : g doit etre soutenable. "
@@ -115,6 +107,5 @@ class DDMTerminal(ExpertTerminalBase):
 
         return {
             "manual_dividend_base": d0_base,
-            "projection_years": n_years,
             "fcf_growth_rate": g_rate,
         }

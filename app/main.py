@@ -108,31 +108,25 @@ _MC_SIMULATIONS_STEP = MonteCarloDefaults.STEP_SIMULATIONS
 
 
 # ==============================================================================
-# GESTION DU STATE
+# GESTION DU STATE (Delegated to SessionManager)
 # ==============================================================================
 
+from app.state.session_manager import SessionManager
+
+
 def _init_session_state() -> None:
-    """Initialise les variables de session si absentes."""
-    defaults = {
-        "active_request": None,
-        "last_config": "",
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
+    """Initialise les variables de session via le SessionManager."""
+    SessionManager.init()
 
 
 def _reset_on_config_change(current_config: str) -> None:
     """Reset la requête active si la configuration a changé."""
-    if st.session_state.last_config != current_config:
-        st.session_state.active_request = None
-        st.session_state.last_config = current_config
+    SessionManager.on_config_change(current_config)
 
 
 def _set_active_request(request: ValuationRequest) -> None:
     """Enregistre la requête active et relance l'app."""
-    st.session_state.active_request = request
-    st.rerun()
+    SessionManager.set_active_request(request)
 
 
 # ==============================================================================
@@ -187,8 +181,18 @@ def _render_sidebar_source() -> bool:
     return "Expert" in input_mode
 
 
-def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
-    """Rend les options spécifiques au mode Auto."""
+def _render_sidebar_projection_years() -> int:
+    """
+    Render the common projection years slider.
+
+    This slider is shared between Auto and Expert modes to ensure
+    a single source of truth for the projection horizon (DRY principle).
+
+    Returns
+    -------
+    int
+        Number of projection years selected.
+    """
     st.header(SidebarTexts.SEC_4_HORIZON)
     years = st.slider(
         SidebarTexts.YEARS_LABEL,
@@ -197,7 +201,11 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
         value=_DEFAULT_PROJECTION_YEARS,
     )
     st.divider()
+    return years
 
+
+def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
+    """Rend les options spécifiques au mode Auto (excluding projection years)."""
     enable_mc = False
     mc_sims = _DEFAULT_MC_SIMULATIONS
 
@@ -215,7 +223,6 @@ def _render_sidebar_auto_options(mode: ValuationMode) -> Dict:
         st.divider()
 
     return {
-        "years": years,
         "enable_mc": enable_mc,
         "mc_sims": mc_sims,
     }
@@ -313,7 +320,7 @@ def _render_onboarding_guide() -> None:
     d3.info(OnboardingTexts.DIAG_INFO)
 
 
-def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
+def _handle_expert_mode(ticker: str, mode: ValuationMode, projection_years: int) -> None:
     """Gère l'affichage et le lancement en mode Expert."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_REQUIRED_SIDEBAR)
@@ -322,12 +329,13 @@ def _handle_expert_mode(ticker: str, mode: ValuationMode) -> None:
     # Sprint 2: Utilisation de la factory pour les terminaux isolés
     from app.ui.expert.factory import create_expert_terminal
     terminal = create_expert_terminal(mode, ticker)
+    terminal.set_projection_years(projection_years)
     request = terminal.render()
     if request:
         _set_active_request(request)
 
 
-def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None:
+def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict, projection_years: int) -> None:
     """Gère le lancement en mode Auto avec support des scénarios par défaut."""
     if not ticker:
         st.warning(FeedbackMessages.TICKER_INVALID)
@@ -340,7 +348,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
 
     config_params = DCFParameters(
         rates=CoreRateParameters(),
-        growth=GrowthParameters(projection_years=options["years"]),
+        growth=GrowthParameters(projection_years=projection_years),
         monte_carlo=MonteCarloConfig(
             enable_monte_carlo=options["enable_mc"],
             num_simulations=options["mc_sims"]
@@ -351,7 +359,7 @@ def _handle_auto_launch(ticker: str, mode: ValuationMode, options: Dict) -> None
 
     request = ValuationRequest(
         ticker=ticker,
-        projection_years=options["years"],
+        projection_years=projection_years,
         mode=mode,
         input_source=InputSource.AUTO,
         manual_params=config_params,
@@ -378,8 +386,11 @@ def main() -> None:
         selected_mode = _render_sidebar_methodology()
         is_expert = _render_sidebar_source()
 
-        # Reset si la configuration change
-        current_config = f"{ticker}_{is_expert}_{selected_mode.value}"
+        # Common projection years slider (shared between Auto and Expert)
+        projection_years = _render_sidebar_projection_years()
+
+        # Reset if configuration changes (ticker, mode, source, or years)
+        current_config = f"{ticker}_{is_expert}_{selected_mode.value}_{projection_years}"
         _reset_on_config_change(current_config)
 
         # Options spécifiques au mode Auto
@@ -399,14 +410,14 @@ def main() -> None:
     # =========================================================================
     # CONTENT — Affichage principal
     # =========================================================================
-    if st.session_state.active_request:
-        run_workflow_and_display(st.session_state.active_request)
+    if SessionManager.get_active_request():
+        run_workflow_and_display(SessionManager.get_active_request())
 
     elif is_expert:
-        _handle_expert_mode(ticker, selected_mode)
+        _handle_expert_mode(ticker, selected_mode, projection_years)
 
     elif launch_analysis:
-        _handle_auto_launch(ticker, selected_mode, auto_options)
+        _handle_auto_launch(ticker, selected_mode, auto_options, projection_years)
 
     else:
         _render_onboarding_guide()

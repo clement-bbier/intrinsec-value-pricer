@@ -21,7 +21,6 @@ from src.domain.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
     widget_growth_rate,
     widget_terminal_value_rim,
 )
@@ -77,7 +76,6 @@ class RIMBankTerminal(ExpertTerminalBase):
         Dict[str, Any]
             - manual_book_value : BV0
             - manual_fcf_base : NI (utilisé comme proxy)
-            - projection_years : Horizon
             - fcf_growth_rate : Croissance NI
             - exit_multiple_value : Omega (persistance)
         """
@@ -109,18 +107,12 @@ class RIMBankTerminal(ExpertTerminalBase):
 
         st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_RIM}**")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            n_years = widget_projection_years(default=5, key="rim_years")
-
-        with col2:
-            g_ni = widget_growth_rate(
-                label="Croissance Net Income (g)",
-                min_val=0.0,
-                max_val=0.50,
-                key="rim_growth"
-            )
+        g_ni = widget_growth_rate(
+            label="Croissance Net Income (g)",
+            min_val=0.0,
+            max_val=0.50,
+            key="rim_growth"
+        )
 
         st.divider()
 
@@ -132,7 +124,6 @@ class RIMBankTerminal(ExpertTerminalBase):
         return {
             "manual_book_value": bv,
             "manual_fcf_base": ni,
-            "projection_years": n_years,
             "fcf_growth_rate": g_ni,
             **tv_data,
         }

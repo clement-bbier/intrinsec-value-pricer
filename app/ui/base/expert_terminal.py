@@ -132,12 +132,24 @@ class ExpertTerminalBase(ABC):
         self._collected_data: Dict[str, Any] = {}
         self._scenarios: Optional[ScenarioParameters] = None
         self._manual_peers: Optional[List[str]] = None
+        self._projection_years: int = 5  # Default, overridden by sidebar
 
         logger.debug(
             "Terminal %s initialized for ticker=%s",
             self.__class__.__name__,
             ticker
         )
+
+    def set_projection_years(self, years: int) -> None:
+        """
+        Set the projection years from the common sidebar slider.
+
+        Parameters
+        ----------
+        years : int
+            Number of projection years from the sidebar.
+        """
+        self._projection_years = years
 
     # ══════════════════════════════════════════════════════════════════════════
     # TEMPLATE METHOD — Point d'entrée principal
@@ -374,18 +386,19 @@ class ExpertTerminalBase(ABC):
         """
         from app.ui.expert.terminals.shared_widgets import build_dcf_parameters
 
+        # Inject sidebar projection_years into collected data before building params
+        self._collected_data["projection_years"] = self._projection_years
+
         params = build_dcf_parameters(self._collected_data)
 
         # Injection des scénarios si configurés
         if self._scenarios is not None:
             params.scenarios = self._scenarios
 
-        projection_years = self._collected_data.get("projection_years", 5)
-
         return ValuationRequest(
             ticker=self.ticker,
             mode=self.MODE,
-            projection_years=projection_years,
+            projection_years=self._projection_years,
             input_source=InputSource.MANUAL,
             manual_params=params,
             options=self._build_options(),

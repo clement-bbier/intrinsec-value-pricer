@@ -20,7 +20,6 @@ from src.domain.models import ValuationMode
 from src.i18n import ExpertTerminalTexts
 from app.ui.base import ExpertTerminalBase
 from app.ui.expert.terminals.shared_widgets import (
-    widget_projection_years,
     widget_growth_rate,
 )
 
@@ -58,14 +57,12 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
         Collecte :
         - FCF normalisé (moyenne cycle)
-        - Horizon de projection
         - Taux de croissance moyen
 
         Returns
         -------
         Dict[str, Any]
             - manual_fcf_base : FCF normalisé
-            - projection_years : Horizon
             - fcf_growth_rate : Croissance
         """
         st.markdown(f"**{ExpertTerminalTexts.SEC_1_FCF_NORM}**")
@@ -84,23 +81,16 @@ class FCFFNormalizedTerminal(ExpertTerminalBase):
 
         st.markdown(f"**{ExpertTerminalTexts.SEC_2_PROJ_FUND}**")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            n_years = widget_projection_years(default=5, key="fcff_norm_years")
-
-        with col2:
-            g_rate = widget_growth_rate(
-                label=ExpertTerminalTexts.INP_GROWTH_G,
-                min_val=-0.20,
-                max_val=0.30,
-                key="fcff_norm_growth"
-            )
+        g_rate = widget_growth_rate(
+            label=ExpertTerminalTexts.INP_GROWTH_G,
+            min_val=-0.20,
+            max_val=0.30,
+            key="fcff_norm_growth"
+        )
 
         st.divider()
 
         return {
             "manual_fcf_base": fcf_base,
-            "projection_years": n_years,
             "fcf_growth_rate": g_rate,
         }
