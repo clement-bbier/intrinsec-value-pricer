@@ -34,7 +34,9 @@ class MonteCarloDistributionTab(ResultTabBase):
     
     def render(self, result: ValuationResult, **kwargs: Any) -> None:
         """Affiche la distribution Monte Carlo."""
-        simulations = result.simulation_results or []
+        simulations = result.simulation_results
+        if not simulations:
+            return
         currency = result.financials.currency
 
         st.markdown("**SIMULATION MONTE CARLO**")

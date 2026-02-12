@@ -146,7 +146,8 @@ def run_workflow(
     except ValuationException as e:
         status.update(label=WorkflowTexts.STATUS_INTERRUPTED, state="error", expanded=True)
         _display_diagnostic_message(e.diagnostic)
-        st.session_state.active_request = None
+        from app.state.session_manager import SessionManager
+        SessionManager.clear_results()
         return None, None
 
     except Exception as e:
@@ -301,7 +302,8 @@ def compute_scenario_impact(
 
         results.append(ScenarioResult(
             label=label, intrinsic_value=val, probability=variant.probability,
-            growth_used=g_used or 0.0, margin_used=m_used or 0.0
+            growth_used=g_used if g_used is not None else 0.0,
+            margin_used=m_used if m_used is not None else 0.0,
         ))
 
     expected_val = sum(r.intrinsic_value * r.probability for r in results)

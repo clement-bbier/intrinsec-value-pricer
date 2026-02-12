@@ -119,8 +119,11 @@ class ScenarioAnalysisTab(ResultTabBase):
             scenario_data = []
             for scenario in scenario_synthesis.variants:
                 # Calcul de l'upside par rapport au prix de marché
-                market_price = result.financials.current_price or 0.0
-                upside_pct = ((scenario.intrinsic_value - market_price) / market_price) if market_price > 0 else 0.0
+                market_price = result.financials.current_price
+                if market_price is not None and market_price > 0:
+                    upside_pct = (scenario.intrinsic_value - market_price) / market_price
+                else:
+                    upside_pct = 0.0
 
                 scenario_data.append({
                     "Scénario": scenario.label.upper(),
@@ -150,8 +153,11 @@ class ScenarioAnalysisTab(ResultTabBase):
         # Valeur pondérée
         expected_value = scenario_synthesis.expected_value
         if expected_value > 0:
-            market_price = result.financials.current_price or 0.0
-            weighted_upside = ((expected_value - market_price) / market_price) if market_price > 0 else 0.0
+            market_price = result.financials.current_price
+            if market_price is not None and market_price > 0:
+                weighted_upside = (expected_value - market_price) / market_price
+            else:
+                weighted_upside = 0.0
 
             with st.container(border=True):
                 col1, col2 = st.columns(2)
