@@ -16,7 +16,7 @@ import streamlit as st
 from app.views.components.ui_charts import display_football_field
 from app.views.components.ui_kpis import atom_kpi_metric
 from src.core.formatting import format_smart_number
-from src.i18n import KPITexts, MarketTexts, PeersTexts
+from src.i18n import KPITexts, MarketTexts, PeersTexts, QuantTexts
 from src.models import ValuationResult
 
 
@@ -124,7 +124,7 @@ class PeerMultiples:
                 {
                     "Name": peer.ticker,
                     KPITexts.LABEL_FOOTBALL_FIELD_PE: peer.intrinsic_value,
-                    MarketTexts.COL_UPSIDE: peer.upside_pct,
+                    QuantTexts.COL_UPSIDE: peer.upside_pct,
                 }
                 for peer in peers_res.peer_valuations
             ]
@@ -141,8 +141,8 @@ class PeerMultiples:
                     format=f"%.2f {currency}",
                     width="small"
                 ),
-                MarketTexts.COL_UPSIDE: st.column_config.NumberColumn(
-                    label=MarketTexts.COL_UPSIDE,
+                QuantTexts.COL_UPSIDE: st.column_config.NumberColumn(
+                    label=QuantTexts.COL_UPSIDE,
                     format="%.1%",
                     width="small"
                 )

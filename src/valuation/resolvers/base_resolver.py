@@ -174,7 +174,6 @@ class Resolver:
                 strat.dividend_per_share, snap.dividend_share,
                 ModelDefaults.DEFAULT_DIVIDEND_PS,
             )
-            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
 
         # --- RIM (Banks) ---
         elif isinstance(strat, RIMParameters):
@@ -182,7 +181,6 @@ class Resolver:
                 strat.book_value_anchor, snap.book_value_ps,
                 ModelDefaults.DEFAULT_BOOK_VALUE_PS,
             )
-            strat.net_income_norm = self._pick(strat.net_income_norm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
             strat.persistence_factor = self._pick(
                 strat.persistence_factor, None,
                 ModelDefaults.DEFAULT_PERSISTENCE_FACTOR,
@@ -191,7 +189,6 @@ class Resolver:
         # --- FCFE ---
         elif isinstance(strat, FCFEParameters):
             strat.fcfe_anchor = self._pick(strat.fcfe_anchor, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
-            strat.net_income_ttm = self._pick(strat.net_income_ttm, snap.net_income_ttm, ModelDefaults.DEFAULT_NET_INCOME_TTM)
 
         # --- GRAHAM ---
         elif isinstance(strat, GrahamParameters):
