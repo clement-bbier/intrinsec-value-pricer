@@ -33,7 +33,8 @@ def _render_piotroski_section(company_stats) -> None:
     st.caption(desc)
 
     # Safe access to score (default to 0)
-    f_score = getattr(company_stats, 'piotroski_score', 0)
+    # getattr returns None if attribute exists but is None, so we add 'or 0'
+    f_score = getattr(company_stats, 'piotroski_score', 0) or 0
 
     # Business Logic: Score Interpretation
     interpretation = getattr(BenchmarkTexts, 'PIOTROSKI_STATUS_WEAK', "Fragile")
@@ -49,7 +50,6 @@ def _render_piotroski_section(company_stats) -> None:
     c1, c2 = st.columns([0.2, 0.8])
 
     with c1:
-        # delta_color="normal" laisse Streamlit gérer la couleur standard (gris/noir) ou on peut utiliser off
         st.metric(
             label=getattr(BenchmarkTexts, 'PIOTROSKI_LBL_SCORE', "Score F"),
             value=f"{f_score}/9",
@@ -63,7 +63,9 @@ def _render_piotroski_section(company_stats) -> None:
         # Progress bar context
         health_txt = getattr(BenchmarkTexts, 'PIOTROSKI_LBL_HEALTH',
                              "Santé Fondamentale : {score} sur 9 points").format(score=f_score)
-        st.progress(f_score / 9, text=health_txt)
+        # Ensure f_score is within bounds for progress bar
+        progress_val = max(0.0, min(1.0, f_score / 9))
+        st.progress(progress_val, text=health_txt)
 
         # Detail message (No emojis)
         if f_score >= 7:
@@ -115,15 +117,17 @@ def render_benchmark_view(result: ValuationResult) -> None:
     # --- Helper Logic for Status (Valuation) ---
     def get_val_status(company_val: float, sector_val: float) -> tuple[
         Literal["LEADER", "RETARD"], Literal["green", "orange"]]:
+        # Handle zeros or negatives strictly if needed, but simple comparison fits
         if company_val > sector_val:
-            # Expensive -> "RETARD" (Orange)
+            # Expensive -> "RETARD" (Orange) in terms of value opportunity
             return "RETARD", "orange"
         # Cheap -> "LEADER" (Green)
         return "LEADER", "green"
 
     # P/E Ratio
     with col_v1:
-        c_pe = getattr(company_stats, 'pe_ratio', 0.0)
+        # FIX: Ensure we never pass None to logic. getattr returns None if key exists but is None.
+        c_pe = getattr(company_stats, 'pe_ratio', 0.0) or 0.0
         s_pe = market.multiples.pe_ratio or 0.0
         val_status, val_color = get_val_status(c_pe, s_pe)
 
@@ -138,7 +142,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     # EV/EBITDA
     with col_v2:
-        c_eve = getattr(company_stats, 'ev_ebitda', 0.0)
+        c_eve = getattr(company_stats, 'ev_ebitda', 0.0) or 0.0
         s_eve = market.multiples.ev_ebitda or 0.0
         val_status_ev, val_color_ev = get_val_status(c_eve, s_eve)
 
@@ -152,8 +156,10 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     # P/B Ratio
     with col_v3:
-        c_pb = getattr(company_stats, 'pb_ratio', 0.0)
+        c_pb = getattr(company_stats, 'pb_ratio', 0.0) or 0.0
         s_pb = market.multiples.pb_ratio or 0.0
+
+        # Only show P/B if the sector has relevant data, else it looks empty
         if s_pb > 0:
             val_status_pb, val_color_pb = get_val_status(c_pb, s_pb)
             atom_benchmark_card(
@@ -167,6 +173,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
     # Visualisation Graphique
     st.markdown(f"##### {BenchmarkTexts.CHART_TITLE_VALUATION}")
 
+    # Re-access safely for the chart
     c_pe_val = getattr(company_stats, 'pe_ratio', 0.0) or 0.0
     s_pe_val = market.multiples.pe_ratio or 0.0
     c_eve_val = getattr(company_stats, 'ev_ebitda', 0.0) or 0.0
@@ -176,8 +183,12 @@ def render_benchmark_view(result: ValuationResult) -> None:
         "P/E": {"company": c_pe_val, "sector": s_pe_val},
         "EV/EBITDA": {"company": c_eve_val, "sector": s_eve_val}
     }
+
+    # Access ticker safely
+    ticker_symbol = result.request.parameters.structure.ticker
+
     display_sector_comparison_chart(
-        result.request.ticker,
+        ticker_symbol,
         market.sector_name,
         valuation_metrics,
         suffix="x"
@@ -200,7 +211,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     # Marge FCF
     with col_p1:
-        c_m = getattr(company_stats, 'fcf_margin', 0.0)
+        c_m = getattr(company_stats, 'fcf_margin', 0.0) or 0.0
         s_m = market.performance.fcf_margin or 0.0
         perf_status, perf_color = get_perf_status(c_m, s_m)
 
@@ -214,7 +225,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     # ROE
     with col_p2:
-        c_roe = getattr(company_stats, 'roe', 0.0)
+        c_roe = getattr(company_stats, 'roe', 0.0) or 0.0
         s_roe = market.performance.roe or 0.0
         perf_status_roe, perf_color_roe = get_perf_status(c_roe, s_roe)
 
@@ -228,7 +239,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     # Croissance
     with col_p3:
-        c_g = getattr(company_stats, 'revenue_growth', 0.0)
+        c_g = getattr(company_stats, 'revenue_growth', 0.0) or 0.0
         s_g = market.performance.revenue_growth or 0.0
         perf_status_g, perf_color_g = get_perf_status(c_g, s_g)
 

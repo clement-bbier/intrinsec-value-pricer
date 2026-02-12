@@ -26,6 +26,7 @@ from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLeve
 from src.core.exceptions import CalculationError, ValuationError
 from src.core.quant_logger import QuantLogger
 from src.models import Parameters
+from src.models.benchmarks import MarketContext, SectorMultiples, SectorPerformance, CompanyStats
 from src.models.company import CompanySnapshot
 from src.models.valuation import AuditReport, ValuationRequest, ValuationResult, ValuationRunMetadata
 
@@ -67,7 +68,8 @@ class ValuationOrchestrator:
         self.resolver = Resolver()
         self.extension_resolver = ExtensionResolver()
 
-    def _run_guardrails(self, params: Parameters) -> tuple[list[DiagnosticEvent], bool]:
+    @staticmethod
+    def _run_guardrails(params: Parameters) -> tuple[list[DiagnosticEvent], bool]:
         """
         Executes all economic guardrails and collects results.
 
@@ -80,21 +82,12 @@ class ValuationOrchestrator:
         -------
         tuple[List[DiagnosticEvent], bool]
             A tuple of (diagnostic_events, has_blocking_errors).
-            - diagnostic_events: All guardrail check results converted to DiagnosticEvent.
-            - has_blocking_errors: True if any guardrail returned an 'error' type.
-
-        Raises
-        ------
-        CalculationError
-            If any guardrail returns a blocking error.
         """
         financials = params.structure
         events: list[DiagnosticEvent] = []
         has_errors = False
 
         # Calculate WACC for guardrails that need it
-        # We do a preliminary WACC calculation here for validation
-        # (The actual WACC will be recalculated by the strategy)
         try:
             wacc_breakdown = calculate_wacc(financials, params)
             wacc = wacc_breakdown.wacc
@@ -112,13 +105,12 @@ class ValuationOrchestrator:
 
         # Convert guardrail results to DiagnosticEvents
         for check in guardrail_checks:
-            # Map guardrail severity to DiagnosticEvent severity
             if check.type == "error":
                 severity = SeverityLevel.ERROR
                 has_errors = True
             elif check.type == "warning":
                 severity = SeverityLevel.WARNING
-            else:  # info
+            else:
                 severity = SeverityLevel.INFO
 
             event = DiagnosticEvent(
@@ -130,7 +122,6 @@ class ValuationOrchestrator:
             )
             events.append(event)
 
-            # Log the event
             if check.type == "error":
                 logger.error(f"[Guardrail] {check.code}: {check.message}")
             elif check.type == "warning":
@@ -139,6 +130,48 @@ class ValuationOrchestrator:
                 logger.info(f"[Guardrail] {check.code}: {check.message}")
 
         return events, has_errors
+
+    @staticmethod
+    def _build_market_context(snapshot: CompanySnapshot) -> MarketContext | None:
+        """
+        Constructs the MarketContext object from the flat CompanySnapshot data.
+
+        Parameters
+        ----------
+        snapshot : CompanySnapshot
+            The raw data bag containing sector fallbacks and identifiers.
+
+        Returns
+        -------
+        MarketContext | None
+            The structured benchmark context or None if sector data is missing.
+        """
+        if not snapshot.sector:
+            return None
+
+        # 1. Build Multiples from Snapshot fallbacks
+        multiples = SectorMultiples(
+            pe_ratio=snapshot.sector_pe_fallback,
+            ev_ebitda=snapshot.sector_ev_ebitda_fallback,
+            ev_revenue=snapshot.sector_ev_rev_fallback,
+            pb_ratio=None  # Not currently fetched in snapshot fallbacks
+        )
+
+        # 2. Build Performance (Placeholder logic for now)
+        performance = SectorPerformance(
+            fcf_margin=None,
+            revenue_growth=None,
+            roe=None
+        )
+
+        return MarketContext(
+            reference_ticker=snapshot.industry or "Unknown Index",
+            sector_name=snapshot.sector,
+            multiples=multiples,
+            performance=performance,
+            risk_free_rate=snapshot.risk_free_rate or 0.04,
+            equity_risk_premium=snapshot.market_risk_premium or 0.05
+        )
 
     def run(self, request: ValuationRequest, snapshot: CompanySnapshot) -> ValuationResult:
         """
@@ -162,68 +195,65 @@ class ValuationOrchestrator:
 
         # --- PHASE 1: HYDRATION (Ghost -> Solid) ---
         # Arbitrate between User Overrides, Snapshot Data, and Defaults.
-        params = self.resolver.resolve(request.parameters, snapshot) #
+        params = self.resolver.resolve(request.parameters, snapshot)
 
         # Hydrate Extension configurations (Monte Carlo, Sensitivity, etc.).
-        params.extensions = self.extension_resolver.resolve(params.extensions) #
+        params.extensions = self.extension_resolver.resolve(params.extensions)
 
         # Compute input hash for provenance
         input_hash = hashlib.sha256(params.model_dump_json().encode()).hexdigest()
 
         # --- PHASE 1.5: ECONOMIC GUARDRAILS ---
-        # Validate economic assumptions before executing expensive calculations
         logger.info(f"[Orchestrator] Running economic guardrails for {ticker}")
         guardrail_events, has_blocking_errors = self._run_guardrails(params)
 
-        # If there are blocking errors, raise exception
         if has_blocking_errors:
             error_messages = [
-                event.message for event in guardrail_events
-                if event.severity == SeverityLevel.ERROR
+                e.message for e in guardrail_events
+                if e.severity == SeverityLevel.ERROR
             ]
             raise CalculationError(
                 f"Valuation blocked by economic guardrails: {'; '.join(error_messages)}"
             )
 
         # --- PHASE 2: CORE STRATEGY EXECUTION ---
-        # Retrieve the strategy class from the registry via the selected mode.
-        strategy_cls = get_strategy(request.mode) #
+        strategy_cls = get_strategy(request.mode)
         if not strategy_cls:
-            raise CalculationError(f"Methodology {request.mode} not found in registry.") #
+            raise CalculationError(f"Methodology {request.mode} not found in registry.")
 
-        strategy_runner = strategy_cls() #
+        strategy_runner = strategy_cls()
 
         try:
             # Execute the core deterministic valuation logic.
-            # financials (Pillar 1) + params (Pillars 2,3).
-            valuation_output = strategy_runner.execute(params.structure, params) #
+            valuation_output = strategy_runner.execute(params.structure, params)
 
             # --- PHASE 3: EXTENSIONS (The Risk & Market Pillars) ---
-            # Process optional analytical modules based on hydrated extension settings.
             self._process_extensions(valuation_output, strategy_runner, params)
 
             # Post-calculation metadata (Upside/Downside).
-            valuation_output.compute_upside() #
+            valuation_output.compute_upside()
 
             # --- PHASE 3.5: ATTACH GUARDRAIL RESULTS TO AUDIT ---
-            # Add guardrail events to the audit report
             if valuation_output.audit_report is None:
                 valuation_output.audit_report = AuditReport()
 
-            # Add guardrail events to audit report
             valuation_output.audit_report.events.extend(guardrail_events)
-
-            # Update critical warnings count
             valuation_output.audit_report.critical_warnings += sum(
-                1 for event in guardrail_events
-                if event.severity == SeverityLevel.WARNING
+                1 for event in guardrail_events if event.severity == SeverityLevel.WARNING
             )
+
+            # --- PHASE 3.6: CONTEXT & STATS (Clean Architecture) ---
+            # 1. Build Market Context (Benchmark) from Snapshot
+            valuation_output.market_context = self._build_market_context(snapshot)
+
+            # 2. Compute Company Stats via Factory Method (The "Pro" way)
+            # Delegates logic to the model itself
+            valuation_output.company_stats = CompanyStats.compute(snapshot)
 
             execution_time = int((time.time() - start_time) * 1000)
             logger.info(f"[Orchestrator] Execution successful for {ticker} in {execution_time}ms")
 
             # --- PHASE 4: METADATA ATTACHMENT ---
-            # Capture random seed if MC is enabled
             random_seed = None
             if params.extensions.monte_carlo and params.extensions.monte_carlo.enabled:
                 random_seed = params.extensions.monte_carlo.random_seed
@@ -247,10 +277,10 @@ class ValuationOrchestrator:
 
         except ValuationError as e:
             logger.error(f"[Orchestrator] Known valuation failure: {e}")
-            raise e #
+            raise e
         except Exception as e:
             logger.critical(f"[Orchestrator] Unexpected system failure: {e}")
-            raise CalculationError(f"Internal Engine Failure: {str(e)}") #
+            raise CalculationError(f"Internal Engine Failure: {str(e)}")
 
     @staticmethod
     def _process_extensions(
@@ -267,19 +297,19 @@ class ValuationOrchestrator:
 
         # 1. Monte Carlo Simulation (Stochastic Analysis).
         if ext_params.monte_carlo.enabled:
-            mc_runner = MonteCarloRunner(strategy_runner) #
-            ext_results.monte_carlo = mc_runner.execute(params, financials) #
+            mc_runner = MonteCarloRunner(strategy_runner)
+            ext_results.monte_carlo = mc_runner.execute(params, financials)
 
         # 2. Sensitivity Analysis (Deterministic 2D Heatmap).
         if ext_params.sensitivity.enabled:
-            sensi_runner = SensitivityRunner(strategy_runner) #
-            ext_results.sensitivity = sensi_runner.execute(params, financials) #
+            sensi_runner = SensitivityRunner(strategy_runner)
+            ext_results.sensitivity = sensi_runner.execute(params, financials)
 
         # 3. Scenario Analysis (Weighted deterministic cases).
         if ext_params.scenarios.enabled:
-            scenario_runner = ScenariosRunner(strategy_runner) #
-            ext_results.scenarios = scenario_runner.execute(params, financials) #
+            scenario_runner = ScenariosRunner(strategy_runner)
+            ext_results.scenarios = scenario_runner.execute(params, financials)
 
         # 4. Sum-of-the-parts (SOTP / Conglomerate Bridge).
         if ext_params.sotp.enabled:
-            ext_results.sotp = SOTPRunner.execute(params) #
+            ext_results.sotp = SOTPRunner.execute(params)

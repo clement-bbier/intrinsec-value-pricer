@@ -3,13 +3,10 @@ app/views/components/step_renderer.py
 STEP RENDERER COMPONENT
 =======================
 Role: Visual component to render a single calculation step in the Glass Box.
-Focus: Presentation logic only. Uses Registry for data.
+Focus: Presentation logic only. Uses the rich CalculationStep object directly.
 """
 
-
 import streamlit as st
-
-from app.views.components.ui_glass_box_registry import get_step_metadata
 from src.models import CalculationStep
 
 
@@ -19,42 +16,53 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
 
     Layout:
     1. Header: Index - Label (Value)
-    2. Body: Formula (LaTeX) + Description + Intermediate Values
+    2. Body: Formula (LaTeX) + Interpretation + Variable Details
 
     Parameters
     ----------
     index : int
         The sequence number of the step (e.g., 1, 2, 3).
     step : CalculationStep
-        The data object containing the value, key, and inputs.
+        The rich data object containing the result, formulas, and trace.
     """
-    # 1. Fetch Metadata (Data Layer)
-    meta = get_step_metadata(step.step_key)
-
-    # 2. Container Styling (Presentation Layer)
+    # 1. Container Styling (Presentation Layer)
     with st.container():
         # --- Header Row ---
         c1, c2 = st.columns([0.7, 0.3])
 
         with c1:
-            st.markdown(f"**{index}. {meta['label']}**")
-            if meta['description']:
-                st.caption(meta['description'])
+            # Use label directly from the backend model
+            st.markdown(f"**{index}. {step.label}**")
+
+            # Use interpretation (formerly description) if available
+            if step.interpretation:
+                st.caption(step.interpretation)
 
         with c2:
-            # Value formatting based on unit
-            val_str = _format_value(step.value, meta['unit'])
+            # Value formatting based on dynamic unit from backend
+            val_str = _format_value(step.result, step.unit)
             st.markdown(f"### {val_str}")
 
-        # --- Formula & Details ---
-        # Only show formula if valid latex exists and is not N/A
-        if meta.get('formula') and meta['formula'] != "N/A":
-            st.latex(meta['formula'])
+        # --- Formula Section ---
+        # 1. Theoretical Formula (LaTeX)
+        if step.theoretical_formula:
+            st.latex(step.theoretical_formula)
 
-        # Optional: Show input parameters that led to this result
-        if hasattr(step, 'inputs') and step.inputs:
-            with st.expander("Détails du calcul"):
-                st.json(step.inputs)
+        # 2. Variable Details (Inputs)
+        # The model uses 'variables_map', not 'inputs'
+        if step.variables_map:
+            with st.expander("Détails & Variables"):
+                # Show the substituted calculation if available
+                if step.actual_calculation:
+                    st.markdown(f"**Calcul :** `{step.actual_calculation}`")
+                    st.divider()
+
+                # List specific variables used in this step
+                for symbol, var_info in step.variables_map.items():
+                    # Format: "Risk Free Rate (Rf): 4.5%"
+                    desc = var_info.description or "N/A"
+                    val = var_info.formatted_value
+                    st.markdown(f"- **{symbol}** ({desc}) : `{val}`")
 
         st.divider()
 
@@ -64,11 +72,16 @@ def _format_value(value: float | int | str, unit: str) -> str:
     if not isinstance(value, (int, float)):
         return str(value)
 
-    if unit == "%":
+    # Standardize unit strings
+    u = unit.lower() if unit else ""
+
+    if u in ["%", "pct", "percent"]:
         return f"{value:.2%}"
-    elif unit == "currency" or unit == "currency/share":
+    elif u in ["currency", "usd", "eur", "currency/share"]:
         return f"{value:,.2f}"
-    elif unit == "ratio":
+    elif u in ["ratio", "x", "multiple"]:
         return f"{value:.2f}x"
+    elif u in ["million", "m"]:
+        return f"{value:,.1f} M"
 
     return f"{value:,.2f}"

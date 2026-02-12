@@ -11,7 +11,7 @@ import streamlit as st
 
 from app.views.components.step_renderer import render_calculation_step
 from src.i18n import KPITexts, PillarLabels, ResultsTexts, UIMessages
-from src.models import ValuationResult
+from src.models import ValuationResult, CalculationStep
 
 # Constants for filtering internal/technical steps that shouldn't appear in the audit
 EXCLUDED_STEP_PREFIXES = ("_meta", "internal_", "debug_")
@@ -20,28 +20,38 @@ def render_glass_box(result: ValuationResult) -> None:
     """
     Renders Pillar 2: The Mathematical Trace (Glass Box).
 
-    This function iterates through the calculation trace provided by the backend
-    and renders each step using a standardized UI component. It filters out
-    technical steps to ensure the view remains relevant for financial auditing.
+    This function iterates through the calculation traces provided by the backend
+    (both Strategy-specific and Common Bridge steps) and renders each step
+    using a standardized UI component.
 
     Parameters
     ----------
     result : ValuationResult
-        The fully computed valuation object containing the `calculation_trace` list.
+        The fully computed valuation object containing the nested results structures.
     """
     # 1. Header and Context
     st.subheader(PillarLabels.PILLAR_2_TRACE)
     st.caption(KPITexts.HELP_IV)
     st.divider()
 
-    # 2. Data Validation
-    if not result.calculation_trace:
+    # 2. Trace Extraction (Aggregation from Architectural Pillars)
+    # We must combine the strategy-specific steps (DCF/Graham logic)
+    # with the common bridge steps (WACC, Debt, Equity Bridge).
+
+    # Access via safe Pydantic paths
+    strategy_trace = result.results.strategy.strategy_trace
+    bridge_trace = result.results.common.bridge_trace
+
+    # Merge traces: Strategy first (Operating Value), then Bridge (Equity Value)
+    full_trace: list[CalculationStep] = strategy_trace + bridge_trace
+
+    # 3. Data Validation & Filtering
+    if not full_trace:
         st.info(ResultsTexts.NO_FINANCIALS_PROVIDED)
         return
 
-    # 3. Trace Extraction and Filtering
     core_steps = [
-        step for step in result.calculation_trace
+        step for step in full_trace
         if not any(step.step_key.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)
     ]
 
