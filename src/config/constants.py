@@ -105,6 +105,16 @@ class ValidationThresholds:
 
 @dataclass(frozen=True)
 class MacroDefaults:
+    """
+    Macroeconomic system defaults used as last-resort fallbacks.
+
+    Notes
+    -----
+    - DEFAULT_RISK_FREE_RATE: Based on US 10Y Treasury yield (~4.25%, 2024 avg).
+    - DEFAULT_MARKET_RISK_PREMIUM: Historical equity risk premium (~5%, Damodaran).
+    - DEFAULT_TAX_RATE: Approximate OECD average corporate tax rate (~25%).
+    - DEFAULT_CORPORATE_AAA_YIELD: Moody's AAA Corporate Bond Yield (~4.5%).
+    """
     DEFAULT_RISK_FREE_RATE: float = 0.0425
     FALLBACK_GROWTH_RATE: float = 0.03
     FALLBACK_RISK_FREE_RATE: float = 0.04
@@ -125,6 +135,17 @@ class GrowthCalculationDefaults:
 
 @dataclass(frozen=True)
 class ModelDefaults:
+    """
+    Model-level system defaults for valuation engines.
+
+    Notes
+    -----
+    - DEFAULT_WACC: Conservative 10% for unleveraged cost of capital.
+    - DEFAULT_BETA: Market beta of 1.0 (index-neutral).
+    - DEFAULT_SHARES_OUTSTANDING: 1.0 to avoid ZeroDivisionError.
+    - DEFAULT_PROJECTION_YEARS: Standard 5-year DCF horizon.
+    - DEFAULT_TERMINAL_GROWTH: 2% matching long-term nominal GDP growth.
+    """
     # Capital Structure
     DEFAULT_WACC: float = 0.10
     DEFAULT_PAYOUT_RATIO: float = 0.50

@@ -31,7 +31,7 @@ class SOTPBreakdownTab:
     @staticmethod
     def is_visible(result: ValuationResult) -> bool:
         """
-        Determines visibility based on configuration and segment existence.
+        Determines visibility based on configuration and results existence.
 
         Parameters
         ----------
@@ -41,9 +41,11 @@ class SOTPBreakdownTab:
         Returns
         -------
         bool
-            True if SOTP is enabled and segments are defined.
+            True if SOTP is enabled and results are computed.
         """
-        return result.params.sotp.enabled and bool(result.params.sotp.segments)
+        sotp_config = result.request.parameters.extensions.sotp
+        sotp_results = result.results.extensions.sotp
+        return sotp_config.enabled and sotp_results is not None
 
     @staticmethod
     def render(result: ValuationResult, **_kwargs: Any) -> None:
@@ -57,7 +59,8 @@ class SOTPBreakdownTab:
         **_kwargs : Any
             Unused context parameters (for signature compatibility).
         """
-        if not result.params.sotp.segments:
+        sotp_res = result.results.extensions.sotp
+        if not sotp_res or not sotp_res.segment_values:
             st.info(SOTPTexts.NO_SOTP_FOUND)
             return
 
@@ -66,7 +69,6 @@ class SOTPBreakdownTab:
         st.caption(MarketTexts.CAPTION_SEGMENTATION)
 
         # 1. VISUAL CASCADE (Plotly Waterfall)
-        # The chart engine handles the bridge from Enterprise Value to Equity Value
         display_sotp_waterfall(result)
 
         # 2. CONTRIBUTION SUMMARY TABLE
@@ -82,19 +84,21 @@ class SOTPBreakdownTab:
         Renders the detailed Business Units table using a DataFrame
         with visual progress bars for relative contribution.
         """
-        segments = result.params.sotp.segments
-        currency = result.financials.currency
+        sotp_res = result.results.extensions.sotp
+        if not sotp_res:
+            return
 
-        # Calculation of the Gross EV (Sum of segments before holding discount)
-        raw_ev_sum = sum(seg.enterprise_value for seg in segments)
+        currency = result.request.parameters.structure.currency
+        segment_values = sotp_res.segment_values
+        raw_ev_sum = sotp_res.total_enterprise_value
 
         # --- A. Data Preparation ---
         data = []
-        for seg in segments:
-            contribution = (seg.enterprise_value / raw_ev_sum) if raw_ev_sum > 0 else 0.0
+        for seg_name, seg_value in segment_values.items():
+            contribution = (seg_value / raw_ev_sum) if raw_ev_sum > 0 else 0.0
             data.append({
-                MarketTexts.COL_SEGMENT: seg.name,
-                MarketTexts.COL_VALUE: seg.enterprise_value,
+                MarketTexts.COL_SEGMENT: seg_name,
+                MarketTexts.COL_VALUE: seg_value,
                 MarketTexts.COL_CONTRIBUTION: contribution
             })
 
@@ -130,7 +134,6 @@ class SOTPBreakdownTab:
             )
 
             # Footer: Gross Value Check
-            # We keep a distinct footer for the total to separate data from summary
             st.divider()
             c1, c2 = st.columns([0.7, 0.3])
 
@@ -138,6 +141,5 @@ class SOTPBreakdownTab:
                 st.markdown(f"**{MarketTexts.METRIC_GROSS_VALUE}**")
 
             with c2:
-                # Right aligned total
                 total_fmt = format_smart_number(raw_ev_sum, currency=currency)
                 st.markdown(f"<div style='text-align: right;'><b>{total_fmt}</b></div>", unsafe_allow_html=True)

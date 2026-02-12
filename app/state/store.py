@@ -17,6 +17,7 @@ from typing import Any
 
 import streamlit as st
 
+from src.config.constants import UIWidgetDefaults
 from src.models.enums import ValuationMethodology
 from src.models.valuation import ValuationResult
 
@@ -37,6 +38,8 @@ class AppState:
         Toggle between Auto (minimal inputs) and Expert (granular control) modes.
     selected_methodology : ValuationMethodology
         The active valuation strategy (e.g., FCFF, GRAHAM).
+    projection_years : int
+        Global projection horizon shared across all strategies (5-15 years).
     last_result : Optional[ValuationResult]
         The output of the last successful valuation run. None if no run yet.
     result_hash : Optional[str]
@@ -53,6 +56,7 @@ class AppState:
     ticker: str = "AAPL"
     is_expert_mode: bool = False
     selected_methodology: ValuationMethodology = ValuationMethodology.FCFF_STANDARD
+    projection_years: int = UIWidgetDefaults.DEFAULT_PROJECTION_YEARS
 
     # --- 2. Results & Caching ---
     last_result: ValuationResult | None = None

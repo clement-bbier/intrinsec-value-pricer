@@ -1,8 +1,8 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
-from app.views.inputs.strategies.shared_widgets import widget_projection_years
-from src.i18n import UISharedTexts
+from app.state.store import get_state
+from src.i18n import SidebarTexts, UISharedTexts
 from src.i18n.fr.ui.expert import RIMTexts as Texts
 from src.models import ValuationMethodology
 
@@ -32,7 +32,7 @@ class RIMBankView(BaseStrategyView):
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
         with c1:
-            widget_projection_years(default=5, key_prefix=prefix)
+            st.caption(f"{SidebarTexts.YEARS_LABEL}: {get_state().projection_years}")
         with c2:
             st.number_input(
                 UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
