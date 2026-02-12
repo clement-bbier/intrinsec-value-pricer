@@ -13,6 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -76,14 +78,14 @@ class RIMBankingStrategy(IValuationRunner):
         # A. Book Value Per Share (B0)
         # Priority: Strategy Input > TTM Snapshot
         user_bv = params.strategy.book_value_anchor
-        bv_anchor = user_bv if user_bv is not None else (financials.book_value_ps or 0.0)
+        bv_anchor = user_bv if user_bv is not None else (getattr(financials, 'book_value_ps', None) or 0.0)
 
         # B. Earnings Per Share (E0)
         # Note: RIMParameters might not have eps_anchor explicit field (inherits from BaseProjectedParameters),
         # but we can check if it exists or fallback to TTM.
         # Ideally, we should add 'eps_anchor' to RIMParameters.
         # Fallback logic: check 'eps_normalized' if Graham params shared, else TTM.
-        eps_ttm = financials.eps_ttm or 0.0
+        eps_ttm = getattr(financials, 'eps_ttm', None) or 0.0
         # If user overrides net income or EPS via a specific field (to be defined in Model), we use it.
         # Here we use TTM as primary or assume Resolver handled overrides into `eps_ttm` equivalent.
         eps_anchor = eps_ttm
@@ -230,7 +232,7 @@ class RIMBankingStrategy(IValuationRunner):
 
         # 2. Establish Anchors (B0 and EPS0)
         # Note: We use 'financials' here because params might not have the anchor set.
-        b0 = params.strategy.book_value_anchor or (financials.book_value_ps or 10.0)
+        b0 = params.strategy.book_value_anchor or (getattr(financials, 'book_value_ps', None) or 10.0)
 
         # Base Flow Vector represents the shocked starting Earnings Power (EPS)
         # Assumes vectors['base_flow'] is centered around the TTM EPS or 1.0 multiplier
