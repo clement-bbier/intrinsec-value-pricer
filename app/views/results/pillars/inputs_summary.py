@@ -94,12 +94,13 @@ def _render_capital_structure_table(params) -> None:
     cap = params.common.capital
 
     # On-the-fly calculations for display
-    shares = cap.shares_outstanding or 0
-    price = struct.current_price or 0.0
+    # Resolver guarantees non-None values for resolved parameters
+    shares = cap.shares_outstanding if cap.shares_outstanding is not None else 0
+    price = struct.current_price if struct.current_price is not None else 0.0
     mkt_cap = price * shares
 
-    debt = cap.total_debt or 0.0
-    cash = cap.cash_and_equivalents or 0.0
+    debt = cap.total_debt if cap.total_debt is not None else 0.0
+    cash = cap.cash_and_equivalents if cap.cash_and_equivalents is not None else 0.0
     net_debt = debt - cash
 
     # Use formatted strings for the table

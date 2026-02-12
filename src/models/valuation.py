@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.core.diagnostics import DiagnosticEvent
-from src.models.benchmarks import MarketContext, CompanyStats
+from src.models.benchmarks import CompanyStats, MarketContext
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
 

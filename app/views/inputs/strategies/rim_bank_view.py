@@ -1,7 +1,7 @@
 import streamlit as st
 
-from app.views.inputs.base_strategy import BaseStrategyView
 from app.state.store import get_state
+from app.views.inputs.base_strategy import BaseStrategyView
 from src.i18n import SidebarTexts, UISharedTexts
 from src.i18n.fr.ui.expert import RIMTexts as Texts
 from src.models import ValuationMethodology

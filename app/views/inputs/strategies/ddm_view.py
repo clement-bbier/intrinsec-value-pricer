@@ -1,8 +1,8 @@
 import streamlit as st
 
+from app.state.store import get_state
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_growth_rate
-from app.state.store import get_state
 from src.i18n import SidebarTexts, UISharedTexts
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import ValuationMethodology

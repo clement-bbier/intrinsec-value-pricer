@@ -43,7 +43,7 @@ class ScenarioAnalysisTab:
             return
 
         currency = result.request.parameters.structure.currency
-        market_price = result.request.parameters.structure.current_price or 0.0
+        market_price = result.request.parameters.structure.current_price
 
         # --- SECTION HEADER ---
         st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")

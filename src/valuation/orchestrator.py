@@ -26,7 +26,7 @@ from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLeve
 from src.core.exceptions import CalculationError, ValuationError
 from src.core.quant_logger import QuantLogger
 from src.models import Parameters
-from src.models.benchmarks import MarketContext, SectorMultiples, SectorPerformance, CompanyStats
+from src.models.benchmarks import CompanyStats, MarketContext, SectorMultiples, SectorPerformance
 from src.models.company import CompanySnapshot
 from src.models.valuation import AuditReport, ValuationRequest, ValuationResult, ValuationRunMetadata
 
