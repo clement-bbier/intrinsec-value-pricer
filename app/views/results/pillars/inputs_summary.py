@@ -170,17 +170,16 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
     data: list[dict[str, str]]
 
     if mode == ValuationMethodology.RIM:
+        bv_display = (
+            f"{strat_params.book_value_anchor:,.0f} M"
+            if strat_params.book_value_anchor is not None else "-"
+        )
+        growth_val = strat_params.growth_rate if hasattr(strat_params, 'growth_rate') else None
         data = [
-            {"Assumption": "Anchor (Book Value)",
-             "Value": f"{strat_params.book_value_anchor:,.0f} M"
-             if strat_params.book_value_anchor is not None else "-"},
+            {"Assumption": "Anchor (Book Value)", "Value": bv_display},
             {"Assumption": "Persistence Factor (w)",
              "Value": _safe_fmt(strat_params.persistence_factor, ".2f")},
-            {"Assumption": "Growth (g)",
-             "Value": _safe_fmt(
-                 strat_params.growth_rate if hasattr(strat_params, 'growth_rate') else None,
-                 ".2%"
-             )}
+            {"Assumption": "Growth (g)", "Value": _safe_fmt(growth_val, ".2%")}
         ]
 
     elif mode == ValuationMethodology.GRAHAM:
@@ -202,7 +201,9 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
     else:
         # DCF Family (Standard, Growth, Normalized, FCFE, DDM)
-        # Determine anchor value based on known strategy attributes
+        # Determine anchor value: each strategy stores its base flow under a
+        # different attribute name. The priority order matches the most common
+        # strategies first (FCFF Standard > Normalized > Growth > DDM > FCFE).
         anchor_val: float = 0.0
         for attr in ('fcf_anchor', 'fcf_norm', 'revenue_ttm', 'dividend_base', 'fcfe_anchor'):
             val = getattr(strat_params, attr, None)
@@ -210,7 +211,8 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
                 anchor_val = val
                 break
 
-        # Phase 1 Growth — direct access with type-aware fallback
+        # Phase 1 Growth — each strategy stores growth under a different name.
+        # Priority: explicit P1 growth > revenue growth > generic growth rate.
         g_p1: float | None = None
         for attr in ('growth_rate_p1', 'revenue_growth_rate', 'growth_rate'):
             val = getattr(strat_params, attr, None)

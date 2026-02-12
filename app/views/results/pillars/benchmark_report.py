@@ -17,6 +17,23 @@ from src.i18n import BenchmarkTexts, PillarLabels
 from src.models import ValuationResult
 
 
+def _safe_float(val: float | None) -> float:
+    """
+    Returns 0.0 when the value is None.
+
+    Parameters
+    ----------
+    val : float | None
+        The value to safely coerce.
+
+    Returns
+    -------
+    float
+        The original value, or 0.0 if None.
+    """
+    return val if val is not None else 0.0
+
+
 def _render_piotroski_section(company_stats) -> None:
     """
     Renders the Piotroski F-Score section.
@@ -111,10 +128,6 @@ def render_benchmark_view(result: ValuationResult) -> None:
     st.caption(BenchmarkTexts.DESC_VALUATION)
 
     col_v1, col_v2, col_v3 = st.columns(3)
-
-    def _safe_float(val: float | None) -> float:
-        """Returns 0.0 when the value is None."""
-        return val if val is not None else 0.0
 
     # --- Helper Logic for Status (Valuation) ---
     def get_val_status(company_val: float, sector_val: float) -> tuple[

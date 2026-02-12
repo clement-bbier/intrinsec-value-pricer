@@ -10,7 +10,31 @@ Coverage: Direct attribute access without getattr hacks.
 import pytest
 
 from src.models.benchmarks import CompanyStats, MarketContext, SectorMultiples, SectorPerformance
-from app.views.results.pillars.benchmark_report import _render_piotroski_section, render_benchmark_view
+from app.views.results.pillars.benchmark_report import (
+    _render_piotroski_section,
+    _safe_float,
+    render_benchmark_view,
+)
+
+
+class TestSafeFloatFunction:
+    """Tests the module-level _safe_float helper."""
+
+    def test_none_returns_zero(self):
+        """None input should return 0.0."""
+        assert _safe_float(None) == 0.0
+
+    def test_float_returned_as_is(self):
+        """Non-None float should be returned unchanged."""
+        assert _safe_float(25.5) == 25.5
+
+    def test_zero_returned_as_zero(self):
+        """Explicit 0.0 should return 0.0 (not confused with None)."""
+        assert _safe_float(0.0) == 0.0
+
+    def test_negative_returned_as_is(self):
+        """Negative values should be returned unchanged."""
+        assert _safe_float(-5.0) == -5.0
 
 
 class TestSafeFloatPattern:
