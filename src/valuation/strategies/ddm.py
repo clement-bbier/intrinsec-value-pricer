@@ -14,6 +14,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -25,6 +27,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import DDMParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -60,6 +63,9 @@ class DividendDiscountStrategy(IValuationRunner):
         """
         Executes DDM valuation sequence.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(DDMParameters, params.strategy)
+        
         steps: list[CalculationStep] = []
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
@@ -75,8 +81,8 @@ class DividendDiscountStrategy(IValuationRunner):
         # --- STEP 2: Dividend Anchor Selection ---
         # We resolve the starting Dividend per Share (D0).
         # Priority: User Input (Strategy) > TTM (Snapshot)
-        user_div = params.strategy.dividend_per_share
-        d0_per_share = user_div if user_div is not None else (financials.dividend_share or 0.0)
+        user_div = strategy_params.dividend_per_share
+        d0_per_share = user_div if user_div is not None else (getattr(financials, 'dividend_share', None) or 0.0)
 
         # We project the TOTAL Dividend Mass to be consistent with the DCF engine
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
@@ -175,7 +181,7 @@ class DividendDiscountStrategy(IValuationRunner):
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
 
         # Audit Ratio: Payout Ratio (D0 / EPS)
-        eps = financials.eps_ttm or 1.0
+        eps = getattr(financials, 'eps_ttm', None) or 1.0
         payout = (d0_per_share / eps) if eps > 0 else 0.0
 
         strategy_res = DDMResults(
@@ -278,4 +284,5 @@ class DividendDiscountStrategy(IValuationRunner):
         shares = params.common.capital.shares_outstanding or 1.0
         iv_per_share = total_equity / shares
 
-        return iv_per_share
+        iv_result: np.ndarray = iv_per_share
+        return iv_result

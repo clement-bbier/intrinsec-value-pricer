@@ -13,6 +13,8 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from src.computation.financial_math import calculate_discount_factors
@@ -23,6 +25,7 @@ from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.strategies import FCFFNormalizedParameters
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
@@ -58,6 +61,9 @@ class FundamentalFCFFStrategy(IValuationRunner):
         """
         Executes the Normalized DCF sequence.
         """
+        # Type narrowing pour mypy
+        strategy_params = cast(FCFFNormalizedParameters, params.strategy)
+        
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
@@ -70,7 +76,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
             steps.append(step_wacc)
 
         # --- STEP 2: Normalized Anchor Selection ---
-        user_norm_fcf = params.strategy.fcf_norm
+        user_norm_fcf = strategy_params.fcf_norm
         fcf_anchor = user_norm_fcf or 0.0
 
         # Trace the Anchor Selection
@@ -125,9 +131,12 @@ class FundamentalFCFFStrategy(IValuationRunner):
             steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
+        ke_var = step_wacc.get_variable("Ke")
+        kd_var = step_wacc.get_variable("Kd(1-t)")
+        
         res_rates = ResolvedRates(
-            cost_of_equity=step_wacc.get_variable("Ke").value if self._glass_box else 0.0,
-            cost_of_debt_after_tax=step_wacc.get_variable("Kd(1-t)").value if self._glass_box else 0.0,
+            cost_of_equity=ke_var.value if ke_var and self._glass_box else 0.0,
+            cost_of_debt_after_tax=kd_var.value if kd_var and self._glass_box else 0.0,
             wacc=wacc
         )
 
@@ -215,6 +224,6 @@ class FundamentalFCFFStrategy(IValuationRunner):
         net_debt = (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
 
         equity_value = ev - net_debt
-        iv_per_share = equity_value / shares
+        iv_per_share: np.ndarray = equity_value / shares
 
         return iv_per_share

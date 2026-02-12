@@ -97,7 +97,7 @@ class StrategyRegistry:
     def get_display_name(cls, mode: ValuationMethodology) -> str:
         """Retrieves the localized (i18n) label for the model."""
         metadata = cls._strategies.get(mode)
-        return metadata.display_name if metadata else mode.value
+        return metadata.display_name if metadata else mode.value  # type: ignore[return-value]
 
     @classmethod
     def get_all_modes(cls) -> dict[ValuationMethodology, StrategyMetadata]:
