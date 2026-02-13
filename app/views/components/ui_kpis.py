@@ -74,7 +74,7 @@ def atom_benchmark_card(
     label: str,
     company_value: str,
     market_value: str,
-    status: Literal["LEADER", "ALIGNÉ", "RETARD", "N/A"],
+    status: str,
     status_color: Literal["green", "blue", "orange", "red", "gray"] = "gray",
     description: str = ""
 ) -> None:

@@ -7,8 +7,6 @@ Focus: Relative Valuation (Multiples) and Operational Performance (Margins/ROE).
 Style: Professional financial dashboard (Comparison only).
 """
 
-from typing import Literal
-
 import streamlit as st
 
 from app.views.components.ui_charts import display_sector_comparison_chart
@@ -130,11 +128,10 @@ def render_benchmark_view(result: ValuationResult) -> None:
     col_v1, col_v2, col_v3 = st.columns(3)
 
     # --- Helper Logic for Status (Valuation) ---
-    def get_val_status(company_val: float, sector_val: float) -> tuple[
-        Literal["LEADER", "RETARD"], Literal["green", "orange"]]:
+    def get_val_status(company_val: float, sector_val: float) -> tuple[str, str]:
         if company_val > sector_val:
-            return "RETARD", "orange"
-        return "LEADER", "green"
+            return BenchmarkTexts.STATUS_LAGGING, "orange"
+        return BenchmarkTexts.STATUS_LEADER, "green"
 
     # P/E Ratio
     with col_v1:
@@ -148,7 +145,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             market_value=f"{s_pe:.1f}x",
             status=val_status,
             status_color=val_color,
-            description="Premium = Cher (Orange) | Discount = Occasion (Vert)"
+            description=BenchmarkTexts.DESC_PREMIUM_DISCOUNT
         )
 
     # EV/EBITDA
@@ -210,11 +207,10 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     col_p1, col_p2, col_p3 = st.columns(3)
 
-    def get_perf_status(company_val: float, sector_val: float) -> tuple[
-        Literal["LEADER", "RETARD"], Literal["green", "red"]]:
+    def get_perf_status(company_val: float, sector_val: float) -> tuple[str, str]:
         if company_val > sector_val:
-            return "LEADER", "green"
-        return "RETARD", "red"
+            return BenchmarkTexts.STATUS_LEADER, "green"
+        return BenchmarkTexts.STATUS_LAGGING, "red"
 
     # FCF Margin
     with col_p1:
