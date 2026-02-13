@@ -59,7 +59,7 @@ class MCParameters(BaseNormalizedModel):
         Random seed for reproducibility (default: 42).
     """
     enabled: Annotated[bool, UIKey("mc_enable", scale="raw")] = False
-    iterations: Annotated[int, UIKey("sims", scale="raw")] = Field(
+    iterations: Annotated[int, UIKey("mc_sims", scale="raw")] = Field(
         default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
         le=MonteCarloDefaults.MAX_SIMULATIONS
@@ -88,7 +88,7 @@ class SensitivityParameters(BaseNormalizedModel):
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
     enabled: Annotated[bool, UIKey("sens_enable", scale="raw")] = False
-    steps: Annotated[int, UIKey("sensi_steps", scale="raw")] = Field(
+    steps: Annotated[int, UIKey("sens_step", scale="raw")] = Field(
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
@@ -157,7 +157,7 @@ class SOTPParameters(BaseNormalizedModel):
         List of manual valuations per business unit.
     """
     enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
-    conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = (
+    conglomerate_discount: Annotated[float, UIKey("sotp_discount", scale="pct")] = (
         SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
     )
     segments: Annotated[list[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)

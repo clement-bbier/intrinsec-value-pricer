@@ -130,6 +130,36 @@ class TestExtensionBundleUIKeys:
         assert meta is not None
         assert meta.suffix == "sotp_enable"
 
+    def test_mc_iterations_key(self):
+        """Monte Carlo 'iterations' UIKey suffix must be 'mc_sims'."""
+        from src.models.parameters.input_metadata import UIKey
+        meta = next(
+            (m for m in MCParameters.model_fields["iterations"].metadata if isinstance(m, UIKey)),
+            None,
+        )
+        assert meta is not None
+        assert meta.suffix == "mc_sims"
+
+    def test_sensitivity_steps_key(self):
+        """Sensitivity 'steps' UIKey suffix must be 'sens_step'."""
+        from src.models.parameters.input_metadata import UIKey
+        meta = next(
+            (m for m in SensitivityParameters.model_fields["steps"].metadata if isinstance(m, UIKey)),
+            None,
+        )
+        assert meta is not None
+        assert meta.suffix == "sens_step"
+
+    def test_sotp_discount_key(self):
+        """SOTP 'conglomerate_discount' UIKey suffix must be 'sotp_discount'."""
+        from src.models.parameters.input_metadata import UIKey
+        meta = next(
+            (m for m in SOTPParameters.model_fields["conglomerate_discount"].metadata if isinstance(m, UIKey)),
+            None,
+        )
+        assert meta is not None
+        assert meta.suffix == "sotp_discount"
+
 
 class TestInputFactoryExtensionMapping:
     """InputFactory must pull extensions with no prefix (GLOBAL keys)."""
