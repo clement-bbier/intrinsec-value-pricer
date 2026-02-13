@@ -15,8 +15,8 @@ def render_auto_form():
     Renders the minimalist 'Auto Mode' welcome screen.
 
     Auto mode displays only the basic company and methodology information.
-    It generates the first 3 result tabs (Configuration, Proof, Benchmark)
-    without any extension toggles. Extensions are exclusive to Expert mode.
+    Extensions are exclusive to Expert mode; checking an extension option
+    in Expert triggers Pillars 4 and 5 in the results view.
     """
     state = get_state()
 
