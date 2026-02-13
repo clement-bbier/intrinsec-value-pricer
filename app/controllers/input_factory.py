@@ -63,8 +63,10 @@ class InputFactory:
         strategy_params = InputFactory._build_strategy_params(state.selected_methodology)
 
         # 3. Common Parameters (WACC, Bridge)
-        # Rates use the same strategy prefix as the widgets (e.g., "FCFF_STANDARD_rf").
-        # Capital structure uses the bridge prefix (e.g., "bridge_FCFF_STANDARD_debt").
+        # Rates use the strategy prefix so that the UIKey suffix (e.g. "rf")
+        # is combined to form the full session key (e.g. "FCFF_STANDARD_rf").
+        # Capital structure uses the bridge prefix (e.g. "bridge_FCFF_STANDARD")
+        # so the full key becomes "bridge_FCFF_STANDARD_debt", etc.
         mode_prefix = state.selected_methodology.value
         bridge_prefix = f"bridge_{state.selected_methodology.name}"
 

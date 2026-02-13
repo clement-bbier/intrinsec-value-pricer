@@ -210,12 +210,13 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
 # ==============================================================================
 
 def widget_sensitivity(
-    key_prefix: str = "sens",
     default_step: float = 0.005
 ) -> None:
     """
     Renders the sensitivity analysis settings (WACC vs g).
     Corresponds to Section 11 in UISharedTexts.
+
+    Keys are global (from UIKeys registry), not strategy-prefixed.
     """
     # STRICT ACCESS: No strings allowed here. All texts must be in expert.py/SharedTexts
     st.markdown(UISharedTexts.SEC_11_SENSITIVITY)
