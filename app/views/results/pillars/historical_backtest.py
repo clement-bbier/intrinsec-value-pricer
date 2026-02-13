@@ -63,7 +63,7 @@ class HistoricalBacktestTab:
         currency = result.request.parameters.structure.currency
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {BacktestTexts.TITLE}")
+        st.subheader(BacktestTexts.TITLE)
         st.caption(BacktestTexts.HELP_BACKTEST)
         st.write("")
 
@@ -104,10 +104,11 @@ class HistoricalBacktestTab:
 
         # --- 2. CONVERGENCE CHART ---
         st.write("")
-        display_backtest_convergence_chart(
-            backtest_report=bt,
-            currency=currency
-        )
+        with st.container(border=True):
+            display_backtest_convergence_chart(
+                backtest_report=bt,
+                currency=currency
+            )
 
         # --- 3. SEQUENCE DETAILS (Transparency Dataframe) ---
         st.write("")

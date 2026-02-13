@@ -86,18 +86,13 @@ button[data-testid="collapsedControl"] {
     color: #dc2626 !important;
 }
 
-/* --- DATA COMPONENTS (METRIC CARDS) --- */
+/* --- DATA COMPONENTS (METRIC CARDS — Slate borders, rounded) --- */
 div[data-testid="stMetric"] {
     background-color: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #94a3b8 !important;
     border-radius: 8px !important;
     padding: 1rem !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-}
-
-/* --- SECONDARY / BORDERS (SLATE) --- */
-div[data-testid="stMetric"] {
-    border-color: #94a3b8 !important;
 }
 
 /* --- FORM SUBMIT BUTTON (Confirm Ticker) --- */

@@ -69,7 +69,7 @@ class PeerMultiples:
         currency = result.request.parameters.structure.currency
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {MarketTexts.MARKET_TITLE}")
+        st.subheader(MarketTexts.MARKET_TITLE)
 
         # Source & Count Context (Fully i18n)
         peer_count = len(peers_res.peer_valuations)
@@ -81,7 +81,8 @@ class PeerMultiples:
         st.caption(caption_txt)
 
         # 1. VISUAL TRIANGULATION (Football Field)
-        display_football_field(result)
+        with st.container(border=True):
+            display_football_field(result)
         st.write("")
 
         # 2. IMPLIED VALUE METRICS (The "Output")

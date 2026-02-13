@@ -65,11 +65,12 @@ class SOTPBreakdownTab:
             return
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {SOTPTexts.TITLE}")
+        st.subheader(SOTPTexts.TITLE)
         st.caption(MarketTexts.CAPTION_SEGMENTATION)
 
         # 1. VISUAL CASCADE (Plotly Waterfall)
-        display_sotp_waterfall(result)
+        with st.container(border=True):
+            display_sotp_waterfall(result)
 
         # 2. CONTRIBUTION SUMMARY TABLE
         SOTPBreakdownTab._render_contribution_table(result)

@@ -42,9 +42,6 @@ class MonteCarloDistributionTab:
         mc_params = result.request.parameters.extensions.monte_carlo
         market_price = result.request.parameters.structure.current_price
 
-        # --- SECTION HEADER ---
-        st.markdown(f"#### {QuantTexts.MC_TITLE}")
-
         # Dynamic configuration summary from i18n
         shocks = mc_params.shocks
         # beta_volatility is only available on BetaModelMCShocksParameters (not Graham)
@@ -62,6 +59,9 @@ class MonteCarloDistributionTab:
             sig_g=sig_g,
             rho=0.0
         )
+
+        # --- SECTION HEADER ---
+        st.subheader(QuantTexts.MC_TITLE)
         st.caption(config_sub)
         st.write("")
 
@@ -96,10 +96,11 @@ class MonteCarloDistributionTab:
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
-        display_simulation_chart(
-            simulation_results=mc_data.simulation_values,
-            currency=currency
-        )
+        with st.container(border=True):
+            display_simulation_chart(
+                simulation_results=mc_data.simulation_values,
+                currency=currency
+            )
 
         # 3. PROBABILITY ANALYSIS
         st.write("")

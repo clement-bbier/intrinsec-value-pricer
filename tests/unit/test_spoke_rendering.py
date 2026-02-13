@@ -289,7 +289,7 @@ class TestScenarioRendering:
 
         ScenarioAnalysisTab.render(result)
 
-        mock_st.markdown.assert_called()
+        mock_st.subheader.assert_called()
 
     @patch("app.views.results.pillars.scenario_analysis.st")
     def test_render_scenario_no_data_returns(self, mock_st):
@@ -347,7 +347,7 @@ class TestBacktestRendering:
 
         HistoricalBacktestTab.render(result)
 
-        mock_st.markdown.assert_called()
+        mock_st.subheader.assert_called()
         mock_chart.assert_called_once()
 
     @patch("app.views.results.pillars.historical_backtest.st")
@@ -396,7 +396,7 @@ class TestPeerMultiplesRendering:
 
         PeerMultiples.render(result)
 
-        mock_st.markdown.assert_called()
+        mock_st.subheader.assert_called()
 
     @patch("app.views.results.pillars.peer_multiples.st")
     def test_render_peers_no_data_returns(self, mock_st):

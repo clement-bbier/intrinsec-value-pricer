@@ -47,7 +47,7 @@ class ScenarioAnalysisTab:
         market_price = result.request.parameters.structure.current_price
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
+        st.subheader(QuantTexts.SCENARIO_TITLE)
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
 
         # --- 1. VISUAL COMPARISON (CHART VIA UI_CHARTS) ---
@@ -61,12 +61,13 @@ class ScenarioAnalysisTab:
                 "Color": "green" if variant.upside_pct > 0 else "red"
             })
 
-        # Appel au moteur de visualisation (DRY / SoC)
-        display_scenario_comparison_chart(
-            scenarios_data=chart_data,
-            market_price=market_price,
-            currency=currency
-        )
+        with st.container(border=True):
+            # Visualization engine call (DRY / SoC)
+            display_scenario_comparison_chart(
+                scenarios_data=chart_data,
+                market_price=market_price,
+                currency=currency
+            )
 
         st.write("")
 
@@ -123,7 +124,7 @@ class ScenarioAnalysisTab:
                     # Weighted Potential (Expected Upside)
                     weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
 
-                    # Typage explicite pour satisfaire le linter
+                    # Explicit typing to satisfy the linter
                     color_delta: Literal["normal", "inverse"] = "normal" if weighted_upside > 0 else "inverse"
 
                     atom_kpi_metric(

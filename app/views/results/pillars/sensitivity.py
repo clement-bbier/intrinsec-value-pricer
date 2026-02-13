@@ -45,7 +45,7 @@ class SensitivityAnalysisTab:
             return
 
         # --- 1. HEADER & SCORE ---
-        st.markdown(f"#### {QuantTexts.SENS_TITLE}")
+        st.subheader(QuantTexts.SENS_TITLE)
 
         # Volatility Score Logic
         score = data.sensitivity_score
@@ -65,93 +65,94 @@ class SensitivityAnalysisTab:
             score_delta = QuantTexts.SENS_CRITICAL
             score_color = "red"
 
-        col_kpi, col_chart = st.columns([1, 3])
+        with st.container(border=True):
+            col_kpi, col_chart = st.columns([1, 3])
 
-        with col_kpi:
-            atom_kpi_metric(
-                label=QuantTexts.LBL_SENS_SCORE,
-                value=f"{score:.1f}",
-                delta=score_delta,
-                delta_color=score_color,
-                help_text=QuantTexts.HELP_SENS_SCORE
-            )
-
-            # Safe access to axis names
-            x_name = data.x_axis_name or ChartTexts.AXIS_WACC
-            y_name = data.y_axis_name or ChartTexts.AXIS_GROWTH
-
-            st.info(f"""
-            **Axe X :** {x_name}
-            **Axe Y :** {y_name}
-            """)
-
-        # --- 2. HEATMAP CONSTRUCTION (Altair) ---
-        with col_chart:
-            # Data Transformation: Matrix -> Long Format DataFrame for Altair
-            heatmap_data: list[dict[str, Any]] = []
-
-            # data.values is List[List[float]] -> [row][col]
-            for i, y_val in enumerate(data.y_values):
-                for j, x_val in enumerate(data.x_values):
-                    try:
-                        val = data.values[i][j]
-                        heatmap_data.append({
-                            "y_axis": f"{y_val:.2%}", # Growth
-                            "x_axis": f"{x_val:.2%}", # WACC
-                            "value": val,
-                            "label": format_smart_number(val)
-                        })
-                    except IndexError:
-                        continue
-
-            df = pd.DataFrame(heatmap_data)
-
-            if df.empty:
-                st.warning(QuantTexts.MSG_SENS_NO_DATA)
-                return
-
-            # Base Chart
-            base = alt.Chart(df).encode(
-                x=alt.X('x_axis:O', title=None),
-                y=alt.Y('y_axis:O', title=None)
-            )
-
-            # Heatmap Rectangles
-            heatmap = base.mark_rect().encode(
-                color=alt.Color(
-                    'value:Q',
-                    scale=alt.Scale(scheme='yellowgreenblue'),
-                    legend=None
-                ),
-                tooltip=[
-                    alt.Tooltip('x_axis', title=x_name),
-                    alt.Tooltip('y_axis', title=y_name),
-                    alt.Tooltip('label', title=ChartTexts.TOOLTIP_VALUATION)
-                ]
-            )
-
-            # Pre-calculate mean for the condition to avoid Type Error in Altair expr
-            mean_val = float(df['value'].mean())
-
-            # Text Labels over Rectangles
-            text = base.mark_text(baseline='middle', fontSize=10).encode(
-                text='label:N',
-                color=alt.condition(
-                    alt.datum.value > mean_val,  # Clean scalar comparison
-                    alt.value('white'),
-                    alt.value('black')
+            with col_kpi:
+                atom_kpi_metric(
+                    label=QuantTexts.LBL_SENS_SCORE,
+                    value=f"{score:.1f}",
+                    delta=score_delta,
+                    delta_color=score_color,
+                    help_text=QuantTexts.HELP_SENS_SCORE
                 )
-            )
 
-            final_chart = (heatmap + text).properties(
-                height=350,
-                width='container',
-                title=alt.TitleParams(
-                    text=QuantTexts.SENS_TITLE,
-                    subtitle=ChartTexts.CORREL_CAPTION,
-                    anchor='start',
-                    fontSize=14
+                # Safe access to axis names
+                x_name = data.x_axis_name or ChartTexts.AXIS_WACC
+                y_name = data.y_axis_name or ChartTexts.AXIS_GROWTH
+
+                st.info(f"""
+                **X Axis :** {x_name}
+                **Y Axis :** {y_name}
+                """)
+
+            # --- 2. HEATMAP CONSTRUCTION (Altair) ---
+            with col_chart:
+                # Data Transformation: Matrix -> Long Format DataFrame for Altair
+                heatmap_data: list[dict[str, Any]] = []
+
+                # data.values is List[List[float]] -> [row][col]
+                for i, y_val in enumerate(data.y_values):
+                    for j, x_val in enumerate(data.x_values):
+                        try:
+                            val = data.values[i][j]
+                            heatmap_data.append({
+                                "y_axis": f"{y_val:.2%}", # Growth
+                                "x_axis": f"{x_val:.2%}", # WACC
+                                "value": val,
+                                "label": format_smart_number(val)
+                            })
+                        except IndexError:
+                            continue
+
+                df = pd.DataFrame(heatmap_data)
+
+                if df.empty:
+                    st.warning(QuantTexts.MSG_SENS_NO_DATA)
+                    return
+
+                # Base Chart
+                base = alt.Chart(df).encode(
+                    x=alt.X('x_axis:O', title=None),
+                    y=alt.Y('y_axis:O', title=None)
                 )
-            )
 
-            st.altair_chart(final_chart, width="stretch")
+                # Heatmap Rectangles
+                heatmap = base.mark_rect().encode(
+                    color=alt.Color(
+                        'value:Q',
+                        scale=alt.Scale(scheme='yellowgreenblue'),
+                        legend=None
+                    ),
+                    tooltip=[
+                        alt.Tooltip('x_axis', title=x_name),
+                        alt.Tooltip('y_axis', title=y_name),
+                        alt.Tooltip('label', title=ChartTexts.TOOLTIP_VALUATION)
+                    ]
+                )
+
+                # Pre-calculate mean for the condition to avoid Type Error in Altair expr
+                mean_val = float(df['value'].mean())
+
+                # Text Labels over Rectangles
+                text = base.mark_text(baseline='middle', fontSize=10).encode(
+                    text='label:N',
+                    color=alt.condition(
+                        alt.datum.value > mean_val,  # Clean scalar comparison
+                        alt.value('white'),
+                        alt.value('black')
+                    )
+                )
+
+                final_chart = (heatmap + text).properties(
+                    height=350,
+                    width='container',
+                    title=alt.TitleParams(
+                        text=QuantTexts.SENS_TITLE,
+                        subtitle=ChartTexts.CORREL_CAPTION,
+                        anchor='start',
+                        fontSize=14
+                    )
+                )
+
+                st.altair_chart(final_chart, width="stretch")
