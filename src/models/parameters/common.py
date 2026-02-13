@@ -82,6 +82,11 @@ class FinancialRatesParameters(BaseNormalizedModel):
         The marginal corporate tax rate used to calculate the tax shield.
     corporate_aaa_yield : float | None
         The benchmark yield for high-grade corporate bonds (used in Graham formulas).
+    wacc : float | None
+        Manual WACC override. When provided, bypasses CAPM calculation.
+        Used in sensitivity analysis to test valuation response to discount rate changes.
+    cost_of_equity : float | None
+        Manual Cost of Equity override. When provided, bypasses CAPM calculation.
     """
     risk_free_rate: Annotated[float | None, UIKey(UIKeys.RF, scale="pct")] = None
     market_risk_premium: Annotated[float | None, UIKey(UIKeys.MRP, scale="pct")] = None

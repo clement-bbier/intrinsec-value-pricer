@@ -163,12 +163,25 @@ SECTORS: dict[str, SectorBenchmarks] = {
         pe_ratio=24.5, ev_ebitda=12.4, ev_revenue=3.2, source="Media/Streaming"
     ),
 
-    # --- UTILITIES & MATERIALS ---
+    # --- UTILITIES ---
+    "utilities": SectorBenchmarks(
+        pe_ratio=17.8, ev_ebitda=10.8, ev_revenue=2.8, source="Utilities Macro"
+    ),
     "utilities_regulated": SectorBenchmarks(
         pe_ratio=17.8, ev_ebitda=10.8, ev_revenue=2.8, source="Utilities"
     ),
+
+    # --- BASIC MATERIALS ---
+    "basic_materials": SectorBenchmarks(
+        pe_ratio=15.4, ev_ebitda=8.5, ev_revenue=1.3, source="Materials Macro"
+    ),
     "chemicals": SectorBenchmarks(
         pe_ratio=15.4, ev_ebitda=8.5, ev_revenue=1.3, source="Chemicals"
+    ),
+
+    # --- REAL ESTATE ---
+    "real_estate": SectorBenchmarks(
+        pe_ratio=30.5, ev_ebitda=18.2, ev_revenue=8.5, source="Real Estate Macro"
     ),
     "real_estate_reit": SectorBenchmarks(
         pe_ratio=30.5, ev_ebitda=18.2, ev_revenue=8.5, source="REITs"

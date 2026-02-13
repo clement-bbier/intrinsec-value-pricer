@@ -11,6 +11,7 @@ from typing import Any
 import streamlit as st
 
 from app.views.components.ui_charts import display_simulation_chart
+from src.computation.statistics import calculate_var
 from src.core.formatting import format_smart_number
 from src.i18n import QuantTexts
 from src.models import ValuationResult
@@ -67,13 +68,15 @@ class MonteCarloDistributionTab:
 
         # Build stats from MCResults
         median_val = mc_data.quantiles.get("P50", mc_data.mean)
-        var_95 = mc_data.quantiles.get("P5", 0.0)
         p10 = mc_data.quantiles.get("P10", 0.0)
         p90 = mc_data.quantiles.get("P90", 0.0)
+        
+        # Calculate VaR properly: VaR = Median - P5
+        var_95 = calculate_var(mc_data.simulation_values, confidence_level=0.95)
 
-        # 1. RISK HUB (Dispersion & Tail Risk)
+        # 1. RISK HUB (Dispersion & Tail Risk) - Grouped Metrics
         with st.container(border=True):
-            c1, c2, c3, c4 = st.columns(4)
+            c1, c2, c3 = st.columns(3)
 
             c1.metric(
                 QuantTexts.MC_MEDIAN,
@@ -83,16 +86,13 @@ class MonteCarloDistributionTab:
             c2.metric(
                 QuantTexts.MC_VAR,
                 format_smart_number(var_95, currency=currency),
-                help=QuantTexts.MC_VAR
+                help="Value at Risk (95%): Median - 5th Percentile. Measures downside risk."
             )
 
             c3.metric(
                 QuantTexts.MC_VOLATILITY,
                 format_smart_number(mc_data.std_dev, currency=currency)
             )
-
-            cv = mc_data.std_dev / median_val if median_val != 0 else 0
-            c4.metric(QuantTexts.MC_TAIL_RISK, f"{cv:.1%}")
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
