@@ -6,13 +6,19 @@ AUTO MODE LANDING VIEW
 import streamlit as st
 
 from app.state.store import get_state
-from src.i18n import CommonTexts, SidebarTexts
+from src.i18n import CommonTexts, ExtensionTexts, SidebarTexts
 from src.i18n.fr.ui.common import OnboardingTexts
 
 
 def render_auto_form():
     """
     Renders the minimalist 'Auto Mode' welcome screen.
+
+    Includes extension checkboxes so that optional analytical modules
+    (Monte Carlo, Sensitivity, etc.) can be toggled even in Auto mode.
+    The checkbox keys match the UIKey suffixes defined in
+    ``src.models.parameters.options`` so that ``InputFactory`` can
+    read them without any prefix.
     """
     state = get_state()
 
@@ -28,5 +34,18 @@ def render_auto_form():
         **{CommonTexts.RUN_BUTTON}**
         """)
 
-    # We could add simple overrides here (e.g. Years of projection)
-    # if we wanted to expose them outside Expert mode.
+    # --- Extension Checkboxes ---
+    st.divider()
+    st.markdown(f"### {ExtensionTexts.TITLE}")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.checkbox(ExtensionTexts.MONTE_CARLO, key="enable", value=False)
+        st.checkbox(ExtensionTexts.SENSITIVITY, key="sensi_enable", value=False)
+        st.checkbox(ExtensionTexts.SCENARIOS, key="scenario_enable", value=False)
+
+    with c2:
+        st.checkbox(ExtensionTexts.BACKTEST, key="bt_enable", value=False)
+        st.checkbox(ExtensionTexts.PEERS, key="peer_enable", value=False)
+        st.checkbox(ExtensionTexts.SOTP, key="sotp_enable", value=False)

@@ -192,6 +192,7 @@ class ValuationOrchestrator:
         start_time = time.time()
         ticker = request.parameters.structure.ticker
         logger.info(f"[Orchestrator] Starting pipeline for {ticker}")
+        QuantLogger.log_stage_start(ticker, "HYDRATION")
 
         # --- PHASE 1: HYDRATION (Ghost -> Solid) ---
         # Arbitrate between User Overrides, Snapshot Data, and Defaults.
@@ -202,8 +203,16 @@ class ValuationOrchestrator:
 
         # Compute input hash for provenance
         input_hash = hashlib.sha256(params.model_dump_json().encode()).hexdigest()
+        hydration_ms = int((time.time() - start_time) * 1000)
+        QuantLogger.log_stage_complete(ticker, "HYDRATION", duration_ms=hydration_ms)
 
-        # --- PHASE 1.5: ECONOMIC GUARDRAILS ---
+        # --- PHASE 1.5: DATA FETCHING LOG ---
+        QuantLogger.log_data_fetching(ticker)
+
+        # --- PHASE 1.6: PARAMETER RESOLUTION LOG ---
+        QuantLogger.log_parameter_resolution(ticker, request.mode.value)
+
+        # --- PHASE 1.7: ECONOMIC GUARDRAILS ---
         logger.info(f"[Orchestrator] Running economic guardrails for {ticker}")
         guardrail_events, has_blocking_errors = self._run_guardrails(params)
 
@@ -222,13 +231,17 @@ class ValuationOrchestrator:
             raise CalculationError(f"Methodology {request.mode} not found in registry.")
 
         strategy_runner = strategy_cls()
+        QuantLogger.log_strategy_execution(ticker, type(strategy_runner).__name__)
 
         try:
             # Execute the core deterministic valuation logic.
+            strategy_start = time.time()
             valuation_output = strategy_runner.execute(params.structure, params)
+            strategy_ms = int((time.time() - strategy_start) * 1000)
+            QuantLogger.log_stage_complete(ticker, "STRATEGY_EXECUTION", duration_ms=strategy_ms)
 
             # --- PHASE 3: EXTENSIONS (The Risk & Market Pillars) ---
-            self._process_extensions(valuation_output, strategy_runner, params)
+            self._process_extensions(valuation_output, strategy_runner, params, ticker)
 
             # Post-calculation metadata (Upside/Downside).
             valuation_output.compute_upside()
@@ -267,7 +280,12 @@ class ValuationOrchestrator:
             )
             valuation_output.metadata = metadata
 
-            # --- PHASE 5: STRUCTURED JSON LOGGING ---
+            # --- PHASE 5: FINAL PACKAGING & STRUCTURED JSON LOGGING ---
+            QuantLogger.log_final_packaging(
+                ticker,
+                intrinsic_value=valuation_output.results.common.intrinsic_value_per_share,
+                execution_time_ms=execution_time,
+            )
             QuantLogger.log_json(
                 event="valuation_completed",
                 **metadata.model_dump(mode="json")
@@ -286,7 +304,8 @@ class ValuationOrchestrator:
     def _process_extensions(
             base_result: ValuationResult,
             strategy_runner: IValuationRunner,
-            params: Parameters
+            params: Parameters,
+            ticker: str = "N/A",
     ) -> None:
         """
         Executes enabled analytical modules and attaches results to the envelope.
@@ -297,19 +316,31 @@ class ValuationOrchestrator:
 
         # 1. Monte Carlo Simulation (Stochastic Analysis).
         if ext_params.monte_carlo.enabled:
+            ext_start = time.time()
             mc_runner = MonteCarloRunner(strategy_runner)
             ext_results.monte_carlo = mc_runner.execute(params, financials)
+            ext_ms = int((time.time() - ext_start) * 1000)
+            QuantLogger.log_extension_processing(ticker, "MONTE_CARLO", duration_ms=ext_ms)
 
         # 2. Sensitivity Analysis (Deterministic 2D Heatmap).
         if ext_params.sensitivity.enabled:
+            ext_start = time.time()
             sensi_runner = SensitivityRunner(strategy_runner)
             ext_results.sensitivity = sensi_runner.execute(params, financials)
+            ext_ms = int((time.time() - ext_start) * 1000)
+            QuantLogger.log_extension_processing(ticker, "SENSITIVITY", duration_ms=ext_ms)
 
         # 3. Scenario Analysis (Weighted deterministic cases).
         if ext_params.scenarios.enabled:
+            ext_start = time.time()
             scenario_runner = ScenariosRunner(strategy_runner)
             ext_results.scenarios = scenario_runner.execute(params, financials)
+            ext_ms = int((time.time() - ext_start) * 1000)
+            QuantLogger.log_extension_processing(ticker, "SCENARIOS", duration_ms=ext_ms)
 
         # 4. Sum-of-the-parts (SOTP / Conglomerate Bridge).
         if ext_params.sotp.enabled:
+            ext_start = time.time()
             ext_results.sotp = SOTPRunner.execute(params)
+            ext_ms = int((time.time() - ext_start) * 1000)
+            QuantLogger.log_extension_processing(ticker, "SOTP", duration_ms=ext_ms)
