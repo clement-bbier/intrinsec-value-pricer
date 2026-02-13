@@ -50,7 +50,7 @@ class ScenarioAnalysisTab:
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
 
         # --- 1. VISUAL COMPARISON (CHART VIA UI_CHARTS) ---
-        # Préparation des données pour le composant UI générique
+        # Prepare data for the generic UI chart component
         chart_data = []
         for variant in scenarios_res.outcomes:
              chart_data.append({

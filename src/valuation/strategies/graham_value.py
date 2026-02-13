@@ -36,7 +36,7 @@ from src.models.valuation import ValuationRequest, ValuationResult
 # Libraries (DRY Logic)
 from src.valuation.library.graham import GrahamLibrary
 
-# CORRECTIF 1: On utilise IValuationRunner pour la cohérence avec standard_fcff.py
+# FIX 1: Use IValuationRunner for consistency with standard_fcff.py
 from src.valuation.strategies.interface import IValuationRunner
 
 
@@ -65,7 +65,7 @@ class GrahamNumberStrategy(IValuationRunner):
         """
         Executes the Graham valuation sequence.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(GrahamParameters, params.strategy)
 
         steps: list[CalculationStep] = []
@@ -84,15 +84,15 @@ class GrahamNumberStrategy(IValuationRunner):
         s = strategy_params  # Use type-narrowed version
         r = params.common.rates
 
-        # CORRECTIF 2: Suppression de 'g_param = params.growth' qui n'existe PAS.
-        # La croissance est gérée via la stratégie ou les defaults.
+        # FIX 2: Removed 'g_param = params.growth' which does NOT exist.
+        # Growth is managed via the strategy parameters or defaults.
 
         # 1. Inputs Extraction (for Audit Traceability)
         # Note: We fallback to defaults to ensure safety if params are partial
         eps_used = s.eps_normalized or getattr(financials, 'eps_ttm', None) or 0.0
 
         # Growth: Graham uses a specific growth estimate or the generic one
-        # CORRECTIF 3: Accès direct propre sans passer par un objet 'growth' inexistant
+        # FIX 3: Direct clean access without going through a nonexistent 'growth' object
         growth_used = s.growth_estimate if s.growth_estimate is not None else ModelDefaults.DEFAULT_GROWTH_RATE
 
         # Yield: Critical part of the 1974 formula

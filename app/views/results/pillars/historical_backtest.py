@@ -88,7 +88,7 @@ class HistoricalBacktestTab:
                 # Accuracy Status: MAE < 15% is considered 'Compliant' (Green)
                 is_optimal = bt.mean_absolute_error < 0.15
 
-                # Use BenchmarkTexts for generic Status Labels (Aligné vs Écart)
+                # Use BenchmarkTexts for generic status labels (Aligned vs Deviation)
                 status_label = BenchmarkTexts.STATUS_OK if is_optimal else BenchmarkTexts.STATUS_ALERT
                 grade_label = BacktestTexts.GRADE_A if is_optimal else BacktestTexts.GRADE_B
 
