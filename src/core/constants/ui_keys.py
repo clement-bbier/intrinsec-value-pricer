@@ -41,7 +41,7 @@ class UIKeys:
     YIELD_AAA: str = "yield_aaa"
     WACC_OVERRIDE: str = "wacc_override"
     KE_OVERRIDE: str = "ke_override"
-    PRICE_WEIGHTS: str = "price"
+    PRICE: str = "price"
 
     # ── Capital Structure (prefix: bridge_{mode}) ────────────────────
     DEBT: str = "debt"
@@ -62,6 +62,7 @@ class UIKeys:
     REVENUE_TTM: str = "revenue_ttm"
     FCF_MARGIN: str = "fcf_margin"
     FCFE_ANCHOR: str = "fcfe_anchor"
+    NET_BORROWING_DELTA: str = "net_borrowing_delta"
     DIV_BASE: str = "div_base"
     BV_ANCHOR: str = "bv_anchor"
     OMEGA: str = "omega"

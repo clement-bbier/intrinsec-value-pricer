@@ -387,6 +387,9 @@ def _all_uikeys_values():
     }
 
 
+_ALL_UIKEY_SUFFIXES = _collect_all_uikey_suffixes()
+
+
 class TestMasterUIKeyContractIntegrity:
     """
     Every UIKey suffix in every Pydantic model must point to a value
@@ -397,13 +400,12 @@ class TestMasterUIKeyContractIntegrity:
     constant will be caught immediately.
     """
 
-    ALL_SUFFIXES = _collect_all_uikey_suffixes()
     VALID_VALUES = _all_uikeys_values()
 
     @pytest.mark.parametrize(
         "model_name,field_name,suffix",
-        ALL_SUFFIXES,
-        ids=[f"{m}.{f}" for m, f, _ in _collect_all_uikey_suffixes()],
+        _ALL_UIKEY_SUFFIXES,
+        ids=[f"{m}.{f}" for m, f, _ in _ALL_UIKEY_SUFFIXES],
     )
     def test_uikey_suffix_in_registry(self, model_name, field_name, suffix):
         """UIKey suffix must match a value defined in UIKeys."""

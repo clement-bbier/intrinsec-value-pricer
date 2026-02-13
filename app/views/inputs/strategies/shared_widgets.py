@@ -70,7 +70,7 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             value=None,
             format="%.2f",
             help=UISharedTexts.HELP_PRICE_WEIGHTS,
-            key=f"{prefix}_{UIKeys.PRICE_WEIGHTS}"
+            key=f"{prefix}_{UIKeys.PRICE}"
         )
 
     col_a, col_b = st.columns(2)
@@ -331,10 +331,10 @@ def widget_scenarios(mode: ValuationMethodology) -> None:
     for case in ["bull", "base", "bear"]:
         st.markdown(f"**{case.upper()}**")
         c1, c2, c3 = st.columns(3)
-        c1.number_input(UISharedTexts.INP_SCENARIO_PROBA, value=33.3, key=f"scenario_p_{case}")
-        c2.number_input(UISharedTexts.INP_SCENARIO_GROWTH, value=None, key=f"scenario_g_{case}")
+        c1.number_input(UISharedTexts.INP_SCENARIO_PROBA, value=33.3, key=f"scenario_{UIKeys.SCENARIO_P}_{case}")
+        c2.number_input(UISharedTexts.INP_SCENARIO_GROWTH, value=None, key=f"scenario_{UIKeys.SCENARIO_G}_{case}")
         if mode == ValuationMethodology.FCFF_GROWTH:
-            c3.number_input(UISharedTexts.INP_SCENARIO_MARGIN, value=None, key=f"scenario_m_{case}")
+            c3.number_input(UISharedTexts.INP_SCENARIO_MARGIN, value=None, key=f"scenario_{UIKeys.SCENARIO_M}_{case}")
 
 def widget_sotp() -> None:
     """Renders Sum-of-the-Parts segment editor."""

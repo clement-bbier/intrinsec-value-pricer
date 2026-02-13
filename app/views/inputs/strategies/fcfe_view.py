@@ -45,7 +45,7 @@ class FCFEView(BaseStrategyView):
         with c2:
             st.number_input(
                 Texts.INP_NET_BORROWING, value=None, format="%.0f",
-                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_net_borrowing_delta",
+                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_{UIKeys.NET_BORROWING_DELTA}",
             )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
