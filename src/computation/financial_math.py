@@ -457,7 +457,7 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     -------
     WACCBreakdown
         Full technical decomposition for audit and rendering.
-        
+
     Notes
     -----
     If params.common.rates.wacc is provided (manual override), it bypasses
@@ -466,19 +466,19 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     """
     r = params.common.rates
     c = params.common.capital
-    
+
     # 0. Check for WACC override (used in sensitivity analysis)
     if r.wacc is not None:
         # When WACC is manually overridden, we still need to decompose it
         # but we use the override value as the final WACC
-        
+
         # Calculate Ke for display purposes
         ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
-        
+
         # Calculate Kd for display purposes
         tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
         rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
-        
+
         if r.cost_of_debt is not None:
             kd_gross = r.cost_of_debt
         else:
@@ -486,17 +486,17 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
             ebit = getattr(financials, 'ebit_ttm', None) or 0.0
             interest = getattr(financials, 'interest_expense', None) or 0.0
             kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
-        
+
         kd_net = kd_gross * (1.0 - tax)
-        
+
         # Calculate weights for display
         debt = c.total_debt if c.total_debt is not None else 0.0
         shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
         market_equity = financials.current_price * shares
-        
+
         total_cap = market_equity + debt
         we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
-        
+
         return WACCBreakdown(
             cost_of_equity=ke,
             cost_of_debt_pre_tax=kd_gross,

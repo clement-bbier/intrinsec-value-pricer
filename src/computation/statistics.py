@@ -345,34 +345,34 @@ def calculate_var(
 ) -> float:
     """
     Calculate Value at Risk (VaR) from Monte Carlo simulation results.
-    
+
     VaR represents the potential loss at a given confidence level,
     calculated as the difference between the median and the lower tail percentile.
-    
+
     Formula: VaR = Median_IV - Percentile_α_IV
-    
+
     Where α = (1 - confidence_level) * 100
-    
+
     Parameters
     ----------
     simulation_values : list[float] | np.ndarray
         Array of simulated intrinsic values from Monte Carlo.
     confidence_level : float, default=0.95
         The confidence level (e.g., 0.95 for 95% confidence).
-    
+
     Returns
     -------
     float
         The Value at Risk. A positive value indicates downside risk
         (median is above the tail), a negative value indicates the tail
         extends above median (rare but possible in skewed distributions).
-    
+
     Examples
     --------
     >>> values = [100, 105, 110, 115, 120, 125, 130]
     >>> calculate_var(values, confidence_level=0.95)
     10.0  # Median (115) - P5 (105)
-    
+
     Notes
     -----
     - No max(0, x) clamping is applied to preserve actual deviation magnitude
@@ -382,27 +382,27 @@ def calculate_var(
     # Handle None or empty values
     if simulation_values is None:
         return 0.0
-    
+
     # Convert to numpy array for efficient percentile calculation
     values_array = np.asarray(simulation_values)
-    
+
     # Check if empty after conversion
     if values_array.size == 0:
         return 0.0
-    
+
     # Filter out invalid values
     valid_values = values_array[np.isfinite(values_array)]
-    
+
     if valid_values.size == 0:
         return 0.0
-    
+
     # Calculate percentile threshold
     alpha = (1 - confidence_level) * 100
-    
+
     # VaR = Median - Lower Tail Percentile
     median_value = float(np.median(valid_values))
     percentile_value = float(np.percentile(valid_values, alpha))
-    
+
     var = median_value - percentile_value
-    
+
     return var

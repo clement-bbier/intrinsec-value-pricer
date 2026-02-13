@@ -34,7 +34,7 @@ class CurrencyPlacement(Enum):
 class CurrencyInfo:
     """
     Currency metadata for institutional formatting.
-    
+
     Attributes
     ----------
     code : str
@@ -52,10 +52,10 @@ class CurrencyInfo:
 class CurrencyFormatter:
     """
     Institutional currency formatting engine.
-    
+
     Provides ISO 4217 compliant formatting with regional conventions
     for symbol placement and decimal handling.
-    
+
     Examples
     --------
     >>> formatter = CurrencyFormatter()
@@ -65,13 +65,13 @@ class CurrencyFormatter:
     '2.30M €'
     >>> formatter.format(150000000, "JPY")
     '¥150.00M'
-    
+
     Notes
     -----
     Follows Bloomberg Terminal conventions for consistency across
     institutional workflows.
     """
-    
+
     # ISO 4217 Currency Registry
     _CURRENCY_REGISTRY: dict[str, CurrencyInfo] = {
         "USD": CurrencyInfo("USD", "$", CurrencyPlacement.PREFIX),
@@ -91,11 +91,11 @@ class CurrencyFormatter:
         "BRL": CurrencyInfo("BRL", "R$", CurrencyPlacement.PREFIX),
         "KRW": CurrencyInfo("KRW", "₩", CurrencyPlacement.PREFIX),
     }
-    
+
     def __init__(self) -> None:
         """Initialize the currency formatter."""
         pass
-    
+
     def format(
         self,
         value: float | int | None,
@@ -105,7 +105,7 @@ class CurrencyFormatter:
     ) -> str:
         """
         Format a monetary value with proper currency symbol and placement.
-        
+
         Parameters
         ----------
         value : float | int | None
@@ -116,12 +116,12 @@ class CurrencyFormatter:
             Number of decimal places for the scaled value.
         smart_scale : bool, default=True
             Apply institutional scaling (M, B, T) for large values.
-        
+
         Returns
         -------
         str
             Formatted currency string with proper symbol placement.
-        
+
         Examples
         --------
         >>> formatter = CurrencyFormatter()
@@ -133,39 +133,39 @@ class CurrencyFormatter:
         # Handle null/NaN values
         if value is None:
             return "-"
-        
+
         if isinstance(value, float) and math.isnan(value):
             return "-"
-        
+
         # Get currency info
         currency_info = self._CURRENCY_REGISTRY.get(
             currency_code.upper(),
             CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
         )
-        
+
         # Format the numeric value
         if smart_scale:
             formatted_value = self._format_with_scale(value, decimals)
         else:
             formatted_value = f"{value:,.{decimals}f}"
-        
+
         # Apply symbol placement
         if currency_info.placement == CurrencyPlacement.PREFIX:
             return f"{currency_info.symbol}{formatted_value}"
         else:
             return f"{formatted_value} {currency_info.symbol}"
-    
+
     def _format_with_scale(self, value: float | int, decimals: int) -> str:
         """
         Apply institutional scaling (M, B, T) to large values.
-        
+
         Parameters
         ----------
         value : float | int
             The value to format.
         decimals : int
             Number of decimal places.
-        
+
         Returns
         -------
         str
@@ -174,7 +174,7 @@ class CurrencyFormatter:
         abs_val = abs(value)
         suffix = ""
         scaled_val = float(value)
-        
+
         if abs_val >= 1e12:
             scaled_val = value / 1e12
             suffix = "T"
@@ -184,18 +184,18 @@ class CurrencyFormatter:
         elif abs_val >= 1e6:
             scaled_val = value / 1e6
             suffix = "M"
-        
+
         return f"{scaled_val:,.{decimals}f}{suffix}"
-    
+
     def get_symbol(self, currency_code: str) -> str:
         """
         Get the symbol for a given currency code.
-        
+
         Parameters
         ----------
         currency_code : str
             ISO 4217 currency code.
-        
+
         Returns
         -------
         str
@@ -233,7 +233,7 @@ def format_smart_number(
     -------
     str
         The formatted string (e.g., "$1.50B" or "5.20%").
-    
+
     Notes
     -----
     Uses CurrencyFormatter for proper symbol placement when currency is provided.
@@ -253,7 +253,7 @@ def format_smart_number(
     if currency:
         formatter = CurrencyFormatter()
         return formatter.format(val, currency_code=currency, decimals=decimals)
-    
+
     # 4. Fallback to simple scaling without currency
     abs_val = abs(val)
     suffix = ""
