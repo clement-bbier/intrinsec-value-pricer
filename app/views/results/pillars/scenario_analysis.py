@@ -40,6 +40,7 @@ class ScenarioAnalysisTab:
         """
         scenarios_res = result.results.extensions.scenarios
         if not scenarios_res:
+            st.info(QuantTexts.MSG_NO_SCENARIOS)
             return
 
         currency = result.request.parameters.structure.currency

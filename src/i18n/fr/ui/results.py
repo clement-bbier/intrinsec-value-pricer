@@ -308,6 +308,7 @@ class QuantTexts:
 
     # --- Scenarios ---
     SCENARIO_TITLE = "Analyse des Scénarios"
+    MSG_NO_SCENARIOS = "Aucun scénario calculé. Vérifiez les probabilités et paramètres en mode Expert."
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
     COL_SCENARIO = "SCÉNARIO"

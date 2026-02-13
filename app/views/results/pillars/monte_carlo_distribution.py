@@ -35,6 +35,7 @@ class MonteCarloDistributionTab:
         """Institutional rendering of the Monte Carlo Risk Hub."""
         mc_data = result.results.extensions.monte_carlo
         if not mc_data:
+            st.info(QuantTexts.MC_FAILED)
             return
 
         currency = result.request.parameters.structure.currency

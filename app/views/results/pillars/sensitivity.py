@@ -41,6 +41,7 @@ class SensitivityAnalysisTab:
         """
         data = result.results.extensions.sensitivity
         if not data:
+            st.info(QuantTexts.MSG_SENS_NO_DATA)
             return
 
         # --- 1. HEADER & SCORE ---
