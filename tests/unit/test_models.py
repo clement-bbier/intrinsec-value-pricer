@@ -680,3 +680,12 @@ def test_market_params_default_to_none_for_resolver():
     assert params.beta is None
     assert params.cost_of_debt is None
     assert params.tax_rate is None
+
+
+@pytest.mark.unit
+def test_sotp_discount_default_from_constant():
+    """SOTPParameters.conglomerate_discount must default to SOTPDefaults constant."""
+    from src.config.constants import SOTPDefaults
+    from src.models.parameters.options import SOTPParameters
+    params = SOTPParameters()
+    assert params.conglomerate_discount == SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT

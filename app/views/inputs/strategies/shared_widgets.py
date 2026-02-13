@@ -257,10 +257,12 @@ def widget_monte_carlo(
     ):
         return
 
-    st.select_slider(
+    st.number_input(
         UISharedTexts.MC_ITERATIONS,
-        options=[1000, 5000, 10000, 25000],
-        value=5000,
+        value=None,
+        min_value=1000,
+        max_value=25000,
+        step=1000,
         help=UISharedTexts.HELP_MC_SIMS,
         key=UIKeys.MC_SIMS
     )
@@ -360,4 +362,11 @@ def widget_sotp() -> None:
                 )
             }
         )
-        st.slider(UISharedTexts.LBL_DISCOUNT, 0, 50, 0, key=UIKeys.SOTP_DISCOUNT)
+        st.number_input(
+            UISharedTexts.LBL_DISCOUNT,
+            value=None,
+            min_value=0,
+            max_value=50,
+            help=UISharedTexts.HELP_SOTP,
+            key=UIKeys.SOTP_DISCOUNT
+        )
