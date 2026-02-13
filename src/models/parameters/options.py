@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from src.config.constants import BacktestDefaults, MonteCarloDefaults, SensitivityDefaults, SOTPDefaults
+from src.config.constants import BacktestDefaults, MonteCarloDefaults, SensitivityDefaults, SOTPDefaults, UIKeys
 from src.models.parameters.common import BaseNormalizedModel
 from src.models.parameters.input_metadata import UIKey
 
@@ -58,8 +58,8 @@ class MCParameters(BaseNormalizedModel):
     random_seed : int | None
         Random seed for reproducibility (default: 42).
     """
-    enabled: Annotated[bool, UIKey("mc_enable", scale="raw")] = False
-    iterations: Annotated[int, UIKey("mc_sims", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.MC_ENABLE, scale="raw")] = False
+    iterations: Annotated[int, UIKey(UIKeys.MC_SIMS, scale="raw")] = Field(
         default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
         le=MonteCarloDefaults.MAX_SIMULATIONS
@@ -87,8 +87,8 @@ class SensitivityParameters(BaseNormalizedModel):
     growth_span : float | None
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
-    enabled: Annotated[bool, UIKey("sens_enable", scale="raw")] = False
-    steps: Annotated[int, UIKey("sens_step", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.SENS_ENABLE, scale="raw")] = False
+    steps: Annotated[int, UIKey(UIKeys.SENS_STEP, scale="raw")] = Field(
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
@@ -122,21 +122,21 @@ class ScenarioParameters(BaseNormalizedModel):
 
 class ScenariosParameters(BaseNormalizedModel):
     """Collection of deterministic scenarios."""
-    enabled: Annotated[bool, UIKey("scenario_enable", scale="raw")] = False
+    enabled: Annotated[bool, UIKey(UIKeys.SCENARIO_ENABLE, scale="raw")] = False
     cases: list[ScenarioParameters] = Field(default_factory=list)
 
 class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
-    enabled: Annotated[bool, UIKey("bt_enable", scale="raw")] = False
-    lookback_years: Annotated[int, UIKey("bt_lookback", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.BT_ENABLE, scale="raw")] = False
+    lookback_years: Annotated[int, UIKey(UIKeys.BT_LOOKBACK, scale="raw")] = Field(
         default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS,
         ge=1, le=10
     )
 
 class PeersParameters(BaseNormalizedModel):
     """Configuration for peer-based relative valuation."""
-    enabled: Annotated[bool, UIKey("peer_enable", scale="raw")] = False
-    tickers: Annotated[list[str], UIKey("peer_list")] = Field(default_factory=list)
+    enabled: Annotated[bool, UIKey(UIKeys.PEER_ENABLE, scale="raw")] = False
+    tickers: Annotated[list[str], UIKey(UIKeys.PEER_LIST)] = Field(default_factory=list)
 
 class BusinessUnit(BaseModel):
     """A single segment in Sum-Of-The-Parts."""
@@ -156,11 +156,11 @@ class SOTPParameters(BaseNormalizedModel):
     segments : List[BusinessUnit]
         List of manual valuations per business unit.
     """
-    enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
-    conglomerate_discount: Annotated[float, UIKey("sotp_discount", scale="pct")] = (
+    enabled: Annotated[bool, UIKey(UIKeys.SOTP_ENABLE, scale="raw")] = False
+    conglomerate_discount: Annotated[float, UIKey(UIKeys.SOTP_DISCOUNT, scale="pct")] = (
         SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
     )
-    segments: Annotated[list[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
+    segments: Annotated[list[BusinessUnit], UIKey(UIKeys.SOTP_SEGS)] = Field(default_factory=list)
 
 
 # ==============================================================================

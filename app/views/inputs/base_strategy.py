@@ -156,8 +156,9 @@ class BaseStrategyView(ABC):
             )
 
         # 7. Sensitivity Analysis (WACC vs g)
+        # Uses default "sens" prefix for global extension keys (no strategy prefix).
         if self.SHOW_SENSITIVITY:
-            widget_sensitivity(key_prefix=prefix)
+            widget_sensitivity()
 
         # 8. Scenario Analysis (Bull/Bear)
         if self.SHOW_SCENARIOS:

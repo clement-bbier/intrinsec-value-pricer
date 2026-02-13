@@ -14,6 +14,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, model_validator
 
+from src.config.constants import UIKeys
 from src.models.parameters.input_metadata import UIKey
 
 
@@ -82,14 +83,14 @@ class FinancialRatesParameters(BaseNormalizedModel):
     corporate_aaa_yield : float | None
         The benchmark yield for high-grade corporate bonds (used in Graham formulas).
     """
-    risk_free_rate: Annotated[float | None, UIKey("rf", scale="pct")] = None
-    market_risk_premium: Annotated[float | None, UIKey("mrp", scale="pct")] = None
-    beta: Annotated[float | None, UIKey("beta", scale="raw")] = None
-    cost_of_debt: Annotated[float | None, UIKey("kd", scale="pct")] = None
-    tax_rate: Annotated[float | None, UIKey("tax", scale="pct")] = None
-    corporate_aaa_yield: Annotated[float | None, UIKey("yield_aaa", scale="pct")] = None
-    wacc: Annotated[float | None, UIKey("wacc_override", scale="pct")] = None
-    cost_of_equity: Annotated[float | None, UIKey("ke_override", scale="pct")] = None
+    risk_free_rate: Annotated[float | None, UIKey(UIKeys.RF, scale="pct")] = None
+    market_risk_premium: Annotated[float | None, UIKey(UIKeys.MRP, scale="pct")] = None
+    beta: Annotated[float | None, UIKey(UIKeys.BETA, scale="raw")] = None
+    cost_of_debt: Annotated[float | None, UIKey(UIKeys.KD, scale="pct")] = None
+    tax_rate: Annotated[float | None, UIKey(UIKeys.TAX, scale="pct")] = None
+    corporate_aaa_yield: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
+    wacc: Annotated[float | None, UIKey(UIKeys.WACC_OVERRIDE, scale="pct")] = None
+    cost_of_equity: Annotated[float | None, UIKey(UIKeys.KE_OVERRIDE, scale="pct")] = None
 
 
 class CapitalStructureParameters(BaseNormalizedModel):
@@ -111,12 +112,12 @@ class CapitalStructureParameters(BaseNormalizedModel):
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
     """
-    total_debt: Annotated[float | None, UIKey("debt", scale="million")] = None
-    cash_and_equivalents: Annotated[float | None, UIKey("cash", scale="million")] = None
-    minority_interests: Annotated[float | None, UIKey("min", scale="million")] = None
-    pension_provisions: Annotated[float | None, UIKey("pen", scale="million")] = None
-    shares_outstanding: Annotated[float | None, UIKey("shares", scale="million")] = None
-    annual_dilution_rate: Annotated[float | None, UIKey("sbc_rate", scale="pct")] = None
+    total_debt: Annotated[float | None, UIKey(UIKeys.DEBT, scale="million")] = None
+    cash_and_equivalents: Annotated[float | None, UIKey(UIKeys.CASH, scale="million")] = None
+    minority_interests: Annotated[float | None, UIKey(UIKeys.MINORITIES, scale="million")] = None
+    pension_provisions: Annotated[float | None, UIKey(UIKeys.PENSIONS, scale="million")] = None
+    shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
+    annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
 
 
 class CommonParameters(BaseModel):
