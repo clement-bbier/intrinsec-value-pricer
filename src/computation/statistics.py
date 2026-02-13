@@ -379,11 +379,16 @@ def calculate_var(
     - VaR can be negative in highly skewed distributions (e.g., lottery-like payoffs)
     - This implementation follows industry standard where VaR > 0 indicates risk
     """
-    if not simulation_values or len(simulation_values) == 0:
+    # Handle None or empty values
+    if simulation_values is None:
         return 0.0
     
     # Convert to numpy array for efficient percentile calculation
     values_array = np.asarray(simulation_values)
+    
+    # Check if empty after conversion
+    if values_array.size == 0:
+        return 0.0
     
     # Filter out invalid values
     valid_values = values_array[np.isfinite(values_array)]
