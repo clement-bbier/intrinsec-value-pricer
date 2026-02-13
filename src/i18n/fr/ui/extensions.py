@@ -104,8 +104,8 @@ class SOTPTexts:
 class ExtensionTexts:
     TITLE = "Extensions & Analyses"
     MONTE_CARLO = "Simulation Monte Carlo"
-    SENSITIVITY = "Analyse de Sensibilite"
-    SCENARIOS = "Analyse de Scenarios"
+    SENSITIVITY = "Analyse de Sensibilité"
+    SCENARIOS = "Analyse de Scénarios"
     BACKTEST = "Backtest Historique"
     PEERS = "Comparaison de Pairs"
     SOTP = "Sum-Of-The-Parts (SOTP)"
