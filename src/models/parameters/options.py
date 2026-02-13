@@ -58,7 +58,7 @@ class MCParameters(BaseNormalizedModel):
     random_seed : int | None
         Random seed for reproducibility (default: 42).
     """
-    enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
+    enabled: Annotated[bool, UIKey("mc_enable", scale="raw")] = False
     iterations: Annotated[int, UIKey("sims", scale="raw")] = Field(
         default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
@@ -87,7 +87,7 @@ class SensitivityParameters(BaseNormalizedModel):
     growth_span : float | None
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
-    enabled: Annotated[bool, UIKey("sensi_enable", scale="raw")] = False
+    enabled: Annotated[bool, UIKey("sens_enable", scale="raw")] = False
     steps: Annotated[int, UIKey("sensi_steps", scale="raw")] = Field(
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9

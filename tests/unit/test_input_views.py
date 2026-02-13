@@ -46,8 +46,8 @@ class TestAutoFormRendering:
 
     @patch("app.views.inputs.auto_form.get_state")
     @patch("app.views.inputs.auto_form.st")
-    def test_render_auto_form_creates_checkboxes(self, mock_st, mock_get_state):
-        """render_auto_form must create 6 extension checkboxes."""
+    def test_render_auto_form_no_checkboxes(self, mock_st, mock_get_state):
+        """render_auto_form must NOT create extension checkboxes (simplified mode)."""
         from app.views.inputs.auto_form import render_auto_form
         from src.models.enums import ValuationMethodology
 
@@ -56,22 +56,14 @@ class TestAutoFormRendering:
         state.selected_methodology = ValuationMethodology.FCFF_STANDARD
         mock_get_state.return_value = state
 
-        col1 = MagicMock()
-        col2 = MagicMock()
-        col1.__enter__ = MagicMock(return_value=col1)
-        col1.__exit__ = MagicMock(return_value=False)
-        col2.__enter__ = MagicMock(return_value=col2)
-        col2.__exit__ = MagicMock(return_value=False)
-        mock_st.columns.return_value = [col1, col2]
-
         render_auto_form()
 
-        assert mock_st.checkbox.call_count == 6
+        mock_st.checkbox.assert_not_called()
 
     @patch("app.views.inputs.auto_form.get_state")
     @patch("app.views.inputs.auto_form.st")
-    def test_auto_form_divider_before_extensions(self, mock_st, mock_get_state):
-        """render_auto_form must show a divider before extensions."""
+    def test_auto_form_no_divider_for_extensions(self, mock_st, mock_get_state):
+        """render_auto_form must not show a divider for extensions (no extensions)."""
         from app.views.inputs.auto_form import render_auto_form
         from src.models.enums import ValuationMethodology
 
@@ -80,17 +72,9 @@ class TestAutoFormRendering:
         state.selected_methodology = ValuationMethodology.FCFF_STANDARD
         mock_get_state.return_value = state
 
-        col1 = MagicMock()
-        col2 = MagicMock()
-        col1.__enter__ = MagicMock(return_value=col1)
-        col1.__exit__ = MagicMock(return_value=False)
-        col2.__enter__ = MagicMock(return_value=col2)
-        col2.__exit__ = MagicMock(return_value=False)
-        mock_st.columns.return_value = [col1, col2]
-
         render_auto_form()
 
-        mock_st.divider.assert_called()
+        mock_st.divider.assert_not_called()
 
 
 # =============================================================================

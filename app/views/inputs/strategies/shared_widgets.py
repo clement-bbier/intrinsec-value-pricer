@@ -308,7 +308,7 @@ def widget_peer_triangulation() -> None:
     st.markdown(UISharedTexts.SEC_7_PEERS)
     if st.toggle(
         UISharedTexts.LBL_PEER_ENABLE, value=False,
-        help=UISharedTexts.HELP_PEER_TRIANGULATION, key="peer_peer_enable",
+        help=UISharedTexts.HELP_PEER_TRIANGULATION, key="peer_enable",
     ):
         raw_input = st.text_input(
             UISharedTexts.INP_MANUAL_PEERS,
@@ -324,7 +324,7 @@ def widget_scenarios(mode: ValuationMethodology) -> None:
     st.markdown(UISharedTexts.SEC_8_SCENARIOS)
     if not st.toggle(
         UISharedTexts.INP_SCENARIO_ENABLE, value=False,
-        help=UISharedTexts.HELP_SCENARIO_ENABLE, key="scenario_scenario_enable",
+        help=UISharedTexts.HELP_SCENARIO_ENABLE, key="scenario_enable",
     ):
         return
 

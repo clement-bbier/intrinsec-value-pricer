@@ -71,24 +71,24 @@ class TestExtensionBundleUIKeys:
     """Extension UIKey suffixes must be GLOBAL (no strategy prefix)."""
 
     def test_mc_enable_key(self):
-        """Monte Carlo 'enabled' UIKey suffix must be 'enable'."""
+        """Monte Carlo 'enabled' UIKey suffix must be 'mc_enable'."""
         from src.models.parameters.input_metadata import UIKey
         meta = next(
             (m for m in MCParameters.model_fields["enabled"].metadata if isinstance(m, UIKey)),
             None,
         )
         assert meta is not None
-        assert meta.suffix == "enable"
+        assert meta.suffix == "mc_enable"
 
     def test_sensitivity_enable_key(self):
-        """Sensitivity 'enabled' UIKey suffix must be 'sensi_enable'."""
+        """Sensitivity 'enabled' UIKey suffix must be 'sens_enable'."""
         from src.models.parameters.input_metadata import UIKey
         meta = next(
             (m for m in SensitivityParameters.model_fields["enabled"].metadata if isinstance(m, UIKey)),
             None,
         )
         assert meta is not None
-        assert meta.suffix == "sensi_enable"
+        assert meta.suffix == "sens_enable"
 
     def test_scenario_enable_key(self):
         """Scenarios 'enabled' UIKey suffix must be 'scenario_enable'."""
@@ -144,8 +144,8 @@ class TestInputFactoryExtensionMapping:
         assert "prefix=None" in source or "_pull_model(ExtensionBundleParameters)" in source
 
 
-class TestAutoFormExtensionCheckboxes:
-    """Auto form must declare all 6 extension checkbox keys."""
+class TestAutoFormSimplified:
+    """Auto form must NOT contain extension checkboxes (Auto mode is basic only)."""
 
     @pytest.fixture
     def auto_form_source(self):
@@ -156,29 +156,18 @@ class TestAutoFormExtensionCheckboxes:
             ).render_auto_form
         )
 
-    def test_enable_key_present(self, auto_form_source):
-        """Monte Carlo enable key must be present."""
-        assert '"enable"' in auto_form_source
+    def test_no_extension_checkboxes(self, auto_form_source):
+        """Auto form must not contain extension checkbox widgets."""
+        assert "st.checkbox" not in auto_form_source
 
-    def test_sensi_enable_key_present(self, auto_form_source):
-        """Sensitivity enable key must be present."""
-        assert '"sensi_enable"' in auto_form_source
+    def test_no_extension_title(self, auto_form_source):
+        """Auto form must not reference ExtensionTexts."""
+        assert "ExtensionTexts" not in auto_form_source
 
-    def test_scenario_enable_key_present(self, auto_form_source):
-        """Scenarios enable key must be present."""
-        assert '"scenario_enable"' in auto_form_source
-
-    def test_bt_enable_key_present(self, auto_form_source):
-        """Backtest enable key must be present."""
-        assert '"bt_enable"' in auto_form_source
-
-    def test_peer_enable_key_present(self, auto_form_source):
-        """Peers enable key must be present."""
-        assert '"peer_enable"' in auto_form_source
-
-    def test_sotp_enable_key_present(self, auto_form_source):
-        """SOTP enable key must be present."""
-        assert '"sotp_enable"' in auto_form_source
+    def test_contains_basic_info(self, auto_form_source):
+        """Auto form must still display basic company and methodology info."""
+        assert "state.ticker" in auto_form_source
+        assert "state.selected_methodology" in auto_form_source
 
 
 class TestOrchestratorPipelineLogging:
