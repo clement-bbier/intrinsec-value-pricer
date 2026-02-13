@@ -624,3 +624,68 @@ def test_valuation_result_compute_upside_negative():
     
     # Upside = (150 - 200) / 200 = -0.25 (-25%)
     assert result.upside_pct == pytest.approx(-0.25)
+
+
+# ==============================================================================
+# 7. GHOST PATTERN — SYSTEM CONSTANTS (Group B) FALLBACK
+# ==============================================================================
+
+@pytest.mark.unit
+def test_sensitivity_steps_default_from_constant():
+    """SensitivityParameters.steps must default to SensitivityDefaults.DEFAULT_STEPS."""
+    from src.config.constants import SensitivityDefaults
+    params = SensitivityParameters()
+    assert params.steps == SensitivityDefaults.DEFAULT_STEPS
+
+
+@pytest.mark.unit
+def test_sensitivity_steps_rejects_below_three():
+    """SensitivityParameters.steps must reject values below 3 (ge=3)."""
+    with pytest.raises(ValidationError):
+        SensitivityParameters(steps=1)
+    with pytest.raises(ValidationError):
+        SensitivityParameters(steps=2)
+
+
+@pytest.mark.unit
+def test_sensitivity_steps_accepts_three():
+    """SensitivityParameters.steps must accept the minimum value of 3."""
+    params = SensitivityParameters(steps=3)
+    assert params.steps == 3
+
+
+@pytest.mark.unit
+def test_mc_iterations_default_from_constant():
+    """MCParameters.iterations must default to MonteCarloDefaults.DEFAULT_SIMULATIONS."""
+    from src.config.constants import MonteCarloDefaults
+    params = MCParameters()
+    assert params.iterations == MonteCarloDefaults.DEFAULT_SIMULATIONS
+
+
+@pytest.mark.unit
+def test_backtest_lookback_default_from_constant():
+    """BacktestParameters.lookback_years must default to BacktestDefaults constant."""
+    from src.config.constants import BacktestDefaults
+    from src.models.parameters.options import BacktestParameters
+    params = BacktestParameters()
+    assert params.lookback_years == BacktestDefaults.DEFAULT_LOOKBACK_YEARS
+
+
+@pytest.mark.unit
+def test_market_params_default_to_none_for_resolver():
+    """Financial market parameters (Group A) must default to None for the Resolver cascade."""
+    params = FinancialRatesParameters()
+    assert params.risk_free_rate is None
+    assert params.market_risk_premium is None
+    assert params.beta is None
+    assert params.cost_of_debt is None
+    assert params.tax_rate is None
+
+
+@pytest.mark.unit
+def test_sotp_discount_default_from_constant():
+    """SOTPParameters.conglomerate_discount must default to SOTPDefaults constant."""
+    from src.config.constants import SOTPDefaults
+    from src.models.parameters.options import SOTPParameters
+    params = SOTPParameters()
+    assert params.conglomerate_discount == SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
