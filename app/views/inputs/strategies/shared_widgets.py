@@ -212,16 +212,15 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
 # 5. OPTIONAL EXTENSIONS (Sections 6-11)
 # ==============================================================================
 
-def widget_sensitivity(
-    default_step: float = 0.005
-) -> None:
+def widget_sensitivity() -> None:
     """
     Renders the sensitivity analysis settings (WACC vs g).
     Corresponds to Section 11 in UISharedTexts.
 
     Keys are global (from UIKeys registry), not strategy-prefixed.
+    Ghost Pattern: All fields default to None so Pydantic system
+    constants apply when no user override is provided.
     """
-    # STRICT ACCESS: No strings allowed here. All texts must be in expert.py/SharedTexts
     st.markdown(UISharedTexts.SEC_11_SENSITIVITY)
 
     if st.toggle(UISharedTexts.LBL_SENSITIVITY_ENABLE, value=False, key=UIKeys.SENS_ENABLE):
@@ -230,15 +229,15 @@ def widget_sensitivity(
         c1, c2 = st.columns(2)
         c1.number_input(
             UISharedTexts.LBL_SENS_STEP,
-            value=default_step,
+            value=None,
             format="%.3f",
             help=UISharedTexts.HELP_SENS_STEP,
             key=UIKeys.SENS_STEP
         )
         c2.number_input(
             UISharedTexts.LBL_SENS_RANGE,
-            value=2,
-            min_value=1,
+            value=None,
+            min_value=3,
             max_value=5,
             help=UISharedTexts.HELP_SENS_RANGE,
             key=UIKeys.SENS_RANGE
@@ -298,13 +297,17 @@ def widget_monte_carlo(
         )
 
 def widget_backtest() -> None:
-    """Renders historical backtest activation."""
+    """Renders historical backtest activation.
+
+    Ghost Pattern: lookback defaults to None so the Pydantic system
+    constant (BacktestDefaults.DEFAULT_LOOKBACK_YEARS) applies.
+    """
     st.markdown(UISharedTexts.SEC_10_BACKTEST)
     if st.toggle(
         UISharedTexts.LBL_BACKTEST_ENABLE, value=False,
         help=UISharedTexts.HELP_BACKTEST_ENABLE, key=UIKeys.BT_ENABLE,
     ):
-        st.number_input(UISharedTexts.LBL_LOOKBACK, min_value=1, max_value=10, value=3, key=UIKeys.BT_LOOKBACK)
+        st.number_input(UISharedTexts.LBL_LOOKBACK, min_value=1, max_value=10, value=None, key=UIKeys.BT_LOOKBACK)
 
 def widget_peer_triangulation() -> None:
     """Renders peer selection for relative valuation."""
@@ -334,7 +337,7 @@ def widget_scenarios(mode: ValuationMethodology) -> None:
     for case in ["bull", "base", "bear"]:
         st.markdown(f"**{case.upper()}**")
         c1, c2, c3 = st.columns(3)
-        c1.number_input(UISharedTexts.INP_SCENARIO_PROBA, value=33.3, key=f"scenario_{UIKeys.SCENARIO_P}_{case}")
+        c1.number_input(UISharedTexts.INP_SCENARIO_PROBA, value=None, key=f"scenario_{UIKeys.SCENARIO_P}_{case}")
         c2.number_input(UISharedTexts.INP_SCENARIO_GROWTH, value=None, key=f"scenario_{UIKeys.SCENARIO_G}_{case}")
         if mode == ValuationMethodology.FCFF_GROWTH:
             c3.number_input(UISharedTexts.INP_SCENARIO_MARGIN, value=None, key=f"scenario_{UIKeys.SCENARIO_M}_{case}")
