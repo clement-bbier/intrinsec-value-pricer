@@ -272,72 +272,7 @@ class SystemDefaults:
 
 
 # ==============================================================================
-# 12. UI SESSION KEY REGISTRY
+# 12. UI SESSION KEY REGISTRY — Re-export from canonical location
 # ==============================================================================
 
-class UIKeys:
-    """
-    Centralized registry of UI session key suffixes.
-
-    Every session_state key used to bridge the Streamlit UI with
-    Pydantic backend models MUST be defined here. This prevents silent
-    mismatches between ``shared_widgets.py`` and ``options.py``.
-
-    Categories
-    ----------
-    - Prefixed keys: Combined with a strategy or bridge prefix at runtime
-      (e.g., ``f"{mode_prefix}_{UIKeys.RF}"`` → ``"FCFF_STANDARD_rf"``).
-    - Global keys: Used as-is with no prefix for extensions
-      (e.g., ``UIKeys.MC_ENABLE`` → ``"mc_enable"``).
-    """
-
-    # --- Financial Rates (prefix: strategy mode) ---
-    RF: str = "rf"
-    MRP: str = "mrp"
-    BETA: str = "beta"
-    KD: str = "kd"
-    TAX: str = "tax"
-    YIELD_AAA: str = "yield_aaa"
-    WACC_OVERRIDE: str = "wacc_override"
-    KE_OVERRIDE: str = "ke_override"
-
-    # --- Capital Structure (prefix: bridge_{mode}) ---
-    DEBT: str = "debt"
-    CASH: str = "cash"
-    MINORITIES: str = "min"
-    PENSIONS: str = "pen"
-    SHARES: str = "shares"
-    SBC_RATE: str = "sbc_rate"
-
-    # --- Strategy Params (prefix: strategy mode) ---
-    GROWTH_RATE: str = "growth_rate"
-    GN: str = "gn"
-    EXIT_MULT: str = "exit_mult"
-
-    # --- Monte Carlo (global, no prefix) ---
-    MC_ENABLE: str = "mc_enable"
-    MC_SIMS: str = "mc_sims"
-    MC_VOL_FLOW: str = "mc_vol_flow"
-    MC_VOL_GROWTH: str = "mc_vol_growth"
-    MC_VOL_BETA: str = "mc_vol_beta"
-
-    # --- Sensitivity (global, no prefix) ---
-    SENS_ENABLE: str = "sens_enable"
-    SENS_STEP: str = "sens_step"
-    SENS_RANGE: str = "sens_range"
-
-    # --- Scenarios (global, no prefix) ---
-    SCENARIO_ENABLE: str = "scenario_enable"
-
-    # --- Backtest (global, no prefix) ---
-    BT_ENABLE: str = "bt_enable"
-    BT_LOOKBACK: str = "bt_lookback"
-
-    # --- Peers (global, no prefix) ---
-    PEER_ENABLE: str = "peer_enable"
-    PEER_LIST: str = "peer_list"
-
-    # --- SOTP (global, no prefix) ---
-    SOTP_ENABLE: str = "sotp_enable"
-    SOTP_DISCOUNT: str = "sotp_discount"
-    SOTP_SEGS: str = "sotp_segs"
+from src.core.constants.ui_keys import UIKeys  # noqa: F401, E402

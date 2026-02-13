@@ -24,22 +24,22 @@ from src.models.parameters.input_metadata import UIKey
 
 class BaseMCShocksParameters(BaseNormalizedModel):
     """Universal stochastic foundation."""
-    growth_volatility: Annotated[float | None, UIKey("vol_growth", scale="pct")] = None
+    growth_volatility: Annotated[float | None, UIKey(UIKeys.VOL_GROWTH, scale="pct")] = None
 
 class BetaModelMCShocksParameters(BaseMCShocksParameters):
     """Models requiring Beta sensitivity."""
-    beta_volatility: Annotated[float | None, UIKey("vol_beta", scale="pct")] = None
+    beta_volatility: Annotated[float | None, UIKey(UIKeys.VOL_BETA, scale="pct")] = None
 
 class StandardMCShocksParameters(BetaModelMCShocksParameters):
     """Shocks for standard DCF models."""
     type: Literal["standard"] = "standard"
-    fcf_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
-    dividend_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
+    fcf_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
+    dividend_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
 class GrahamMCShocksParameters(BaseMCShocksParameters):
     """Shocks specific to Graham formula."""
     type: Literal["graham"] = "graham"
-    eps_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
+    eps_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
 MCShockUnion = StandardMCShocksParameters | GrahamMCShocksParameters
 
@@ -92,8 +92,8 @@ class SensitivityParameters(BaseNormalizedModel):
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
-    wacc_span: Annotated[float | None, UIKey("sensi_wacc", scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
-    growth_span: Annotated[float | None, UIKey("sensi_growth", scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
+    wacc_span: Annotated[float | None, UIKey(UIKeys.SENSI_WACC, scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
+    growth_span: Annotated[float | None, UIKey(UIKeys.SENSI_GROWTH, scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
 
 # ==============================================================================
@@ -116,9 +116,9 @@ class ScenarioParameters(BaseNormalizedModel):
         Hard adjustment to the base margins.
     """
     name: str = "Base Case"
-    probability: Annotated[float | None, UIKey("p", scale="raw")] = None
-    growth_override: Annotated[float | None, UIKey("g", scale="pct")] = None
-    margin_override: Annotated[float | None, UIKey("m", scale="pct")] = None
+    probability: Annotated[float | None, UIKey(UIKeys.SCENARIO_P, scale="raw")] = None
+    growth_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_G, scale="pct")] = None
+    margin_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_M, scale="pct")] = None
 
 class ScenariosParameters(BaseNormalizedModel):
     """Collection of deterministic scenarios."""

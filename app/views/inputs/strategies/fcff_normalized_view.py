@@ -1,6 +1,7 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
+from src.config.constants import UIKeys
 from src.i18n.fr.ui.expert import FCFFNormalizedTexts as Texts
 from src.models import ValuationMethodology
 
@@ -29,8 +30,8 @@ class FCFFNormalizedView(BaseStrategyView):
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_BASE, key=f"{prefix}_fcf_norm")
+        st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_BASE, key=f"{prefix}_{UIKeys.FCF_NORM}")
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_growth_rate")
+        st.number_input(Texts.LBL_GROWTH_G, value=None, format="%.2f", key=f"{prefix}_{UIKeys.GROWTH_RATE}")
         st.divider()

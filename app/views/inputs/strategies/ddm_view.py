@@ -2,6 +2,7 @@ import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_growth_rate
+from src.config.constants import UIKeys
 from src.i18n import UISharedTexts
 from src.i18n.fr.ui.expert import DDMTexts as Texts
 from src.models import ValuationMethodology
@@ -38,7 +39,7 @@ class DDMView(BaseStrategyView):
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(
             Texts.INP_BASE, value=None, format="%.2f",
-            help=Texts.HELP_DIVIDEND_BASE, key=f"{prefix}_div_base",
+            help=Texts.HELP_DIVIDEND_BASE, key=f"{prefix}_{UIKeys.DIV_BASE}",
         )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)

@@ -48,7 +48,7 @@ def widget_growth_rate(
         step=0.1,
         format="%.2f",
         help=UISharedTexts.HELP_GROWTH_RATE,
-        key=f"{key_prefix}_growth_rate"
+        key=f"{key_prefix}_{UIKeys.GROWTH_RATE}"
     )
 
 # ==============================================================================
@@ -70,7 +70,7 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             value=None,
             format="%.2f",
             help=UISharedTexts.HELP_PRICE_WEIGHTS,
-            key=f"{prefix}_price"
+            key=f"{prefix}_{UIKeys.PRICE_WEIGHTS}"
         )
 
     col_a, col_b = st.columns(2)
@@ -127,7 +127,7 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             else UISharedTexts.TV_EXIT
         ),
         horizontal=True,
-        key=f"{key_prefix}_method"
+        key=f"{key_prefix}_{UIKeys.TV_METHOD}"
     )
 
     if method == TerminalValueMethod.GORDON_GROWTH:
@@ -137,7 +137,7 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             value=None,
             format="%.2f",
             help=UISharedTexts.HELP_PERP_G,
-            key=f"{key_prefix}_gn"
+            key=f"{key_prefix}_{UIKeys.GN}"
         )
     else:
         st.latex(UISharedTexts.FORMULA_TV_EXIT)
@@ -146,7 +146,7 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             value=None,
             format="%.1f",
             help=UISharedTexts.HELP_EXIT_MULT,
-            key=f"{key_prefix}_exit_mult"
+            key=f"{key_prefix}_{UIKeys.EXIT_MULT}"
         )
 
 def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
@@ -159,7 +159,7 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
         max_value=1.0,
         value=None,
         help=UISharedTexts.HELP_OMEGA,
-        key=f"{key_prefix}_omega"
+        key=f"{key_prefix}_{UIKeys.OMEGA}"
     )
 
 # ==============================================================================
@@ -247,7 +247,6 @@ def widget_monte_carlo(
     custom_vols: dict[str, str] | None = None
 ) -> None:
     """Renders Monte Carlo simulation parameters."""
-    prefix = "mc"
     st.markdown(UISharedTexts.SEC_6_MC)
 
     if not st.toggle(
@@ -287,12 +286,12 @@ def widget_monte_carlo(
         )
 
     if terminal_method == TerminalValueMethod.EXIT_MULTIPLE:
-        col2.number_input(UISharedTexts.LBL_VOL_EXIT_M, value=None, format="%.2f", key=f"{prefix}_vol_exit_m")
+        col2.number_input(UISharedTexts.LBL_VOL_EXIT_M, value=None, format="%.2f", key=UIKeys.MC_VOL_EXIT_M)
     elif terminal_method == TerminalValueMethod.GORDON_GROWTH:
         # STRICT ACCESS: LBL_VOL_GN must exist in SharedTexts
         col2.number_input(
             UISharedTexts.LBL_VOL_GN, value=None, format="%.2f",
-            help=UISharedTexts.HELP_MC_VOL_GN, key=f"{prefix}_vol_gn",
+            help=UISharedTexts.HELP_MC_VOL_GN, key=UIKeys.MC_VOL_GN,
         )
 
 def widget_backtest() -> None:
@@ -314,7 +313,7 @@ def widget_peer_triangulation() -> None:
         raw_input = st.text_input(
             UISharedTexts.INP_MANUAL_PEERS,
             placeholder=UISharedTexts.PLACEHOLDER_PEERS,
-            help=UISharedTexts.HELP_MANUAL_PEERS, key="peer_input",
+            help=UISharedTexts.HELP_MANUAL_PEERS, key=UIKeys.PEER_INPUT,
         )
         # Processed into a list for the Binder
         if raw_input:
@@ -344,7 +343,7 @@ def widget_sotp() -> None:
         st.data_editor(
             pd.DataFrame([{"name": UISharedTexts.DEFAULT_SEGMENT_NAME, "value": 0.0, "method": "DCF"}]),
             num_rows="dynamic",
-            key="sotp_editor",
+            key=UIKeys.SOTP_EDITOR,
             column_config={
                 "name": st.column_config.TextColumn(UISharedTexts.LBL_SEGMENT_NAME),
                 "value": st.column_config.NumberColumn(UISharedTexts.LBL_SEGMENT_VALUE, format="$%.2f"),

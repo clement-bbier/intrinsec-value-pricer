@@ -293,3 +293,137 @@ class TestOrchestratorResolutionLogging:
     def test_resolver_logs_capital_structure(self, orchestrator_source):
         """Orchestrator must log Capital Structure (Debt, Cash, Shares)."""
         assert "[RESOLVER] Capital" in orchestrator_source
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. MASTER INTROSPECTION: EVERY UIKey POINTS TO A VALID UIKeys CONSTANT
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _collect_all_uikey_suffixes():
+    """
+    Walks every Pydantic model that uses UIKey annotations and collects
+    (model_name, field_name, suffix) tuples.
+
+    Returns
+    -------
+    list[tuple[str, str, str]]
+        A list of (model_class_name, field_name, uikey_suffix).
+    """
+    from src.models.parameters.common import CapitalStructureParameters, FinancialRatesParameters
+    from src.models.parameters.options import (
+        BacktestParameters,
+        BaseMCShocksParameters,
+        BetaModelMCShocksParameters,
+        GrahamMCShocksParameters,
+        MCParameters,
+        PeersParameters,
+        ScenarioParameters,
+        ScenariosParameters,
+        SensitivityParameters,
+        SOTPParameters,
+        StandardMCShocksParameters,
+    )
+    from src.models.parameters.strategies import (
+        BaseProjectedParameters,
+        DDMParameters,
+        FCFEParameters,
+        FCFFGrowthParameters,
+        FCFFNormalizedParameters,
+        FCFFStandardParameters,
+        GrahamParameters,
+        RIMParameters,
+        TerminalValueParameters,
+    )
+
+    all_models = [
+        FinancialRatesParameters,
+        CapitalStructureParameters,
+        MCParameters,
+        SensitivityParameters,
+        ScenariosParameters,
+        ScenarioParameters,
+        BacktestParameters,
+        PeersParameters,
+        SOTPParameters,
+        BaseMCShocksParameters,
+        BetaModelMCShocksParameters,
+        StandardMCShocksParameters,
+        GrahamMCShocksParameters,
+        TerminalValueParameters,
+        BaseProjectedParameters,
+        FCFFStandardParameters,
+        FCFFNormalizedParameters,
+        FCFFGrowthParameters,
+        FCFEParameters,
+        DDMParameters,
+        RIMParameters,
+        GrahamParameters,
+    ]
+
+    results = []
+    for model_cls in all_models:
+        for name, field_info in model_cls.model_fields.items():
+            meta = next(
+                (m for m in field_info.metadata if isinstance(m, UIKey)),
+                None,
+            )
+            if meta:
+                results.append((model_cls.__name__, name, meta.suffix))
+    return results
+
+
+def _all_uikeys_values():
+    """
+    Collects every string value defined as a class attribute on UIKeys.
+
+    Returns
+    -------
+    set[str]
+        The set of all registered UIKeys values.
+    """
+    return {
+        v for k, v in vars(UIKeys).items()
+        if not k.startswith("_") and isinstance(v, str)
+    }
+
+
+class TestMasterUIKeyContractIntegrity:
+    """
+    Every UIKey suffix in every Pydantic model must point to a value
+    that exists in the UIKeys registry.
+
+    This test uses introspection to walk all models automatically so
+    any future addition that uses a raw string instead of a UIKeys
+    constant will be caught immediately.
+    """
+
+    ALL_SUFFIXES = _collect_all_uikey_suffixes()
+    VALID_VALUES = _all_uikeys_values()
+
+    @pytest.mark.parametrize(
+        "model_name,field_name,suffix",
+        ALL_SUFFIXES,
+        ids=[f"{m}.{f}" for m, f, _ in _collect_all_uikey_suffixes()],
+    )
+    def test_uikey_suffix_in_registry(self, model_name, field_name, suffix):
+        """UIKey suffix must match a value defined in UIKeys."""
+        assert suffix in self.VALID_VALUES, (
+            f"{model_name}.{field_name} has UIKey('{suffix}') which is not "
+            f"registered in UIKeys. Add it to src/core/constants/ui_keys.py."
+        )
+
+
+class TestUIKeysModuleLocation:
+    """UIKeys must be importable from the canonical SSOT location."""
+
+    def test_import_from_core_constants(self):
+        """UIKeys must be importable from src.core.constants.ui_keys."""
+        from src.core.constants.ui_keys import UIKeys as CanonicalUIKeys
+        assert hasattr(CanonicalUIKeys, "MC_ENABLE")
+        assert hasattr(CanonicalUIKeys, "RF")
+
+    def test_reexport_from_config(self):
+        """UIKeys re-exported from src.config.constants must be the same object."""
+        from src.config.constants import UIKeys as ReexportedUIKeys
+        from src.core.constants.ui_keys import UIKeys as CanonicalUIKeys
+        assert ReexportedUIKeys is CanonicalUIKeys
