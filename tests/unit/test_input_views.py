@@ -1,0 +1,318 @@
+"""
+tests/unit/test_input_views.py
+
+INPUT VIEW RENDERING TESTS
+============================
+Role: Exercises all input form views with mocked streamlit.
+Coverage Target: >85% per file for input views.
+"""
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+# =============================================================================
+# AUTO FORM
+# =============================================================================
+
+class TestAutoFormRendering:
+    """Tests render_auto_form with mocked streamlit."""
+
+    @patch("app.views.inputs.auto_form.get_state")
+    @patch("app.views.inputs.auto_form.st")
+    def test_render_auto_form_calls_markdown(self, mock_st, mock_get_state):
+        """render_auto_form must call st.markdown for title."""
+        from app.views.inputs.auto_form import render_auto_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
+        mock_get_state.return_value = state
+
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
+
+        render_auto_form()
+
+        mock_st.markdown.assert_called()
+        mock_st.info.assert_called()
+
+    @patch("app.views.inputs.auto_form.get_state")
+    @patch("app.views.inputs.auto_form.st")
+    def test_render_auto_form_creates_checkboxes(self, mock_st, mock_get_state):
+        """render_auto_form must create 6 extension checkboxes."""
+        from app.views.inputs.auto_form import render_auto_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
+        mock_get_state.return_value = state
+
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
+
+        render_auto_form()
+
+        assert mock_st.checkbox.call_count == 6
+
+    @patch("app.views.inputs.auto_form.get_state")
+    @patch("app.views.inputs.auto_form.st")
+    def test_auto_form_divider_before_extensions(self, mock_st, mock_get_state):
+        """render_auto_form must show a divider before extensions."""
+        from app.views.inputs.auto_form import render_auto_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
+        mock_get_state.return_value = state
+
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
+
+        render_auto_form()
+
+        mock_st.divider.assert_called()
+
+
+# =============================================================================
+# EXPERT FORM
+# =============================================================================
+
+class TestExpertFormRendering:
+    """Tests render_expert_form with mocked streamlit."""
+
+    def test_render_expert_form_callable(self):
+        """render_expert_form must be callable."""
+        from app.views.inputs.expert_form import render_expert_form
+        assert callable(render_expert_form)
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.FCFFStandardView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_fcff_standard(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with FCFF_STANDARD should instantiate FCFFStandardView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+        mock_view_cls.return_value.render.assert_called_once()
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.GrahamValueView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_graham(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with GRAHAM should instantiate GrahamValueView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.GRAHAM
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.RIMBankView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_rim(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with RIM should instantiate RIMBankView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.RIM
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.FCFEView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_fcfe(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with FCFE should instantiate FCFEView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFE
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.DDMView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_ddm(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with DDM should instantiate DDMView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.DDM
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.FCFFNormalizedView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_normalized(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with FCFF_NORMALIZED should instantiate FCFFNormalizedView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_NORMALIZED
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+    @patch("app.views.inputs.expert_form.get_state")
+    @patch("app.views.inputs.expert_form.FCFFGrowthView")
+    @patch("app.views.inputs.expert_form.st")
+    def test_expert_form_dispatches_growth(self, mock_st, mock_view_cls, mock_get_state):
+        """Expert form with FCFF_GROWTH should instantiate FCFFGrowthView."""
+        from app.views.inputs.expert_form import render_expert_form
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_GROWTH
+        mock_get_state.return_value = state
+
+        render_expert_form()
+
+        mock_view_cls.assert_called_once_with(ticker="AAPL")
+
+
+# =============================================================================
+# SIDEBAR
+# =============================================================================
+
+class TestSidebarRendering:
+    """Tests render_sidebar with mocked streamlit."""
+
+    def test_render_sidebar_callable(self):
+        """render_sidebar must be callable."""
+        from app.views.common.sidebar import render_sidebar
+        assert callable(render_sidebar)
+
+    @patch("app.views.common.sidebar.get_state")
+    @patch("app.views.common.sidebar.AppController")
+    @patch("app.views.common.sidebar.st")
+    def test_render_sidebar_uses_sidebar(self, mock_st, mock_ctrl, mock_get_state):
+        """render_sidebar must use st.sidebar context manager."""
+        from app.views.common.sidebar import render_sidebar
+        from src.models.enums import ValuationMethodology
+
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
+        state.projection_years = 5
+        state.is_expert_mode = False
+        mock_get_state.return_value = state
+
+        # Mock sidebar as context manager
+        sidebar_ctx = MagicMock()
+        sidebar_ctx.__enter__ = MagicMock(return_value=sidebar_ctx)
+        sidebar_ctx.__exit__ = MagicMock(return_value=False)
+        mock_st.sidebar = sidebar_ctx
+
+        mock_st.form.return_value.__enter__ = MagicMock()
+        mock_st.form.return_value.__exit__ = MagicMock()
+        mock_st.text_input.return_value = "AAPL"
+        mock_st.form_submit_button.return_value = False
+        mock_st.slider.return_value = 5
+        mock_st.selectbox.return_value = ValuationMethodology.FCFF_STANDARD
+        mock_st.toggle.return_value = False
+        mock_st.button.return_value = False
+
+        render_sidebar()
+
+        # Verify sidebar context was entered
+        sidebar_ctx.__enter__.assert_called()
+        # Verify core components were rendered
+        mock_st.markdown.assert_called()
+        mock_st.divider.assert_called()
+
+
+# =============================================================================
+# MAIN APP RENDERING
+# =============================================================================
+
+class TestMainRendering:
+    """Tests main.py render_footer with mocked streamlit."""
+
+    @patch("app.main.st")
+    def test_render_footer(self, mock_st):
+        """render_footer must call st.markdown for version, CI, coverage."""
+        from app.main import render_footer
+
+        col_mocks = [MagicMock(), MagicMock(), MagicMock()]
+        for col in col_mocks:
+            col.__enter__ = MagicMock(return_value=col)
+            col.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = col_mocks
+
+        render_footer()
+
+        mock_st.markdown.assert_called()
+
+    @patch("app.main.st")
+    def test_render_footer_no_emojis(self, mock_st):
+        """render_footer must not contain emoji characters in output."""
+        from app.main import render_footer
+
+        col_mocks = [MagicMock(), MagicMock(), MagicMock()]
+        for col in col_mocks:
+            col.__enter__ = MagicMock(return_value=col)
+            col.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = col_mocks
+
+        render_footer()
+
+        for call in mock_st.markdown.call_args_list:
+            text = call[0][0] if call[0] else ""
+            assert "\u2705" not in text
+            assert "\U0001f4ca" not in text
