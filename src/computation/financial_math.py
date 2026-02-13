@@ -470,9 +470,10 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     # 0. Check for WACC override (used in sensitivity analysis)
     if r.wacc is not None:
         # When WACC is manually overridden, we still need to decompose it
-        # but we use the override value as the final WACC
+        # but we use the override value as the final WACC.
+        # Note: Ke and Kd calculations are required for UI display and audit trails.
 
-        # Calculate Ke for display purposes
+        # Calculate Ke for display/audit purposes
         ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
 
         # Calculate Kd for display purposes

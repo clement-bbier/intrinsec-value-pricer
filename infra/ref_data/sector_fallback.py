@@ -89,7 +89,9 @@ def _normalize_sector_key(sector: str) -> str:
         # Basic Materials
         "basic materials": "basic_materials",
         "materials": "basic_materials",
-        "chemicals": "basic_materials",
+        
+        # Chemicals (specific subsector of basic materials)
+        "chemicals": "chemicals",  # Keep specific if available
         
         # Real Estate
         "real estate": "real_estate",

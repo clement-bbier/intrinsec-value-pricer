@@ -349,9 +349,9 @@ def calculate_var(
     VaR represents the potential loss at a given confidence level,
     calculated as the difference between the median and the lower tail percentile.
 
-    Formula: VaR = Median_IV - Percentile_α_IV
+    Formula: VaR = Median_IV - Percentile_threshold_IV
 
-    Where α = (1 - confidence_level) * 100
+    Where percentile_threshold = (1 - confidence_level) * 100
 
     Parameters
     ----------
@@ -396,12 +396,14 @@ def calculate_var(
     if valid_values.size == 0:
         return 0.0
 
-    # Calculate percentile threshold
-    alpha = (1 - confidence_level) * 100
+    # Calculate percentile threshold for VaR
+    # Note: Using 'percentile_threshold' instead of 'alpha' to avoid confusion
+    # with alpha (excess return) in financial literature
+    percentile_threshold = (1 - confidence_level) * 100
 
     # VaR = Median - Lower Tail Percentile
     median_value = float(np.median(valid_values))
-    percentile_value = float(np.percentile(valid_values, alpha))
+    percentile_value = float(np.percentile(valid_values, percentile_threshold))
 
     var = median_value - percentile_value
 
