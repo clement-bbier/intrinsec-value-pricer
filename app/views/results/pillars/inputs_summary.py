@@ -44,11 +44,11 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown(f"#### 🏛️ {InputLabels.SECTION_STRUCTURE}")
+        st.markdown(f"#### {InputLabels.SECTION_STRUCTURE}")
         _render_capital_structure_table(params)
 
     with c2:
-        st.markdown(f"#### ⚖️ {InputLabels.SECTION_WACC}")
+        st.markdown(f"#### {InputLabels.SECTION_WACC}")
         # Pass both inputs (params) and calculated results (common.rates) for fallback
         _render_rates_table(params, result.results.common.rates)
 
@@ -57,7 +57,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     # ==========================================================================
     # BLOCK 3: OPERATIONAL ASSUMPTIONS (TABLE)
     # ==========================================================================
-    st.markdown(f"#### 🚀 {InputLabels.SECTION_GROWTH}")
+    st.markdown(f"#### {InputLabels.SECTION_GROWTH}")
 
     # Renders a table specific to the selected valuation strategy
     _render_strategy_inputs_table(result)
@@ -65,7 +65,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     # ==========================================================================
     # BLOCK 4: RAW DATA SOURCE (EXPANDER)
     # ==========================================================================
-    with st.expander(f"📚 {InputLabels.SECTION_FINANCIALS} ({InputLabels.RAW_DATA_SOURCE_TITLE})", expanded=False):
+    with st.expander(f"{InputLabels.SECTION_FINANCIALS} ({InputLabels.RAW_DATA_SOURCE_TITLE})", expanded=False):
         st.json({
             InputLabels.DATA_SOURCE: InputLabels.DATA_SOURCE_VALUE,
             InputLabels.LAST_UPDATE: str(params.structure.last_update),

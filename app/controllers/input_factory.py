@@ -66,7 +66,8 @@ class InputFactory:
         common_params = InputFactory._pull_model(CommonParameters)
 
         # 4. Extensions (Monte Carlo, etc.)
-        extension_params = InputFactory._pull_model(ExtensionBundleParameters)
+        # Extensions use GLOBAL keys (no prefix) to be consistent across Auto/Expert modes.
+        extension_params = InputFactory._pull_model(ExtensionBundleParameters, prefix=None)
 
         # 5. Assembly
         full_params = Parameters(

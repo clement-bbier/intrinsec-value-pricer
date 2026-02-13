@@ -326,7 +326,7 @@ class FCFFGrowthTexts(UISharedTexts):
     HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée à la fin de l'horizon de projection."
 
     # Disclaimer about margin simplification
-    MARGIN_DISCLAIMER = """⚠️ Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible
+    MARGIN_DISCLAIMER = """ATTENTION - Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible
 suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.
 
 Formule complète professionnelle :

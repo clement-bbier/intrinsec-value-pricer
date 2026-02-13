@@ -49,7 +49,7 @@ def render_sidebar():
             ).upper().strip()
 
             ticker_submitted = st.form_submit_button(
-                "✓ Confirm Ticker",
+                "Confirm Ticker",
                 use_container_width=True
             )
 
