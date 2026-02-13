@@ -51,7 +51,10 @@ class GrahamValueView(BaseStrategyView):
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
         with c1:
-            st.number_input(Texts.INP_YIELD_AAA, value=None, format="%.2f", help=Texts.HELP_YIELD_AAA, key=f"{prefix}_{UIKeys.YIELD_AAA}")
+            st.number_input(
+                Texts.INP_YIELD_AAA, value=None, format="%.2f",
+                help=Texts.HELP_YIELD_AAA, key=f"{prefix}_{UIKeys.YIELD_AAA}",
+            )
         with c2:
             st.number_input(Texts.INP_TAX, value=None, format="%.2f", help=Texts.HELP_TAX, key=f"{prefix}_{UIKeys.TAX}")
         if hasattr(Texts, 'NOTE_GRAHAM') and Texts.NOTE_GRAHAM:

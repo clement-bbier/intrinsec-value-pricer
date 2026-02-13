@@ -95,11 +95,8 @@ class MonteCarloDistributionTab:
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
-        ticker = result.request.parameters.structure.ticker
         display_simulation_chart(
-            ticker=ticker,
             simulation_results=mc_data.simulation_values,
-            market_price=market_price,
             currency=currency
         )
 

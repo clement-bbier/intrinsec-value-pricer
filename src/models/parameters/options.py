@@ -88,12 +88,16 @@ class SensitivityParameters(BaseNormalizedModel):
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
     enabled: Annotated[bool, UIKey(UIKeys.SENS_ENABLE, scale="raw")] = False
-    steps: Annotated[int, UIKey(UIKeys.SENS_STEP, scale="raw")] = Field(
+    steps: Annotated[int, UIKey(UIKeys.SENS_RANGE, scale="raw")] = Field(
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
-    wacc_span: Annotated[float | None, UIKey(UIKeys.SENSI_WACC, scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
-    growth_span: Annotated[float | None, UIKey(UIKeys.SENSI_GROWTH, scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
+    wacc_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = (
+        SensitivityDefaults.DEFAULT_WACC_SPAN
+    )
+    growth_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = (
+        SensitivityDefaults.DEFAULT_GROWTH_SPAN
+    )
 
 
 # ==============================================================================

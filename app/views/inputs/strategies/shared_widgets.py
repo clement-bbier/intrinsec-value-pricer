@@ -75,7 +75,10 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
 
     col_a, col_b = st.columns(2)
     # Taux sans risque & Beta
-    col_a.number_input(UISharedTexts.INP_RF, value=None, format="%.2f", help=UISharedTexts.HELP_RF, key=f"{prefix}_{UIKeys.RF}")
+    col_a.number_input(
+        UISharedTexts.INP_RF, value=None, format="%.2f",
+        help=UISharedTexts.HELP_RF, key=f"{prefix}_{UIKeys.RF}",
+    )
     col_b.number_input(
         UISharedTexts.INP_BETA, value=None, format="%.2f",
         help=UISharedTexts.HELP_BETA, key=f"{prefix}_{UIKeys.BETA}",

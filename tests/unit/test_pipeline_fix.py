@@ -141,14 +141,14 @@ class TestExtensionBundleUIKeys:
         assert meta.suffix == "mc_sims"
 
     def test_sensitivity_steps_key(self):
-        """Sensitivity 'steps' UIKey suffix must be 'sens_step'."""
+        """Sensitivity 'steps' UIKey suffix must be 'sens_range'."""
         from src.models.parameters.input_metadata import UIKey
         meta = next(
             (m for m in SensitivityParameters.model_fields["steps"].metadata if isinstance(m, UIKey)),
             None,
         )
         assert meta is not None
-        assert meta.suffix == "sens_step"
+        assert meta.suffix == "sens_range"
 
     def test_sotp_discount_key(self):
         """SOTP 'conglomerate_discount' UIKey suffix must be 'sotp_discount'."""
