@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from src.config.constants import BacktestDefaults, MonteCarloDefaults, SensitivityDefaults, SOTPDefaults
+from src.config.constants import BacktestDefaults, MonteCarloDefaults, SensitivityDefaults, SOTPDefaults, UIKeys
 from src.models.parameters.common import BaseNormalizedModel
 from src.models.parameters.input_metadata import UIKey
 
@@ -24,22 +24,22 @@ from src.models.parameters.input_metadata import UIKey
 
 class BaseMCShocksParameters(BaseNormalizedModel):
     """Universal stochastic foundation."""
-    growth_volatility: Annotated[float | None, UIKey("vol_growth", scale="pct")] = None
+    growth_volatility: Annotated[float | None, UIKey(UIKeys.VOL_GROWTH, scale="pct")] = None
 
 class BetaModelMCShocksParameters(BaseMCShocksParameters):
     """Models requiring Beta sensitivity."""
-    beta_volatility: Annotated[float | None, UIKey("vol_beta", scale="pct")] = None
+    beta_volatility: Annotated[float | None, UIKey(UIKeys.VOL_BETA, scale="pct")] = None
 
 class StandardMCShocksParameters(BetaModelMCShocksParameters):
     """Shocks for standard DCF models."""
     type: Literal["standard"] = "standard"
-    fcf_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
-    dividend_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
+    fcf_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
+    dividend_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
 class GrahamMCShocksParameters(BaseMCShocksParameters):
     """Shocks specific to Graham formula."""
     type: Literal["graham"] = "graham"
-    eps_volatility: Annotated[float | None, UIKey("vol_flow", scale="pct")] = None
+    eps_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
 MCShockUnion = StandardMCShocksParameters | GrahamMCShocksParameters
 
@@ -58,8 +58,8 @@ class MCParameters(BaseNormalizedModel):
     random_seed : int | None
         Random seed for reproducibility (default: 42).
     """
-    enabled: Annotated[bool, UIKey("enable", scale="raw")] = False
-    iterations: Annotated[int, UIKey("sims", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.MC_ENABLE, scale="raw")] = False
+    iterations: Annotated[int, UIKey(UIKeys.MC_SIMS, scale="raw")] = Field(
         default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
         le=MonteCarloDefaults.MAX_SIMULATIONS
@@ -87,13 +87,13 @@ class SensitivityParameters(BaseNormalizedModel):
     growth_span : float | None
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
-    enabled: Annotated[bool, UIKey("sensi_enable", scale="raw")] = False
-    steps: Annotated[int, UIKey("sensi_steps", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.SENS_ENABLE, scale="raw")] = False
+    steps: Annotated[int, UIKey(UIKeys.SENS_STEP, scale="raw")] = Field(
         default=SensitivityDefaults.DEFAULT_STEPS,
         ge=3, le=9
     )
-    wacc_span: Annotated[float | None, UIKey("sensi_wacc", scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
-    growth_span: Annotated[float | None, UIKey("sensi_growth", scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
+    wacc_span: Annotated[float | None, UIKey(UIKeys.SENSI_WACC, scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
+    growth_span: Annotated[float | None, UIKey(UIKeys.SENSI_GROWTH, scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
 
 # ==============================================================================
@@ -116,27 +116,27 @@ class ScenarioParameters(BaseNormalizedModel):
         Hard adjustment to the base margins.
     """
     name: str = "Base Case"
-    probability: Annotated[float | None, UIKey("p", scale="raw")] = None
-    growth_override: Annotated[float | None, UIKey("g", scale="pct")] = None
-    margin_override: Annotated[float | None, UIKey("m", scale="pct")] = None
+    probability: Annotated[float | None, UIKey(UIKeys.SCENARIO_P, scale="raw")] = None
+    growth_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_G, scale="pct")] = None
+    margin_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_M, scale="pct")] = None
 
 class ScenariosParameters(BaseNormalizedModel):
     """Collection of deterministic scenarios."""
-    enabled: Annotated[bool, UIKey("scenario_enable", scale="raw")] = False
+    enabled: Annotated[bool, UIKey(UIKeys.SCENARIO_ENABLE, scale="raw")] = False
     cases: list[ScenarioParameters] = Field(default_factory=list)
 
 class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
-    enabled: Annotated[bool, UIKey("bt_enable", scale="raw")] = False
-    lookback_years: Annotated[int, UIKey("bt_lookback", scale="raw")] = Field(
+    enabled: Annotated[bool, UIKey(UIKeys.BT_ENABLE, scale="raw")] = False
+    lookback_years: Annotated[int, UIKey(UIKeys.BT_LOOKBACK, scale="raw")] = Field(
         default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS,
         ge=1, le=10
     )
 
 class PeersParameters(BaseNormalizedModel):
     """Configuration for peer-based relative valuation."""
-    enabled: Annotated[bool, UIKey("peer_enable", scale="raw")] = False
-    tickers: Annotated[list[str], UIKey("peer_list")] = Field(default_factory=list)
+    enabled: Annotated[bool, UIKey(UIKeys.PEER_ENABLE, scale="raw")] = False
+    tickers: Annotated[list[str], UIKey(UIKeys.PEER_LIST)] = Field(default_factory=list)
 
 class BusinessUnit(BaseModel):
     """A single segment in Sum-Of-The-Parts."""
@@ -156,11 +156,11 @@ class SOTPParameters(BaseNormalizedModel):
     segments : List[BusinessUnit]
         List of manual valuations per business unit.
     """
-    enabled: Annotated[bool, UIKey("sotp_enable", scale="raw")] = False
-    conglomerate_discount: Annotated[float, UIKey("sotp_disc", scale="pct")] = (
+    enabled: Annotated[bool, UIKey(UIKeys.SOTP_ENABLE, scale="raw")] = False
+    conglomerate_discount: Annotated[float, UIKey(UIKeys.SOTP_DISCOUNT, scale="pct")] = (
         SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
     )
-    segments: Annotated[list[BusinessUnit], UIKey("sotp_segs")] = Field(default_factory=list)
+    segments: Annotated[list[BusinessUnit], UIKey(UIKeys.SOTP_SEGS)] = Field(default_factory=list)
 
 
 # ==============================================================================

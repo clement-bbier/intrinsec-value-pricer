@@ -72,6 +72,14 @@ class TestInstitutionalCSS:
         """Main app background should be light."""
         assert "#f8fafc" in INSTITUTIONAL_CSS
 
+    def test_css_slate_secondary_color(self):
+        """Borders and secondary accents must use Slate (#94a3b8)."""
+        assert "#94a3b8" in INSTITUTIONAL_CSS
+
+    def test_css_form_submit_button(self):
+        """Form submit button must have dedicated styling for visibility."""
+        assert "stFormSubmitButton" in INSTITUTIONAL_CSS
+
     def test_css_no_emojis(self):
         """CSS must contain no emoji characters."""
         forbidden = ["\U0001f4ca", "\u2705", "\U0001f680", "\U0001f525"]

@@ -1,6 +1,7 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
+from src.config.constants import UIKeys
 from src.i18n import UISharedTexts
 from src.i18n.fr.ui.expert import FCFETexts as Texts
 from src.models import ValuationMethodology
@@ -39,17 +40,17 @@ class FCFEView(BaseStrategyView):
         with c1:
             st.number_input(
                 Texts.INP_BASE, value=None, format="%.0f",
-                help=Texts.HELP_FCFE_BASE, key=f"{prefix}_fcfe_anchor",
+                help=Texts.HELP_FCFE_BASE, key=f"{prefix}_{UIKeys.FCFE_ANCHOR}",
             )
         with c2:
             st.number_input(
                 Texts.INP_NET_BORROWING, value=None, format="%.0f",
-                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_net_borrowing_delta",
+                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_{UIKeys.NET_BORROWING_DELTA}",
             )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(
             UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
-            help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_growth_rate",
+            help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_{UIKeys.GROWTH_RATE}",
         )
         st.divider()

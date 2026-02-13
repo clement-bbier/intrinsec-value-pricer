@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from app.state.store import get_state
 from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.common import CommonParameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
 from src.models.parameters.input_metadata import UIKey
 from src.models.parameters.options import ExtensionBundleParameters
 from src.models.parameters.strategies import (
@@ -63,7 +63,16 @@ class InputFactory:
         strategy_params = InputFactory._build_strategy_params(state.selected_methodology)
 
         # 3. Common Parameters (WACC, Bridge)
-        common_params = InputFactory._pull_model(CommonParameters)
+        # Rates use the strategy prefix so that the UIKey suffix (e.g. "rf")
+        # is combined to form the full session key (e.g. "FCFF_STANDARD_rf").
+        # Capital structure uses the bridge prefix (e.g. "bridge_FCFF_STANDARD")
+        # so the full key becomes "bridge_FCFF_STANDARD_debt", etc.
+        mode_prefix = state.selected_methodology.value
+        bridge_prefix = f"bridge_{state.selected_methodology.name}"
+
+        rates = InputFactory._pull_model(FinancialRatesParameters, prefix=mode_prefix)
+        capital = InputFactory._pull_model(CapitalStructureParameters, prefix=bridge_prefix)
+        common_params = CommonParameters(rates=rates, capital=capital)
 
         # 4. Extensions (Monte Carlo, etc.)
         # Extensions use GLOBAL keys (no prefix) to be consistent across Auto/Expert modes.

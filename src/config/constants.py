@@ -269,3 +269,10 @@ class UIWidgetDefaults:
 class SystemDefaults:
     CACHE_TTL_SHORT: int = 3600
     CACHE_TTL_LONG: int = 86400
+
+
+# ==============================================================================
+# 12. UI SESSION KEY REGISTRY — Re-export from canonical location
+# ==============================================================================
+
+from src.core.constants.ui_keys import UIKeys  # noqa: F401, E402

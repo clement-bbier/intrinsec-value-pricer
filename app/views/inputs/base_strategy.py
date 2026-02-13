@@ -29,6 +29,7 @@ from app.views.inputs.strategies.shared_widgets import (
     widget_terminal_value_dcf,
     widget_terminal_value_rim,
 )
+from src.config.constants import UIKeys
 from src.i18n import UISharedTexts
 from src.models import ValuationMethodology
 
@@ -146,7 +147,7 @@ class BaseStrategyView(ABC):
         # 6. Monte Carlo Simulation
         if self.SHOW_MONTE_CARLO:
             # Récupération de la méthode terminale choisie (si applicable) pour ajuster les inputs MC
-            term_method_key = f"{prefix}_method"
+            term_method_key = f"{prefix}_{UIKeys.TV_METHOD}"
             term_method = st.session_state.get(term_method_key)
 
             widget_monte_carlo(
@@ -156,8 +157,9 @@ class BaseStrategyView(ABC):
             )
 
         # 7. Sensitivity Analysis (WACC vs g)
+        # Uses default "sens" prefix for global extension keys (no strategy prefix).
         if self.SHOW_SENSITIVITY:
-            widget_sensitivity(key_prefix=prefix)
+            widget_sensitivity()
 
         # 8. Scenario Analysis (Bull/Bear)
         if self.SHOW_SCENARIOS:

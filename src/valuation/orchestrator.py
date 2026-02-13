@@ -212,6 +212,30 @@ class ValuationOrchestrator:
         # --- PHASE 1.6: PARAMETER RESOLUTION LOG ---
         QuantLogger.log_parameter_resolution(ticker, request.mode.value)
 
+        # --- PHASE 1.6b: CRITICAL PARAMETER RESOLUTION LOG ---
+        logger.info(
+            "[RESOLVER] Risk-Free Rate resolved to %.4f for %s",
+            params.common.rates.risk_free_rate, ticker,
+        )
+        logger.info(
+            "[RESOLVER] Beta resolved to %.2f for %s",
+            params.common.rates.beta, ticker,
+        )
+        logger.info(
+            "[RESOLVER] WACC components: MRP=%.4f | Kd=%.4f | Tax=%.4f for %s",
+            params.common.rates.market_risk_premium,
+            params.common.rates.cost_of_debt or 0.0,
+            params.common.rates.tax_rate or 0.0,
+            ticker,
+        )
+        logger.info(
+            "[RESOLVER] Capital: Debt=%.2fM | Cash=%.2fM | Shares=%.2fM for %s",
+            (params.common.capital.total_debt or 0.0) / 1e6,
+            (params.common.capital.cash_and_equivalents or 0.0) / 1e6,
+            (params.common.capital.shares_outstanding or 0.0) / 1e6,
+            ticker,
+        )
+
         # --- PHASE 1.7: ECONOMIC GUARDRAILS ---
         logger.info(f"[Orchestrator] Running economic guardrails for {ticker}")
         guardrail_events, has_blocking_errors = self._run_guardrails(params)
