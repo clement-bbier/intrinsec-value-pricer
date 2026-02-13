@@ -61,7 +61,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
         """
         Executes the Normalized DCF sequence.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(FCFFNormalizedParameters, params.strategy)
 
         steps: list[CalculationStep] = []

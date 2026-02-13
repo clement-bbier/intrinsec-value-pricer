@@ -1,6 +1,6 @@
 """
 app/views/results/__init__.py
-Exposition de l'orchestrateur de résultats.
+Exposes the results orchestrator.
 """
 
 from .orchestrator import render_valuation_results

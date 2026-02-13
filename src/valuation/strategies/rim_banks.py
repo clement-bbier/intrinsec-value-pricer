@@ -63,7 +63,7 @@ class RIMBankingStrategy(IValuationRunner):
         """
         Executes RIM valuation sequence.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(RIMParameters, params.strategy)
 
         steps: list[CalculationStep] = []

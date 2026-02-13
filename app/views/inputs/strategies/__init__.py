@@ -1,6 +1,6 @@
 """
 app/views/inputs/strategies/__init__.py
-Index des vues de stratégies de valorisation.
+Index of valuation strategy views.
 """
 
 from .ddm_view import DDMView
@@ -11,7 +11,7 @@ from .fcff_standard_view import FCFFStandardView
 from .graham_value_view import GrahamValueView
 from .rim_bank_view import RIMBankView
 
-# Mapping pour la factory
+# Mapping for the factory
 STRATEGY_VIEW_MAP = {
     "DDM": DDMView,
     "FCFE": FCFEView,

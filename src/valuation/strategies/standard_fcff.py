@@ -60,7 +60,7 @@ class StandardFCFFStrategy(IValuationRunner):
         """
         Executes the DCF Standard sequence (Single Run).
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(FCFFStandardParameters, params.strategy)
 
         steps: list[CalculationStep] = []

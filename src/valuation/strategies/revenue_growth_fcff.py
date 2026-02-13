@@ -69,7 +69,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         """
         Executes the Revenue-Driven DCF sequence.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(FCFFGrowthParameters, params.strategy)
 
         steps: list[CalculationStep] = []

@@ -1,17 +1,17 @@
 """
 infra/data_providers/config.py
-Configuration technique pour les appels API et l'extraction de données.
+Technical configuration for API calls and data extraction.
 """
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    """Paramètres de résilience et de performance pour les APIs."""
+    """Resiliency and performance parameters for API providers."""
     # Resiliency
     MAX_RETRY_ATTEMPTS: int = 3
-    RETRY_DELAY_BASE: float = 1.0  # secondes
-    REQUEST_TIMEOUT: float = 10.0  # secondes
+    RETRY_DELAY_BASE: float = 1.0  # seconds
+    REQUEST_TIMEOUT: float = 10.0  # seconds
 
     # Caching
     CACHE_ENABLED: bool = True
