@@ -63,7 +63,7 @@ class DividendDiscountStrategy(IValuationRunner):
         """
         Executes DDM valuation sequence.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(DDMParameters, params.strategy)
 
         steps: list[CalculationStep] = []

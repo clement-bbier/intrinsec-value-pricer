@@ -63,7 +63,7 @@ class HistoricalBacktestTab:
         currency = result.request.parameters.structure.currency
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {BacktestTexts.TITLE}")
+        st.subheader(BacktestTexts.TITLE)
         st.caption(BacktestTexts.HELP_BACKTEST)
         st.write("")
 
@@ -88,7 +88,7 @@ class HistoricalBacktestTab:
                 # Accuracy Status: MAE < 15% is considered 'Compliant' (Green)
                 is_optimal = bt.mean_absolute_error < 0.15
 
-                # Use BenchmarkTexts for generic Status Labels (Aligné vs Écart)
+                # Use BenchmarkTexts for generic status labels (Aligned vs Deviation)
                 status_label = BenchmarkTexts.STATUS_OK if is_optimal else BenchmarkTexts.STATUS_ALERT
                 grade_label = BacktestTexts.GRADE_A if is_optimal else BacktestTexts.GRADE_B
 
@@ -104,10 +104,11 @@ class HistoricalBacktestTab:
 
         # --- 2. CONVERGENCE CHART ---
         st.write("")
-        display_backtest_convergence_chart(
-            backtest_report=bt,
-            currency=currency
-        )
+        with st.container(border=True):
+            display_backtest_convergence_chart(
+                backtest_report=bt,
+                currency=currency
+            )
 
         # --- 3. SEQUENCE DETAILS (Transparency Dataframe) ---
         st.write("")
@@ -134,7 +135,7 @@ class HistoricalBacktestTab:
                 df,
                 hide_index=True,
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
             st.caption(f"**{CommonTexts.INTERPRETATION_LABEL}** : {QuantTexts.BACKTEST_INTERPRETATION}")

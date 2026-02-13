@@ -13,25 +13,26 @@ import streamlit as st
 
 from src.i18n.fr.ui.results import KPITexts
 
-# On retire les dépendances "Audit" (AuditStep, AuditTexts) pour rendre le fichier générique.
+# Removed Audit-specific dependencies (AuditStep, AuditTexts) to keep this file generic.
 
 def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=None):
     """
-    Composant UI robuste pour les KPIs.
-    Agit comme un 'Adapter' pour protéger l'app des changements d'API Streamlit.
+    Robust UI component for KPI metrics.
+
+    Acts as an adapter to protect the app from Streamlit API changes.
     """
-    # MAPPING DE SÉCURITÉ : On traduit tes couleurs métier en standards Streamlit
+    # SAFETY MAPPING: Translate business colors to Streamlit-compatible delta colors
     color_map = {
-        "green": "normal",  # Vert pour positif
-        "red": "inverse",  # Rouge pour positif (ou inversion selon contexte)
-        "orange": "off",  # Gris (Streamlit ne supporte pas l'orange en delta)
+        "green": "normal",  # Green for positive
+        "red": "inverse",  # Red for positive (or inverted depending on context)
+        "orange": "off",  # Gray (Streamlit does not support orange for delta)
         "gray": "off",
         "normal": "normal",
         "inverse": "inverse",
         "off": "off"
     }
 
-    # Si la couleur demandée n'est pas connue, on met "off" par sécurité (éviter le crash)
+    # If the requested color is unknown, default to "off" for safety (avoid crash)
     safe_color = color_map.get(delta_color, "off")
 
     st.metric(
@@ -73,7 +74,7 @@ def atom_benchmark_card(
     label: str,
     company_value: str,
     market_value: str,
-    status: Literal["LEADER", "ALIGNÉ", "RETARD", "N/A"],
+    status: str,
     status_color: Literal["green", "blue", "orange", "red", "gray"] = "gray",
     description: str = ""
 ) -> None:

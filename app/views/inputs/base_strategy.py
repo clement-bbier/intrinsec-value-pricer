@@ -55,7 +55,7 @@ class BaseStrategyView(ABC):
     SHOW_TERMINAL_SECTION: bool = True
     SHOW_BRIDGE_SECTION: bool = True
 
-    # Extensions Flags (Doivent être surchargés explicitement par les vues filles)
+    # Extensions Flags (Must be explicitly overridden by child views)
     SHOW_MONTE_CARLO: bool = True
     SHOW_SENSITIVITY: bool = True
     SHOW_BACKTEST: bool = True
@@ -141,12 +141,12 @@ class BaseStrategyView(ABC):
     def _render_optional_features(self) -> None:
         """Coordinates complementary analytical modules."""
 
-        # Le key_prefix est crucial pour éviter les conflits d'ID Streamlit
+        # The key_prefix is crucial to avoid Streamlit ID conflicts
         prefix = self.MODE.name
 
         # 6. Monte Carlo Simulation
         if self.SHOW_MONTE_CARLO:
-            # Récupération de la méthode terminale choisie (si applicable) pour ajuster les inputs MC
+            # Retrieve chosen terminal method (if applicable) to adjust MC inputs
             term_method_key = f"{prefix}_{UIKeys.TV_METHOD}"
             term_method = st.session_state.get(term_method_key)
 

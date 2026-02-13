@@ -46,7 +46,7 @@ class TestUIKeysRegistryCompleteness:
 
     EXPECTED_EXTENSION_KEYS = [
         "MC_ENABLE", "MC_SIMS",
-        "SENS_ENABLE", "SENS_STEP",
+        "SENS_ENABLE", "SENS_STEP", "SENS_RANGE",
         "SCENARIO_ENABLE",
         "BT_ENABLE", "BT_LOOKBACK",
         "PEER_ENABLE", "PEER_LIST",
@@ -105,7 +105,9 @@ class TestOptionsUIKeySuffixes:
         """SensitivityParameters UIKey suffixes must match UIKeys values."""
         suffixes = _get_uikey_suffixes(SensitivityParameters)
         assert suffixes["enabled"] == UIKeys.SENS_ENABLE
-        assert suffixes["steps"] == UIKeys.SENS_STEP
+        assert suffixes["steps"] == UIKeys.SENS_RANGE
+        assert suffixes["wacc_span"] == UIKeys.SENS_STEP
+        assert suffixes["growth_span"] == UIKeys.SENS_STEP
 
     def test_scenario_key_uses_constant(self):
         """ScenariosParameters UIKey suffix must match UIKeys value."""
@@ -212,6 +214,7 @@ class TestSensitivityGlobalKey:
         )
         assert "UIKeys.SENS_ENABLE" in source
         assert "UIKeys.SENS_STEP" in source
+        assert "UIKeys.SENS_RANGE" in source
 
 
 # ═══════════════════════════════════════════════════════════════════════════

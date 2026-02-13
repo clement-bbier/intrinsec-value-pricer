@@ -52,10 +52,10 @@ def render_calculation_step(index: int, step: CalculationStep) -> None:
         # 2. Variable Details (Inputs)
         # The model uses 'variables_map', not 'inputs'
         if step.variables_map:
-            with st.expander("Détails & Variables"):
+            with st.expander("Details & Variables"):
                 # Show the substituted calculation if available
                 if step.actual_calculation:
-                    st.markdown(f"**Calcul :** `{step.actual_calculation}`")
+                    st.markdown(f"**Calculation :** `{step.actual_calculation}`")
                     st.divider()
 
                 # List specific variables used in this step

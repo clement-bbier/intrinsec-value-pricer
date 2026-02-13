@@ -68,7 +68,7 @@ def display_price_chart(ticker: str, price_history: pd.DataFrame | None) -> None
     ).properties(height=300).interactive()
 
     # Unique key based on ticker to avoid Streamlit conflicts
-    st.altair_chart(chart, use_container_width=True, key=f"price_chart_{ticker}")
+    st.altair_chart(chart, width="stretch", key=f"price_chart_{ticker}")
 
 
 # ============================================================================
@@ -96,7 +96,7 @@ def display_simulation_chart(simulation_results: list[float], currency: str) -> 
     rule_p50 = alt.Chart(pd.DataFrame({'x': [p50]})).mark_rule(color="#1e293b", strokeWidth=2).encode(x='x')
     rule_ci = alt.Chart(pd.DataFrame({'x': [p10, p90]})).mark_rule(color="#ef4444", strokeDash=[4, 4]).encode(x='x')
 
-    st.altair_chart(alt.layer(hist, rule_p50, rule_ci).properties(height=320), use_container_width=True)
+    st.altair_chart(alt.layer(hist, rule_p50, rule_ci).properties(height=320), width="stretch")
 
     # Stats Summary HTML block
     st.markdown(f"""
@@ -181,7 +181,7 @@ def display_football_field(result: ValuationResult) -> None:
         color="#ef4444", strokeWidth=2, strokeDash=[4, 4]
     ).encode(x="x:Q")
 
-    st.altair_chart((bars + ticks + price_line).properties(height=250), use_container_width=True)
+    st.altair_chart((bars + ticks + price_line).properties(height=250), width="stretch")
 
 
 # ============================================================================
@@ -256,7 +256,7 @@ def display_sensitivity_heatmap(
         )
     )
 
-    st.altair_chart((rects + text).properties(height=350), use_container_width=True)
+    st.altair_chart((rects + text).properties(height=350), width="stretch")
 
 
 # ============================================================================
@@ -329,7 +329,7 @@ def display_sotp_waterfall(result: ValuationResult) -> None:
         paper_bgcolor='rgba(0,0,0,0)'
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 @st.fragment
@@ -341,7 +341,7 @@ def display_backtest_convergence_chart(backtest_report: BacktestResults | None, 
 
     data = []
     for p in backtest_report.points:
-        # CORRECTION : Utilisation des bons attributs LABEL_xxx au lieu de LBL_xxx
+        # FIX: Use correct LABEL_xxx attributes instead of LBL_xxx
         data.append({
             "date": p.valuation_date,
             "type": BacktestTexts.LABEL_HIST_IV,
@@ -357,12 +357,12 @@ def display_backtest_convergence_chart(backtest_report: BacktestResults | None, 
 
     chart = alt.Chart(df).mark_line(point=True).encode(
         x=alt.X('date:T', axis=alt.Axis(format='%Y-%m', title=None)),
-        y=alt.Y('val:Q', scale=alt.Scale(zero=False), title=f"Prix ({currency})"),
+        y=alt.Y('val:Q', scale=alt.Scale(zero=False), title=f"Price ({currency})"),
         color=alt.Color('type:N', legend=alt.Legend(title=None, orient='top')),
         tooltip=['date:T', 'type:N', alt.Tooltip('val:Q', format=',.2f')]
     ).properties(height=350).interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
 
 # ============================================================================
@@ -415,14 +415,14 @@ def display_sector_comparison_chart(
     colors = alt.Scale(domain=[company_name, sector_name], range=['#3b82f6', '#94a3b8'])
 
     chart = alt.Chart(df).mark_bar().encode(
-        x=alt.X('Type:N', axis=None, title=None),  # Groupement implicite par Type
+        x=alt.X('Type:N', axis=None, title=None),  # Implicit grouping by Type
         y=alt.Y('Value:Q', title=None),
         color=alt.Color('Entity:N', scale=colors, legend=alt.Legend(title=None, orient='top')),
         column=alt.Column('KPI:N', header=alt.Header(title=None, labelFontSize=12, labelFontWeight='bold')),
         tooltip=[
-            alt.Tooltip('Entity', title='Entité'),
+            alt.Tooltip('Entity', title='Entity'),
             alt.Tooltip('KPI'),
-            alt.Tooltip('FormattedValue:N', title='Valeur')
+            alt.Tooltip('FormattedValue:N', title='Value')
         ]
     ).properties(
         width=100,
@@ -485,4 +485,4 @@ def display_scenario_comparison_chart(
         width='container'
     )
 
-    st.altair_chart(final_chart, use_container_width=True)
+    st.altair_chart(final_chart, width="stretch")

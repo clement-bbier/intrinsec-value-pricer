@@ -199,10 +199,14 @@ class BenchmarkTexts:
     LBL_ERP = "PRIME DE RISQUE (ERP)"
 
     # Statuts de comparaison (Badges)
-    STATUS_PREMIUM = "PREMIUM"  # Plus cher que le secteur
-    STATUS_DISCOUNT = "DISCOUNT"  # Moins cher que le secteur
-    STATUS_LEADER = "LEADER"  # Meilleure perf que le secteur
-    STATUS_LAGGING = "RETARD"  # Moins bonne perf que le secteur
+    STATUS_PREMIUM = "PREMIUM"  # More expensive than sector
+    STATUS_DISCOUNT = "DISCOUNT"  # Cheaper than sector
+    STATUS_LEADER = "LEADER"  # Better performance than sector
+    STATUS_LAGGING = "RETARD"  # Lower performance than sector
+    STATUS_ALIGNED = "ALIGNÉ"  # In line with sector
+
+    # Description for Premium/Discount context
+    DESC_PREMIUM_DISCOUNT = "Premium = Cher (Orange) | Discount = Occasion (Vert)"
 
     # Labels Graphiques
     CHART_TITLE_VALUATION = "Visualisation des écarts de valorisation"
@@ -308,6 +312,7 @@ class QuantTexts:
 
     # --- Scenarios ---
     SCENARIO_TITLE = "Analyse des Scénarios"
+    MSG_NO_SCENARIOS = "Aucun scénario calculé. Vérifiez les probabilités et paramètres en mode Expert."
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Potentiel Pondéré"
     COL_SCENARIO = "SCÉNARIO"

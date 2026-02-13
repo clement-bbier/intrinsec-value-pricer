@@ -50,7 +50,7 @@ def render_sidebar():
 
             ticker_submitted = st.form_submit_button(
                 "Confirm Ticker",
-                use_container_width=True
+                width="stretch"
             )
 
         if ticker_submitted and new_ticker and new_ticker != state.ticker:
@@ -114,7 +114,7 @@ def render_sidebar():
         if st.button(
                 CommonTexts.RUN_BUTTON,
                 type="primary",
-                use_container_width=True
+                width="stretch"
         ):
             AppController.handle_run_analysis()
 

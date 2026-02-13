@@ -18,18 +18,18 @@ class GrahamValueView(BaseStrategyView):
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
 
-    # --- UI Pipeline Configuration (Sections Standards) ---
-    SHOW_DISCOUNT_SECTION = False  # Pas de WACC/Ke dans la formule
-    SHOW_TERMINAL_SECTION = False  # Formule tout-en-un
-    SHOW_BRIDGE_SECTION = False    # Donne un prix direct
+    # --- UI Pipeline Configuration (Standard Sections) ---
+    SHOW_DISCOUNT_SECTION = False  # No WACC/Ke in the formula
+    SHOW_TERMINAL_SECTION = False  # All-in-one formula
+    SHOW_BRIDGE_SECTION = False    # Produces a direct price
 
     # --- Extensions Flags ---
-    SHOW_MONTE_CARLO = True        # Utile pour varier EPS/Growth
-    SHOW_SENSITIVITY = False       # Pas de WACC vs g
-    SHOW_BACKTEST = True           # Très pertinent pour Graham
-    SHOW_SCENARIOS = False         # Formule rigide
-    SHOW_SOTP = False              # Non applicable
-    SHOW_PEER_TRIANGULATION = False # Approche purement intrinsèque
+    SHOW_MONTE_CARLO = True        # Useful for varying EPS/Growth
+    SHOW_SENSITIVITY = False       # No WACC vs g
+    SHOW_BACKTEST = True           # Highly relevant for Graham
+    SHOW_SCENARIOS = False         # Rigid formula
+    SHOW_SOTP = False              # Not applicable
+    SHOW_PEER_TRIANGULATION = False # Purely intrinsic approach
 
     def render_model_inputs(self) -> None:
         """Renders Step 1 (EPS + growth) and Step 2 (AAA yield + tax) inputs."""
@@ -51,7 +51,10 @@ class GrahamValueView(BaseStrategyView):
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)
         with c1:
-            st.number_input(Texts.INP_YIELD_AAA, value=None, format="%.2f", help=Texts.HELP_YIELD_AAA, key=f"{prefix}_{UIKeys.YIELD_AAA}")
+            st.number_input(
+                Texts.INP_YIELD_AAA, value=None, format="%.2f",
+                help=Texts.HELP_YIELD_AAA, key=f"{prefix}_{UIKeys.YIELD_AAA}",
+            )
         with c2:
             st.number_input(Texts.INP_TAX, value=None, format="%.2f", help=Texts.HELP_TAX, key=f"{prefix}_{UIKeys.TAX}")
         if hasattr(Texts, 'NOTE_GRAHAM') and Texts.NOTE_GRAHAM:

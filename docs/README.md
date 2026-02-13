@@ -1,120 +1,130 @@
 # Documentation — Intrinsic Value Pricer
 
-**Version** : 3.0 — Janvier 2026  
-**Architecture** : V2.0 Production-Ready  
-**Sprints** : 1-5 Complétés
+**Version** : 4.0 — February 2026
+**Architecture** : SSOT (Single Source of Truth) with UIKeys Registry
+**Branch** : `ui` — Production-Ready
 
-Cette documentation constitue la **référence financière, technique et utilisateur**
-du projet *Intrinsic Value Pricer*.
+This documentation is the **financial, technical, and user reference**
+for the *Intrinsic Value Pricer* project.
 
-Elle est conçue pour permettre :
-- la **compréhension** des méthodes de valorisation,
-- la **vérification** des calculs et hypothèses,
-- l'**apprentissage** des logiques financières sous-jacentes,
-- la **génération** de Pitchbooks PDF professionnels.
+It is designed to enable:
+- **understanding** of valuation methodologies,
+- **verification** of calculations and assumptions,
+- **learning** the underlying financial logic,
+- **traceability** via the Glass Box system.
 
-La documentation est strictement alignée avec :
-- le moteur de calcul (`src/valuation/`),
-- l'interface utilisateur (`app/ui/`),
-- les principes de transparence **Glass Box V2**,
-- le système de **diagnostic pédagogique** (ST-4.2).
+The documentation is strictly aligned with:
+- the computation engine (`src/valuation/`),
+- the user interface (`app/views/`),
+- the SSOT architecture via UIKeys metadata (`src/config/constants.py`),
+- the **Glass Box** transparency principles.
 
 ---
 
-## Architecture du Projet
+## Project Architecture
 
 ```
 intrinsec-value-pricer/
-├── src/                       # Logique métier pure (Zéro Streamlit)
-│   ├── domain/models/         # Modèles Pydantic (9 fichiers)
-│   ├── valuation/             # Moteur + 9 Stratégies
-│   ├── computation/           # Fonctions mathématiques
-│   ├── config/                # Constantes centralisées
-│   ├── i18n/                  # TextRegistry + Classes FR
-│   ├── reporting/             # Génération PDF Pitchbook
-│   ├── diagnostics.py         # DiagnosticEvent + FinancialContext
-│   └── quant_logger.py        # Logging institutionnel
+├── src/                       # Pure business logic (Zero Streamlit)
+│   ├── models/                # Pydantic V2 models with UIKey annotations
+│   │   └── parameters/        # Input metadata (UIKey → session state binding)
+│   ├── valuation/             # Calculation engine (7 strategies)
+│   ├── computation/           # Mathematical functions
+│   ├── config/constants.py    # UIKeys registry (SSOT for all session keys)
+│   ├── i18n/                  # Internationalization (FR classes)
+│   └── core/                  # Formatting, exceptions, logging
 │
-├── app/                       # Couche présentation (Streamlit)
-│   ├── ui/base/               # ExpertTerminal (Template Method)
-│   ├── ui/expert/terminals/   # 7 terminaux + Factory
-│   ├── ui/results/            # Orchestrator + Onglets
-│   └── adapters/              # Injection de dépendances
+├── app/                       # Presentation layer (Streamlit)
+│   ├── controllers/           # InputFactory (UI → Backend bridge)
+│   ├── views/inputs/          # Expert terminals (7 strategies + shared widgets)
+│   ├── views/results/         # Orchestrator + 5 Pillar views
+│   ├── views/components/      # Reusable UI atoms (charts, KPIs)
+│   ├── assets/                # CSS Design System (Institutional theme)
+│   └── state/                 # Session state management
 │
-├── infra/                     # Infrastructure externe
-│   ├── data_providers/        # Yahoo Finance + Fallback ST-4.1
-│   ├── auditing/              # AuditEngine + Backtester
-│   └── ref_data/              # Multiples sectoriels
+├── infra/                     # External infrastructure
+│   ├── data_providers/        # Yahoo Finance + Fallback
+│   └── ref_data/              # Sectoral multiples
 │
-├── locales/                   # Fichiers i18n YAML (ST-5.1)
-├── config/                    # Configuration YAML
-└── tests/                     # 51+ Tests de contrats
+└── tests/                     # Contract, unit, integration tests
 ```
 
 ---
 
-## Comment naviguer dans la documentation
+## Key Architecture: SSOT via UIKeys
 
-La documentation est organisée en couches distinctes :
+The `UIKeys` registry in `src/config/constants.py` serves as the **Single Source
+of Truth** for all UI-to-backend bindings:
 
-### Méthodologie (`docs/methodology/`)
-- Théorie financière (DCF, RIM, Graham)
-- 7 méthodes de valorisation documentées
-- Formules LaTeX et limites d'usage
-- Extension Monte Carlo
+1. **Widget** (`app/views/inputs/`) renders a `st.number_input` with `key=UIKeys.XXX`
+2. **InputFactory** (`app/controllers/`) introspects Pydantic models for `UIKey` metadata
+3. **Ghost Pattern**: `None` / `0` values are excluded — backend uses Provider data instead
+4. **Model** (`src/models/parameters/`) uses `Annotated[float, UIKey(UIKeys.RF, scale="pct")]`
 
-### Technique (`docs/technical/`)
-- Architecture en couches étanches
+---
+
+## How to navigate the documentation
+
+The documentation is organized in distinct layers:
+
+### Methodology (`docs/methodology/`)
+- Financial theory (DCF, RIM, Graham)
+- 7 documented valuation methods
+- LaTeX formulas and usage limits
+- Monte Carlo extension
+
+### Technical (`docs/technical/`)
+- Layered architecture with strict boundaries
 - Design Patterns (Factory, Template, Mediator)
-- Glass Box V2 avec traçabilité des sources
-- Mode Dégradé et résilience (ST-4.1)
+- Glass Box with source traceability
+- Degraded Mode and resilience
 
 ### Usage (`docs/usage/`)
-- Mode AUTO (hypothèses normatives)
-- Mode EXPERT (contrôle total, 7 terminaux)
-- Interprétation des résultats et Pitchbook PDF
+- AUTO mode (normative assumptions)
+- EXPERT mode (full control, 7 terminals)
+- Results interpretation
 
-### Références (`docs/references/`)
-- Yahoo Finance (données et limites)
-- Damodaran (multiples sectoriels)
-- Hypothèses macro-financières
-
----
-
-## Fonctionnalités Clés (Post-Sprint 5)
-
-| Fonctionnalité | Description |
-|----------------|-------------|
-| **Glass Box V2** | Traçabilité complète avec `VariableInfo` et badge de confiance |
-| **Mode Dégradé** | Fallback automatique sur multiples sectoriels (ST-4.1) |
-| **Diagnostic Pédagogique** | Erreurs traduites en conseils métier (ST-4.2) |
-| **QuantLogger** | Logging institutionnel structuré |
-| **TextRegistry YAML** | Internationalisation via fichiers YAML (ST-5.1) |
-| **Pitchbook PDF** | Export professionnel 3 pages (ST-5.2) |
+### References (`docs/references/`)
+- Yahoo Finance (data and limitations)
+- Damodaran (sectoral multiples)
+- Macro-financial assumptions
 
 ---
 
-## Principes Clés
+## Key Features
 
-1. **Étanchéité Architecturale**  
-   `src/` ne dépend jamais de `app/` ni de Streamlit.
-
-2. **Typage Strict**  
-   `from __future__ import annotations` dans tous les fichiers.
-
-3. **Glass Box**  
-   Toute valeur affichée est traçable jusqu'à sa source.
-
-4. **Résilience**  
-   Aucune panne API ne bloque la valorisation (fallback sectoriel).
+| Feature | Description |
+|---------|-------------|
+| **SSOT UIKeys** | Single registry for all UI-backend bindings |
+| **Ghost Pattern** | Neutral values (None/0) defer to Provider data |
+| **Glass Box** | Complete traceability with source badges |
+| **Degraded Mode** | Automatic fallback on sectoral multiples |
+| **InputFactory** | Metadata-driven UI → Pydantic model bridge |
+| **5 Result Pillars** | Configuration, Proof, Benchmark, Risk, Market |
 
 ---
 
-## Points d'entrée recommandés
+## Key Principles
 
-| Profil | Document |
-|--------|----------|
-| Nouvel utilisateur | `usage/README.md` |
-| Analyste financier | `methodology/README.md` |
-| Développeur | `technical/README.md` |
-| Contributeur | `../CONTRIBUTING.md` |
+1. **Architectural Isolation**
+   `src/` never depends on `app/` or Streamlit.
+
+2. **Strict Typing**
+   `from __future__ import annotations` in all files.
+
+3. **Glass Box**
+   Every displayed value is traceable to its source.
+
+4. **Resilience**
+   No API failure blocks the valuation (sectoral fallback).
+
+---
+
+## Recommended entry points
+
+| Profile | Document |
+|---------|----------|
+| New user | `usage/README.md` |
+| Financial analyst | `methodology/README.md` |
+| Developer | `technical/README.md` |
+| Contributor | `../CONTRIBUTING.md` |

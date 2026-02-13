@@ -35,14 +35,12 @@ class MonteCarloDistributionTab:
         """Institutional rendering of the Monte Carlo Risk Hub."""
         mc_data = result.results.extensions.monte_carlo
         if not mc_data:
+            st.info(QuantTexts.MC_FAILED)
             return
 
         currency = result.request.parameters.structure.currency
         mc_params = result.request.parameters.extensions.monte_carlo
         market_price = result.request.parameters.structure.current_price
-
-        # --- SECTION HEADER ---
-        st.markdown(f"#### {QuantTexts.MC_TITLE}")
 
         # Dynamic configuration summary from i18n
         shocks = mc_params.shocks
@@ -61,6 +59,9 @@ class MonteCarloDistributionTab:
             sig_g=sig_g,
             rho=0.0
         )
+
+        # --- SECTION HEADER ---
+        st.subheader(QuantTexts.MC_TITLE)
         st.caption(config_sub)
         st.write("")
 
@@ -95,13 +96,11 @@ class MonteCarloDistributionTab:
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
-        ticker = result.request.parameters.structure.ticker
-        display_simulation_chart(
-            ticker=ticker,
-            simulation_results=mc_data.simulation_values,
-            market_price=market_price,
-            currency=currency
-        )
+        with st.container(border=True):
+            display_simulation_chart(
+                simulation_results=mc_data.simulation_values,
+                currency=currency
+            )
 
         # 3. PROBABILITY ANALYSIS
         st.write("")

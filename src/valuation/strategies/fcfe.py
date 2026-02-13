@@ -62,7 +62,7 @@ class FCFEStrategy(IValuationRunner):
         Executes FCFE valuation sequence.
         Note: Discounts at Ke, not WACC.
         """
-        # Type narrowing pour mypy
+        # Type narrowing for mypy
         strategy_params = cast(FCFEParameters, params.strategy)
 
         steps: list[CalculationStep] = []

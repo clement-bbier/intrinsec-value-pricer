@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 
-# Imports centralisés
+# Centralized imports
 from src.config.constants import ModelDefaults
 from src.core.exceptions import CalculationError
 from src.models.parameters.base_parameter import Parameters
@@ -86,7 +86,7 @@ class SensitivityRunner:
     def _get_center_growth(params: Parameters) -> float:
         if hasattr(params.strategy, 'terminal_value'):
             return params.strategy.terminal_value.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-        # Cas spécifique Graham
+        # Special case: Graham model
         if isinstance(params.strategy, GrahamParameters):
             return params.strategy.growth_estimate or ModelDefaults.DEFAULT_GROWTH_RATE
         return ModelDefaults.DEFAULT_TERMINAL_GROWTH

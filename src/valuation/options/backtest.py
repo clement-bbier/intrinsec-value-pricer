@@ -45,11 +45,11 @@ class BacktestRunner:
         if frozen_bs is None or frozen_is is None or frozen_cf is None:
             return None
 
-        # 2. History Isolation (Sécurité contre le Look-ahead bias)
-        # On ne garde que les prix JUSQU'AU 31/12 de l'année cible.
+        # 2. History Isolation (Protection against look-ahead bias)
+        # Only keep prices UP TO 12/31 of the target year.
         frozen_history = raw_data.history.copy()
         if not frozen_history.empty:
-            # On tronque tout ce qui est strictement supérieur à l'année cible
+            # Truncate everything strictly after the target year
             frozen_history = frozen_history[frozen_history.index.year <= target_year]
 
         return RawFinancialData(

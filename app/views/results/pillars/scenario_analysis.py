@@ -40,17 +40,18 @@ class ScenarioAnalysisTab:
         """
         scenarios_res = result.results.extensions.scenarios
         if not scenarios_res:
+            st.info(QuantTexts.MSG_NO_SCENARIOS)
             return
 
         currency = result.request.parameters.structure.currency
         market_price = result.request.parameters.structure.current_price
 
         # --- SECTION HEADER ---
-        st.markdown(f"#### {QuantTexts.SCENARIO_TITLE}")
+        st.subheader(QuantTexts.SCENARIO_TITLE)
         st.caption(KPITexts.LABEL_SCENARIO_RANGE)
 
         # --- 1. VISUAL COMPARISON (CHART VIA UI_CHARTS) ---
-        # Préparation des données pour le composant UI générique
+        # Prepare data for the generic UI chart component
         chart_data = []
         for variant in scenarios_res.outcomes:
              chart_data.append({
@@ -60,12 +61,13 @@ class ScenarioAnalysisTab:
                 "Color": "green" if variant.upside_pct > 0 else "red"
             })
 
-        # Appel au moteur de visualisation (DRY / SoC)
-        display_scenario_comparison_chart(
-            scenarios_data=chart_data,
-            market_price=market_price,
-            currency=currency
-        )
+        with st.container(border=True):
+            # Visualization engine call (DRY / SoC)
+            display_scenario_comparison_chart(
+                scenarios_data=chart_data,
+                market_price=market_price,
+                currency=currency
+            )
 
         st.write("")
 
@@ -92,7 +94,7 @@ class ScenarioAnalysisTab:
                     format="%.1%+",
                     min_value=-0.5,
                     max_value=0.5,
-                    color="blue" # Le bleu est neutre, le signe +/- indique le sens
+                    color="blue" # Blue is neutral, the +/- sign indicates direction
                 )
             }
 
@@ -100,7 +102,7 @@ class ScenarioAnalysisTab:
                 df,
                 hide_index=True,
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
         # --- 3. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
@@ -122,7 +124,7 @@ class ScenarioAnalysisTab:
                     # Weighted Potential (Expected Upside)
                     weighted_upside = (expected_val / market_price - 1) if market_price > 0 else 0
 
-                    # Typage explicite pour satisfaire le linter
+                    # Explicit typing to satisfy the linter
                     color_delta: Literal["normal", "inverse"] = "normal" if weighted_upside > 0 else "inverse"
 
                     atom_kpi_metric(

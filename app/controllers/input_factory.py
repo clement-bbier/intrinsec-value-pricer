@@ -151,8 +151,9 @@ class InputFactory:
                 if key in st.session_state:
                     raw_val = st.session_state[key]
 
-                    # Ghost Pattern: Only include if not None (Backend handles Defaults)
-                    if raw_val is not None:
+                    # Ghost Pattern: Only include if value is not neutral
+                    # None and 0 are treated as neutral — the Backend/Provider supplies real data
+                    if raw_val is not None and raw_val != 0:
                          # Scaling logic is handled by the Model's validator (BaseNormalizedModel)
                          # We pass the raw UI value, Pydantic scales it.
                          extracted_data[name] = raw_val

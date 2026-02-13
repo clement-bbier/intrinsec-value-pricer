@@ -30,7 +30,10 @@ class FCFFGrowthView(BaseStrategyView):
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_REV_TTM, key=f"{prefix}_{UIKeys.REVENUE_TTM}")
+        st.number_input(
+            Texts.INP_BASE, value=None, format="%.0f",
+            help=Texts.HELP_REV_TTM, key=f"{prefix}_{UIKeys.REVENUE_TTM}",
+        )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         c1, c2 = st.columns(2)

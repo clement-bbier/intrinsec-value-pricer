@@ -74,21 +74,24 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
         )
 
     col_a, col_b = st.columns(2)
-    # Taux sans risque & Beta
-    col_a.number_input(UISharedTexts.INP_RF, value=None, format="%.2f", help=UISharedTexts.HELP_RF, key=f"{prefix}_{UIKeys.RF}")
+    # Risk-free rate & Beta
+    col_a.number_input(
+        UISharedTexts.INP_RF, value=None, format="%.2f",
+        help=UISharedTexts.HELP_RF, key=f"{prefix}_{UIKeys.RF}",
+    )
     col_b.number_input(
         UISharedTexts.INP_BETA, value=None, format="%.2f",
         help=UISharedTexts.HELP_BETA, key=f"{prefix}_{UIKeys.BETA}",
     )
 
-    # Prime de risque
+    # Risk premium
     col_a.number_input(
         UISharedTexts.INP_MRP, value=None, format="%.2f",
         help=UISharedTexts.HELP_MRP, key=f"{prefix}_{UIKeys.MRP}",
     )
 
     if not mode.is_direct_equity:
-        # Coût de la dette et Taxe (uniquement pour FCFF/WACC)
+        # Cost of debt and Tax rate (FCFF/WACC models only)
         col_b.number_input(
             UISharedTexts.INP_KD, value=None, format="%.2f",
             help=UISharedTexts.HELP_KD, key=f"{prefix}_{UIKeys.KD}",

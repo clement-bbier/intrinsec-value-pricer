@@ -30,7 +30,10 @@ class FCFFStandardView(BaseStrategyView):
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        st.number_input(Texts.INP_BASE, value=None, format="%.0f", help=Texts.HELP_BASE, key=f"{prefix}_{UIKeys.FCF_BASE}")
+        st.number_input(
+            Texts.INP_BASE, value=None, format="%.0f",
+            help=Texts.HELP_BASE, key=f"{prefix}_{UIKeys.FCF_BASE}",
+        )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(
