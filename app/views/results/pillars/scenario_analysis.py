@@ -92,7 +92,7 @@ class ScenarioAnalysisTab:
                     format="%.1%+",
                     min_value=-0.5,
                     max_value=0.5,
-                    color="blue" # Le bleu est neutre, le signe +/- indique le sens
+                    color="blue" # Blue is neutral, the +/- sign indicates direction
                 )
             }
 
@@ -100,7 +100,7 @@ class ScenarioAnalysisTab:
                 df,
                 hide_index=True,
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
         # --- 3. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---

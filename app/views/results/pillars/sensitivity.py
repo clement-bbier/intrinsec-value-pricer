@@ -153,4 +153,4 @@ class SensitivityAnalysisTab:
                 )
             )
 
-            st.altair_chart(final_chart, use_container_width=True)
+            st.altair_chart(final_chart, width="stretch")

@@ -130,7 +130,7 @@ class SOTPBreakdownTab:
                 df,
                 hide_index=True,
                 column_config=column_config,
-                use_container_width=True
+                width="stretch"
             )
 
             # Footer: Gross Value Check

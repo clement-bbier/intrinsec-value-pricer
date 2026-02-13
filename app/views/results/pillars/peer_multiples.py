@@ -155,7 +155,7 @@ class PeerMultiples:
                     df_comps,
                     hide_index=True,
                     column_config=column_config,
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 # Median Summary Line
