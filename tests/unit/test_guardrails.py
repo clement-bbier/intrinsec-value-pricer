@@ -212,7 +212,7 @@ def test_validate_roic_no_growth(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
-    base_parameters.strategy.growth_rate_p1 = 0.0  # No growth (already 0.0)
+    base_parameters.strategy.growth_rate_p1 = 0.0  # No growth
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
 
