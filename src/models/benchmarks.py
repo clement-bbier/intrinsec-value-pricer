@@ -165,11 +165,85 @@ class CompanyStats(BaseModel):
         # Revenue Growth (Requires N-1 data, usually pre-calculated in snapshot or provider)
         # Leaving as None if not provided in snapshot directly.
 
-        # Piotroski F-Score (Placeholder logic - requires deep historical accounting)
-        # Default to 5 (Average) to avoid alarming users with "0 - Fragile" due to missing data.
-        stats.piotroski_score = 5
+        # Piotroski F-Score Calculation
+        # Note: Full F-Score requires historical data (N-1). With current snapshot data,
+        # we can calculate a partial score based on profitability metrics available.
+        # Full implementation requires: ROA, CFO, Delta ROA, Accruals, Delta Leverage,
+        # Delta Liquidity, Equity Offering, Delta Margin, Delta Turnover.
+        stats.piotroski_score = _calculate_piotroski_score(snap)
 
         return stats
+
+
+def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
+    """
+    Calculate Piotroski F-Score based on available snapshot data.
+
+    The F-Score is a 9-point scale measuring financial strength across
+    profitability, leverage/liquidity, and operating efficiency.
+
+    Parameters
+    ----------
+    snap : CompanySnapshot
+        Financial data snapshot.
+
+    Returns
+    -------
+    int
+        Piotroski F-Score (0-9). Returns 5 (neutral) if insufficient data.
+
+    Notes
+    -----
+    Full calculation requires historical comparison data (N vs N-1).
+    Current implementation uses available TTM data and defaults to 5
+    when historical data is unavailable.
+    """
+    score = 0
+    criteria_evaluated = 0
+
+    # PROFITABILITY (4 criteria)
+    # 1. Positive Net Income
+    if snap.net_income_ttm is not None:
+        criteria_evaluated += 1
+        if snap.net_income_ttm > 0:
+            score += 1
+
+    # 2. Positive Operating Cash Flow (using FCF as proxy)
+    if snap.fcf_ttm is not None:
+        criteria_evaluated += 1
+        if snap.fcf_ttm > 0:
+            score += 1
+
+    # 3. ROA (Return on Assets) - requires both net income and total assets
+    # Current snapshot doesn't have total assets, skip this criterion
+
+    # 4. Quality of Earnings (CFO > Net Income) - requires operating cash flow
+    # Using FCF as a proxy for CFO
+    if snap.fcf_ttm is not None and snap.net_income_ttm is not None:
+        criteria_evaluated += 1
+        if snap.fcf_ttm > snap.net_income_ttm:
+            score += 1
+
+    # LEVERAGE/LIQUIDITY (3 criteria)
+    # 5. Decrease in Long-term Debt - requires historical data (N-1), unavailable
+    # 6. Increase in Current Ratio - requires historical data (N-1), unavailable
+    # 7. No new equity issued - requires historical data, unavailable
+
+    # OPERATING EFFICIENCY (2 criteria)
+    # 8. Increase in Gross Margin - requires historical data (N-1), unavailable
+    # 9. Increase in Asset Turnover - requires historical data (N-1), unavailable
+
+    # If we couldn't evaluate enough criteria, return neutral score
+    if criteria_evaluated < 2:
+        return 5  # Neutral default when data is insufficient
+
+    # Scale the score proportionally if we only evaluated some criteria
+    # E.g., if we evaluated 3 out of 9 criteria, scale to 9-point scale
+    max_possible_score = criteria_evaluated
+    scaled_score = int((score / max_possible_score) * 9) if max_possible_score > 0 else 5
+
+    # Ensure score is within valid range
+    return max(0, min(9, scaled_score))
 
 
 class MarketContext(BaseModel):

@@ -82,7 +82,23 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 
 
 def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
-    """Safely formats a value handling None types."""
+    """
+    Safely formats a value handling None types.
+    
+    Parameters
+    ----------
+    value : float | None
+        The value to format.
+    fmt : str
+        Python format specification (e.g., ".2%", ".2f").
+    default : str, default="-"
+        The default string to return if value is None.
+    
+    Returns
+    -------
+    str
+        Formatted value string.
+    """
     if value is None:
         return default
     return format(value, fmt)
@@ -90,8 +106,10 @@ def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
 
 def _render_capital_structure_table(params) -> None:
     """
-    Displays a clean dataframe for capital structure.
+    Displays a clean dataframe for capital structure with proper currency formatting.
     """
+    from src.core.formatting import CurrencyFormatter
+
     # Safe data access (V2 Model Path)
     struct = params.structure
     cap = params.common.capital
@@ -106,13 +124,17 @@ def _render_capital_structure_table(params) -> None:
     cash = cap.cash_and_equivalents if cap.cash_and_equivalents is not None else 0.0
     net_debt = debt - cash
 
+    # Use CurrencyFormatter for proper symbol placement
+    currency = struct.currency if struct.currency else "USD"
+    formatter = CurrencyFormatter()
+
     # Use formatted strings for the table
     data = [
-        {"Item": InputLabels.CURRENT_PRICE, "Value": f"{price:,.2f} {struct.currency}"},
+        {"Item": InputLabels.CURRENT_PRICE, "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
         {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
-        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": f"{mkt_cap:,.0f} M"},
-        {"Item": InputLabels.NET_DEBT, "Value": f"{net_debt:,.0f} M"},
-        {"Item": "Enterprise Value (Implied)", "Value": f"{(mkt_cap + net_debt):,.0f} M"},
+        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
+        {"Item": InputLabels.NET_DEBT, "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
+        {"Item": "Enterprise Value (Implied)", "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True)},
     ]
 
     df = pd.DataFrame(data)
