@@ -22,12 +22,10 @@ from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.common import (
     CommonParameters,
-    FinancialRatesParameters,
     CapitalStructureParameters,
 )
 from src.models.parameters.strategies import FCFFStandardParameters, TerminalValueParameters
-from src.models.parameters.options import ScenariosParameters, ScenarioParameters
-from src.models.enums import CompanySector
+from src.models.parameters.options import ScenarioParameters
 
 
 # ==============================================================================

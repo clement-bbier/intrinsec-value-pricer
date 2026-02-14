@@ -9,8 +9,6 @@ Architecture: Core Utilities Tests.
 Style: Pytest with parametrize for various input scenarios.
 """
 
-import pytest
-import math
 from src.core.formatting import (
     format_smart_number,
     get_delta_color,

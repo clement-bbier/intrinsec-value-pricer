@@ -9,7 +9,6 @@ Architecture: Core Diagnostics Tests.
 Style: Pytest with parametrize for various diagnostic scenarios.
 """
 
-import pytest
 from src.core.diagnostics import (
     DiagnosticRegistry,
     DiagnosticEvent,

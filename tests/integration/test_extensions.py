@@ -9,9 +9,6 @@ Scope: Orchestrator -> Extensions -> Results.
 
 import pytest
 from src.valuation.orchestrator import ValuationOrchestrator
-from src.models.valuation import ValuationResult, ValuationRequest
-from src.models.parameters.base_parameter import Parameters
-from src.models.enums import ValuationMethodology
 from src.models.parameters.options import ScenarioParameters, BusinessUnit
 
 
@@ -91,7 +88,7 @@ class TestExtensionsSuite:
         req.parameters.extensions.peers.enabled = True
 
         try:
-            result = orchestrator.run(req, mock_apple_snapshot)
+            orchestrator.run(req, mock_apple_snapshot)
         except Exception as e:
             pytest.fail(f"Peers module caused a crash: {str(e)}")
 
@@ -101,7 +98,7 @@ class TestExtensionsSuite:
         req.parameters.extensions.backtest.enabled = True
 
         try:
-            result = orchestrator.run(req, mock_apple_snapshot)
+            orchestrator.run(req, mock_apple_snapshot)
         except Exception as e:
             pytest.fail(f"Backtest module caused a crash: {str(e)}")
 

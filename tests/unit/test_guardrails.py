@@ -18,7 +18,6 @@ from src.valuation.guardrails import (
 )
 from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
 from src.models.parameters.strategies import (
     FCFFStandardParameters,
     FCFFNormalizedParameters,
@@ -26,7 +25,7 @@ from src.models.parameters.strategies import (
     DDMParameters,
     TerminalValueParameters,
 )
-from src.models.parameters.options import ExtensionBundleParameters, ScenariosParameters, ScenarioParameters
+from src.models.parameters.options import ScenarioParameters
 from src.models.enums import CompanySector
 
 

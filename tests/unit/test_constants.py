@@ -116,7 +116,11 @@ def test_monte_carlo_defaults_max_simulations():
 def test_monte_carlo_defaults_default_simulations():
     """Test MonteCarloDefaults has DEFAULT_SIMULATIONS within bounds."""
     assert hasattr(MonteCarloDefaults, 'DEFAULT_SIMULATIONS')
-    assert MonteCarloDefaults.MIN_SIMULATIONS <= MonteCarloDefaults.DEFAULT_SIMULATIONS <= MonteCarloDefaults.MAX_SIMULATIONS
+    assert (
+        MonteCarloDefaults.MIN_SIMULATIONS
+        <= MonteCarloDefaults.DEFAULT_SIMULATIONS
+        <= MonteCarloDefaults.MAX_SIMULATIONS
+    )
 
 
 @pytest.mark.unit

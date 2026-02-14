@@ -7,9 +7,7 @@ Role: Validates point-in-time data freezing & look-ahead bias prevention.
 Coverage Target: src/valuation/options/backtest.py (0% → 90%+)
 """
 
-import pytest
 import pandas as pd
-from datetime import datetime
 
 from src.valuation.options.backtest import BacktestRunner
 from infra.data_providers.yahoo_raw_fetcher import RawFinancialData

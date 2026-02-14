@@ -15,7 +15,6 @@ These tests enforce architectural boundaries:
 """
 
 import pytest
-import os
 import re
 from pathlib import Path
 

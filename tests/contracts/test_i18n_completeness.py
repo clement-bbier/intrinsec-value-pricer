@@ -82,7 +82,7 @@ def scan_file_for_i18n_usage(file_path: Path) -> List[Tuple[str, str, int]]:
         scanner = I18nUsageScanner(str(file_path))
         scanner.visit(tree)
         return scanner.usages
-    except (SyntaxError, UnicodeDecodeError) as e:
+    except (SyntaxError, UnicodeDecodeError):
         # Skip files with syntax errors or encoding issues
         return []
 
@@ -283,6 +283,15 @@ class TestI18nCompleteness:
                 UIRegistryTexts,
                 UISharedTexts,
             )
+            # Mark imports as tested to satisfy linter
+            _ = [
+                BacktestTexts, BenchmarkTexts, ChartTexts, CommonTexts,
+                ExpertTexts, FeedbackMessages, InputLabels, KPITexts,
+                LegalTexts, MarketTexts, OnboardingTexts, PeersTexts,
+                PillarLabels, QuantTexts, ResultsTexts, SidebarTexts,
+                SOTPTexts, TooltipsTexts, UIMessages, UIRegistryTexts,
+                UISharedTexts,
+            ]
         except ImportError as e:
             pytest.fail(f"Failed to import i18n modules: {e}")
     

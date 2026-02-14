@@ -9,7 +9,7 @@ Standards: pytest best practices with concrete implementations
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from typing import Optional
 
 from src.core.interfaces import (

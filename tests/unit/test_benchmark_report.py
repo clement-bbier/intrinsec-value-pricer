@@ -7,9 +7,8 @@ Role: Validates the benchmark report helper functions and data access patterns.
 Coverage: Direct attribute access without getattr hacks.
 """
 
-import pytest
 
-from src.models.benchmarks import CompanyStats, MarketContext, SectorMultiples, SectorPerformance
+from src.models.benchmarks import CompanyStats
 from app.views.results.pillars.benchmark_report import (
     _render_piotroski_section,
     _safe_float,

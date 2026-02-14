@@ -9,9 +9,7 @@ Standards: pytest + unittest.mock
 """
 
 import pytest
-import logging
-from unittest.mock import Mock, patch, MagicMock, call
-from datetime import datetime
+from unittest.mock import Mock, patch
 
 from src.core.quant_logger import (
     QuantLogger,
@@ -420,7 +418,7 @@ def test_log_valuation_decorator_success(mock_logger):
     request = Mock()
     request.ticker = "AAPL"
     
-    result = mock_valuation_func(request)
+    mock_valuation_func(request)
     
     # Should log success
     assert mock_logger.info.call_count == 1
@@ -444,7 +442,7 @@ def test_log_valuation_decorator_no_audit(mock_logger):
     request = Mock()
     request.ticker = "MSFT"
     
-    result = mock_valuation_func(request)
+    mock_valuation_func(request)
     
     msg = mock_logger.info.call_args[0][0]
     assert "Ticker: MSFT" in msg
@@ -467,7 +465,7 @@ def test_log_valuation_decorator_ticker_from_args(mock_logger):
     obj = Mock()
     obj.ticker = "TSLA"
     
-    result = mock_valuation_func(obj)
+    mock_valuation_func(obj)
     
     msg = mock_logger.info.call_args[0][0]
     assert "Ticker: TSLA" in msg
@@ -488,7 +486,7 @@ def test_log_valuation_decorator_ticker_from_kwargs(mock_logger):
     request = Mock()
     request.ticker = "GOOGL"
     
-    result = mock_valuation_func(request=request)
+    mock_valuation_func(request=request)
     
     msg = mock_logger.info.call_args[0][0]
     assert "Ticker: GOOGL" in msg
@@ -506,7 +504,7 @@ def test_log_valuation_decorator_no_ticker(mock_logger):
         result.upside_pct = None
         return result
     
-    result = mock_valuation_func()
+    mock_valuation_func()
     
     msg = mock_logger.info.call_args[0][0]
     assert "Ticker: N/A" in msg
@@ -542,7 +540,7 @@ def test_log_valuation_decorator_non_result_return(mock_logger):
     request = Mock()
     request.ticker = "AAPL"
     
-    result = mock_valuation_func(request)
+    mock_valuation_func(request)
     
     # Should not log success (no intrinsic_value_per_share)
     assert mock_logger.info.call_count == 0
@@ -579,7 +577,7 @@ def test_log_valuation_decorator_timing(mock_logger):
     request = Mock()
     request.ticker = "SLOW"
     
-    result = slow_valuation(request)
+    slow_valuation(request)
     
     msg = mock_logger.info.call_args[0][0]
     assert "ComputeTime:" in msg

@@ -10,7 +10,6 @@ Standards: pytest + unittest.mock for dependencies
 
 import pytest
 from unittest.mock import Mock
-from typing import List
 
 from src.valuation.library.rim import RIMLibrary
 from src.models.parameters.base_parameter import Parameters

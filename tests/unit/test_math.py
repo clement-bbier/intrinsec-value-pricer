@@ -9,7 +9,6 @@ Standards: pytest best practices with approx for floats, raises for exceptions
 """
 
 import pytest
-from typing import List, Dict
 from unittest.mock import Mock
 
 from src.computation.financial_math import (

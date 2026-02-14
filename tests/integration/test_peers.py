@@ -10,7 +10,6 @@ Note: peers.py has attribute name inconsistencies (uses ebitda_ttm instead of eb
 Tests use Mock objects to work around this.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
 from src.valuation.options.peers import PeersRunner

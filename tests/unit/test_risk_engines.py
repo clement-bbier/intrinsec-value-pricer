@@ -8,7 +8,6 @@ Coverage: DiagnosticEvent, Exceptions, FinancialContext, Formatting.
 """
 
 import pytest
-import math
 
 from src.core.diagnostics import (
     DiagnosticEvent,

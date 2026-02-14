@@ -7,9 +7,7 @@ Role: Validates that strategy views no longer contain duplicate projection
 year sliders or captions, ensuring DRY compliance with the sidebar.
 """
 
-import ast
 import inspect
-import textwrap
 
 import pytest
 

@@ -16,7 +16,6 @@ Coverage:
   6. shared_widgets.py references UIKeys for extension keys.
 """
 
-import ast
 import inspect
 
 import pytest

@@ -8,10 +8,9 @@ main.py, shared_widgets, peer_multiples, and ui_charts with mock-based tests.
 Coverage Target: >85% per file.
 """
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 import inspect
 
-import pytest
 
 from src.models.enums import ValuationMethodology
 
@@ -410,7 +409,7 @@ class TestSharedWidgets:
     def test_terminal_narrative_for_ddm(self):
         """DDM terminal narrative should differ from FCFF."""
         from app.views.inputs.strategies.shared_widgets import get_terminal_value_narrative
-        fcff_text = get_terminal_value_narrative(ValuationMethodology.FCFF_STANDARD)
+        get_terminal_value_narrative(ValuationMethodology.FCFF_STANDARD)
         ddm_text = get_terminal_value_narrative(ValuationMethodology.DDM)
         assert isinstance(ddm_text, str)
 

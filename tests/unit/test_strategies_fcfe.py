@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/fcfe.py
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 from src.models.company import Company
@@ -234,7 +234,7 @@ class TestFCFEStrategy:
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Total equity = PV(FCFE) + Cash
         # Note: cash_and_equivalents=50000.0 gets scaled to 50000000000 via BaseNormalizedModel
@@ -407,7 +407,7 @@ class TestFCFEStrategy:
         mock_per_share.return_value = (59.375, CalculationStep(step_key="PS", label="PS", result=59.375))
 
         # Execute
-        result = strategy.execute(basic_company, params)
+        strategy.execute(basic_company, params)
 
         # Total equity should equal PV(FCFE) only (no cash to add)
         mock_per_share.assert_called_once()

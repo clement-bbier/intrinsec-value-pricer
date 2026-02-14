@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/revenue_growth_fcff.py
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 from src.models.company import Company
@@ -140,8 +140,12 @@ class TestRevenueGrowthFCFFStrategy:
             projection_years=5
         )
         common = CommonParameters(
-            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.06, beta=1.5, tax_rate=0.21),
-            capital=CapitalStructureParameters(shares_outstanding=3000.0, total_debt=15000.0, cash_and_equivalents=5000.0)
+            rates=FinancialRatesParameters(
+                risk_free_rate=0.04, market_risk_premium=0.06, beta=1.5, tax_rate=0.21
+            ),
+            capital=CapitalStructureParameters(
+                shares_outstanding=3000.0, total_debt=15000.0, cash_and_equivalents=5000.0
+            )
         )
         params = Parameters(
             structure=Company(ticker="TSLA", name="Tesla Inc."),
@@ -194,7 +198,7 @@ class TestRevenueGrowthFCFFStrategy:
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Current margin = FCF / Revenue = 8000 / 80000 = 0.10 (10%)
         # This is passed to project_flows_revenue_model

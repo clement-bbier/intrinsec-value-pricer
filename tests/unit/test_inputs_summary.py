@@ -9,7 +9,6 @@ Coverage: Direct access without getattr chains or 'or 0.0' patterns.
 
 import inspect
 
-import pytest
 
 from app.views.results.pillars.inputs_summary import (
     _render_strategy_inputs_table,

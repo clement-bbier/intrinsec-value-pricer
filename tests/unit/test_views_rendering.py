@@ -7,11 +7,8 @@ Role: Exercises all Streamlit-dependent view functions using mock st objects.
 Coverage Target: >85% per file for all app/views/ files.
 """
 
-from datetime import date
-from unittest.mock import MagicMock, patch, PropertyMock
-from typing import Any
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from src.models.benchmarks import (
     CompanyStats,
@@ -25,12 +22,8 @@ from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
 from src.models.parameters.options import (
-    BacktestParameters,
     ExtensionBundleParameters,
     MCParameters,
-    PeersParameters,
-    ScenariosParameters,
-    SensitivityParameters,
     SOTPParameters,
 )
 from src.models.parameters.strategies import (
@@ -41,15 +34,7 @@ from src.models.parameters.strategies import (
 from src.models.results.base_result import Results
 from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import (
-    BacktestResults,
     ExtensionBundleResults,
-    HistoricalPoint,
-    MCResults,
-    PeersResults,
-    ScenarioOutcome,
-    ScenariosResults,
-    SensitivityResults,
-    SOTPResults,
 )
 from src.models.results.strategies import FCFFStandardResults
 from src.models.valuation import ValuationRequest, ValuationResult

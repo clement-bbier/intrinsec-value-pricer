@@ -10,7 +10,7 @@ Coverage Target: >85% for quant_logger.py pipeline methods.
 import pytest
 from unittest.mock import patch
 
-from src.core.quant_logger import QuantLogger, LogDomain, LogLevel
+from src.core.quant_logger import QuantLogger, LogDomain
 
 
 @pytest.fixture

@@ -169,12 +169,18 @@ class TestInputsSummaryDataAccess:
         # When input is provided
         input_val = 0.04
         calc_val = 0.038
-        result = f"{input_val:.2%}" if input_val is not None else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        result = (
+            f"{input_val:.2%}" if input_val is not None
+            else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        )
         assert result == "4.00%"
 
         # When input is None, use calculated
         input_val_2 = None
-        result_2 = f"{input_val_2:.2%}" if input_val_2 is not None else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        result_2 = (
+            f"{input_val_2:.2%}" if input_val_2 is not None
+            else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        )
         assert "(Auto)" in result_2
 
         # When both None

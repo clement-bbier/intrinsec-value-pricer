@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/rim_banks.py
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 from src.models.company import Company
@@ -183,7 +183,7 @@ class TestRIMBankingStrategy:
         mock_per_share.return_value = (110.0, CalculationStep(step_key="PS", label="PS", result=110.0))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Verify EPS was passed to project_residual_income (12.0 from company)
         assert mock_project.call_args[1]['base_earnings'] == 12.0  # base_earnings as keyword arg

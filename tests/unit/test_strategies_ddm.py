@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/ddm.py
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 from src.models.company import Company
