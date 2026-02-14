@@ -195,8 +195,9 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
     Notes
     -----
     Full calculation requires historical comparison data (N vs N-1).
-    Current implementation uses available TTM data and defaults to 5
-    when historical data is unavailable.
+    Current implementation uses available TTM data for profitability only.
+    Returns a partial score that should be interpreted as profitability
+    strength rather than overall financial health.
     """
     score = 0
     criteria_evaluated = 0
@@ -237,13 +238,9 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
     if criteria_evaluated < 2:
         return 5  # Neutral default when data is insufficient
 
-    # Scale the score proportionally if we only evaluated some criteria
-    # E.g., if we evaluated 3 out of 9 criteria, scale to 9-point scale
-    max_possible_score = criteria_evaluated
-    scaled_score = int((score / max_possible_score) * 9) if max_possible_score > 0 else 5
-
-    # Ensure score is within valid range
-    return max(0, min(9, scaled_score))
+    # Return raw score without scaling to avoid misrepresenting financial health
+    # When historical data becomes available, this can be extended to full 9-point scale
+    return min(9, max(0, score))
 
 
 class MarketContext(BaseModel):

@@ -8,6 +8,7 @@ Mechanism: Uses Pydantic introspection (UIKey) to map flat session keys
            to hierarchical backend parameters.
 """
 
+import logging
 from typing import Any, TypeVar, cast
 
 import streamlit as st
@@ -213,7 +214,6 @@ class InputFactory:
                         df = pd.DataFrame(editor_data)
                 except (ValueError, TypeError, KeyError) as e:
                     # If conversion fails, log and skip gracefully
-                    import logging
                     logging.warning(f"[InputFactory] SOTP data conversion failed: {e}. Skipping SOTP segments.")
                     return
 

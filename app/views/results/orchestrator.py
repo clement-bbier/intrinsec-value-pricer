@@ -28,6 +28,7 @@ from app.views.results.pillars import (
     market_analysis,  # Pillar 5: Market Hub
     risk_engineering,  # Pillar 4: Risk Hub
 )
+from src.core.formatting import CurrencyFormatter
 from src.i18n import KPITexts, PillarLabels, UIMessages
 
 # --- Data Models & i18n ---
@@ -125,8 +126,6 @@ def _render_permanent_header(result: ValuationResult) -> None:
     result : ValuationResult
         The valuation data container.
     """
-    from src.core.formatting import CurrencyFormatter
-
     # Safe Data Access via V2 Model Structure
     # Using .common namespace as defined in src/models/results/common.py
     intrinsic_val = result.results.common.intrinsic_value_per_share

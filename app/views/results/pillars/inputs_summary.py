@@ -11,6 +11,7 @@ Style: Institutional "Fact Sheet" layout using structured tables.
 import pandas as pd
 import streamlit as st
 
+from src.core.formatting import CurrencyFormatter
 from src.i18n import InputLabels, KPITexts
 from src.models import ValuationMethodology, ValuationResult
 
@@ -108,8 +109,6 @@ def _render_capital_structure_table(params) -> None:
     """
     Displays a clean dataframe for capital structure with proper currency formatting.
     """
-    from src.core.formatting import CurrencyFormatter
-
     # Safe data access (V2 Model Path)
     struct = params.structure
     cap = params.common.capital
