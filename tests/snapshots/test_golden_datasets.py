@@ -95,7 +95,7 @@ def golden_high_growth_tech():
         # Market Rates - High Risk
         beta=1.8,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=5.5,  # 5.5% (whole number for percentage scaling)
+        market_risk_premium=0.055,  # 5.5% (decimal - CompanySnapshot fields are NOT scaled)
         tax_rate=DEFAULT_TAX_RATE,
     )
 
@@ -161,7 +161,7 @@ def golden_distressed_company():
         # Market Rates - Very High Risk
         beta=2.5,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=6.0,  # 6% (whole number for percentage scaling)
+        market_risk_premium=0.06,  # 6% (decimal - CompanySnapshot fields are NOT scaled)
         tax_rate=DEFAULT_TAX_RATE,
     )
 
