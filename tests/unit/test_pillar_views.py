@@ -72,7 +72,10 @@ def base_result():
             structure=company,
             common=CommonParameters(
                 rates=FinancialRatesParameters(
-                    risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21,
+                    risk_free_rate=0.04,
+                    market_risk_premium=0.05,
+                    beta=1.2,
+                    tax_rate=0.21,
                 ),
             ),
             strategy=FCFFStandardParameters(projection_years=5, fcf_anchor=100_000.0),
@@ -83,10 +86,13 @@ def base_result():
         common=CommonResults(
             rates=ResolvedRates(cost_of_equity=0.10, cost_of_debt_after_tax=0.04, wacc=0.08),
             capital=ResolvedCapital(
-                market_cap=2_400_000.0, enterprise_value=2_500_000.0,
-                net_debt_resolved=100_000.0, equity_value_total=2_400_000.0,
+                market_cap=2_400_000.0,
+                enterprise_value=2_500_000.0,
+                net_debt_resolved=100_000.0,
+                equity_value_total=2_400_000.0,
             ),
-            intrinsic_value_per_share=160.0, upside_pct=0.067,
+            intrinsic_value_per_share=160.0,
+            upside_pct=0.067,
         ),
         strategy=FCFFStandardResults(
             projected_flows=[100_000.0, 105_000.0],
@@ -103,6 +109,7 @@ def base_result():
 # =============================================================================
 # INPUTS SUMMARY (Pillar 1) — _safe_fmt and data access
 # =============================================================================
+
 
 class TestSafeFmt:
     """Tests the _safe_fmt utility function from inputs_summary."""
@@ -169,12 +176,18 @@ class TestInputsSummaryDataAccess:
         # When input is provided
         input_val = 0.04
         calc_val = 0.038
-        result = f"{input_val:.2%}" if input_val is not None else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        result = (
+            f"{input_val:.2%}" if input_val is not None else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        )
         assert result == "4.00%"
 
         # When input is None, use calculated
         input_val_2 = None
-        result_2 = f"{input_val_2:.2%}" if input_val_2 is not None else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        result_2 = (
+            f"{input_val_2:.2%}"
+            if input_val_2 is not None
+            else (f"{calc_val:.2%} (Auto)" if calc_val is not None else "-")
+        )
         assert "(Auto)" in result_2
 
         # When both None
@@ -187,7 +200,7 @@ class TestStrategyInputsTableLogic:
 
     def test_dcf_flow_resolution_order(self):
         """DCF strategies resolve base flow from specific attrs in priority order."""
-        attrs_priority = ('fcf_anchor', 'fcf_norm', 'revenue_ttm', 'dividend_base', 'fcfe_anchor')
+        attrs_priority = ("fcf_anchor", "fcf_norm", "revenue_ttm", "dividend_base", "fcfe_anchor")
         strat = FCFFStandardParameters(projection_years=5, fcf_anchor=100_000.0)
         anchor_val = 0.0
         for attr in attrs_priority:
@@ -200,7 +213,7 @@ class TestStrategyInputsTableLogic:
 
     def test_growth_resolution_order(self):
         """Growth rate is resolved from strategy-specific attrs."""
-        attrs = ('growth_rate_p1', 'revenue_growth_rate', 'growth_rate')
+        attrs = ("growth_rate_p1", "revenue_growth_rate", "growth_rate")
         strat = FCFFStandardParameters(projection_years=5, growth_rate_p1=0.05)
         g_p1 = None
         for attr in attrs:
@@ -228,6 +241,7 @@ class TestStrategyInputsTableLogic:
 # CALCULATION PROOF (Pillar 2)
 # =============================================================================
 
+
 class TestCalculationProof:
     """Tests calculation_proof.py constants and logic."""
 
@@ -243,10 +257,7 @@ class TestCalculationProof:
     def test_excluded_step_filtering_logic(self):
         """Steps with excluded prefixes must be filtered out."""
         test_keys = ["WACC_CALC", "_meta_internal", "internal_debug", "debug_test", "FCF_BASE"]
-        filtered = [
-            k for k in test_keys
-            if not any(k.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)
-        ]
+        filtered = [k for k in test_keys if not any(k.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)]
         assert "WACC_CALC" in filtered
         assert "FCF_BASE" in filtered
         assert "_meta_internal" not in filtered
@@ -257,6 +268,7 @@ class TestCalculationProof:
 # =============================================================================
 # RISK ENGINEERING (Pillar 4) — Hub logic
 # =============================================================================
+
 
 class TestRiskEngineering:
     """Tests risk_engineering.py hub orchestration."""
@@ -272,32 +284,32 @@ class TestRiskEngineering:
 
     def test_mc_visibility_check_exists(self):
         """MonteCarloDistributionTab must have is_visible."""
-        assert hasattr(MonteCarloDistributionTab, 'is_visible')
+        assert hasattr(MonteCarloDistributionTab, "is_visible")
         assert callable(MonteCarloDistributionTab.is_visible)
 
     def test_sensitivity_visibility_check_exists(self):
         """SensitivityAnalysisTab must have is_visible."""
-        assert hasattr(SensitivityAnalysisTab, 'is_visible')
+        assert hasattr(SensitivityAnalysisTab, "is_visible")
 
     def test_scenario_visibility_check_exists(self):
         """ScenarioAnalysisTab must have is_visible."""
-        assert hasattr(ScenarioAnalysisTab, 'is_visible')
+        assert hasattr(ScenarioAnalysisTab, "is_visible")
 
     def test_backtest_visibility_check_exists(self):
         """HistoricalBacktestTab must have is_visible."""
-        assert hasattr(HistoricalBacktestTab, 'is_visible')
+        assert hasattr(HistoricalBacktestTab, "is_visible")
 
     def test_all_spokes_have_render(self):
         """All risk spokes must have a render method."""
-        for tab_cls in [MonteCarloDistributionTab, SensitivityAnalysisTab,
-                        ScenarioAnalysisTab, HistoricalBacktestTab]:
-            assert hasattr(tab_cls, 'render')
+        for tab_cls in [MonteCarloDistributionTab, SensitivityAnalysisTab, ScenarioAnalysisTab, HistoricalBacktestTab]:
+            assert hasattr(tab_cls, "render")
             assert callable(tab_cls.render)
 
 
 # =============================================================================
 # MARKET ANALYSIS (Pillar 5) — Hub logic
 # =============================================================================
+
 
 class TestMarketAnalysis:
     """Tests market_analysis.py hub orchestration."""
@@ -312,18 +324,19 @@ class TestMarketAnalysis:
 
     def test_peer_multiples_has_visibility(self):
         """PeerMultiples must have is_visible and render."""
-        assert hasattr(PeerMultiples, 'is_visible')
-        assert hasattr(PeerMultiples, 'render')
+        assert hasattr(PeerMultiples, "is_visible")
+        assert hasattr(PeerMultiples, "render")
 
     def test_sotp_has_visibility(self):
         """SOTPBreakdownTab must have is_visible and render."""
-        assert hasattr(SOTPBreakdownTab, 'is_visible')
-        assert hasattr(SOTPBreakdownTab, 'render')
+        assert hasattr(SOTPBreakdownTab, "is_visible")
+        assert hasattr(SOTPBreakdownTab, "render")
 
 
 # =============================================================================
 # PILLAR SPOKE VISIBILITY — Comprehensive validation
 # =============================================================================
+
 
 class TestMCVisibility:
     """Tests MonteCarloDistributionTab visibility."""
@@ -340,7 +353,8 @@ class TestMCVisibility:
         base_result.results.extensions.monte_carlo = MCResults(
             simulation_values=[150.0, 160.0, 170.0],
             quantiles={"P10": 140.0, "P50": 155.0, "P90": 175.0},
-            mean=160.0, std_dev=10.0,
+            mean=160.0,
+            std_dev=10.0,
         )
         assert MonteCarloDistributionTab.is_visible(base_result)
 
@@ -354,10 +368,13 @@ class TestSensitivityVisibility:
     def test_visible_when_enabled_with_results(self, base_result):
         base_result.request.parameters.extensions.sensitivity = SensitivityParameters(enabled=True)
         base_result.results.extensions.sensitivity = SensitivityResults(
-            x_axis_name="WACC", y_axis_name="Growth",
-            x_values=[0.07, 0.08, 0.09], y_values=[0.02, 0.03, 0.04],
+            x_axis_name="WACC",
+            y_axis_name="Growth",
+            x_values=[0.07, 0.08, 0.09],
+            y_values=[0.02, 0.03, 0.04],
             values=[[100.0, 110.0, 120.0]] * 3,
-            center_value=100.0, sensitivity_score=12.5,
+            center_value=100.0,
+            sensitivity_score=12.5,
         )
         assert SensitivityAnalysisTab.is_visible(base_result)
 
@@ -389,7 +406,9 @@ class TestBacktestVisibility:
     def test_not_visible_with_empty_points(self, base_result):
         base_result.request.parameters.extensions.backtest = BacktestParameters(enabled=True)
         base_result.results.extensions.backtest = BacktestResults(
-            points=[], mean_absolute_error=0.0, accuracy_score=0.0,
+            points=[],
+            mean_absolute_error=0.0,
+            accuracy_score=0.0,
         )
         assert not HistoricalBacktestTab.is_visible(base_result)
 
@@ -399,10 +418,13 @@ class TestBacktestVisibility:
             points=[
                 HistoricalPoint(
                     valuation_date=date(2023, 6, 30),
-                    calculated_iv=155.0, market_price=150.0, error_pct=0.033,
+                    calculated_iv=155.0,
+                    market_price=150.0,
+                    error_pct=0.033,
                 )
             ],
-            mean_absolute_error=0.033, accuracy_score=90.0,
+            mean_absolute_error=0.033,
+            accuracy_score=90.0,
         )
         assert HistoricalBacktestTab.is_visible(base_result)
 
@@ -434,6 +456,7 @@ class TestSOTPVisibility:
         base_result.results.extensions.sotp = SOTPResults(
             total_enterprise_value=3_000_000.0,
             segment_values={"iPhone": 2_000_000.0, "Services": 1_000_000.0},
-            implied_equity_value=2_800_000.0, equity_value_per_share=175.0,
+            implied_equity_value=2_800_000.0,
+            equity_value_per_share=175.0,
         )
         assert SOTPBreakdownTab.is_visible(base_result)

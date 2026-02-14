@@ -32,6 +32,7 @@ class StochasticOutput:
     quantiles : Dict[str, float]
         Key statistical percentiles (p10, p50, p90, std).
     """
+
     values: list[float]
     quantiles: dict[str, float]
 
@@ -39,6 +40,7 @@ class StochasticOutput:
 # ============================================================================
 # VECTORIZED MONTE CARLO ENGINE
 # ============================================================================
+
 
 class MonteCarloEngine:
     """
@@ -107,14 +109,17 @@ class MonteCarloEngine:
             mu_growth=base_growth,
             sigma_growth=vol_growth,
             rho=rho,
-            num_simulations=n_sims
+            num_simulations=n_sims,
         )
 
         # 5. Vectorized Valuation Dispatch
         mode = result.request.mode
 
-        if mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH,
-                    ValuationMethodology.FCFF_NORMALIZED]:
+        if mode in [
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_GROWTH,
+            ValuationMethodology.FCFF_NORMALIZED,
+        ]:
             simulated_values = MonteCarloEngine._simulate_dcf_vector(result, params, beta_samples, growth_samples)
 
         elif mode == ValuationMethodology.GRAHAM:
@@ -144,13 +149,12 @@ class MonteCarloEngine:
                 "p50": float(np.median(valid_values)),
                 "p90": float(np.percentile(valid_values, 90)),
                 "std": std_val,
-                "cv": cv_val
-            }
+                "cv": cv_val,
+            },
         )
 
     @staticmethod
-    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray,
-                             growths: np.ndarray) -> np.ndarray:
+    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray, growths: np.ndarray) -> np.ndarray:
         """
         Vectorized DCF formula:
         Equity Value = [Sum(DFCF) + (FCF_n * (1+g) / (WACC - g)) - NetDebt] / Shares
@@ -241,15 +245,16 @@ class MonteCarloEngine:
 # CORRELATED SAMPLING GENERATION
 # ============================================================================
 
+
 def generate_multivariate_samples(
-        *,
-        mu_beta: float,
-        sigma_beta: float,
-        mu_growth: float,
-        sigma_growth: float,
-        rho: float,
-        num_simulations: int,
-        seed: int | None = 42
+    *,
+    mu_beta: float,
+    sigma_beta: float,
+    mu_growth: float,
+    sigma_growth: float,
+    rho: float,
+    num_simulations: int,
+    seed: int | None = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Generates correlated random samples for Beta and Growth using Cholesky or SVD.
@@ -285,27 +290,24 @@ def generate_multivariate_samples(
 
     # Covariance Matrix
     covariance = rho * sigma_beta * sigma_growth
-    cov_matrix = np.array([
-        [sigma_beta ** 2, covariance],
-        [covariance, sigma_growth ** 2]
-    ])
+    cov_matrix = np.array([[sigma_beta**2, covariance], [covariance, sigma_growth**2]])
 
     mean_vector = np.array([mu_beta, mu_growth])
 
     # Multivariate Normal Draw
-    draws = rng.multivariate_normal(mean=mean_vector, cov=cov_matrix, size=num_simulations, method='svd')
+    draws = rng.multivariate_normal(mean=mean_vector, cov=cov_matrix, size=num_simulations, method="svd")
 
     return draws[:, 0], draws[:, 1]
 
 
 def generate_independent_samples(
-        *,
-        mean: float,
-        sigma: float,
-        num_simulations: int,
-        clip_min: float | None = None,
-        clip_max: float | None = None,
-        seed: int | None = None
+    *,
+    mean: float,
+    sigma: float,
+    num_simulations: int,
+    clip_min: float | None = None,
+    clip_max: float | None = None,
+    seed: int | None = None,
 ) -> np.ndarray:
     """
     Generates independent normal distribution samples.
@@ -337,3 +339,71 @@ def generate_independent_samples(
         draws = np.clip(draws, clip_min or -np.inf, clip_max or np.inf)
 
     return draws
+
+
+def calculate_var(simulation_values: list[float] | np.ndarray, confidence_level: float = 0.95) -> float:
+    """
+    Calculate Value at Risk (VaR) from Monte Carlo simulation results.
+
+    VaR represents the potential loss at a given confidence level,
+    calculated as the difference between the median and the lower tail percentile.
+
+    Formula: VaR = Median_IV - Percentile_threshold_IV
+
+    Where percentile_threshold = (1 - confidence_level) * 100
+
+    Parameters
+    ----------
+    simulation_values : list[float] | np.ndarray
+        Array of simulated intrinsic values from Monte Carlo.
+    confidence_level : float, default=0.95
+        The confidence level (e.g., 0.95 for 95% confidence).
+
+    Returns
+    -------
+    float
+        The Value at Risk. A positive value indicates downside risk
+        (median is above the tail), a negative value indicates the tail
+        extends above median (rare but possible in skewed distributions).
+
+    Examples
+    --------
+    >>> values = [100, 105, 110, 115, 120, 125, 130]
+    >>> calculate_var(values, confidence_level=0.95)
+    10.0  # Median (115) - P5 (105)
+
+    Notes
+    -----
+    - No max(0, x) clamping is applied to preserve actual deviation magnitude
+    - VaR can be negative in highly skewed distributions (e.g., lottery-like payoffs)
+    - This implementation follows industry standard where VaR > 0 indicates risk
+    """
+    # Handle None or empty values
+    if simulation_values is None:
+        return 0.0
+
+    # Convert to numpy array for efficient percentile calculation
+    values_array = np.asarray(simulation_values)
+
+    # Check if empty after conversion
+    if values_array.size == 0:
+        return 0.0
+
+    # Filter out invalid values
+    valid_values = values_array[np.isfinite(values_array)]
+
+    if valid_values.size == 0:
+        return 0.0
+
+    # Calculate percentile threshold for VaR
+    # Note: Using 'percentile_threshold' instead of 'alpha' to avoid confusion
+    # with alpha (excess return) in financial literature
+    percentile_threshold = (1 - confidence_level) * 100
+
+    # VaR = Median - Lower Tail Percentile
+    median_value = float(np.median(valid_values))
+    percentile_value = float(np.percentile(valid_values, percentile_threshold))
+
+    var = median_value - percentile_value
+
+    return var

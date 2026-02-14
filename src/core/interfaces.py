@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 # 1. DATA PROVIDER PROTOCOL
 # ==============================================================================
 
+
 class DataProviderProtocol(Protocol):
     """
     Protocol defining the minimal interface required for a data provider.
@@ -49,6 +50,7 @@ class DataProviderProtocol(Protocol):
 # ==============================================================================
 # 2. PROGRESS HANDLER INTERFACE
 # ==============================================================================
+
 
 class IUIProgressHandler(ABC):
     """
@@ -115,10 +117,7 @@ class IUIProgressHandler(ABC):
         return self
 
     def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         """Context manager support for scoped status blocks."""
         pass
@@ -147,6 +146,7 @@ class NullProgressHandler(IUIProgressHandler):
 # 3. RESULT RENDERER INTERFACE
 # ==============================================================================
 
+
 class IResultRenderer(ABC):
     """
     Interface for rendering valuation results.
@@ -166,11 +166,7 @@ class IResultRenderer(ABC):
         pass
 
     @abstractmethod
-    def render_results(
-        self,
-        result: ValuationResult,
-        provider: DataProviderProtocol | None = None
-    ) -> None:
+    def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
         """
         Renders the complete multi-pillar results view.
 

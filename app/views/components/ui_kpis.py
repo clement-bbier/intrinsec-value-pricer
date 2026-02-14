@@ -15,6 +15,7 @@ from src.i18n.fr.ui.results import KPITexts
 
 # Removed Audit-specific dependencies (AuditStep, AuditTexts) to keep this file generic.
 
+
 def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=None):
     """
     Robust UI component for KPI metrics.
@@ -29,7 +30,7 @@ def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=No
         "gray": "off",
         "normal": "normal",
         "inverse": "inverse",
-        "off": "off"
+        "off": "off",
     }
 
     # If the requested color is unknown, default to "off" for safety (avoid crash)
@@ -40,8 +41,9 @@ def atom_kpi_metric(label, value, delta=None, delta_color="normal", help_text=No
         value=str(value),
         delta=str(delta) if delta is not None else None,
         delta_color=safe_color,
-        help=help_text
+        help=help_text,
     )
+
 
 def render_score_gauge(score: float, label: str, context_label: str = "PERFORMANCE") -> None:
     """
@@ -70,13 +72,14 @@ def render_score_gauge(score: float, label: str, context_label: str = "PERFORMAN
 
         st.caption(label)
 
+
 def atom_benchmark_card(
     label: str,
     company_value: str,
     market_value: str,
     status: str,
     status_color: Literal["green", "blue", "orange", "red", "gray"] = "gray",
-    description: str = ""
+    description: str = "",
 ) -> None:
     """
     Comparison Card: Displays Company Data vs Market/Sector Data.

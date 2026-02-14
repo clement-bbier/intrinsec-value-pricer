@@ -31,13 +31,19 @@ class FCFFStandardView(BaseStrategyView):
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(
-            Texts.INP_BASE, value=None, format="%.0f",
-            help=Texts.HELP_BASE, key=f"{prefix}_{UIKeys.FCF_BASE}",
+            Texts.INP_BASE,
+            value=None,
+            format="%.0f",
+            help=Texts.HELP_BASE,
+            key=f"{prefix}_{UIKeys.FCF_BASE}",
         )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(
-            Texts.INP_GROWTH_G, value=None, format="%.2f",
-            help=Texts.HELP_GROWTH_RATE, key=f"{prefix}_{UIKeys.GROWTH_RATE}",
+            Texts.INP_GROWTH_G,
+            value=None,
+            format="%.2f",
+            help=Texts.HELP_GROWTH_RATE,
+            key=f"{prefix}_{UIKeys.GROWTH_RATE}",
         )
         st.divider()

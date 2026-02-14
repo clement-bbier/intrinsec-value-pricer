@@ -28,8 +28,9 @@ def mock_apple_identity():
         sector=CompanySector.TECHNOLOGY,
         current_price=150.0,
         currency="USD",
-        last_update=datetime.now(timezone.utc)  # Timezone-aware
+        last_update=datetime.now(timezone.utc),  # Timezone-aware
     )
+
 
 @pytest.fixture
 def mock_apple_snapshot():
@@ -42,28 +43,25 @@ def mock_apple_snapshot():
         name="Apple Inc.",
         sector="Technology",
         current_price=150.0,
-
         # Balance Sheet (Micro)
-        total_debt=120_000.0,          # $120B
-        cash_and_equivalents=50_000.0, # $50B
-        shares_outstanding=16_000.0,   # 16B shares
-
+        total_debt=120_000.0,  # $120B
+        cash_and_equivalents=50_000.0,  # $50B
+        shares_outstanding=16_000.0,  # 16B shares
         # Income Statement (Micro)
-        revenue_ttm=380_000.0,         # $380B
-        ebit_ttm=110_000.0,            # $110B
-        net_income_ttm=95_000.0,       # $95B
-        interest_expense=3_000.0,      # $3B
-
+        revenue_ttm=380_000.0,  # $380B
+        ebit_ttm=110_000.0,  # $110B
+        net_income_ttm=95_000.0,  # $95B
+        interest_expense=3_000.0,  # $3B
         # Cash Flow (Micro)
-        fcf_ttm=100_000.0,             # $100B
-        capex_ttm=10_000.0,            # $10B
-
+        fcf_ttm=100_000.0,  # $100B
+        capex_ttm=10_000.0,  # $10B
         # Macro / Market
         beta=1.2,
-        risk_free_rate=0.04,           # 4%
-        market_risk_premium=0.05,      # 5%
-        tax_rate=0.21                  # 21%
+        risk_free_rate=0.04,  # 4%
+        market_risk_premium=0.05,  # 5%
+        tax_rate=0.21,  # 21%
     )
+
 
 @pytest.fixture
 def fcff_request_standard(mock_apple_identity):
@@ -73,21 +71,19 @@ def fcff_request_standard(mock_apple_identity):
     # 1. Create Empty Strategy Params (Ghost)
     strategy_params = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05, # 5% growth override
+        growth_rate_p1=0.05,  # 5% growth override
     )
 
     # 2. Bundle into global Parameters
     params = Parameters(
         structure=mock_apple_identity,
-        strategy=strategy_params
+        strategy=strategy_params,
         # Extensions are default (None/False)
     )
 
     # 3. Wrap in Request
-    return ValuationRequest(
-        mode=ValuationMethodology.FCFF_STANDARD,
-        parameters=params
-    )
+    return ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
+
 
 @pytest.fixture
 def mock_parameters_with_rates():
@@ -103,17 +99,14 @@ def mock_parameters_with_rates():
             risk_free_rate=0.04,  # 4%
             market_risk_premium=0.05,  # 5%
             beta=1.2,
-            tax_rate=0.21  # 21%
+            tax_rate=0.21,  # 21%
         )
     )
 
     strategy = FCFFStandardParameters(projection_years=5)
 
-    return Parameters(
-        structure=company,
-        common=common_params,
-        strategy=strategy
-    )
+    return Parameters(structure=company, common=common_params, strategy=strategy)
+
 
 @pytest.fixture
 def mock_parameters_ghost():
@@ -125,18 +118,9 @@ def mock_parameters_ghost():
 
     # Ghost state - all None
     common_params = CommonParameters(
-        rates=FinancialRatesParameters(
-            risk_free_rate=None,
-            market_risk_premium=None,
-            beta=None,
-            tax_rate=None
-        )
+        rates=FinancialRatesParameters(risk_free_rate=None, market_risk_premium=None, beta=None, tax_rate=None)
     )
 
     strategy = FCFFStandardParameters(projection_years=5)
 
-    return Parameters(
-        structure=company,
-        common=common_params,
-        strategy=strategy
-    )
+    return Parameters(structure=company, common=common_params, strategy=strategy)

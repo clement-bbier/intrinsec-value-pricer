@@ -47,7 +47,7 @@ class MonteCarloRunner:
         mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
 
         # Handle Beta
-        fin_beta = getattr(financials, 'beta', None)
+        fin_beta = getattr(financials, "beta", None)
         beta_base = r.beta if r.beta is not None else (fin_beta or ModelDefaults.DEFAULT_BETA)
 
         # --- MERGE: Robust WACC Calculation (From Remote Agent) ---
@@ -91,31 +91,28 @@ class MonteCarloRunner:
 
         # 2. Generate Stochastic Vectors (NumPy)
         # --------------------------------------
-        vectors = self._generate_vectors(
-            params, num_simulations, seed,
-            base_beta=beta_base,
-            base_wacc=base_wacc
-        )
+        vectors = self._generate_vectors(params, num_simulations, seed, base_beta=beta_base, base_wacc=base_wacc)
 
         # 3. Vectorized WACC Calculation
         # ------------------------------
         # Ke_vec = Rf + Beta_vec * MRP
-        ke_vec = rf + vectors['beta'] * mrp
+        ke_vec = rf + vectors["beta"] * mrp
 
         # WACC_vec = Ke_vec * We + Kd * Wd
         wacc_vec = ke_vec * weight_e + kd_post_tax * weight_d
 
         # Add WACC to vectors bundle for strategy use
-        vectors['wacc'] = wacc_vec
+        vectors["wacc"] = wacc_vec
 
         # 4. Fast-Path Execution
         # ----------------------
-        if hasattr(self.strategy, 'execute_stochastic'):
+        if hasattr(self.strategy, "execute_stochastic"):
             sim_values_array = self.strategy.execute_stochastic(financials, params, vectors)
         else:
             # Fallback for strategies not yet optimized (Legacy Loop)
             logger.warning(
-                f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop.")
+                f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop."
+            )
             sim_values_array = self._run_legacy_loop(financials, params, vectors, num_simulations)
 
         # 5. Filtering & Result Packaging
@@ -131,35 +128,36 @@ class MonteCarloRunner:
             quantiles={
                 "P10": float(np.percentile(valid_values, 10)),
                 "P50": float(np.percentile(valid_values, 50)),
-                "P90": float(np.percentile(valid_values, 90))
+                "P90": float(np.percentile(valid_values, 90)),
             },
             mean=float(np.mean(valid_values)),
-            std_dev=float(np.std(valid_values))
+            std_dev=float(np.std(valid_values)),
         )
 
     @staticmethod
-    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> dict[
-        str, np.ndarray]:
+    def _generate_vectors(
+        params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float
+    ) -> dict[str, np.ndarray]:
         """Generates all random vectors in one go using NumPy Generator."""
         rng = np.random.default_rng(seed)
         shocks = params.extensions.monte_carlo.shocks
 
         # Volatilities
-        sig_beta = getattr(shocks, 'beta_volatility', 0.10) or 0.10
-        sig_growth = getattr(shocks, 'growth_volatility', 0.015) or 0.015
-        sig_flow = getattr(shocks, 'fcf_volatility', 0.10) or 0.10
+        sig_beta = getattr(shocks, "beta_volatility", 0.10) or 0.10
+        sig_growth = getattr(shocks, "growth_volatility", 0.015) or 0.015
+        sig_flow = getattr(shocks, "fcf_volatility", 0.10) or 0.10
 
         # 1. Beta Vector (Normal)
         betas = rng.normal(base_beta, base_beta * sig_beta, n_sims)
 
         # 2. Growth Vector (Normal)
         st = params.strategy
-        base_g = getattr(st, 'growth_rate_p1', 0.05) or 0.05
+        base_g = getattr(st, "growth_rate_p1", 0.05) or 0.05
         growths = rng.normal(base_g, sig_growth, n_sims)
 
         # 3. Terminal Growth Vector (Normal, Clipped)
         base_gn = 0.02
-        if hasattr(st, 'terminal_value'):
+        if hasattr(st, "terminal_value"):
             base_gn = st.terminal_value.perpetual_growth_rate or 0.02
 
         term_growths = rng.normal(base_gn, 0.005, n_sims)
@@ -168,23 +166,18 @@ class MonteCarloRunner:
 
         # 4. Base Flow Shock Vector (Normal centered on 1.0)
         base_flow_mults = rng.normal(1.0, sig_flow, n_sims)
-        anchor_val = getattr(st, 'fcf_anchor', None) or getattr(st, 'revenue_ttm', 0.0) or 100.0
+        anchor_val = getattr(st, "fcf_anchor", None) or getattr(st, "revenue_ttm", 0.0) or 100.0
         base_flows = anchor_val * base_flow_mults
 
-        return {
-            'beta': betas,
-            'growth': growths,
-            'terminal_growth': term_growths,
-            'base_flow': base_flows
-        }
+        return {"beta": betas, "growth": growths, "terminal_growth": term_growths, "base_flow": base_flows}
 
     def _run_legacy_loop(self, financials, params, vectors, num_sims):
         """Fallback method for non-vectorized strategies."""
         results = []
         self.strategy.glass_box_enabled = False
 
-        betas = vectors['beta']
-        growths = vectors['growth']
+        betas = vectors["beta"]
+        growths = vectors["growth"]
 
         for i in range(num_sims):
             try:
@@ -195,11 +188,11 @@ class MonteCarloRunner:
                     s_par.common.rates.beta = float(betas[i])
 
                 # Crude injection with safety checks
-                if hasattr(s_par.strategy, 'growth_rate_p1'):
+                if hasattr(s_par.strategy, "growth_rate_p1"):
                     s_par.strategy.growth_rate_p1 = float(growths[i])
-                elif hasattr(s_par.strategy, 'growth_rate'):
+                elif hasattr(s_par.strategy, "growth_rate"):
                     s_par.strategy.growth_rate = float(growths[i])
-                elif hasattr(s_par.strategy, 'revenue_growth_rate'):
+                elif hasattr(s_par.strategy, "revenue_growth_rate"):
                     s_par.strategy.revenue_growth_rate = float(growths[i])
 
                 res = self.strategy.execute(financials, s_par)

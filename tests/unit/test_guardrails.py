@@ -33,6 +33,7 @@ from src.valuation.guardrails import (
 # FIXTURES
 # ==============================================================================
 
+
 @pytest.fixture
 def base_company():
     """Creates a basic company for testing."""
@@ -59,6 +60,7 @@ def base_parameters(base_company):
 # TEST GuardrailCheckResult MODEL
 # ==============================================================================
 
+
 def test_guardrail_check_result_creation():
     """Test that GuardrailCheckResult can be created with valid data."""
     result = GuardrailCheckResult(
@@ -75,23 +77,20 @@ def test_guardrail_check_result_creation():
 
 def test_guardrail_check_result_default_extra():
     """Test that extra defaults to empty dict."""
-    result = GuardrailCheckResult(
-        type="info", message="Test", code="TEST_INFO"
-    )
+    result = GuardrailCheckResult(type="info", message="Test", code="TEST_INFO")
     assert result.extra == {}
 
 
 def test_guardrail_check_result_type_validation():
     """Test that type field only accepts valid literals."""
     with pytest.raises(Exception):  # Pydantic validation error
-        GuardrailCheckResult(
-            type="invalid_type", message="Test", code="TEST"
-        )
+        GuardrailCheckResult(type="invalid_type", message="Test", code="TEST")
 
 
 # ==============================================================================
 # TEST validate_terminal_growth
 # ==============================================================================
+
 
 def test_validate_terminal_growth_not_set(base_parameters):
     """Test when terminal growth is not specified."""
@@ -176,6 +175,7 @@ def test_validate_terminal_growth_negative(base_parameters):
 # TEST validate_roic_spread
 # ==============================================================================
 
+
 def test_validate_roic_insufficient_data(base_company, base_parameters):
     """Test when EBIT data is not available."""
     # Company without ebit_ttm attribute
@@ -189,7 +189,7 @@ def test_validate_roic_invalid_capital(base_company, base_parameters):
     """Test when invested capital calculation is invalid."""
     # Add EBIT but make capital structure result in negative invested capital
     # Use object.__setattr__ to bypass frozen model
-    object.__setattr__(base_company, 'ebit_ttm', 1000.0)
+    object.__setattr__(base_company, "ebit_ttm", 1000.0)
     base_parameters.common.capital.total_debt = 0.0
     base_parameters.common.capital.cash_and_equivalents = 50000.0  # Huge cash
     base_parameters.common.capital.shares_outstanding = 1.0
@@ -202,7 +202,7 @@ def test_validate_roic_invalid_capital(base_company, base_parameters):
 
 def test_validate_roic_no_growth(base_company, base_parameters):
     """Test when there's no positive growth assumed."""
-    object.__setattr__(base_company, 'ebit_ttm', 1000.0)
+    object.__setattr__(base_company, "ebit_ttm", 1000.0)
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
@@ -216,7 +216,7 @@ def test_validate_roic_no_growth(base_company, base_parameters):
 
 def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
     """Test WARNING when ROIC < WACC with positive growth."""
-    object.__setattr__(base_company, 'ebit_ttm', 500.0)  # Low EBIT
+    object.__setattr__(base_company, "ebit_ttm", 500.0)  # Low EBIT
     base_parameters.common.capital.total_debt = 10000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
@@ -233,7 +233,7 @@ def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
 def test_validate_roic_neutral(base_company, base_parameters):
     """Test INFO when ROIC approximately equals WACC."""
     # Set up to get ROIC ≈ WACC
-    object.__setattr__(base_company, 'ebit_ttm', 1000.0)
+    object.__setattr__(base_company, "ebit_ttm", 1000.0)
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0  # Market equity = 10000
@@ -251,7 +251,7 @@ def test_validate_roic_neutral(base_company, base_parameters):
 
 def test_validate_roic_above_wacc(base_company, base_parameters):
     """Test INFO when ROIC > WACC (value creation)."""
-    object.__setattr__(base_company, 'ebit_ttm', 2000.0)  # High EBIT
+    object.__setattr__(base_company, "ebit_ttm", 2000.0)  # High EBIT
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
@@ -268,6 +268,7 @@ def test_validate_roic_above_wacc(base_company, base_parameters):
 # ==============================================================================
 # TEST validate_capital_structure
 # ==============================================================================
+
 
 def test_validate_capital_negative_debt(base_company, base_parameters):
     """Test ERROR when debt is negative."""
@@ -359,6 +360,7 @@ def test_validate_capital_ok(base_company, base_parameters):
 # TEST validate_scenario_probabilities
 # ==============================================================================
 
+
 def test_validate_scenario_not_enabled(base_parameters):
     """Test when scenarios are not enabled."""
     base_parameters.extensions.scenarios.enabled = False
@@ -382,7 +384,7 @@ def test_validate_scenario_probabilities_invalid_sum(base_parameters):
 
     assert result.type == "error"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM"
-    assert result.extra["prob_sum"] == 0.9
+    assert result.extra["prob_sum"] == pytest.approx(0.9)
 
 
 def test_validate_scenario_probabilities_inexact(base_parameters):
@@ -415,7 +417,7 @@ def test_validate_scenario_probabilities_ok(base_parameters):
 
     assert result.type == "info"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_OK"
-    assert result.extra["prob_sum"] == 1.0
+    assert result.extra["prob_sum"] == pytest.approx(1.0)
 
 
 def test_validate_scenario_probabilities_over_limit(base_parameters):
@@ -450,6 +452,7 @@ def test_validate_scenario_probabilities_with_none(base_parameters):
 # ==============================================================================
 # TEST _extract_growth_rate HELPER
 # ==============================================================================
+
 
 def test_extract_growth_rate_fcff_standard():
     """Test extraction from FCFFStandardParameters."""
@@ -513,6 +516,7 @@ def test_extract_growth_rate_none():
 # EDGE CASES AND BOUNDARY CONDITIONS
 # ==============================================================================
 
+
 def test_validate_terminal_growth_very_small_spread(base_parameters):
     """Test boundary at exactly 0.5% spread."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.0955  # 9.55%, spread = 0.45%
@@ -525,7 +529,7 @@ def test_validate_terminal_growth_very_small_spread(base_parameters):
 
 def test_validate_roic_with_zero_tax_rate(base_company, base_parameters):
     """Test ROIC calculation with zero tax rate."""
-    object.__setattr__(base_company, 'ebit_ttm', 1000.0)
+    object.__setattr__(base_company, "ebit_ttm", 1000.0)
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0

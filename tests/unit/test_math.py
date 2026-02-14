@@ -53,6 +53,7 @@ from src.models import CapitalStructureParameters, CommonParameters, Company, Fi
 # 1. TIME VALUE OF MONEY & TERMINAL VALUES
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestCalculateDiscountFactors:
     """Test discount factors calculation."""
@@ -60,7 +61,7 @@ class TestCalculateDiscountFactors:
     def test_normal_case(self):
         """Test normal discount factors generation."""
         factors = calculate_discount_factors(0.10, 5)
-        expected = [1/1.1, 1/(1.1**2), 1/(1.1**3), 1/(1.1**4), 1/(1.1**5)]
+        expected = [1 / 1.1, 1 / (1.1**2), 1 / (1.1**3), 1 / (1.1**4), 1 / (1.1**5)]
         assert len(factors) == 5
         for calc, exp in zip(factors, expected):
             assert calc == pytest.approx(exp, rel=1e-6)
@@ -92,7 +93,7 @@ class TestCalculateNPV:
         rate = 0.10
         npv = calculate_npv(flows, rate)
         # Manual calculation: 100/1.1 + 100/1.21 + 100/1.331
-        expected = 100/1.1 + 100/(1.1**2) + 100/(1.1**3)
+        expected = 100 / 1.1 + 100 / (1.1**2) + 100 / (1.1**3)
         assert npv == pytest.approx(expected, rel=1e-6)
 
     def test_empty_flows(self):
@@ -176,6 +177,7 @@ class TestCalculateTerminalValuePE:
 # 2. STRUCTURE ADJUSTMENTS & DILUTION
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestCalculateHistoricalShareGrowth:
     """Test historical share growth (CAGR)."""
@@ -243,7 +245,7 @@ class TestComputeDilutedShares:
     def test_basic_math(self):
         """Test basic diluted shares calculation."""
         diluted = compute_diluted_shares(100.0, 0.02, 5)
-        expected = 100.0 * (1.02 ** 5)
+        expected = 100.0 * (1.02**5)
         assert diluted == pytest.approx(expected, rel=1e-6)
 
     def test_none_rate(self):
@@ -276,6 +278,7 @@ class TestApplyDilutionAdjustment:
 # ==============================================================================
 # 3. COST OF CAPITAL (WACC / Ke / SYNTHETIC DEBT)
 # ==============================================================================
+
 
 @pytest.mark.unit
 class TestCalculateCostOfEquityCAPM:
@@ -344,11 +347,7 @@ class TestCalculateCostOfEquity:
     def test_with_explicit_values(self):
         """Test with explicit parameter values."""
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.06,
-            beta=1.3,
-            tax_rate=0.25,
-            cost_of_debt=None
+            risk_free_rate=0.04, market_risk_premium=0.06, beta=1.3, tax_rate=0.25, cost_of_debt=None
         )
         common = CommonParameters(rates=rates, capital=CapitalStructureParameters())
 
@@ -363,11 +362,7 @@ class TestCalculateCostOfEquity:
     def test_with_none_fallbacks_to_defaults(self):
         """Test that None values fallback to MacroDefaults."""
         rates = FinancialRatesParameters(
-            risk_free_rate=None,
-            market_risk_premium=None,
-            beta=None,
-            tax_rate=0.25,
-            cost_of_debt=None
+            risk_free_rate=None, market_risk_premium=None, beta=None, tax_rate=0.25, cost_of_debt=None
         )
         common = CommonParameters(rates=rates, capital=CapitalStructureParameters())
 
@@ -376,8 +371,10 @@ class TestCalculateCostOfEquity:
         params.common = common
 
         ke = calculate_cost_of_equity(params)
-        expected = (MacroDefaults.DEFAULT_RISK_FREE_RATE +
-                   ModelDefaults.DEFAULT_BETA * MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM)
+        expected = (
+            MacroDefaults.DEFAULT_RISK_FREE_RATE
+            + ModelDefaults.DEFAULT_BETA * MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+        )
         assert ke == pytest.approx(expected, rel=1e-6)
 
 
@@ -392,7 +389,7 @@ class TestCalculateSyntheticCostOfDebt:
             rf=0.04,
             ebit=1000.0,
             interest_expense=100.0,  # ICR = 10
-            market_cap=10_000_000_000
+            market_cap=10_000_000_000,
         )
         # ICR = 10, Large Cap -> should use SPREADS_LARGE_CAP
         # ICR >= 8.5 -> AAA spread = 0.0069
@@ -406,7 +403,7 @@ class TestCalculateSyntheticCostOfDebt:
             rf=0.04,
             ebit=500.0,
             interest_expense=100.0,  # ICR = 5
-            market_cap=1_000_000_000
+            market_cap=1_000_000_000,
         )
         # ICR = 5, Small Cap -> should use SPREADS_SMALL_MID_CAP
         # ICR < 6.0 but >= 4.5 -> A- spread = 0.0133
@@ -415,23 +412,13 @@ class TestCalculateSyntheticCostOfDebt:
 
     def test_zero_interest_fallback(self):
         """Test zero interest expense returns A-rated proxy spread."""
-        kd = calculate_synthetic_cost_of_debt(
-            rf=0.04,
-            ebit=1000.0,
-            interest_expense=0.0,
-            market_cap=1_000_000_000
-        )
+        kd = calculate_synthetic_cost_of_debt(rf=0.04, ebit=1000.0, interest_expense=0.0, market_cap=1_000_000_000)
         expected = 0.04 + 0.0107  # A-rated proxy
         assert kd == pytest.approx(expected, rel=1e-6)
 
     def test_negative_ebit_fallback(self):
         """Test negative EBIT returns A-rated proxy spread."""
-        kd = calculate_synthetic_cost_of_debt(
-            rf=0.04,
-            ebit=-100.0,
-            interest_expense=50.0,
-            market_cap=1_000_000_000
-        )
+        kd = calculate_synthetic_cost_of_debt(rf=0.04, ebit=-100.0, interest_expense=50.0, market_cap=1_000_000_000)
         expected = 0.04 + 0.0107
         assert kd == pytest.approx(expected, rel=1e-6)
 
@@ -441,7 +428,7 @@ class TestCalculateSyntheticCostOfDebt:
             rf=0.04,
             ebit=10.0,
             interest_expense=1000.0,  # ICR = 0.01 (very distressed)
-            market_cap=1_000_000_000
+            market_cap=1_000_000_000,
         )
         # ICR < 0.5 (small cap) -> Default to 0.2000
         expected = 0.04 + 0.2000
@@ -462,16 +449,9 @@ class TestCalculateWACC:
 
         # Create Parameters
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.05,
-            beta=1.2,
-            tax_rate=0.25,
-            cost_of_debt=None
+            risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.25, cost_of_debt=None
         )
-        capital = CapitalStructureParameters(
-            total_debt=5000.0,
-            shares_outstanding=1000.0
-        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
 
         # Mock Parameters with just what we need
@@ -498,16 +478,9 @@ class TestCalculateWACC:
         company.interest_expense = 0.0
 
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.05,
-            beta=1.0,
-            tax_rate=0.25,
-            cost_of_debt=None
+            risk_free_rate=0.04, market_risk_premium=0.05, beta=1.0, tax_rate=0.25, cost_of_debt=None
         )
-        capital = CapitalStructureParameters(
-            total_debt=0.0,
-            shares_outstanding=1000.0
-        )
+        capital = CapitalStructureParameters(total_debt=0.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
 
         # Mock Parameters with just what we need
@@ -532,12 +505,9 @@ class TestCalculateWACC:
             market_risk_premium=0.05,
             beta=1.2,
             tax_rate=0.25,
-            cost_of_debt=0.08  # Manual override
+            cost_of_debt=0.08,  # Manual override
         )
-        capital = CapitalStructureParameters(
-            total_debt=5000.0,
-            shares_outstanding=1000.0
-        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
 
         # Mock Parameters
@@ -555,17 +525,14 @@ class TestCalculateWACC:
 # 4. SHAREHOLDER MODELS (FCFE & DDM)
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestCalculateFCFEReconstruction:
     """Test FCFE reconstruction from NI."""
 
     def test_basic_reconstruction(self):
         """Test basic FCFE reconstruction."""
-        fcfe = calculate_fcfe_reconstruction(
-            ni=1000.0,
-            adjustments=200.0,
-            net_borrowing=100.0
-        )
+        fcfe = calculate_fcfe_reconstruction(ni=1000.0, adjustments=200.0, net_borrowing=100.0)
         assert fcfe == 1300.0
 
 
@@ -575,12 +542,7 @@ class TestCalculateFCFEBase:
 
     def test_fcfe_from_fcff(self):
         """Test FCFE derivation from FCFF."""
-        fcfe = calculate_fcfe_base(
-            fcff=1000.0,
-            interest=100.0,
-            tax_rate=0.25,
-            net_borrowing=50.0
-        )
+        fcfe = calculate_fcfe_base(fcff=1000.0, interest=100.0, tax_rate=0.25, net_borrowing=50.0)
         # FCFE = 1000 - 100 * (1 - 0.25) + 50 = 1000 - 75 + 50 = 975
         expected = 1000.0 - 100.0 * 0.75 + 50.0
         assert fcfe == pytest.approx(expected, rel=1e-6)
@@ -608,17 +570,14 @@ class TestCalculateSustainableGrowth:
 # 5. SPECIFIC MODELS (RIM & GRAHAM)
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestCalculateGraham1974Value:
     """Test Graham 1974 formula."""
 
     def test_normal_calculation(self):
         """Test normal Graham calculation."""
-        value = calculate_graham_1974_value(
-            eps=5.0,
-            growth_rate=0.05,
-            aaa_yield=0.045
-        )
+        value = calculate_graham_1974_value(eps=5.0, growth_rate=0.05, aaa_yield=0.045)
         # V = 5 * (8.5 + 2 * 5) * 4.4 / (0.045 * 100)
         # V = 5 * 18.5 * 4.4 / 4.5
         expected = 5.0 * (8.5 + 2.0 * 5.0) * 4.4 / (0.045 * 100)
@@ -626,21 +585,13 @@ class TestCalculateGraham1974Value:
 
     def test_zero_yield_fallback(self):
         """Test zero yield uses default AAA yield."""
-        value = calculate_graham_1974_value(
-            eps=5.0,
-            growth_rate=0.05,
-            aaa_yield=0.0
-        )
+        value = calculate_graham_1974_value(eps=5.0, growth_rate=0.05, aaa_yield=0.0)
         expected = 5.0 * (8.5 + 2.0 * 5.0) * 4.4 / (MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD * 100)
         assert value == pytest.approx(expected, rel=1e-6)
 
     def test_none_yield_fallback(self):
         """Test None yield uses default AAA yield."""
-        value = calculate_graham_1974_value(
-            eps=5.0,
-            growth_rate=0.05,
-            aaa_yield=None
-        )
+        value = calculate_graham_1974_value(eps=5.0, growth_rate=0.05, aaa_yield=None)
         expected = 5.0 * (8.5 + 2.0 * 5.0) * 4.4 / (MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD * 100)
         assert value == pytest.approx(expected, rel=1e-6)
 
@@ -652,10 +603,7 @@ class TestCalculateRIMVectors:
     def test_series_generation(self):
         """Test RI and BV series generation."""
         residual_incomes, book_values = calculate_rim_vectors(
-            current_bv=1000.0,
-            ke=0.10,
-            earnings=[120.0, 130.0, 140.0],
-            payout=0.50
+            current_bv=1000.0, ke=0.10, earnings=[120.0, 130.0, 140.0], payout=0.50
         )
 
         assert len(residual_incomes) == 3
@@ -707,36 +655,25 @@ class TestComputeProportions:
 # 6. MULTIPLES & TRIANGULATION (RELATIVE VALUATION)
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestCalculatePriceFromPEMultiple:
     """Test price from P/E multiple."""
 
     def test_normal_calculation(self):
         """Test normal P/E price calculation."""
-        price = calculate_price_from_pe_multiple(
-            net_income=1000.0,
-            median_pe=20.0,
-            shares=100.0
-        )
+        price = calculate_price_from_pe_multiple(net_income=1000.0, median_pe=20.0, shares=100.0)
         # Price = (1000 * 20) / 100 = 200
         assert price == pytest.approx(200.0)
 
     def test_zero_shares(self):
         """Test zero shares returns 0."""
-        price = calculate_price_from_pe_multiple(
-            net_income=1000.0,
-            median_pe=20.0,
-            shares=0.0
-        )
+        price = calculate_price_from_pe_multiple(net_income=1000.0, median_pe=20.0, shares=0.0)
         assert price == 0.0
 
     def test_negative_pe(self):
         """Test negative P/E returns 0."""
-        price = calculate_price_from_pe_multiple(
-            net_income=1000.0,
-            median_pe=-5.0,
-            shares=100.0
-        )
+        price = calculate_price_from_pe_multiple(net_income=1000.0, median_pe=-5.0, shares=100.0)
         assert price == 0.0
 
 
@@ -747,12 +684,7 @@ class TestCalculatePriceFromEVMultiple:
     def test_normal_calculation(self):
         """Test normal EV price calculation."""
         price = calculate_price_from_ev_multiple(
-            metric_value=1000.0,
-            median_ev_multiple=10.0,
-            net_debt=2000.0,
-            shares=100.0,
-            minorities=100.0,
-            pensions=50.0
+            metric_value=1000.0, median_ev_multiple=10.0, net_debt=2000.0, shares=100.0, minorities=100.0, pensions=50.0
         )
         # EV = 1000 * 10 = 10000
         # Equity = 10000 - 2000 - 100 - 50 = 7850
@@ -763,20 +695,14 @@ class TestCalculatePriceFromEVMultiple:
     def test_zero_shares(self):
         """Test zero shares returns 0."""
         price = calculate_price_from_ev_multiple(
-            metric_value=1000.0,
-            median_ev_multiple=10.0,
-            net_debt=2000.0,
-            shares=0.0
+            metric_value=1000.0, median_ev_multiple=10.0, net_debt=2000.0, shares=0.0
         )
         assert price == 0.0
 
     def test_negative_equity_value(self):
         """Test negative equity value clamped to 0."""
         price = calculate_price_from_ev_multiple(
-            metric_value=100.0,
-            median_ev_multiple=10.0,
-            net_debt=5000.0,
-            shares=100.0
+            metric_value=100.0, median_ev_multiple=10.0, net_debt=5000.0, shares=100.0
         )
         # EV = 1000, Equity = 1000 - 5000 = -4000 -> clamped to 0
         assert price == 0.0
@@ -788,30 +714,18 @@ class TestCalculateTriangulatedPrice:
 
     def test_with_weights(self):
         """Test triangulation with explicit weights."""
-        signals = {
-            "DCF": 100.0,
-            "PE": 120.0,
-            "EV_EBITDA": 110.0
-        }
-        weights = {
-            "DCF": 0.5,
-            "PE": 0.3,
-            "EV_EBITDA": 0.2
-        }
+        signals = {"DCF": 100.0, "PE": 120.0, "EV_EBITDA": 110.0}
+        weights = {"DCF": 0.5, "PE": 0.3, "EV_EBITDA": 0.2}
 
         price = calculate_triangulated_price(signals, weights)
         # Weighted: (100 * 0.5 + 120 * 0.3 + 110 * 0.2) / 1.0
         # = (50 + 36 + 22) / 1.0 = 108
-        expected = (100.0 * 0.5 + 120.0 * 0.3 + 110.0 * 0.2)
+        expected = 100.0 * 0.5 + 120.0 * 0.3 + 110.0 * 0.2
         assert price == pytest.approx(expected)
 
     def test_without_weights_simple_average(self):
         """Test triangulation without weights uses simple average."""
-        signals = {
-            "DCF": 100.0,
-            "PE": 120.0,
-            "EV_EBITDA": 110.0
-        }
+        signals = {"DCF": 100.0, "PE": 120.0, "EV_EBITDA": 110.0}
 
         price = calculate_triangulated_price(signals, None)
         expected = (100.0 + 120.0 + 110.0) / 3.0
@@ -819,22 +733,14 @@ class TestCalculateTriangulatedPrice:
 
     def test_all_invalid_signals(self):
         """Test all invalid (non-positive) signals returns 0."""
-        signals = {
-            "DCF": 0.0,
-            "PE": -50.0,
-            "EV_EBITDA": 0.0
-        }
+        signals = {"DCF": 0.0, "PE": -50.0, "EV_EBITDA": 0.0}
 
         price = calculate_triangulated_price(signals, None)
         assert price == 0.0
 
     def test_partial_invalid_signals(self):
         """Test filters out invalid signals and averages valid ones."""
-        signals = {
-            "DCF": 100.0,
-            "PE": 0.0,
-            "EV_EBITDA": 120.0
-        }
+        signals = {"DCF": 100.0, "PE": 0.0, "EV_EBITDA": 120.0}
 
         price = calculate_triangulated_price(signals, None)
         # Only DCF and EV_EBITDA are valid
@@ -843,16 +749,8 @@ class TestCalculateTriangulatedPrice:
 
     def test_weights_with_missing_signal(self):
         """Test weights when some signals are missing or invalid."""
-        signals = {
-            "DCF": 100.0,
-            "PE": 0.0,
-            "EV_EBITDA": 120.0
-        }
-        weights = {
-            "DCF": 0.6,
-            "PE": 0.2,
-            "EV_EBITDA": 0.2
-        }
+        signals = {"DCF": 100.0, "PE": 0.0, "EV_EBITDA": 120.0}
+        weights = {"DCF": 0.6, "PE": 0.2, "EV_EBITDA": 0.2}
 
         price = calculate_triangulated_price(signals, weights)
         # Only DCF and EV_EBITDA valid with weights 0.6 and 0.2
@@ -862,14 +760,9 @@ class TestCalculateTriangulatedPrice:
 
     def test_weights_all_zero_falls_back_to_average(self):
         """Test that when all weights are zero or missing, falls back to simple average."""
-        signals = {
-            "DCF": 100.0,
-            "PE": 120.0
-        }
+        signals = {"DCF": 100.0, "PE": 120.0}
         # Provide weights but for methods not in valid signals
-        weights = {
-            "OTHER": 1.0
-        }
+        weights = {"OTHER": 1.0}
 
         price = calculate_triangulated_price(signals, weights)
         # Should fallback to simple average since no active weights

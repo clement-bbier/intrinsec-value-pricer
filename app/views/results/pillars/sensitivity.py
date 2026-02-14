@@ -74,7 +74,7 @@ class SensitivityAnalysisTab:
                     value=f"{score:.1f}",
                     delta=score_delta,
                     delta_color=score_color,
-                    help_text=QuantTexts.HELP_SENS_SCORE
+                    help_text=QuantTexts.HELP_SENS_SCORE,
                 )
 
                 # Safe access to axis names
@@ -96,12 +96,14 @@ class SensitivityAnalysisTab:
                     for j, x_val in enumerate(data.x_values):
                         try:
                             val = data.values[i][j]
-                            heatmap_data.append({
-                                "y_axis": f"{y_val:.2%}", # Growth
-                                "x_axis": f"{x_val:.2%}", # WACC
-                                "value": val,
-                                "label": format_smart_number(val)
-                            })
+                            heatmap_data.append(
+                                {
+                                    "y_axis": f"{y_val:.2%}",  # Growth
+                                    "x_axis": f"{x_val:.2%}",  # WACC
+                                    "value": val,
+                                    "label": format_smart_number(val),
+                                }
+                            )
                         except IndexError:
                             continue
 
@@ -112,47 +114,37 @@ class SensitivityAnalysisTab:
                     return
 
                 # Base Chart
-                base = alt.Chart(df).encode(
-                    x=alt.X('x_axis:O', title=None),
-                    y=alt.Y('y_axis:O', title=None)
-                )
+                base = alt.Chart(df).encode(x=alt.X("x_axis:O", title=None), y=alt.Y("y_axis:O", title=None))
 
                 # Heatmap Rectangles
                 heatmap = base.mark_rect().encode(
-                    color=alt.Color(
-                        'value:Q',
-                        scale=alt.Scale(scheme='yellowgreenblue'),
-                        legend=None
-                    ),
+                    color=alt.Color("value:Q", scale=alt.Scale(scheme="yellowgreenblue"), legend=None),
                     tooltip=[
-                        alt.Tooltip('x_axis', title=x_name),
-                        alt.Tooltip('y_axis', title=y_name),
-                        alt.Tooltip('label', title=ChartTexts.TOOLTIP_VALUATION)
-                    ]
+                        alt.Tooltip("x_axis", title=x_name),
+                        alt.Tooltip("y_axis", title=y_name),
+                        alt.Tooltip("label", title=ChartTexts.TOOLTIP_VALUATION),
+                    ],
                 )
 
                 # Pre-calculate mean for the condition to avoid Type Error in Altair expr
-                mean_val = float(df['value'].mean())
+                mean_val = float(df["value"].mean())
 
                 # Text Labels over Rectangles
-                text = base.mark_text(baseline='middle', fontSize=10).encode(
-                    text='label:N',
+                text = base.mark_text(baseline="middle", fontSize=10).encode(
+                    text="label:N",
                     color=alt.condition(
                         alt.datum.value > mean_val,  # Clean scalar comparison
-                        alt.value('white'),
-                        alt.value('black')
-                    )
+                        alt.value("white"),
+                        alt.value("black"),
+                    ),
                 )
 
                 final_chart = (heatmap + text).properties(
                     height=350,
-                    width='container',
+                    width="container",
                     title=alt.TitleParams(
-                        text=QuantTexts.SENS_TITLE,
-                        subtitle=ChartTexts.CORREL_CAPTION,
-                        anchor='start',
-                        fontSize=14
-                    )
+                        text=QuantTexts.SENS_TITLE, subtitle=ChartTexts.CORREL_CAPTION, anchor="start", fontSize=14
+                    ),
                 )
 
                 st.altair_chart(final_chart, width="stretch")

@@ -42,8 +42,7 @@ class TestCountryMatrixFreshness:
         tax_rate = us_data["tax_rate"]
 
         assert tax_rate == 0.21, (
-            f"US corporate tax rate is {tax_rate:.1%}, expected 21%. "
-            f"Check if TCJA 2017 rate has changed."
+            f"US corporate tax rate is {tax_rate:.1%}, expected 21%. Check if TCJA 2017 rate has changed."
         )
 
     def test_us_market_risk_premium_reasonable(self):
@@ -63,9 +62,7 @@ class TestCountryMatrixFreshness:
         for country in eu_countries:
             if country in COUNTRY_CONTEXT:
                 rf_rate = COUNTRY_CONTEXT[country]["risk_free_rate"]
-                assert 0.005 <= rf_rate <= 0.06, (
-                    f"{country} risk_free_rate ({rf_rate:.2%}) outside EU range [0.5%, 6%]"
-                )
+                assert 0.005 <= rf_rate <= 0.06, f"{country} risk_free_rate ({rf_rate:.2%}) outside EU range [0.5%, 6%]"
 
     def test_japan_low_risk_free_rate(self):
         """Japan risk_free_rate should be between 0% and 3% (historically low)."""
@@ -87,17 +84,13 @@ class TestMacroConstantsFreshness:
         """DEFAULT_RISK_FREE_RATE should be between 1% and 8%."""
         rf = MacroDefaults.DEFAULT_RISK_FREE_RATE
 
-        assert 0.01 <= rf <= 0.08, (
-            f"MacroDefaults.DEFAULT_RISK_FREE_RATE ({rf:.2%}) outside range [1%, 8%]"
-        )
+        assert 0.01 <= rf <= 0.08, f"MacroDefaults.DEFAULT_RISK_FREE_RATE ({rf:.2%}) outside range [1%, 8%]"
 
     def test_default_market_risk_premium_reasonable(self):
         """DEFAULT_MARKET_RISK_PREMIUM should be between 3% and 8%."""
         mrp = MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
 
-        assert 0.03 <= mrp <= 0.08, (
-            f"MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM ({mrp:.2%}) outside range [3%, 8%]"
-        )
+        assert 0.03 <= mrp <= 0.08, f"MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM ({mrp:.2%}) outside range [3%, 8%]"
 
     def test_default_inflation_rate_reasonable(self):
         """DEFAULT_INFLATION_RATE should be between 1% and 5%."""
@@ -124,9 +117,7 @@ class TestModelDefaultsFreshness:
         """DEFAULT_BETA should be between 0.5 and 2.0."""
         beta = ModelDefaults.DEFAULT_BETA
 
-        assert 0.5 <= beta <= 2.0, (
-            f"ModelDefaults.DEFAULT_BETA ({beta}) outside typical range [0.5, 2.0]"
-        )
+        assert 0.5 <= beta <= 2.0, f"ModelDefaults.DEFAULT_BETA ({beta}) outside typical range [0.5, 2.0]"
 
 
 @pytest.mark.freshness
@@ -156,9 +147,7 @@ class TestDamodaranSpreadsFreshness:
 
         # Check descending order
         for i in range(len(icr_values) - 1):
-            assert icr_values[i] > icr_values[i+1], (
-                f"Large cap spreads not sorted descending at index {i}"
-            )
+            assert icr_values[i] > icr_values[i + 1], f"Large cap spreads not sorted descending at index {i}"
 
     def test_small_mid_cap_spreads_sorted_descending(self):
         """Small/mid cap spread table should be sorted by ICR (descending)."""
@@ -169,9 +158,7 @@ class TestDamodaranSpreadsFreshness:
 
         # Check descending order
         for i in range(len(icr_values) - 1):
-            assert icr_values[i] > icr_values[i+1], (
-                f"Small/mid cap spreads not sorted descending at index {i}"
-            )
+            assert icr_values[i] > icr_values[i + 1], f"Small/mid cap spreads not sorted descending at index {i}"
 
     def test_large_cap_spreads_cover_high_icr(self):
         """Large cap spreads should cover ICR from very high (>8) to very low (<1)."""
@@ -203,25 +190,17 @@ class TestDamodaranSpreadsFreshness:
 
     def test_no_negative_spreads(self):
         """All spreads should be non-negative."""
-        all_spreads = (
-            ValuationEngineDefaults.SPREADS_LARGE_CAP +
-            ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
-        )
+        all_spreads = ValuationEngineDefaults.SPREADS_LARGE_CAP + ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
 
         for threshold, spread in all_spreads:
             assert spread >= 0.0, f"Negative spread found: {spread} at ICR {threshold}"
 
     def test_all_spreads_reasonable_range(self):
         """All spreads should be between 0% and 25%."""
-        all_spreads = (
-            ValuationEngineDefaults.SPREADS_LARGE_CAP +
-            ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
-        )
+        all_spreads = ValuationEngineDefaults.SPREADS_LARGE_CAP + ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
 
         for threshold, spread in all_spreads:
-            assert 0.0 <= spread <= 0.25, (
-                f"Spread {spread:.2%} at ICR {threshold} outside range [0%, 25%]"
-            )
+            assert 0.0 <= spread <= 0.25, f"Spread {spread:.2%} at ICR {threshold} outside range [0%, 25%]"
 
 
 @pytest.mark.freshness

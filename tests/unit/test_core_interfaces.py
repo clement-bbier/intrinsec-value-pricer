@@ -19,6 +19,7 @@ from src.models.valuation import ValuationResult
 # 1. DATA PROVIDER PROTOCOL TESTS
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestDataProviderProtocol:
     """Test DataProviderProtocol implementation."""
@@ -30,7 +31,7 @@ class TestDataProviderProtocol:
         mock_provider.get_company_name = Mock(return_value="Apple Inc.")
 
         # Verify method exists and works
-        assert hasattr(mock_provider, 'get_company_name')
+        assert hasattr(mock_provider, "get_company_name")
         assert mock_provider.get_company_name("AAPL") == "Apple Inc."
 
     def test_concrete_implementation_satisfies_protocol(self):
@@ -49,6 +50,7 @@ class TestDataProviderProtocol:
 # ==============================================================================
 # 2. PROGRESS HANDLER INTERFACE TESTS
 # ==============================================================================
+
 
 @pytest.mark.unit
 class TestIUIProgressHandler:
@@ -76,7 +78,7 @@ class TestIUIProgressHandler:
             def __init__(self):
                 self.messages = []
 
-            def start_status(self, label: str) -> 'ConcreteHandler':
+            def start_status(self, label: str) -> "ConcreteHandler":
                 self.messages.append(f"START: {label}")
                 return self
 
@@ -109,7 +111,7 @@ class TestIUIProgressHandler:
                 self.entered = False
                 self.exited = False
 
-            def start_status(self, label: str) -> 'ContextHandler':
+            def start_status(self, label: str) -> "ContextHandler":
                 return self
 
             def update_status(self, message: str) -> None:
@@ -204,6 +206,7 @@ class TestNullProgressHandler:
 # 3. RESULT RENDERER INTERFACE TESTS
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestIResultRenderer:
     """Test IResultRenderer abstract interface."""
@@ -233,11 +236,7 @@ class TestIResultRenderer:
             def render_executive_summary(self, result: ValuationResult) -> None:
                 self.rendered_items.append("summary")
 
-            def render_results(
-                self,
-                result: ValuationResult,
-                provider: DataProviderProtocol | None = None
-            ) -> None:
+            def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
                 self.rendered_items.append("results")
 
             def display_error(self, message: str, details: str | None = None) -> None:
@@ -267,11 +266,7 @@ class TestIResultRenderer:
             def render_executive_summary(self, result: ValuationResult) -> None:
                 pass
 
-            def render_results(
-                self,
-                result: ValuationResult,
-                provider: DataProviderProtocol | None = None
-            ) -> None:
+            def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
                 self.last_provider = provider
 
             def display_error(self, message: str, details: str | None = None) -> None:
@@ -299,11 +294,7 @@ class TestIResultRenderer:
             def render_executive_summary(self, result: ValuationResult) -> None:
                 pass
 
-            def render_results(
-                self,
-                result: ValuationResult,
-                provider: DataProviderProtocol | None = None
-            ) -> None:
+            def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
                 pass
 
             def display_error(self, message: str, details: str | None = None) -> None:
@@ -326,6 +317,7 @@ class TestIResultRenderer:
 # 4. INTEGRATION TESTS
 # ==============================================================================
 
+
 @pytest.mark.unit
 class TestInterfaceIntegration:
     """Test how interfaces work together in realistic scenarios."""
@@ -337,11 +329,7 @@ class TestInterfaceIntegration:
             def render_executive_summary(self, result: ValuationResult) -> None:
                 pass
 
-            def render_results(
-                self,
-                result: ValuationResult,
-                provider: DataProviderProtocol | None = None
-            ) -> None:
+            def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
                 pass
 
             def display_error(self, message: str, details: str | None = None) -> None:
@@ -368,12 +356,10 @@ class TestInterfaceIntegration:
         class TestRenderer(IResultRenderer):
             def render_executive_summary(self, result: ValuationResult) -> None:
                 pass
-            def render_results(
-                self,
-                result: ValuationResult,
-                provider: DataProviderProtocol | None = None
-            ) -> None:
+
+            def render_results(self, result: ValuationResult, provider: DataProviderProtocol | None = None) -> None:
                 pass
+
             def display_error(self, message: str, details: str | None = None) -> None:
                 pass
 

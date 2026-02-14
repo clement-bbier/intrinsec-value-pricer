@@ -36,6 +36,7 @@ class CountryData(TypedDict):
     url_risk_premium : str
         Source for the specific ERP calculation.
     """
+
     tax_rate: float
     risk_free_rate: float
     market_risk_premium: float
@@ -45,10 +46,11 @@ class CountryData(TypedDict):
     url_tax_source: str
     url_risk_premium: str
 
+
 # Reference sources for buy-side audit traceability
 GLOBAL_URLS = {
     "risk_premium": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html",
-    "trading_economics": "https://tradingeconomics.com/bonds"
+    "trading_economics": "https://tradingeconomics.com/bonds",
 }
 
 # ==============================================================================
@@ -56,67 +58,66 @@ GLOBAL_URLS = {
 # ==============================================================================
 
 
-
 COUNTRY_CONTEXT: dict[str, CountryData] = {
     "United States": {
         "tax_rate": 0.21,
-        "risk_free_rate": 0.0425,     # Yield curve shift (Feb 2026)
-        "market_risk_premium": 0.046, # Damodaran Jan 26 update
-        "inflation_rate": 0.027,      # Core sticky inflation
+        "risk_free_rate": 0.0425,  # Yield curve shift (Feb 2026)
+        "market_risk_premium": 0.046,  # Damodaran Jan 26 update
+        "inflation_rate": 0.027,  # Core sticky inflation
         "rf_ticker": "^TNX",
         "url_central_bank": "https://fred.stlouisfed.org/series/DGS10",
         "url_tax_source": "https://taxfoundation.org/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
     "France": {
-        "tax_rate": 0.361,           # Exceptional contribution for 2026
-        "risk_free_rate": 0.0345,     # OAT 10Y Feb 2026
+        "tax_rate": 0.361,  # Exceptional contribution for 2026
+        "risk_free_rate": 0.0345,  # OAT 10Y Feb 2026
         "market_risk_premium": 0.053,
         "inflation_rate": 0.019,
         "rf_ticker": "FR10YT=RR",
         "url_central_bank": "https://www.banque-france.fr/",
         "url_tax_source": "https://www.economie.gouv.fr/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
     "Germany": {
-        "tax_rate": 0.301,           # Statutory trade tax adjustment
-        "risk_free_rate": 0.0289,     # Bund 10Y Feb 2026
+        "tax_rate": 0.301,  # Statutory trade tax adjustment
+        "risk_free_rate": 0.0289,  # Bund 10Y Feb 2026
         "market_risk_premium": 0.051,
         "inflation_rate": 0.020,
         "rf_ticker": "^GDBR10",
         "url_central_bank": "https://www.bundesbank.de/",
         "url_tax_source": "https://taxfoundation.org/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
     "United Kingdom": {
         "tax_rate": 0.25,
-        "risk_free_rate": 0.035,     # Gilt 10Y
+        "risk_free_rate": 0.035,  # Gilt 10Y
         "market_risk_premium": 0.058,
         "inflation_rate": 0.022,
         "rf_ticker": "^GJGB10",
         "url_central_bank": "https://www.bankofengland.co.uk/",
         "url_tax_source": "https://www.gov.uk/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
     "China": {
         "tax_rate": 0.25,
-        "risk_free_rate": 0.021,     # PBOC Rate cuts trend
-        "market_risk_premium": 0.068, # Adjusted systemic risk premium
+        "risk_free_rate": 0.021,  # PBOC Rate cuts trend
+        "market_risk_premium": 0.068,  # Adjusted systemic risk premium
         "inflation_rate": 0.025,
         "rf_ticker": "^CN10Y",
         "url_central_bank": "http://www.pbc.gov.cn/",
         "url_tax_source": "http://www.chinatax.gov.cn/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
     "Japan": {
-        "tax_rate": 0.354,           # Effective rate with 2026 defense surtax
-        "risk_free_rate": 0.0226,     # Normalized JGB 10Y
+        "tax_rate": 0.354,  # Effective rate with 2026 defense surtax
+        "risk_free_rate": 0.0226,  # Normalized JGB 10Y
         "market_risk_premium": 0.059,
         "inflation_rate": 0.015,
         "rf_ticker": "^JGBS10",
         "url_central_bank": "https://www.mof.go.jp/",
         "url_tax_source": "https://www.nta.go.jp/",
-        "url_risk_premium": GLOBAL_URLS["risk_premium"]
+        "url_risk_premium": GLOBAL_URLS["risk_premium"],
     },
 }
 
@@ -126,6 +127,7 @@ DEFAULT_COUNTRY = COUNTRY_CONTEXT["United States"]
 # ==============================================================================
 # RESILIENT EXTRACTION LOGIC
 # ==============================================================================
+
 
 def get_country_context(country_name: str | None) -> CountryData:
     """

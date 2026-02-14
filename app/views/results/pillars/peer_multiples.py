@@ -74,9 +74,7 @@ class PeerMultiples:
         # Source & Count Context (Fully i18n)
         peer_count = len(peers_res.peer_valuations)
         caption_txt = MarketTexts.CAPTION_PEERS_COUNT.format(
-            count=peer_count,
-            label=MarketTexts.COL_PEER + "s",
-            source=MarketTexts.SOURCE_DEFAULT
+            count=peer_count, label=MarketTexts.COL_PEER + "s", source=MarketTexts.SOURCE_DEFAULT
         )
         st.caption(caption_txt)
 
@@ -95,15 +93,14 @@ class PeerMultiples:
             val_ebitda = peers_res.implied_prices.get("EV/EBITDA", 0.0)
             median_ebitda = medians.get("EV/EBITDA", 0.0)
             help_ebitda = (
-                MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x")
-                if median_ebitda else ""
+                MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x") if median_ebitda else ""
             )
 
             with c1:
                 atom_kpi_metric(
                     label=f"{MarketTexts.IMPLIED_VAL_PREFIX} (EV/EBITDA)",
                     value=format_smart_number(val_ebitda, currency),
-                    help_text=help_ebitda
+                    help_text=help_ebitda,
                 )
 
             # P/E Implied Value
@@ -115,7 +112,7 @@ class PeerMultiples:
                 atom_kpi_metric(
                     label=f"{MarketTexts.IMPLIED_VAL_PREFIX} (P/E)",
                     value=format_smart_number(val_pe, currency),
-                    help_text=help_pe
+                    help_text=help_pe,
                 )
 
         # 3. PEER VALUATIONS TABLE
@@ -135,34 +132,22 @@ class PeerMultiples:
             df_comps = pd.DataFrame(comps_data)
 
             column_config = {
-                "Name": st.column_config.TextColumn(
-                    label=MarketTexts.COL_PEER,
-                    width="medium"
-                ),
+                "Name": st.column_config.TextColumn(label=MarketTexts.COL_PEER, width="medium"),
                 KPITexts.LABEL_FOOTBALL_FIELD_PE: st.column_config.NumberColumn(
-                    label=KPITexts.LABEL_FOOTBALL_FIELD_PE,
-                    format=f"%.2f {currency}",
-                    width="small"
+                    label=KPITexts.LABEL_FOOTBALL_FIELD_PE, format=f"%.2f {currency}", width="small"
                 ),
                 QuantTexts.COL_UPSIDE: st.column_config.NumberColumn(
-                    label=QuantTexts.COL_UPSIDE,
-                    format="%.1%",
-                    width="small"
-                )
+                    label=QuantTexts.COL_UPSIDE, format="%.1%", width="small"
+                ),
             }
 
             with st.container(border=True):
-                st.dataframe(
-                    df_comps,
-                    hide_index=True,
-                    column_config=column_config,
-                    width="stretch"
-                )
+                st.dataframe(df_comps, hide_index=True, column_config=column_config, width="stretch")
 
                 # Median Summary Line
                 summary_txt = MarketTexts.CAPTION_MEDIAN_SUMMARY.format(
                     label=MarketTexts.LBL_SECTOR_MEDIAN,
                     ebitda=f"{median_ebitda:.1f}x" if median_ebitda else "—",
-                    pe=f"{median_pe:.1f}x" if median_pe else "—"
+                    pe=f"{median_pe:.1f}x" if median_pe else "—",
                 )
                 st.caption(summary_txt)

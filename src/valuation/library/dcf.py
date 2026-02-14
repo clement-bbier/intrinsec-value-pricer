@@ -43,10 +43,7 @@ class DCFLibrary:
     """
 
     @staticmethod
-    def project_flows_simple(
-        base_flow: float,
-        params: Parameters
-    ) -> tuple[list[float], CalculationStep]:
+    def project_flows_simple(base_flow: float, params: Parameters) -> tuple[list[float], CalculationStep]:
         """
         Projects cash flows using a standard growth rate with linear fade-down.
         """
@@ -56,8 +53,7 @@ class DCFLibrary:
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
         # We look for 'growth_rate_p1' (Standard DCF) or 'growth_rate' (FCFE/DDM)
         g_start = (
-            getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None))
-            or ModelDefaults.DEFAULT_GROWTH_RATE
+            getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None)) or ModelDefaults.DEFAULT_GROWTH_RATE
         )
 
         # Access Terminal Value params
@@ -78,31 +74,34 @@ class DCFLibrary:
             else:
                 current_g = g_start
 
-            current_flow *= (1.0 + current_g)
+            current_flow *= 1.0 + current_g
             flows.append(current_flow)
 
         # 3. Trace Building
         variables = {
             "FCF_0": VariableInfo(
-                symbol="FCF_0", value=base_flow,
-                source=VariableSource.SYSTEM,
-                description="Base Year Flow"
+                symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"
             ),
             "g_start": VariableInfo(
-                symbol="g_start", value=g_start, formatted_value=f"{g_start:.1%}",
+                symbol="g_start",
+                value=g_start,
+                formatted_value=f"{g_start:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Initial Growth Rate"
+                description="Initial Growth Rate",
             ),
             "g_term": VariableInfo(
-                symbol="g_term", value=g_term, formatted_value=f"{g_term:.1%}",
+                symbol="g_term",
+                value=g_term,
+                formatted_value=f"{g_term:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Terminal Growth Target"
+                description="Terminal Growth Target",
             ),
             "n": VariableInfo(
-                symbol="n", value=float(years),
+                symbol="n",
+                value=float(years),
                 source=VariableSource.MANUAL_OVERRIDE,
-                description=SharedTexts.INP_PROJ_YEARS
-            )
+                description=SharedTexts.INP_PROJ_YEARS,
+            ),
         }
 
         step = CalculationStep(
@@ -113,16 +112,13 @@ class DCFLibrary:
             result=sum(flows),
             interpretation=StrategyInterpretations.PROJ.format(years=years, g=g_start),
             source=StrategySources.YAHOO_TTM_SIMPLE,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return flows, step
 
     @staticmethod
-    def project_flows_manual(
-            base_flow: float,
-            growth_vector: list[float]
-    ) -> tuple[list[float], CalculationStep]:
+    def project_flows_manual(base_flow: float, growth_vector: list[float]) -> tuple[list[float], CalculationStep]:
         """
         Projects flows using an explicit year-by-year growth vector.
         """
@@ -131,15 +127,17 @@ class DCFLibrary:
         years = len(growth_vector)
 
         for _, g_rate in enumerate(growth_vector):
-            current_flow *= (1.0 + g_rate)
+            current_flow *= 1.0 + g_rate
             flows.append(current_flow)
 
         avg_growth = sum(growth_vector) / years if years > 0 else 0.0
 
         variables = {
             "FCF_0": VariableInfo(
-                symbol="FCF_0", value=base_flow,
-                source=VariableSource.SYSTEM, description="Base Year Flow",
+                symbol="FCF_0",
+                value=base_flow,
+                source=VariableSource.SYSTEM,
+                description="Base Year Flow",
             ),
             "g_avg": VariableInfo(
                 symbol="g_avg",
@@ -147,7 +145,7 @@ class DCFLibrary:
                 formatted_value=f"{avg_growth:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
                 description="Average Custom Growth",
-            )
+            ),
         }
 
         step = CalculationStep(
@@ -158,17 +156,14 @@ class DCFLibrary:
             result=sum(flows),
             interpretation=f"Projection manuelle experte sur {years} ans (Moyenne: {avg_growth:.1%})",
             source=StrategySources.MANUAL_OVERRIDE,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return flows, step
 
     @staticmethod
     def project_flows_revenue_model(
-            base_revenue: float,
-            current_margin: float,
-            target_margin: float,
-            params: Parameters
+        base_revenue: float, current_margin: float, target_margin: float, params: Parameters
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
@@ -191,8 +186,8 @@ class DCFLibrary:
 
         for t in range(1, years + 1):
             # A. Revenue Growth Logic
-            if manual_vector and (t-1) < len(manual_vector):
-                current_g = manual_vector[t-1]
+            if manual_vector and (t - 1) < len(manual_vector):
+                current_g = manual_vector[t - 1]
             else:
                 if years > 1:
                     alpha = (t - 1) / (years - 1)
@@ -200,7 +195,7 @@ class DCFLibrary:
                 else:
                     current_g = g_start
 
-            current_rev *= (1.0 + current_g)
+            current_rev *= 1.0 + current_g
             revenues.append(current_rev)
 
             # B. Margin Convergence
@@ -215,21 +210,25 @@ class DCFLibrary:
 
         variables = {
             "Rev_0": VariableInfo(
-                symbol="Rev_0", value=base_revenue,
-                source=VariableSource.SYSTEM, description="Base Revenue",
+                symbol="Rev_0",
+                value=base_revenue,
+                source=VariableSource.SYSTEM,
+                description="Base Revenue",
             ),
             "M_target": VariableInfo(
-                symbol="M_n", value=target_margin,
+                symbol="M_n",
+                value=target_margin,
                 formatted_value=f"{target_margin:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
                 description="Target FCF Margin",
             ),
             "g_rev": VariableInfo(
-                symbol="g_rev", value=g_start,
+                symbol="g_rev",
+                value=g_start,
                 formatted_value=f"{g_start:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
                 description="Initial Revenue Growth",
-            )
+            ),
         }
 
         step = CalculationStep(
@@ -240,16 +239,14 @@ class DCFLibrary:
             result=sum(fcfs),
             interpretation=StrategyInterpretations.GROWTH_MARGIN,
             source=StrategySources.CALCULATED,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return fcfs, revenues, margins, step
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float,
-        discount_rate: float,
-        params: Parameters
+        final_flow: float, discount_rate: float, params: Parameters
     ) -> tuple[float, CalculationStep]:
         """Calculates Terminal Value based on Strategy selection."""
         tv_params = params.strategy.terminal_value
@@ -264,29 +261,30 @@ class DCFLibrary:
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
                 actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
-                    f" / ({discount_rate:.1%} - {g_perp:.1%})"
+                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
                 ),
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
                     "g_perp": VariableInfo(
-                        symbol="g", value=g_perp,
+                        symbol="g",
+                        value=g_perp,
                         formatted_value=f"{g_perp:.2%}",
                         source=VariableSource.MANUAL_OVERRIDE,
                         description=SharedTexts.INP_PERP_G,
                     ),
                     "r": VariableInfo(
-                        symbol="r", value=discount_rate,
+                        symbol="r",
+                        value=discount_rate,
                         formatted_value=f"{discount_rate:.2%}",
                         source=VariableSource.CALCULATED,
                         description="Discount Rate",
-                    )
-                }
+                    ),
+                },
             )
             return tv, step
 
-        else: # EXIT_MULTIPLE
+        else:  # EXIT_MULTIPLE
             multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
             tv = calculate_terminal_value_exit_multiple(final_flow, multiple)
 
@@ -299,20 +297,19 @@ class DCFLibrary:
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
                     "M": VariableInfo(
-                        symbol="M", value=multiple,
+                        symbol="M",
+                        value=multiple,
                         formatted_value=f"{multiple:.1f}x",
                         source=VariableSource.MANUAL_OVERRIDE,
                         description="Exit Multiple",
                     )
-                }
+                },
             )
             return tv, step
 
     @staticmethod
     def compute_discounting(
-        flows: list[float],
-        terminal_value: float,
-        discount_rate: float
+        flows: list[float], terminal_value: float, discount_rate: float
     ) -> tuple[float, CalculationStep]:
         """Calculates the Enterprise Value (NPV of Flows + PV of TV)."""
         years_count = len(flows)
@@ -331,30 +328,30 @@ class DCFLibrary:
             source=StrategySources.EV_CALC,
             variables_map={
                 "r": VariableInfo(
-                    symbol="r", value=discount_rate,
+                    symbol="r",
+                    value=discount_rate,
                     formatted_value=f"{discount_rate:.2%}",
                     source=VariableSource.CALCULATED,
                     description="Discount Rate",
                 ),
                 "ΣPV": VariableInfo(
-                    symbol="ΣPV", value=sum_pv_flows,
+                    symbol="ΣPV",
+                    value=sum_pv_flows,
                     source=VariableSource.CALCULATED,
                     description="PV of Explicit Period",
                 ),
                 "PV_TV": VariableInfo(
-                    symbol="PV_TV", value=pv_tv,
+                    symbol="PV_TV",
+                    value=pv_tv,
                     source=VariableSource.CALCULATED,
                     description="PV of Terminal Value",
-                )
-            }
+                ),
+            },
         )
         return total_ev, step
 
     @staticmethod
-    def compute_value_per_share(
-        equity_value: float,
-        params: Parameters
-    ) -> tuple[float, CalculationStep]:
+    def compute_value_per_share(equity_value: float, params: Parameters) -> tuple[float, CalculationStep]:
         """Calculates final price per share, applying SBC dilution adjustment."""
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
@@ -375,21 +372,23 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.SBC_DILUTION,
                 actual_calculation=f"{format_smart_number(base_iv)} / (1 + {dilution_rate:.1%})^{years}",
                 result=final_iv,
-                interpretation=StrategyInterpretations.SBC_DILUTION_INTERP.format(pct=f"{(dilution_factor-1):.1%}"),
+                interpretation=StrategyInterpretations.SBC_DILUTION_INTERP.format(pct=f"{(dilution_factor - 1):.1%}"),
                 variables_map={
                     "Shares": VariableInfo(
-                        symbol="Shares", value=shares,
+                        symbol="Shares",
+                        value=shares,
                         formatted_value=f"{shares:,.0f}",
                         source=VariableSource.SYSTEM,
                         description=SharedTexts.INP_SHARES,
                     ),
                     "Dilution": VariableInfo(
-                        symbol="δ", value=dilution_rate,
+                        symbol="δ",
+                        value=dilution_rate,
                         formatted_value=f"{dilution_rate:.1%}",
                         source=VariableSource.MANUAL_OVERRIDE,
                         description="Annual SBC Dilution",
-                    )
-                }
+                    ),
+                },
             )
         else:
             step = CalculationStep(
@@ -401,15 +400,17 @@ class DCFLibrary:
                 interpretation="Final Intrinsic Value per share.",
                 variables_map={
                     "Equity": VariableInfo(
-                        symbol="Eq", value=equity_value,
+                        symbol="Eq",
+                        value=equity_value,
                         source=VariableSource.CALCULATED,
                     ),
                     "Shares": VariableInfo(
-                        symbol="Shares", value=shares,
+                        symbol="Shares",
+                        value=shares,
                         formatted_value=f"{shares:,.0f}",
                         source=VariableSource.SYSTEM,
-                    )
-                }
+                    ),
+                },
             )
 
         return final_iv, step

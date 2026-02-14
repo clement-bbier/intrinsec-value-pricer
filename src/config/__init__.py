@@ -46,15 +46,13 @@ __all__ = [
     "ValuationEngineDefaults",
     "UIWidgetDefaults",
     "SystemDefaults",
-
     # Config Objects
     "SIMULATION_CONFIG",
     "VALIDATION_CONFIG",
     "SYSTEM_CONFIG",
     "VALUATION_CONFIG",
     "get_config",
-
     # Sector multiples
     "SECTORS",
-    "SECTOR_METADATA"
+    "SECTOR_METADATA",
 ]

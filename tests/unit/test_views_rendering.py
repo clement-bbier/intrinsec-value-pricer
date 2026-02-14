@@ -42,7 +42,10 @@ from src.models.valuation import ValuationRequest, ValuationResult
 def _make_base_result(**ext_overrides) -> ValuationResult:
     """Factory to create a standard ValuationResult."""
     company = Company(
-        ticker="AAPL", name="Apple Inc.", current_price=150.0, currency="USD",
+        ticker="AAPL",
+        name="Apple Inc.",
+        current_price=150.0,
+        currency="USD",
     )
     request = ValuationRequest(
         mode=ValuationMethodology.FCFF_STANDARD,
@@ -50,10 +53,14 @@ def _make_base_result(**ext_overrides) -> ValuationResult:
             structure=company,
             common=CommonParameters(
                 rates=FinancialRatesParameters(
-                    risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21,
+                    risk_free_rate=0.04,
+                    market_risk_premium=0.05,
+                    beta=1.2,
+                    tax_rate=0.21,
                 ),
                 capital=CapitalStructureParameters(
-                    shares_outstanding=16_000.0, total_debt=120_000.0,
+                    shares_outstanding=16_000.0,
+                    total_debt=120_000.0,
                     cash_and_equivalents=50_000.0,
                 ),
             ),
@@ -65,10 +72,13 @@ def _make_base_result(**ext_overrides) -> ValuationResult:
         common=CommonResults(
             rates=ResolvedRates(cost_of_equity=0.10, cost_of_debt_after_tax=0.04, wacc=0.08),
             capital=ResolvedCapital(
-                market_cap=2_400_000.0, enterprise_value=2_500_000.0,
-                net_debt_resolved=100_000.0, equity_value_total=2_400_000.0,
+                market_cap=2_400_000.0,
+                enterprise_value=2_500_000.0,
+                net_debt_resolved=100_000.0,
+                equity_value_total=2_400_000.0,
             ),
-            intrinsic_value_per_share=160.0, upside_pct=0.067,
+            intrinsic_value_per_share=160.0,
+            upside_pct=0.067,
         ),
         strategy=FCFFStandardResults(
             projected_flows=[100_000.0, 105_000.0],
@@ -86,6 +96,7 @@ def _make_base_result(**ext_overrides) -> ValuationResult:
 # ORCHESTRATOR (render_valuation_results)
 # =============================================================================
 
+
 class TestOrchestratorRendering:
     """Tests render_valuation_results with mocked streamlit."""
 
@@ -95,8 +106,7 @@ class TestOrchestratorRendering:
     @patch("app.views.results.orchestrator.benchmark_report")
     @patch("app.views.results.orchestrator.risk_engineering")
     @patch("app.views.results.orchestrator.market_analysis")
-    def test_renders_header_and_tabs(self, mock_market, mock_risk, mock_bench,
-                                     mock_calc, mock_inputs, mock_st):
+    def test_renders_header_and_tabs(self, mock_market, mock_risk, mock_bench, mock_calc, mock_inputs, mock_st):
         """Orchestrator must render permanent header and create tabs."""
         from app.views.results.orchestrator import render_valuation_results
 
@@ -140,8 +150,7 @@ class TestOrchestratorRendering:
     @patch("app.views.results.orchestrator.benchmark_report")
     @patch("app.views.results.orchestrator.risk_engineering")
     @patch("app.views.results.orchestrator.market_analysis")
-    def test_risk_tab_shown_when_mc_enabled(self, mock_market, mock_risk, mock_bench,
-                                             mock_calc, mock_inputs, mock_st):
+    def test_risk_tab_shown_when_mc_enabled(self, mock_market, mock_risk, mock_bench, mock_calc, mock_inputs, mock_st):
         """When Monte Carlo is enabled, Risk tab should appear."""
         from app.views.results.orchestrator import render_valuation_results
 
@@ -170,8 +179,9 @@ class TestOrchestratorRendering:
     @patch("app.views.results.orchestrator.benchmark_report")
     @patch("app.views.results.orchestrator.risk_engineering")
     @patch("app.views.results.orchestrator.market_analysis")
-    def test_market_tab_shown_when_sotp_enabled(self, mock_market, mock_risk, mock_bench,
-                                                 mock_calc, mock_inputs, mock_st):
+    def test_market_tab_shown_when_sotp_enabled(
+        self, mock_market, mock_risk, mock_bench, mock_calc, mock_inputs, mock_st
+    ):
         """When SOTP is enabled, Market tab should appear."""
         from app.views.results.orchestrator import render_valuation_results
 
@@ -197,6 +207,7 @@ class TestOrchestratorRendering:
 # =============================================================================
 # INPUTS SUMMARY (Pillar 1)
 # =============================================================================
+
 
 class TestInputsSummaryRendering:
     """Tests render_detailed_inputs with mocked streamlit."""
@@ -278,6 +289,7 @@ class TestInputsSummaryRendering:
 # BENCHMARK REPORT (Pillar 3)
 # =============================================================================
 
+
 class TestBenchmarkReportRendering:
     """Tests render_benchmark_view with mocked streamlit."""
 
@@ -301,14 +313,21 @@ class TestBenchmarkReportRendering:
 
         result = _make_base_result()
         result.market_context = MarketContext(
-            reference_ticker="^GSPC", sector_name="Technology",
+            reference_ticker="^GSPC",
+            sector_name="Technology",
             multiples=SectorMultiples(pe_ratio=25.0, ev_ebitda=15.0, ev_revenue=5.0, pb_ratio=8.0),
             performance=SectorPerformance(fcf_margin=0.20, revenue_growth=0.08, roe=0.30),
-            risk_free_rate=0.04, equity_risk_premium=0.05,
+            risk_free_rate=0.04,
+            equity_risk_premium=0.05,
         )
         result.company_stats = CompanyStats(
-            pe_ratio=28.0, ev_ebitda=18.0, pb_ratio=10.0,
-            fcf_margin=0.25, roe=0.35, revenue_growth=0.10, piotroski_score=7,
+            pe_ratio=28.0,
+            ev_ebitda=18.0,
+            pb_ratio=10.0,
+            fcf_margin=0.25,
+            roe=0.35,
+            revenue_growth=0.10,
+            piotroski_score=7,
         )
 
         # st.columns is called with different numbers throughout the function
@@ -378,6 +397,7 @@ class TestBenchmarkReportRendering:
 # =============================================================================
 # RISK ENGINEERING (Pillar 4)
 # =============================================================================
+
 
 class TestRiskEngineeringRendering:
     """Tests render_risk_analysis with mocked streamlit."""
@@ -502,6 +522,7 @@ class TestRiskEngineeringRendering:
 # MARKET ANALYSIS (Pillar 5)
 # =============================================================================
 
+
 class TestMarketAnalysisRendering:
     """Tests render_market_context with mocked streamlit."""
 
@@ -586,6 +607,7 @@ class TestMarketAnalysisRendering:
 # CALCULATION PROOF (Pillar 2)
 # =============================================================================
 
+
 class TestCalculationProofRendering:
     """Tests render_glass_box with mocked streamlit."""
 
@@ -646,6 +668,7 @@ class TestCalculationProofRendering:
 # STEP RENDERER
 # =============================================================================
 
+
 class TestStepRendererRendering:
     """Tests render_calculation_step with mocked streamlit."""
 
@@ -655,8 +678,10 @@ class TestStepRendererRendering:
         from app.views.components.step_renderer import render_calculation_step
 
         step = CalculationStep(
-            step_key="WACC_CALC", label="WACC Calculation",
-            result=0.08, unit="%",
+            step_key="WACC_CALC",
+            label="WACC Calculation",
+            result=0.08,
+            unit="%",
             theoretical_formula=r"WACC = Ke \times E/(D+E) + Kd \times D/(D+E)",
         )
         mock_st.container.return_value.__enter__ = MagicMock()
@@ -677,12 +702,16 @@ class TestStepRendererRendering:
         from app.views.components.step_renderer import render_calculation_step
 
         step = CalculationStep(
-            step_key="KE_CALC", label="Cost of Equity",
-            result=0.10, unit="%",
+            step_key="KE_CALC",
+            label="Cost of Equity",
+            result=0.10,
+            unit="%",
             variables_map={
                 "Rf": VariableInfo(
-                    symbol="Rf", value=0.04,
-                    description="Risk-Free Rate", formatted_value="4.00%",
+                    symbol="Rf",
+                    value=0.04,
+                    description="Risk-Free Rate",
+                    formatted_value="4.00%",
                 ),
             },
         )
@@ -705,8 +734,10 @@ class TestStepRendererRendering:
         from app.views.components.step_renderer import render_calculation_step
 
         step = CalculationStep(
-            step_key="BASIC", label="Basic Step",
-            result=42.0, unit="currency",
+            step_key="BASIC",
+            label="Basic Step",
+            result=42.0,
+            unit="currency",
         )
         mock_st.container.return_value.__enter__ = MagicMock()
         mock_st.container.return_value.__exit__ = MagicMock()
@@ -725,8 +756,10 @@ class TestStepRendererRendering:
         from app.views.components.step_renderer import render_calculation_step
 
         step = CalculationStep(
-            step_key="WACC_CALC", label="WACC",
-            result=0.08, unit="%",
+            step_key="WACC_CALC",
+            label="WACC",
+            result=0.08,
+            unit="%",
             interpretation="The WACC is used to discount future cash flows.",
         )
         mock_st.container.return_value.__enter__ = MagicMock()
@@ -748,6 +781,7 @@ class TestStepRendererRendering:
 # =============================================================================
 # UI KPIS RENDERING
 # =============================================================================
+
 
 class TestUIKpisRendering:
     """Tests UI KPI components with mocked streamlit."""
@@ -812,8 +846,12 @@ class TestUIKpisRendering:
             col.__exit__ = MagicMock(return_value=False)
 
         atom_benchmark_card(
-            label="P/E", company_value="28.0x", market_value="25.0x",
-            status="RETARD", status_color="orange", description="Test description",
+            label="P/E",
+            company_value="28.0x",
+            market_value="25.0x",
+            status="RETARD",
+            status_color="orange",
+            description="Test description",
         )
 
         mock_st.container.assert_called()
@@ -832,8 +870,11 @@ class TestUIKpisRendering:
             col.__exit__ = MagicMock(return_value=False)
 
         atom_benchmark_card(
-            label="P/E", company_value="28.0x", market_value="25.0x",
-            status="LEADER", status_color="green",
+            label="P/E",
+            company_value="28.0x",
+            market_value="25.0x",
+            status="LEADER",
+            status_color="green",
         )
 
         mock_st.caption.assert_not_called()

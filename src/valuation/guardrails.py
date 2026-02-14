@@ -115,8 +115,7 @@ def validate_terminal_growth(params: Parameters, wacc: float) -> GuardrailCheckR
     if g > 0:
         return GuardrailCheckResult(
             type="info",
-            message=f"Terminal growth rate ({g:.2%}) is below WACC ({wacc:.2%}) with adequate spread "
-            f"({wacc - g:.2%}).",
+            message=f"Terminal growth rate ({g:.2%}) is below WACC ({wacc:.2%}) with adequate spread ({wacc - g:.2%}).",
             code="GUARDRAIL_TERMINAL_GROWTH_OK",
             extra={"g": g, "wacc": wacc, "spread": wacc - g},
         )
@@ -130,9 +129,7 @@ def validate_terminal_growth(params: Parameters, wacc: float) -> GuardrailCheckR
     )
 
 
-def validate_roic_spread(
-    financials: Company, params: Parameters, wacc: float
-) -> GuardrailCheckResult:
+def validate_roic_spread(financials: Company, params: Parameters, wacc: float) -> GuardrailCheckResult:
     """
     Validates the Return on Invested Capital (ROIC) spread relative to WACC.
 
@@ -242,9 +239,7 @@ def validate_roic_spread(
     )
 
 
-def validate_capital_structure(
-    financials: Company, params: Parameters
-) -> GuardrailCheckResult:
+def validate_capital_structure(financials: Company, params: Parameters) -> GuardrailCheckResult:
     """
     Validates the sanity of the capital structure (debt, equity, cash).
 
@@ -388,9 +383,7 @@ def validate_scenario_probabilities(params: Parameters) -> GuardrailCheckResult:
 
     # Extract probabilities
     cases = scenarios_params.cases
-    probabilities = [
-        case.probability if case.probability is not None else 0.0 for case in cases
-    ]
+    probabilities = [case.probability if case.probability is not None else 0.0 for case in cases]
     prob_sum = sum(probabilities)
 
     # Define tolerance
@@ -468,22 +461,13 @@ def _extract_growth_rate(strategy: Any) -> float | None:
     if hasattr(strategy, "growth_rate_p1") and strategy.growth_rate_p1 is not None:
         return strategy.growth_rate_p1
 
-    if (
-        hasattr(strategy, "cycle_growth_rate")
-        and strategy.cycle_growth_rate is not None
-    ):
+    if hasattr(strategy, "cycle_growth_rate") and strategy.cycle_growth_rate is not None:
         return strategy.cycle_growth_rate
 
-    if (
-        hasattr(strategy, "revenue_growth_rate")
-        and strategy.revenue_growth_rate is not None
-    ):
+    if hasattr(strategy, "revenue_growth_rate") and strategy.revenue_growth_rate is not None:
         return strategy.revenue_growth_rate
 
-    if (
-        hasattr(strategy, "dividend_growth_rate")
-        and strategy.dividend_growth_rate is not None
-    ):
+    if hasattr(strategy, "dividend_growth_rate") and strategy.dividend_growth_rate is not None:
         return strategy.dividend_growth_rate
 
     # Fallback: terminal growth rate

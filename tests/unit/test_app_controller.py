@@ -41,9 +41,7 @@ class TestAppControllerErrorHandling:
     @patch("app.controllers.app_controller.YahooFinancialProvider")
     @patch("app.controllers.app_controller.DefaultMacroProvider")
     @patch("app.controllers.app_controller.SessionManager")
-    def test_snapshot_none_sets_error(
-        self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st
-    ):
+    def test_snapshot_none_sets_error(self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st):
         """When provider returns None, error should be set."""
         state = MagicMock()
         mock_state.return_value = state
@@ -70,9 +68,7 @@ class TestAppControllerErrorHandling:
     @patch("app.controllers.app_controller.YahooFinancialProvider")
     @patch("app.controllers.app_controller.DefaultMacroProvider")
     @patch("app.controllers.app_controller.SessionManager")
-    def test_generic_exception_sets_error(
-        self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st
-    ):
+    def test_generic_exception_sets_error(self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st):
         """Generic exceptions should set an error message."""
         state = MagicMock()
         mock_state.return_value = state
@@ -128,9 +124,7 @@ class TestAppControllerErrorHandling:
     @patch("app.controllers.app_controller.InputFactory")
     @patch("app.controllers.app_controller.DefaultMacroProvider")
     @patch("app.controllers.app_controller.SessionManager")
-    def test_ticker_not_found_error(
-        self, mock_sm, mock_macro, mock_factory, mock_state, mock_st
-    ):
+    def test_ticker_not_found_error(self, mock_sm, mock_macro, mock_factory, mock_state, mock_st):
         """TickerNotFoundError should set a specific error message."""
         from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
         from src.core.exceptions import TickerNotFoundError
@@ -159,9 +153,7 @@ class TestAppControllerErrorHandling:
     @patch("app.controllers.app_controller.InputFactory")
     @patch("app.controllers.app_controller.DefaultMacroProvider")
     @patch("app.controllers.app_controller.SessionManager")
-    def test_valuation_error_sets_error(
-        self, mock_sm, mock_macro, mock_factory, mock_state, mock_st
-    ):
+    def test_valuation_error_sets_error(self, mock_sm, mock_macro, mock_factory, mock_state, mock_st):
         """ValuationError should set a specific error message."""
         from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, SeverityLevel
         from src.core.exceptions import ValuationError
@@ -189,9 +181,7 @@ class TestAppControllerErrorHandling:
     @patch("app.controllers.app_controller.YahooFinancialProvider")
     @patch("app.controllers.app_controller.DefaultMacroProvider")
     @patch("app.controllers.app_controller.SessionManager")
-    def test_external_service_error(
-        self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st
-    ):
+    def test_external_service_error(self, mock_sm, mock_macro, mock_yahoo, mock_factory, mock_state, mock_st):
         """ExternalServiceError should set error via SessionManager."""
         from src.core.exceptions import ExternalServiceError
 

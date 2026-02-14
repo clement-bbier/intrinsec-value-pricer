@@ -51,10 +51,10 @@ def base_vectors():
     """Standard vector bundle used by DCF-family strategies."""
     rng = np.random.default_rng(42)
     return {
-        'wacc': rng.normal(0.10, 0.01, N_SIMS),
-        'growth': rng.normal(0.05, 0.01, N_SIMS),
-        'terminal_growth': np.clip(rng.normal(0.02, 0.005, N_SIMS), -0.01, 0.08),
-        'base_flow': rng.normal(100.0, 10.0, N_SIMS),
+        "wacc": rng.normal(0.10, 0.01, N_SIMS),
+        "growth": rng.normal(0.05, 0.01, N_SIMS),
+        "terminal_growth": np.clip(rng.normal(0.02, 0.005, N_SIMS), -0.01, 0.08),
+        "base_flow": rng.normal(100.0, 10.0, N_SIMS),
     }
 
 
@@ -95,6 +95,7 @@ def common_params():
 # ============================================================================
 # TEST: StandardFCFFStrategy.execute_stochastic
 # ============================================================================
+
 
 class TestStandardFCFFStochastic:
     """Vectorized execution tests for Standard FCFF."""
@@ -142,16 +143,16 @@ class TestStandardFCFFStochastic:
             common=common_params,
         )
         vectors_low = {
-            'wacc': np.full(100, 0.08),
-            'growth': np.full(100, 0.05),
-            'terminal_growth': np.full(100, 0.02),
-            'base_flow': np.full(100, 100.0),
+            "wacc": np.full(100, 0.08),
+            "growth": np.full(100, 0.05),
+            "terminal_growth": np.full(100, 0.02),
+            "base_flow": np.full(100, 100.0),
         }
         vectors_high = {
-            'wacc': np.full(100, 0.15),
-            'growth': np.full(100, 0.05),
-            'terminal_growth': np.full(100, 0.02),
-            'base_flow': np.full(100, 100.0),
+            "wacc": np.full(100, 0.15),
+            "growth": np.full(100, 0.05),
+            "terminal_growth": np.full(100, 0.02),
+            "base_flow": np.full(100, 100.0),
         }
         iv_low_wacc = StandardFCFFStrategy.execute_stochastic(company, params, vectors_low)
         iv_high_wacc = StandardFCFFStrategy.execute_stochastic(company, params, vectors_high)
@@ -161,6 +162,7 @@ class TestStandardFCFFStochastic:
 # ============================================================================
 # TEST: FundamentalFCFFStrategy.execute_stochastic
 # ============================================================================
+
 
 class TestFundamentalFCFFStochastic:
     """Vectorized execution tests for Fundamental (Normalized) FCFF."""
@@ -189,6 +191,7 @@ class TestFundamentalFCFFStochastic:
 # ============================================================================
 # TEST: RevenueGrowthFCFFStrategy.execute_stochastic
 # ============================================================================
+
 
 class TestRevenueGrowthFCFFStochastic:
     """Vectorized execution tests for Revenue-Growth FCFF."""
@@ -223,6 +226,7 @@ class TestRevenueGrowthFCFFStochastic:
 # ============================================================================
 # TEST: FCFEStrategy.execute_stochastic
 # ============================================================================
+
 
 class TestFCFEStochastic:
     """Vectorized execution tests for Free Cash Flow to Equity."""
@@ -273,6 +277,7 @@ class TestFCFEStochastic:
 # TEST: DDMStrategy.execute_stochastic
 # ============================================================================
 
+
 class TestDDMStochastic:
     """Vectorized execution tests for Dividend Discount Model."""
 
@@ -319,6 +324,7 @@ class TestDDMStochastic:
 # ============================================================================
 # TEST: RIMBankingStrategy.execute_stochastic
 # ============================================================================
+
 
 class TestRIMStochastic:
     """Vectorized execution tests for Residual Income Model."""
@@ -385,6 +391,7 @@ class TestRIMStochastic:
 # TEST: GrahamNumberStrategy.execute_stochastic
 # ============================================================================
 
+
 class TestGrahamStochastic:
     """Vectorized execution tests for Graham Value Formula."""
 
@@ -440,10 +447,10 @@ class TestGrahamStochastic:
         )
         # Use deterministic vectors
         vectors = {
-            'base_flow': np.array([6.0]),
-            'growth': np.array([0.10]),
-            'wacc': np.array([0.10]),
-            'terminal_growth': np.array([0.02]),
+            "base_flow": np.array([6.0]),
+            "growth": np.array([0.10]),
+            "wacc": np.array([0.10]),
+            "terminal_growth": np.array([0.02]),
         }
         result = GrahamNumberStrategy.execute_stochastic(company, params, vectors)
 
@@ -458,6 +465,7 @@ class TestGrahamStochastic:
 # TEST: Performance Gate — Vectorization Speed
 # ============================================================================
 
+
 class TestVectorizationPerformance:
     """Ensures vectorized execution is fast enough."""
 
@@ -468,10 +476,10 @@ class TestVectorizationPerformance:
         n = 10_000
         rng = np.random.default_rng(42)
         vectors = {
-            'wacc': rng.normal(0.10, 0.01, n),
-            'growth': rng.normal(0.05, 0.01, n),
-            'terminal_growth': np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
-            'base_flow': rng.normal(100.0, 10.0, n),
+            "wacc": rng.normal(0.10, 0.01, n),
+            "growth": rng.normal(0.05, 0.01, n),
+            "terminal_growth": np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
+            "base_flow": rng.normal(100.0, 10.0, n),
         }
         strategy_params = FCFFStandardParameters(projection_years=5)
         params = Parameters(
@@ -495,10 +503,10 @@ class TestVectorizationPerformance:
         n = 10_000
         rng = np.random.default_rng(42)
         vectors = {
-            'wacc': rng.normal(0.10, 0.01, n),
-            'growth': rng.normal(0.05, 0.01, n),
-            'terminal_growth': np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
-            'base_flow': rng.normal(100.0, 10.0, n),
+            "wacc": rng.normal(0.10, 0.01, n),
+            "growth": rng.normal(0.05, 0.01, n),
+            "terminal_growth": np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
+            "base_flow": rng.normal(100.0, 10.0, n),
         }
 
         strategies_and_params = [
@@ -520,9 +528,7 @@ class TestVectorizationPerformance:
             elapsed_ms = (time.perf_counter() - start) * 1000
 
             assert result.shape == (n,), f"{strategy_cls.__name__} wrong shape"
-            assert elapsed_ms < 200, (
-                f"{strategy_cls.__name__} took {elapsed_ms:.1f}ms for 10k sims, should be <200ms"
-            )
+            assert elapsed_ms < 200, f"{strategy_cls.__name__} took {elapsed_ms:.1f}ms for 10k sims, should be <200ms"
 
     def test_rim_strategy_fast(self, company, common_params):
         """RIM strategy (with loop over years) should still be fast."""
@@ -531,10 +537,10 @@ class TestVectorizationPerformance:
         n = 10_000
         rng = np.random.default_rng(42)
         vectors = {
-            'wacc': rng.normal(0.10, 0.01, n),
-            'growth': rng.normal(0.05, 0.01, n),
-            'terminal_growth': np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
-            'base_flow': rng.normal(6.0, 0.6, n),
+            "wacc": rng.normal(0.10, 0.01, n),
+            "growth": rng.normal(0.05, 0.01, n),
+            "terminal_growth": np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
+            "base_flow": rng.normal(6.0, 0.6, n),
         }
         strategy_params = RIMParameters(
             book_value_anchor=30.0,
@@ -560,10 +566,10 @@ class TestVectorizationPerformance:
         n = 10_000
         rng = np.random.default_rng(42)
         vectors = {
-            'wacc': rng.normal(0.10, 0.01, n),
-            'growth': rng.normal(0.05, 0.01, n),
-            'terminal_growth': np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
-            'base_flow': rng.normal(50000.0, 5000.0, n),
+            "wacc": rng.normal(0.10, 0.01, n),
+            "growth": rng.normal(0.05, 0.01, n),
+            "terminal_growth": np.clip(rng.normal(0.02, 0.005, n), -0.01, 0.08),
+            "base_flow": rng.normal(50000.0, 5000.0, n),
         }
         strategy_params = FCFFGrowthParameters(
             projection_years=5,
@@ -579,6 +585,4 @@ class TestVectorizationPerformance:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         assert result.shape == (n,)
-        assert elapsed_ms < 200, (
-            f"Revenue-Growth 10k sims took {elapsed_ms:.1f}ms, should be <200ms"
-        )
+        assert elapsed_ms < 200, f"Revenue-Growth 10k sims took {elapsed_ms:.1f}ms, should be <200ms"

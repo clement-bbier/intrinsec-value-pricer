@@ -17,7 +17,7 @@ from src.core.quant_logger import LogDomain, QuantLogger
 @pytest.fixture
 def mock_logger():
     """Mock the internal quant logger."""
-    with patch('src.core.quant_logger._logger') as mock_log:
+    with patch("src.core.quant_logger._logger") as mock_log:
         yield mock_log
 
 
@@ -119,10 +119,7 @@ class TestLogParameterResolution:
 
     def test_logs_resolution(self, mock_logger):
         """Parameter resolution must log resolved fields."""
-        QuantLogger.log_parameter_resolution(
-            "AAPL", "FCFF_STANDARD",
-            wacc_rate=0.08, growth_rate=0.05
-        )
+        QuantLogger.log_parameter_resolution("AAPL", "FCFF_STANDARD", wacc_rate=0.08, growth_rate=0.05)
         msg = mock_logger.info.call_args[0][0]
         assert "[RESOLVER][INFO]" in msg
         assert "Stage: PARAMETER_RESOLUTION" in msg
@@ -172,10 +169,7 @@ class TestLogFinalPackaging:
 
     def test_logs_final_packaging_with_context(self, mock_logger):
         """Final packaging must include additional context."""
-        QuantLogger.log_final_packaging(
-            "AAPL", intrinsic_value=165.50,
-            audit_score=88.0
-        )
+        QuantLogger.log_final_packaging("AAPL", intrinsic_value=165.50, audit_score=88.0)
         msg = mock_logger.info.call_args[0][0]
         assert "AuditScore: 88.0%" in msg
 

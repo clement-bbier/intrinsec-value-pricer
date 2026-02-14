@@ -17,17 +17,20 @@ from src.models.enums import ValuationMethodology
 # INPUT FACTORY
 # =============================================================================
 
+
 class TestInputFactory:
     """Tests InputFactory static methods."""
 
     def test_class_exists(self):
         """InputFactory must exist."""
         from app.controllers.input_factory import InputFactory
+
         assert inspect.isclass(InputFactory)
 
     def test_build_request_is_static(self):
         """build_request must be a static method."""
         from app.controllers.input_factory import InputFactory
+
         assert isinstance(
             inspect.getattr_static(InputFactory, "build_request"),
             staticmethod,
@@ -73,6 +76,7 @@ class TestInputFactory:
         result = InputFactory.build_request()
 
         from src.models.valuation import ValuationRequest
+
         assert isinstance(result, ValuationRequest)
         assert result.parameters.structure.ticker == "AAPL"
 
@@ -116,43 +120,49 @@ class TestInputFactory:
 # BASE STRATEGY
 # =============================================================================
 
+
 class TestBaseStrategyView:
     """Tests BaseStrategyView abstract base class."""
 
     def test_base_class_is_abstract(self):
         """BaseStrategyView must be abstract."""
         from app.views.inputs.base_strategy import BaseStrategyView
+
         assert inspect.isabstract(BaseStrategyView)
 
     def test_has_render_method(self):
         """BaseStrategyView must have a render method."""
         from app.views.inputs.base_strategy import BaseStrategyView
-        assert hasattr(BaseStrategyView, 'render')
+
+        assert hasattr(BaseStrategyView, "render")
 
     def test_has_render_model_inputs_abstract(self):
         """render_model_inputs must be abstract."""
         from app.views.inputs.base_strategy import BaseStrategyView
-        assert hasattr(BaseStrategyView, 'render_model_inputs')
+
+        assert hasattr(BaseStrategyView, "render_model_inputs")
 
     def test_config_attributes_exist(self):
         """BaseStrategyView must define configuration attributes."""
         from app.views.inputs.base_strategy import BaseStrategyView
-        assert hasattr(BaseStrategyView, 'MODE')
-        assert hasattr(BaseStrategyView, 'DISPLAY_NAME')
-        assert hasattr(BaseStrategyView, 'SHOW_DISCOUNT_SECTION')
-        assert hasattr(BaseStrategyView, 'SHOW_TERMINAL_SECTION')
-        assert hasattr(BaseStrategyView, 'SHOW_BRIDGE_SECTION')
-        assert hasattr(BaseStrategyView, 'SHOW_MONTE_CARLO')
-        assert hasattr(BaseStrategyView, 'SHOW_SENSITIVITY')
-        assert hasattr(BaseStrategyView, 'SHOW_BACKTEST')
-        assert hasattr(BaseStrategyView, 'SHOW_SCENARIOS')
-        assert hasattr(BaseStrategyView, 'SHOW_SOTP')
-        assert hasattr(BaseStrategyView, 'SHOW_PEER_TRIANGULATION')
+
+        assert hasattr(BaseStrategyView, "MODE")
+        assert hasattr(BaseStrategyView, "DISPLAY_NAME")
+        assert hasattr(BaseStrategyView, "SHOW_DISCOUNT_SECTION")
+        assert hasattr(BaseStrategyView, "SHOW_TERMINAL_SECTION")
+        assert hasattr(BaseStrategyView, "SHOW_BRIDGE_SECTION")
+        assert hasattr(BaseStrategyView, "SHOW_MONTE_CARLO")
+        assert hasattr(BaseStrategyView, "SHOW_SENSITIVITY")
+        assert hasattr(BaseStrategyView, "SHOW_BACKTEST")
+        assert hasattr(BaseStrategyView, "SHOW_SCENARIOS")
+        assert hasattr(BaseStrategyView, "SHOW_SOTP")
+        assert hasattr(BaseStrategyView, "SHOW_PEER_TRIANGULATION")
 
 
 # =============================================================================
 # STRATEGY VIEWS
 # =============================================================================
+
 
 class TestStrategyViews:
     """Tests concrete strategy view classes."""
@@ -160,37 +170,44 @@ class TestStrategyViews:
     def test_fcff_standard_view_exists(self):
         """FCFFStandardView must exist."""
         from app.views.inputs.strategies.fcff_standard_view import FCFFStandardView
-        assert hasattr(FCFFStandardView, 'render_model_inputs')
+
+        assert hasattr(FCFFStandardView, "render_model_inputs")
         assert FCFFStandardView.MODE == ValuationMethodology.FCFF_STANDARD
 
     def test_fcff_normalized_view_exists(self):
         """FCFFNormalizedView must exist."""
         from app.views.inputs.strategies.fcff_normalized_view import FCFFNormalizedView
+
         assert FCFFNormalizedView.MODE == ValuationMethodology.FCFF_NORMALIZED
 
     def test_fcff_growth_view_exists(self):
         """FCFFGrowthView must exist."""
         from app.views.inputs.strategies.fcff_growth_view import FCFFGrowthView
+
         assert FCFFGrowthView.MODE == ValuationMethodology.FCFF_GROWTH
 
     def test_fcfe_view_exists(self):
         """FCFEView must exist."""
         from app.views.inputs.strategies.fcfe_view import FCFEView
+
         assert FCFEView.MODE == ValuationMethodology.FCFE
 
     def test_ddm_view_exists(self):
         """DDMView must exist."""
         from app.views.inputs.strategies.ddm_view import DDMView
+
         assert DDMView.MODE == ValuationMethodology.DDM
 
     def test_rim_bank_view_exists(self):
         """RIMBankView must exist."""
         from app.views.inputs.strategies.rim_bank_view import RIMBankView
+
         assert RIMBankView.MODE == ValuationMethodology.RIM
 
     def test_graham_value_view_exists(self):
         """GrahamValueView must exist."""
         from app.views.inputs.strategies.graham_value_view import GrahamValueView
+
         assert GrahamValueView.MODE == ValuationMethodology.GRAHAM
 
     @patch("app.views.inputs.strategies.fcff_standard_view.st")
@@ -222,6 +239,7 @@ class TestStrategyViews:
                 col.__enter__ = MagicMock(return_value=col)
                 col.__exit__ = MagicMock(return_value=False)
             return cols
+
         mock_st.columns.side_effect = make_cols
 
         view.render_model_inputs()
@@ -270,6 +288,7 @@ class TestStrategyViews:
                 col.__enter__ = MagicMock(return_value=col)
                 col.__exit__ = MagicMock(return_value=False)
             return cols
+
         mock_st.columns.side_effect = make_cols
 
         view.render_model_inputs()
@@ -305,6 +324,7 @@ class TestStrategyViews:
                 col.__enter__ = MagicMock(return_value=col)
                 col.__exit__ = MagicMock(return_value=False)
             return cols
+
         mock_st.columns.side_effect = make_cols
 
         view.render_model_inputs()
@@ -315,6 +335,7 @@ class TestStrategyViews:
 # =============================================================================
 # BASE STRATEGY RENDERING
 # =============================================================================
+
 
 class TestBaseStrategyRendering:
     """Tests BaseStrategyView.render method which orchestrates all sections."""
@@ -339,8 +360,9 @@ class TestBaseStrategyRendering:
     def test_render_step_header_is_static(self, mock_st):
         """_render_step_header must be a static method."""
         from app.views.inputs.base_strategy import BaseStrategyView
+
         assert isinstance(
-            inspect.getattr_static(BaseStrategyView, '_render_step_header'),
+            inspect.getattr_static(BaseStrategyView, "_render_step_header"),
             staticmethod,
         )
 
@@ -349,57 +371,68 @@ class TestBaseStrategyRendering:
 # SHARED WIDGETS
 # =============================================================================
 
+
 class TestSharedWidgets:
     """Tests shared_widgets.py public functions."""
 
     def test_widget_growth_rate_callable(self):
         """widget_growth_rate must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_growth_rate
+
         assert callable(widget_growth_rate)
 
     def test_widget_cost_of_capital_callable(self):
         """widget_cost_of_capital must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_cost_of_capital
+
         assert callable(widget_cost_of_capital)
 
     def test_widget_terminal_value_dcf_callable(self):
         """widget_terminal_value_dcf must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_terminal_value_dcf
+
         assert callable(widget_terminal_value_dcf)
 
     def test_widget_equity_bridge_callable(self):
         """widget_equity_bridge must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_equity_bridge
+
         assert callable(widget_equity_bridge)
 
     def test_widget_sensitivity_callable(self):
         """widget_sensitivity must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_sensitivity
+
         assert callable(widget_sensitivity)
 
     def test_widget_monte_carlo_callable(self):
         """widget_monte_carlo must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_monte_carlo
+
         assert callable(widget_monte_carlo)
 
     def test_widget_backtest_callable(self):
         """widget_backtest must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_backtest
+
         assert callable(widget_backtest)
 
     def test_widget_scenarios_callable(self):
         """widget_scenarios must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_scenarios
+
         assert callable(widget_scenarios)
 
     def test_widget_sotp_callable(self):
         """widget_sotp must be callable."""
         from app.views.inputs.strategies.shared_widgets import widget_sotp
+
         assert callable(widget_sotp)
 
     def test_get_terminal_value_narrative(self):
         """get_terminal_value_narrative must return a string."""
         from app.views.inputs.strategies.shared_widgets import get_terminal_value_narrative
+
         result = get_terminal_value_narrative(ValuationMethodology.FCFF_STANDARD)
         assert isinstance(result, str)
         assert len(result) > 0
@@ -407,6 +440,7 @@ class TestSharedWidgets:
     def test_terminal_narrative_for_ddm(self):
         """DDM terminal narrative should differ from FCFF."""
         from app.views.inputs.strategies.shared_widgets import get_terminal_value_narrative
+
         get_terminal_value_narrative(ValuationMethodology.FCFF_STANDARD)
         ddm_text = get_terminal_value_narrative(ValuationMethodology.DDM)
         assert isinstance(ddm_text, str)
@@ -416,43 +450,51 @@ class TestSharedWidgets:
 # UI CHARTS
 # =============================================================================
 
+
 class TestUICharts:
     """Tests ui_charts.py public function signatures."""
 
     def test_display_simulation_chart_callable(self):
         """display_simulation_chart must be callable."""
         from app.views.components.ui_charts import display_simulation_chart
+
         assert callable(display_simulation_chart)
 
     def test_display_football_field_callable(self):
         """display_football_field must be callable."""
         from app.views.components.ui_charts import display_football_field
+
         assert callable(display_football_field)
 
     def test_display_sotp_waterfall_callable(self):
         """display_sotp_waterfall must be callable."""
         from app.views.components.ui_charts import display_sotp_waterfall
+
         assert callable(display_sotp_waterfall)
 
     def test_display_backtest_convergence_chart_callable(self):
         """display_backtest_convergence_chart must be callable."""
         from app.views.components.ui_charts import display_backtest_convergence_chart
+
         assert callable(display_backtest_convergence_chart)
 
     def test_display_sector_comparison_chart_callable(self):
         """display_sector_comparison_chart must be callable."""
         from app.views.components.ui_charts import display_sector_comparison_chart
+
         assert callable(display_sector_comparison_chart)
 
     def test_display_scenario_comparison_chart_callable(self):
         """display_scenario_comparison_chart must be callable."""
         from app.views.components.ui_charts import display_scenario_comparison_chart
+
         assert callable(display_scenario_comparison_chart)
 
 
 # =============================================================================
 # MAIN.PY FULL FLOW
 # =============================================================================
+
 
 class TestMainFullFlow:
     """Tests main.py entry point with mocked dependencies."""
@@ -463,8 +505,7 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_error_path(self, mock_st, mock_sm, mock_get_state,
-                              mock_inject, mock_sidebar, mock_footer):
+    def test_main_error_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_footer):
         """main() with error_message should show st.error."""
         from app.main import main
 
@@ -485,8 +526,9 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_results_path(self, mock_st, mock_sm, mock_get_state,
-                                mock_inject, mock_sidebar, mock_results, mock_footer):
+    def test_main_results_path(
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_results, mock_footer
+    ):
         """main() with last_result should render valuation results."""
         from app.main import main
 
@@ -506,8 +548,9 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_auto_mode_path(self, mock_st, mock_sm, mock_get_state,
-                                  mock_inject, mock_sidebar, mock_auto, mock_footer):
+    def test_main_auto_mode_path(
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_auto, mock_footer
+    ):
         """main() in auto mode should render auto form."""
         from app.main import main
 
@@ -528,8 +571,9 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_expert_mode_path(self, mock_st, mock_sm, mock_get_state,
-                                    mock_inject, mock_sidebar, mock_expert, mock_footer):
+    def test_main_expert_mode_path(
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_expert, mock_footer
+    ):
         """main() in expert mode should render expert form."""
         from app.main import main
 
@@ -549,8 +593,7 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_error_dismiss(self, mock_st, mock_sm, mock_get_state,
-                                 mock_inject, mock_sidebar, mock_footer):
+    def test_main_error_dismiss(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_footer):
         """main() error dismiss button should clear error_message."""
         from app.main import main
 
@@ -569,6 +612,7 @@ class TestMainFullFlow:
 # SIDEBAR INTERACTIONS
 # =============================================================================
 
+
 class TestSidebarInteractions:
     """Tests sidebar interaction branches."""
 
@@ -576,8 +620,7 @@ class TestSidebarInteractions:
     @patch("app.views.common.sidebar.SessionManager")
     @patch("app.views.common.sidebar.AppController")
     @patch("app.views.common.sidebar.st")
-    def test_sidebar_ticker_change_triggers_reset(self, mock_st, mock_ctrl,
-                                                    mock_sm, mock_get_state):
+    def test_sidebar_ticker_change_triggers_reset(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Changing ticker must reset valuation."""
         from app.views.common.sidebar import render_sidebar
 
@@ -612,8 +655,7 @@ class TestSidebarInteractions:
     @patch("app.views.common.sidebar.SessionManager")
     @patch("app.views.common.sidebar.AppController")
     @patch("app.views.common.sidebar.st")
-    def test_sidebar_run_analysis_button(self, mock_st, mock_ctrl,
-                                          mock_sm, mock_get_state):
+    def test_sidebar_run_analysis_button(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Clicking Run Analysis button must call AppController."""
         from app.views.common.sidebar import render_sidebar
 

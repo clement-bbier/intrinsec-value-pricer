@@ -18,16 +18,18 @@ from src.core.quant_logger import LogDomain, LogLevel, QuantLogger, log_valuatio
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_logger():
     """Mock the internal logger."""
-    with patch('src.core.quant_logger._logger') as mock_log:
+    with patch("src.core.quant_logger._logger") as mock_log:
         yield mock_log
 
 
 # ============================================================================
 # TEST LogLevel and LogDomain Enums
 # ============================================================================
+
 
 def test_log_level_enum():
     """Test LogLevel enum values."""
@@ -52,14 +54,10 @@ def test_log_domain_enum():
 # TEST QuantLogger._format_message
 # ============================================================================
 
+
 def test_format_message_basic():
     """Test basic message formatting."""
-    msg = QuantLogger._format_message(
-        LogDomain.VALUATION,
-        LogLevel.SUCCESS,
-        "AAPL",
-        intrinsic_value=150.50
-    )
+    msg = QuantLogger._format_message(LogDomain.VALUATION, LogLevel.SUCCESS, "AAPL", intrinsic_value=150.50)
 
     assert "[VALUATION][SUCCESS]" in msg
     assert "Ticker: AAPL" in msg
@@ -69,13 +67,7 @@ def test_format_message_basic():
 def test_format_message_multiple_fields():
     """Test formatting with multiple fields."""
     msg = QuantLogger._format_message(
-        LogDomain.AUDIT,
-        LogLevel.INFO,
-        "MSFT",
-        score=85.5,
-        grade="A",
-        checks_passed=10,
-        checks_failed=2
+        LogDomain.AUDIT, LogLevel.INFO, "MSFT", score=85.5, grade="A", checks_passed=10, checks_failed=2
     )
 
     assert "[AUDIT][INFO]" in msg
@@ -89,13 +81,7 @@ def test_format_message_multiple_fields():
 def test_format_message_percentage_detection():
     """Test smart formatting for percentage-like fields."""
     msg = QuantLogger._format_message(
-        LogDomain.DATA,
-        LogLevel.INFO,
-        "TSLA",
-        accuracy=95.5,
-        ratio=0.75,
-        score=88.0,
-        percent_value=12.5
+        LogDomain.DATA, LogLevel.INFO, "TSLA", accuracy=95.5, ratio=0.75, score=88.0, percent_value=12.5
     )
 
     # Fields with 'score', 'ratio', 'accuracy', 'percent' should have %
@@ -107,12 +93,7 @@ def test_format_message_percentage_detection():
 def test_format_message_rate_detection():
     """Test smart formatting for rate-like fields."""
     msg = QuantLogger._format_message(
-        LogDomain.ENGINE,
-        LogLevel.INFO,
-        "GOOGL",
-        growth_rate=0.08,
-        discount_rate=0.10,
-        yield_rate=0.045
+        LogDomain.ENGINE, LogLevel.INFO, "GOOGL", growth_rate=0.08, discount_rate=0.10, yield_rate=0.045
     )
 
     # Rate fields should show as .2%
@@ -129,7 +110,7 @@ def test_format_message_large_numbers():
         "AAPL",
         market_cap=2_500_000_000_000.0,  # $2.5T as float
         revenue=350_000_000_000.0,  # $350B as float
-        profit=85_000_000_000.0  # $85B as float
+        profit=85_000_000_000.0,  # $85B as float
     )
 
     # Should show as B for billions
@@ -144,7 +125,7 @@ def test_format_message_medium_numbers():
         LogLevel.INFO,
         "SQ",
         cash=5_000_000_000.0,  # $5B as float
-        debt=2_500_000_000.0  # $2.5B as float
+        debt=2_500_000_000.0,  # $2.5B as float
     )
 
     assert "Cash: 5.00B" in msg
@@ -153,13 +134,7 @@ def test_format_message_medium_numbers():
 
 def test_format_message_small_numbers():
     """Test formatting of regular numbers."""
-    msg = QuantLogger._format_message(
-        LogDomain.VALUATION,
-        LogLevel.INFO,
-        "XYZ",
-        price=123.45,
-        eps=6.78
-    )
+    msg = QuantLogger._format_message(LogDomain.VALUATION, LogLevel.INFO, "XYZ", price=123.45, eps=6.78)
 
     assert "Price: 123.45" in msg
     assert "Eps: 6.78" in msg
@@ -168,13 +143,7 @@ def test_format_message_small_numbers():
 def test_format_message_none_values_skipped():
     """Test that None values are skipped."""
     msg = QuantLogger._format_message(
-        LogDomain.VALUATION,
-        LogLevel.INFO,
-        "AAPL",
-        iv=150.0,
-        upside=None,
-        score=85.0,
-        grade=None
+        LogDomain.VALUATION, LogLevel.INFO, "AAPL", iv=150.0, upside=None, score=85.0, grade=None
     )
 
     assert "Iv: 150.00" in msg
@@ -190,7 +159,7 @@ def test_format_message_pascal_case_keys():
         LogLevel.INFO,
         "TEST",
         some_long_key_name=100.0,  # Convert to float for decimal formatting
-        another_field=200.0
+        another_field=200.0,
     )
 
     assert "SomeLongKeyName: 100.00" in msg
@@ -199,14 +168,7 @@ def test_format_message_pascal_case_keys():
 
 def test_format_message_pipe_separator():
     """Test that fields are separated by pipes."""
-    msg = QuantLogger._format_message(
-        LogDomain.AUDIT,
-        LogLevel.INFO,
-        "TEST",
-        field1=1,
-        field2=2,
-        field3=3
-    )
+    msg = QuantLogger._format_message(LogDomain.AUDIT, LogLevel.INFO, "TEST", field1=1, field2=2, field3=3)
 
     parts = msg.split(" | ")
     assert len(parts) >= 4  # Header + ticker + 3 fields
@@ -216,16 +178,10 @@ def test_format_message_pipe_separator():
 # TEST QuantLogger.log_success
 # ============================================================================
 
+
 def test_log_success_basic(mock_logger):
     """Test basic success logging."""
-    QuantLogger.log_success(
-        ticker="AAPL",
-        mode="FCFF",
-        iv=150.0,
-        audit_score=85.0,
-        upside=25.50,
-        duration_ms=1500
-    )
+    QuantLogger.log_success(ticker="AAPL", mode="FCFF", iv=150.0, audit_score=85.0, upside=25.50, duration_ms=1500)
 
     # Should call info once
     assert mock_logger.info.call_count == 1
@@ -244,11 +200,7 @@ def test_log_success_basic(mock_logger):
 
 def test_log_success_without_optionals(mock_logger):
     """Test success logging without optional fields."""
-    QuantLogger.log_success(
-        ticker="MSFT",
-        mode="DDM",
-        iv=200.0
-    )
+    QuantLogger.log_success(ticker="MSFT", mode="DDM", iv=200.0)
 
     msg = mock_logger.info.call_args[0][0]
     assert "Ticker: MSFT" in msg
@@ -267,7 +219,7 @@ def test_log_success_with_extra_kwargs(mock_logger):
         mode="FCFE",
         iv=300.0,
         custom_field="custom_value",
-        another_field=123.0  # Convert to float for decimal formatting
+        another_field=123.0,  # Convert to float for decimal formatting
     )
 
     msg = mock_logger.info.call_args[0][0]
@@ -279,15 +231,10 @@ def test_log_success_with_extra_kwargs(mock_logger):
 # TEST QuantLogger.log_audit
 # ============================================================================
 
+
 def test_log_audit_basic(mock_logger):
     """Test audit logging."""
-    QuantLogger.log_audit(
-        ticker="AAPL",
-        score=88.5,
-        grade="A-",
-        passed=18,
-        failed=2
-    )
+    QuantLogger.log_audit(ticker="AAPL", score=88.5, grade="A-", passed=18, failed=2)
 
     assert mock_logger.info.call_count == 1
 
@@ -302,13 +249,7 @@ def test_log_audit_basic(mock_logger):
 
 def test_log_audit_perfect_score(mock_logger):
     """Test audit logging with perfect score."""
-    QuantLogger.log_audit(
-        ticker="MSFT",
-        score=100.0,
-        grade="A+",
-        passed=20,
-        failed=0
-    )
+    QuantLogger.log_audit(ticker="MSFT", score=100.0, grade="A+", passed=20, failed=0)
 
     msg = mock_logger.info.call_args[0][0]
     assert "GlobalScore: 100.0%" in msg
@@ -318,13 +259,7 @@ def test_log_audit_perfect_score(mock_logger):
 
 def test_log_audit_failing_grade(mock_logger):
     """Test audit logging with failing grade."""
-    QuantLogger.log_audit(
-        ticker="XYZ",
-        score=45.0,
-        grade="D",
-        passed=5,
-        failed=15
-    )
+    QuantLogger.log_audit(ticker="XYZ", score=45.0, grade="D", passed=5, failed=15)
 
     msg = mock_logger.info.call_args[0][0]
     assert "GlobalScore: 45.0%" in msg
@@ -335,12 +270,10 @@ def test_log_audit_failing_grade(mock_logger):
 # TEST QuantLogger.log_error
 # ============================================================================
 
+
 def test_log_error_with_string(mock_logger):
     """Test error logging with string error."""
-    QuantLogger.log_error(
-        ticker="AAPL",
-        error="Data fetch failed"
-    )
+    QuantLogger.log_error(ticker="AAPL", error="Data fetch failed")
 
     assert mock_logger.error.call_count == 1
 
@@ -354,10 +287,7 @@ def test_log_error_with_exception(mock_logger):
     """Test error logging with Exception object."""
     exc = ValueError("Invalid parameter")
 
-    QuantLogger.log_error(
-        ticker="MSFT",
-        error=exc
-    )
+    QuantLogger.log_error(ticker="MSFT", error=exc)
 
     msg = mock_logger.error.call_args[0][0]
     assert "Ticker: MSFT" in msg
@@ -366,11 +296,7 @@ def test_log_error_with_exception(mock_logger):
 
 def test_log_error_with_custom_domain(mock_logger):
     """Test error logging with custom domain."""
-    QuantLogger.log_error(
-        ticker="TSLA",
-        error="Provider timeout",
-        domain=LogDomain.PROVIDER
-    )
+    QuantLogger.log_error(ticker="TSLA", error="Provider timeout", domain=LogDomain.PROVIDER)
 
     msg = mock_logger.error.call_args[0][0]
     assert "[PROVIDER][ERROR]" in msg
@@ -383,7 +309,7 @@ def test_log_error_with_context(mock_logger):
         error="Calculation failed",
         domain=LogDomain.VALUATION,
         step="terminal_value",
-        value=12345.0  # Convert to float for decimal formatting with commas
+        value=12345.0,  # Convert to float for decimal formatting with commas
     )
 
     msg = mock_logger.error.call_args[0][0]
@@ -397,8 +323,10 @@ def test_log_error_with_context(mock_logger):
 # TEST log_valuation decorator
 # ============================================================================
 
+
 def test_log_valuation_decorator_success(mock_logger):
     """Test log_valuation decorator on successful function."""
+
     @log_valuation
     def mock_valuation_func(request):
         result = Mock()
@@ -424,6 +352,7 @@ def test_log_valuation_decorator_success(mock_logger):
 
 def test_log_valuation_decorator_no_audit(mock_logger):
     """Test decorator when audit report is None."""
+
     @log_valuation
     def mock_valuation_func(request):
         result = Mock()
@@ -447,6 +376,7 @@ def test_log_valuation_decorator_no_audit(mock_logger):
 
 def test_log_valuation_decorator_ticker_from_args(mock_logger):
     """Test decorator extracts ticker from first argument."""
+
     @log_valuation
     def mock_valuation_func(obj):
         result = Mock()
@@ -468,6 +398,7 @@ def test_log_valuation_decorator_ticker_from_args(mock_logger):
 
 def test_log_valuation_decorator_ticker_from_kwargs(mock_logger):
     """Test decorator extracts ticker from kwargs."""
+
     @log_valuation
     def mock_valuation_func(request=None):
         result = Mock()
@@ -489,6 +420,7 @@ def test_log_valuation_decorator_ticker_from_kwargs(mock_logger):
 
 def test_log_valuation_decorator_no_ticker(mock_logger):
     """Test decorator when ticker cannot be resolved."""
+
     @log_valuation
     def mock_valuation_func():
         result = Mock()
@@ -507,6 +439,7 @@ def test_log_valuation_decorator_no_ticker(mock_logger):
 
 def test_log_valuation_decorator_error(mock_logger):
     """Test decorator logs error on exception."""
+
     @log_valuation
     def mock_valuation_func(request):
         raise ValueError("Calculation error")
@@ -527,6 +460,7 @@ def test_log_valuation_decorator_error(mock_logger):
 
 def test_log_valuation_decorator_non_result_return(mock_logger):
     """Test decorator when function returns non-result object."""
+
     @log_valuation
     def mock_valuation_func(request):
         # Returns something without intrinsic_value_per_share
@@ -543,6 +477,7 @@ def test_log_valuation_decorator_non_result_return(mock_logger):
 
 def test_log_valuation_decorator_preserves_function():
     """Test that decorator preserves original function."""
+
     def original_func(x, y):
         """Original docstring."""
         return x + y
@@ -584,30 +519,17 @@ def test_log_valuation_decorator_timing(mock_logger):
 # INTEGRATION TESTS
 # ============================================================================
 
+
 def test_full_logging_workflow(mock_logger):
     """Integration test: Full logging workflow."""
     # 1. Log success
-    QuantLogger.log_success(
-        ticker="AAPL",
-        mode="FCFF",
-        iv=150.0,
-        audit_score=85.0
-    )
+    QuantLogger.log_success(ticker="AAPL", mode="FCFF", iv=150.0, audit_score=85.0)
 
     # 2. Log audit
-    QuantLogger.log_audit(
-        ticker="AAPL",
-        score=85.0,
-        grade="B+",
-        passed=17,
-        failed=3
-    )
+    QuantLogger.log_audit(ticker="AAPL", score=85.0, grade="B+", passed=17, failed=3)
 
     # 3. Log error
-    QuantLogger.log_error(
-        ticker="FAIL",
-        error="Test error"
-    )
+    QuantLogger.log_error(ticker="FAIL", error="Test error")
 
     # Should have logged 2 info + 1 error
     assert mock_logger.info.call_count == 2
@@ -616,7 +538,7 @@ def test_full_logging_workflow(mock_logger):
 
 def test_logging_consistency():
     """Test that logging format is consistent across methods."""
-    with patch('src.core.quant_logger._logger') as mock_log:
+    with patch("src.core.quant_logger._logger") as mock_log:
         QuantLogger.log_success(ticker="T1", mode="M", iv=100.0)
         QuantLogger.log_audit(ticker="T2", score=80.0, grade="B", passed=10, failed=2)
         QuantLogger.log_error(ticker="T3", error="E")
@@ -635,7 +557,7 @@ def test_logging_consistency():
 
 def test_logging_with_various_numeric_formats():
     """Test logging with various numeric formats."""
-    with patch('src.core.quant_logger._logger') as mock_log:
+    with patch("src.core.quant_logger._logger") as mock_log:
         QuantLogger.log_success(
             ticker="TEST",
             mode="FCFF",
@@ -645,7 +567,7 @@ def test_logging_with_various_numeric_formats():
             negative_number=-50.0,
             zero_value=0.0,
             rate_field=0.08,
-            ratio_value=1.5
+            ratio_value=1.5,
         )
 
         msg = mock_log.info.call_args[0][0]

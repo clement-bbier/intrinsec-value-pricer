@@ -23,5 +23,5 @@ __all__ = [
     "display_sotp_waterfall",
     "display_backtest_convergence_chart",
     "display_scenario_comparison_chart",
-    "render_calculation_step"
+    "render_calculation_step",
 ]

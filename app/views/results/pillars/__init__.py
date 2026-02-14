@@ -14,5 +14,5 @@ __all__ = [
     "render_glass_box",
     "render_benchmark_view",
     "render_risk_analysis",
-    "render_market_context"
+    "render_market_context",
 ]

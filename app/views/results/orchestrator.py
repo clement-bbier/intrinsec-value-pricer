@@ -67,32 +67,32 @@ def render_valuation_results(result: ValuationResult) -> None:
         (
             PillarLabels.PILLAR_1_CONF,
             lambda: inputs_summary.render_detailed_inputs(result),
-            True  # Always visible
+            True,  # Always visible
         ),
         # --- Pillar 2: Mathematical Trace (Glass Box) ---
         (
             PillarLabels.PILLAR_2_TRACE,
             lambda: calculation_proof.render_glass_box(result),
-            True  # Always visible
+            True,  # Always visible
         ),
         # --- Pillar 3: Benchmark & Reliability ---
         (
             PillarLabels.PILLAR_3_BENCHMARK,
             lambda: benchmark_report.render_benchmark_view(result),
-            True  # Always visible (or check if benchmark data exists)
+            True,  # Always visible (or check if benchmark data exists)
         ),
         # --- Pillar 4: Risk Engineering (Optional) ---
         (
             PillarLabels.PILLAR_4_RISK,
             lambda: risk_engineering.render_risk_analysis(result),
-            _is_risk_pillar_active(result)
+            _is_risk_pillar_active(result),
         ),
         # --- Pillar 5: Market Analysis & SOTP (Optional) ---
         (
             PillarLabels.PILLAR_5_MARKET,
             lambda: market_analysis.render_market_context(result),
-            _is_market_pillar_active(result)
-        )
+            _is_market_pillar_active(result),
+        ),
     ]
 
     # Filter active tabs based on the condition (tuple index 2)
@@ -138,14 +138,14 @@ def _render_permanent_header(result: ValuationResult) -> None:
     with c1:
         # KPI 1: Intrinsic Value (Model Output)
         atom_kpi_metric(
-            label=KPITexts.INTRINSIC_PRICE_LABEL, # "Intrinsic Price"
+            label=KPITexts.INTRINSIC_PRICE_LABEL,  # "Intrinsic Price"
             value=f"{intrinsic_val:,.2f} {currency}",
         )
 
     with c2:
         # KPI 2: Market Price (Reality)
         atom_kpi_metric(
-            label=KPITexts.LABEL_PRICE, # "Market Price"
+            label=KPITexts.LABEL_PRICE,  # "Market Price"
             value=f"{current_price:,.2f} {currency}",
         )
 
@@ -153,7 +153,7 @@ def _render_permanent_header(result: ValuationResult) -> None:
         # KPI 3: Upside (Decision)
         # Note: 'normal' color means Green if positive, Red if negative
         atom_kpi_metric(
-            label=KPITexts.UPSIDE_LABEL, # "Upside Potential"
+            label=KPITexts.UPSIDE_LABEL,  # "Upside Potential"
             value=f"{upside:+.1%}",
             delta=f"{upside:+.1%}",
             delta_color="normal",
@@ -170,12 +170,7 @@ def _is_risk_pillar_active(result: ValuationResult) -> bool:
         True if Monte Carlo, Sensitivity, Scenarios, or Backtest is enabled.
     """
     ext = result.request.parameters.extensions
-    return (
-        ext.monte_carlo.enabled or
-        ext.sensitivity.enabled or
-        ext.scenarios.enabled or
-        ext.backtest.enabled
-    )
+    return ext.monte_carlo.enabled or ext.sensitivity.enabled or ext.scenarios.enabled or ext.backtest.enabled
 
 
 def _is_market_pillar_active(result: ValuationResult) -> bool:
@@ -188,7 +183,4 @@ def _is_market_pillar_active(result: ValuationResult) -> bool:
         True if SOTP or Peer Comparison is enabled.
     """
     ext = result.request.parameters.extensions
-    return (
-        ext.sotp.enabled or
-        ext.peers.enabled
-    )
+    return ext.sotp.enabled or ext.peers.enabled

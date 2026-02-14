@@ -27,6 +27,7 @@ class ValuationError(Exception):
     diagnostic : DiagnosticEvent
         Structured metadata about the failure.
     """
+
     def __init__(self, diagnostic: DiagnosticEvent):
         self.diagnostic = diagnostic
         super().__init__(diagnostic.message)
@@ -40,8 +41,10 @@ class ValuationError(Exception):
 # 1. INFRASTRUCTURE & CONFIGURATION
 # ==============================================================================
 
+
 class ConfigurationError(ValuationError):
     """Raised when critical configuration files (YAML) are missing or invalid."""
+
     def __init__(self, file_path: str, details: str):
         event = DiagnosticEvent(
             code="CONFIG_LOAD_ERROR",
@@ -49,13 +52,14 @@ class ConfigurationError(ValuationError):
             domain=DiagnosticDomain.CONFIG,
             message=f"Failed to load configuration: {file_path}",
             technical_detail=details,
-            remediation_hint="Check file permissions and YAML syntax."
+            remediation_hint="Check file permissions and YAML syntax.",
         )
         super().__init__(event)
 
 
 class ExternalServiceError(ValuationError):
     """Raised when an external API (Yahoo, Macro) fails or times out."""
+
     def __init__(self, provider: str, error_detail: str):
         event = DiagnosticEvent(
             code="PROVIDER_CONNECTION_FAIL",
@@ -63,13 +67,14 @@ class ExternalServiceError(ValuationError):
             domain=DiagnosticDomain.PROVIDER,
             message=f"Connection failed to provider: {provider}",
             technical_detail=error_detail,
-            remediation_hint="Check network connection or try again later."
+            remediation_hint="Check network connection or try again later.",
         )
         super().__init__(event)
 
 
 class TickerNotFoundError(ValuationError):
     """Raised when the financial provider cannot resolve a stock symbol."""
+
     def __init__(self, ticker: str):
         event = DiagnosticEvent(
             code="DATA_TICKER_NOT_FOUND",
@@ -77,13 +82,14 @@ class TickerNotFoundError(ValuationError):
             domain=DiagnosticDomain.DATA,
             message=f"Ticker '{ticker}' not found.",
             technical_detail=f"Input symbol: {ticker}",
-            remediation_hint="Verify the ticker symbol on Yahoo Finance."
+            remediation_hint="Verify the ticker symbol on Yahoo Finance.",
         )
         super().__init__(event)
 
 
 class DataMissingError(ValuationError):
     """Raised when a mandatory financial field is absent from the dataset."""
+
     def __init__(self, missing_field: str, ticker: str, year: int | None = None):
         if year:
             msg = f"Missing data for {ticker}: Field '{missing_field}' (Year: {year})."
@@ -95,7 +101,7 @@ class DataMissingError(ValuationError):
             severity=SeverityLevel.ERROR,
             domain=DiagnosticDomain.DATA,
             message=msg,
-            remediation_hint="Try 'Expert Mode' to manually input missing data."
+            remediation_hint="Try 'Expert Mode' to manually input missing data.",
         )
         super().__init__(event)
 
@@ -104,39 +110,44 @@ class DataMissingError(ValuationError):
 # 2. MODELING AND CALCULATION ERRORS
 # ==============================================================================
 
+
 class ModelDivergenceError(ValuationError):
     """Raised when Gordon Growth parameters prevent model convergence (g >= WACC)."""
+
     def __init__(self, g: float, wacc: float):
         super().__init__(DiagnosticRegistry.model_g_divergence(g, wacc))
 
 
 class MonteCarloInstabilityError(ValuationError):
     """Raised when the simulation fails to produce enough valid iterations."""
+
     def __init__(self, valid_ratio: float, threshold: float):
         super().__init__(DiagnosticRegistry.model_mc_instability(valid_ratio, threshold))
 
 
 class CalculationError(ValuationError):
     """Raised for generic mathematical failures during model execution."""
+
     def __init__(self, message: str):
         event = DiagnosticEvent(
             code="CALCULATION_GENERIC_ERROR",
             severity=SeverityLevel.ERROR,
             domain=DiagnosticDomain.MODEL,
             message=message,
-            remediation_hint="Check inputs for zero-division or invalid ranges."
+            remediation_hint="Check inputs for zero-division or invalid ranges.",
         )
         super().__init__(event)
 
 
 class InvalidParameterError(ValuationError):
     """Raised when a user-provided parameter is outside allowed bounds."""
+
     def __init__(self, param_name: str, value: float, bounds: tuple[float, float]):
         event = DiagnosticEvent(
             code="CONFIG_INVALID_PARAM",
             severity=SeverityLevel.ERROR,
             domain=DiagnosticDomain.CONFIG,
             message=f"Parameter '{param_name}' value {value} is out of bounds {bounds}.",
-            remediation_hint="Adjust the parameter to be within the allowed range."
+            remediation_hint="Adjust the parameter to be within the allowed range.",
         )
         super().__init__(event)

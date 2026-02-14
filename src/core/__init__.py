@@ -26,7 +26,6 @@ __all__ = [
     "DiagnosticEvent",
     "SeverityLevel",
     "DiagnosticDomain",
-
     # Exceptions
     "ValuationError",
     "ConfigurationError",
@@ -35,20 +34,17 @@ __all__ = [
     "DataMissingError",
     "CalculationError",
     "InvalidParameterError",
-
     # Formatting
     "format_smart_number",
     "get_delta_color",
     "COLOR_POSITIVE",
     "COLOR_NEGATIVE",
     "COLOR_NEUTRAL",
-
     # Interfaces
     "IUIProgressHandler",
     "IResultRenderer",
     "DataProviderProtocol",
     "NullProgressHandler",
-
     # Logger
     "QuantLogger",
     "log_valuation",

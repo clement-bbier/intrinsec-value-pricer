@@ -55,6 +55,7 @@ from src.valuation.strategies import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
+
 class ValuationOrchestrator:
     """
     Coordinates the full lifecycle of a valuation session.
@@ -154,15 +155,11 @@ class ValuationOrchestrator:
             pe_ratio=snapshot.sector_pe_fallback,
             ev_ebitda=snapshot.sector_ev_ebitda_fallback,
             ev_revenue=snapshot.sector_ev_rev_fallback,
-            pb_ratio=None  # Not currently fetched in snapshot fallbacks
+            pb_ratio=None,  # Not currently fetched in snapshot fallbacks
         )
 
         # 2. Build Performance (Placeholder logic for now)
-        performance = SectorPerformance(
-            fcf_margin=None,
-            revenue_growth=None,
-            roe=None
-        )
+        performance = SectorPerformance(fcf_margin=None, revenue_growth=None, roe=None)
 
         return MarketContext(
             reference_ticker=snapshot.industry or "Unknown Index",
@@ -170,7 +167,7 @@ class ValuationOrchestrator:
             multiples=multiples,
             performance=performance,
             risk_free_rate=snapshot.risk_free_rate or 0.04,
-            equity_risk_premium=snapshot.market_risk_premium or 0.05
+            equity_risk_premium=snapshot.market_risk_premium or 0.05,
         )
 
     def run(self, request: ValuationRequest, snapshot: CompanySnapshot) -> ValuationResult:
@@ -215,11 +212,13 @@ class ValuationOrchestrator:
         # --- PHASE 1.6b: CRITICAL PARAMETER RESOLUTION LOG ---
         logger.info(
             "[RESOLVER] Risk-Free Rate resolved to %.4f for %s",
-            params.common.rates.risk_free_rate, ticker,
+            params.common.rates.risk_free_rate,
+            ticker,
         )
         logger.info(
             "[RESOLVER] Beta resolved to %.2f for %s",
-            params.common.rates.beta, ticker,
+            params.common.rates.beta,
+            ticker,
         )
         logger.info(
             "[RESOLVER] WACC components: MRP=%.4f | Kd=%.4f | Tax=%.4f for %s",
@@ -241,13 +240,8 @@ class ValuationOrchestrator:
         guardrail_events, has_blocking_errors = self._run_guardrails(params)
 
         if has_blocking_errors:
-            error_messages = [
-                e.message for e in guardrail_events
-                if e.severity == SeverityLevel.ERROR
-            ]
-            raise CalculationError(
-                f"Valuation blocked by economic guardrails: {'; '.join(error_messages)}"
-            )
+            error_messages = [e.message for e in guardrail_events if e.severity == SeverityLevel.ERROR]
+            raise CalculationError(f"Valuation blocked by economic guardrails: {'; '.join(error_messages)}")
 
         # --- PHASE 2: CORE STRATEGY EXECUTION ---
         strategy_cls = get_strategy(request.mode)
@@ -300,7 +294,7 @@ class ValuationOrchestrator:
                 ticker=ticker,
                 random_seed=random_seed,
                 input_hash=input_hash,
-                execution_time_ms=execution_time
+                execution_time_ms=execution_time,
             )
             valuation_output.metadata = metadata
 
@@ -310,10 +304,7 @@ class ValuationOrchestrator:
                 intrinsic_value=valuation_output.results.common.intrinsic_value_per_share,
                 execution_time_ms=execution_time,
             )
-            QuantLogger.log_json(
-                event="valuation_completed",
-                **metadata.model_dump(mode="json")
-            )
+            QuantLogger.log_json(event="valuation_completed", **metadata.model_dump(mode="json"))
 
             return valuation_output
 
@@ -326,10 +317,10 @@ class ValuationOrchestrator:
 
     @staticmethod
     def _process_extensions(
-            base_result: ValuationResult,
-            strategy_runner: IValuationRunner,
-            params: Parameters,
-            ticker: str = "N/A",
+        base_result: ValuationResult,
+        strategy_runner: IValuationRunner,
+        params: Parameters,
+        ticker: str = "N/A",
     ) -> None:
         """
         Executes enabled analytical modules and attaches results to the envelope.

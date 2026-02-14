@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 SPREADS_LARGE_CAP = ValuationEngineDefaults.SPREADS_LARGE_CAP
 SPREADS_SMALL_MID_CAP = ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
 
+
 @dataclass
 class WACCBreakdown:
     r"""
@@ -56,6 +57,7 @@ class WACCBreakdown:
     beta_adjusted : bool, default False
         Indicates if Hamada re-levering was applied to the Beta.
     """
+
     cost_of_equity: float
     cost_of_debt_pre_tax: float
     cost_of_debt_after_tax: float
@@ -66,9 +68,11 @@ class WACCBreakdown:
     beta_used: float = 1.0
     beta_adjusted: bool = False
 
+
 # ==============================================================================
 # 1. TIME VALUE OF MONEY & TERMINAL VALUES
 # ==============================================================================
+
 
 def calculate_discount_factors(rate: float, years: int) -> list[float]:
     r"""
@@ -97,6 +101,7 @@ def calculate_discount_factors(rate: float, years: int) -> list[float]:
         raise CalculationError(CalculationErrors.INVALID_DISCOUNT_RATE.format(rate=rate))
     return [1.0 / ((1.0 + rate) ** t) for t in range(1, years + 1)]
 
+
 def calculate_npv(flows: list[float], rate: float) -> float:
     r"""
     Calculates the Net Present Value (NPV) of a series of cash flows.
@@ -117,6 +122,7 @@ def calculate_npv(flows: list[float], rate: float) -> float:
     """
     factors = calculate_discount_factors(rate, len(flows))
     return sum(f * d for f, d in zip(flows, factors))
+
 
 def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
     r"""
@@ -147,6 +153,7 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
         raise CalculationError(CalculationErrors.CONVERGENCE_IMPOSSIBLE.format(rate=rate, g=g_perp))
     return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
 
+
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:
     r"""
     Estimates Terminal Value based on an exit multiple approach.
@@ -173,6 +180,7 @@ def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float)
     if multiple < 0:
         raise CalculationError(CalculationErrors.NEGATIVE_EXIT_MULTIPLE)
     return final_metric * multiple
+
 
 def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> float:
     r"""
@@ -201,9 +209,11 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
         raise CalculationError(CalculationErrors.NEGATIVE_PE_RATIO)
     return final_net_income * pe_multiple
 
+
 # ==============================================================================
 # 2. STRUCTURE ADJUSTMENTS & DILUTION
 # ==============================================================================
+
 
 def calculate_historical_share_growth(shares_series: list[float]) -> float:
     r"""
@@ -282,7 +292,7 @@ def compute_diluted_shares(current_shares: float, annual_rate: float | None, yea
     return current_shares * factor
 
 
-def apply_dilution_adjustment(price : float, dilution_factor: float) -> float:
+def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
     r"""
     Adjusts the final intrinsic price per share for expected dilution.
 
@@ -304,9 +314,11 @@ def apply_dilution_adjustment(price : float, dilution_factor: float) -> float:
         return price
     return price / dilution_factor
 
+
 # ==============================================================================
 # 3. COST OF CAPITAL (WACC / Ke / SYNTHETIC DEBT)
 # ==============================================================================
+
 
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     r"""
@@ -329,6 +341,7 @@ def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
         The cost of equity.
     """
     return rf + beta * mrp
+
 
 def unlever_beta(beta_levered: float, tax_rate: float, debt_equity_ratio: float) -> float:
     r"""
@@ -354,6 +367,7 @@ def unlever_beta(beta_levered: float, tax_rate: float, debt_equity_ratio: float)
         return beta_levered
     return beta_levered / (1.0 + (1.0 - tax_rate) * debt_equity_ratio)
 
+
 def relever_beta(beta_unlevered: float, tax_rate: float, target_debt_equity_ratio: float) -> float:
     r"""
     Relevers a beta coefficient to a target capital structure.
@@ -378,6 +392,7 @@ def relever_beta(beta_unlevered: float, tax_rate: float, target_debt_equity_rati
         return beta_unlevered
     return beta_unlevered * (1.0 + (1.0 - tax_rate) * target_debt_equity_ratio)
 
+
 def calculate_cost_of_equity(params: Parameters) -> float:
     r"""
     Calculates Ke for Direct Equity approaches, prioritizing manual overrides.
@@ -399,8 +414,10 @@ def calculate_cost_of_equity(params: Parameters) -> float:
 
     return calculate_cost_of_equity_capm(rf, beta, mrp)
 
-def calculate_synthetic_cost_of_debt(rf: float, ebit: float | None,
-                                     interest_expense: float | None, market_cap: float) -> float:
+
+def calculate_synthetic_cost_of_debt(
+    rf: float, ebit: float | None, interest_expense: float | None, market_cap: float
+) -> float:
     r"""
     Estimates pre-tax cost of debt using the Interest Coverage Ratio (ICR).
 
@@ -440,6 +457,7 @@ def calculate_synthetic_cost_of_debt(rf: float, ebit: float | None,
     # Default (Junk/Distressed) if no threshold matched
     return rf + 0.1900
 
+
 def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     r"""
     Computes the Weighted Average Cost of Capital (WACC).
@@ -457,9 +475,58 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     -------
     WACCBreakdown
         Full technical decomposition for audit and rendering.
+
+    Notes
+    -----
+    If params.common.rates.wacc is provided (manual override), it bypasses
+    the CAPM calculation and uses the override value directly. This is used
+    in sensitivity analysis to test valuation response to discount rate changes.
     """
     r = params.common.rates
     c = params.common.capital
+
+    # 0. Check for WACC override (used in sensitivity analysis)
+    if r.wacc is not None:
+        # When WACC is manually overridden, we still need to decompose it
+        # but we use the override value as the final WACC.
+        # Note: Ke and Kd calculations are required for UI display and audit trails.
+
+        # Calculate Ke for display/audit purposes
+        ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
+
+        # Calculate Kd for display purposes
+        tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+        rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+
+        if r.cost_of_debt is not None:
+            kd_gross = r.cost_of_debt
+        else:
+            mcap = financials.current_price * (c.shares_outstanding or 1.0)
+            ebit = getattr(financials, "ebit_ttm", None) or 0.0
+            interest = getattr(financials, "interest_expense", None) or 0.0
+            kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
+
+        kd_net = kd_gross * (1.0 - tax)
+
+        # Calculate weights for display
+        debt = c.total_debt if c.total_debt is not None else 0.0
+        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+        market_equity = financials.current_price * shares
+
+        total_cap = market_equity + debt
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+
+        return WACCBreakdown(
+            cost_of_equity=ke,
+            cost_of_debt_pre_tax=kd_gross,
+            cost_of_debt_after_tax=kd_net,
+            weight_equity=we,
+            weight_debt=wd,
+            wacc=r.wacc,  # Use the override value
+            method=StrategySources.MANUAL_OVERRIDE,
+            beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
+            beta_adjusted=False,
+        )
 
     # 1. Calculate Ke
     ke = calculate_cost_of_equity(params)
@@ -477,12 +544,10 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
 
         # Extract EBIT and Interest from the Company identity if available
         # Fallback to 0.0 triggers the A-rated proxy spread (safe default)
-        ebit = getattr(financials, 'ebit_ttm', None) or 0.0
-        interest = getattr(financials, 'interest_expense', None) or 0.0
+        ebit = getattr(financials, "ebit_ttm", None) or 0.0
+        interest = getattr(financials, "interest_expense", None) or 0.0
 
-        kd_gross = calculate_synthetic_cost_of_debt(
-            rf, ebit, interest, mcap
-        )
+        kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
 
     kd_net = kd_gross * (1.0 - tax)
 
@@ -505,12 +570,14 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         wacc=wacc_raw,
         method=StrategySources.WACC_MARKET,
         beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
-        beta_adjusted=False
+        beta_adjusted=False,
     )
+
 
 # ==============================================================================
 # 4. SHAREHOLDER MODELS (FCFE & DDM)
 # ==============================================================================
+
 
 def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: float) -> float:
     r"""
@@ -519,6 +586,7 @@ def calculate_fcfe_reconstruction(ni: float, adjustments: float, net_borrowing: 
     $$FCFE = Net Income + NonCashAdj - Capex - \Delta WCR + \Delta Net Borrowing$$
     """
     return ni + adjustments + net_borrowing
+
 
 def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borrowing: float) -> float:
     r"""
@@ -544,6 +612,7 @@ def calculate_fcfe_base(fcff: float, interest: float, tax_rate: float, net_borro
     """
     return fcff - (interest * (1.0 - tax_rate)) + net_borrowing
 
+
 def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
     r"""
     Calculates the Sustainable Growth Rate (SGR) based on Gordon's retention.
@@ -564,9 +633,11 @@ def calculate_sustainable_growth(roe: float, payout_ratio: float) -> float:
     """
     return roe * (1.0 - (payout_ratio or 0.0))
 
+
 # ==============================================================================
 # 5. SPECIFIC MODELS (RIM & GRAHAM)
 # ==============================================================================
+
 
 def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float) -> float:
     r"""
@@ -593,8 +664,10 @@ def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float
     # Standard interpretation: 8.5 + 2 * (growth_rate * 100)
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
-def calculate_rim_vectors(current_bv: float, ke: float,
-                          earnings: list[float], payout: float) -> tuple[list[float], list[float]]:
+
+def calculate_rim_vectors(
+    current_bv: float, ke: float, earnings: list[float], payout: float
+) -> tuple[list[float], list[float]]:
     r"""
     Generates Residual Income (RI) and Book Value (BV) time series.
 
@@ -626,6 +699,7 @@ def calculate_rim_vectors(current_bv: float, ke: float,
         prev_bv = new_bv
     return residual_incomes, book_values
 
+
 def compute_proportions(*values: float | None, fallback_index: int = 0) -> list[float]:
     r"""
     Normalizes a list of values into weights that sum to 100%.
@@ -650,9 +724,11 @@ def compute_proportions(*values: float | None, fallback_index: int = 0) -> list[
         return res
     return [v / total for v in clean_values]
 
+
 # ==============================================================================
 # 6. MULTIPLES & TRIANGULATION (RELATIVE VALUATION)
 # ==============================================================================
+
 
 def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares: float) -> float:
     r"""
@@ -678,13 +754,14 @@ def calculate_price_from_pe_multiple(net_income: float, median_pe: float, shares
         return 0.0
     return (net_income * median_pe) / shares
 
+
 def calculate_price_from_ev_multiple(
     metric_value: float,
     median_ev_multiple: float,
     net_debt: float,
     shares: float,
     minorities: float = 0.0,
-    pensions: float = 0.0
+    pensions: float = 0.0,
 ) -> float:
     r"""
     Derives Price per Share from an Enterprise Value multiple (Equity Bridge).
@@ -718,10 +795,8 @@ def calculate_price_from_ev_multiple(
     equity_value = enterprise_value - net_debt - minorities - pensions
     return max(0.0, equity_value / shares)
 
-def calculate_triangulated_price(
-    valuation_signals: dict[str, float],
-    weights: dict[str, float] | None = None
-) -> float:
+
+def calculate_triangulated_price(valuation_signals: dict[str, float], weights: dict[str, float] | None = None) -> float:
     r"""
     Performs weighted synthesis of multiple valuation price signals.
 

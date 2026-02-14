@@ -39,6 +39,7 @@ class StrategyMetadata:
     display_name : str, optional
         The localized (i18n) label displayed in the application.
     """
+
     mode: ValuationMethodology
     strategy_cls: type[IValuationRunner]
     ui_renderer_name: str | None = None
@@ -67,7 +68,7 @@ class StrategyRegistry:
         mode: ValuationMethodology,
         strategy_cls: type[IValuationRunner],
         ui_renderer_name: str | None = None,
-        display_name: str | None = None
+        display_name: str | None = None,
     ) -> None:
         """
         Formally registers a strategy into the calculation core.
@@ -76,7 +77,7 @@ class StrategyRegistry:
             mode=mode,
             strategy_cls=strategy_cls,
             ui_renderer_name=ui_renderer_name,
-            display_name=display_name or mode.value
+            display_name=display_name or mode.value,
         )
         cls._strategies[mode] = metadata
         logger.debug("[Registry] Strategy registered | mode=%s", mode.value)
@@ -107,28 +108,18 @@ class StrategyRegistry:
     @classmethod
     def get_display_names_map(cls) -> dict[ValuationMethodology, str]:
         """Generates a mapping of modes to localized labels for UI components."""
-        return {
-            mode: meta.display_name
-            for mode, meta in cls._strategies.items()
-            if meta.display_name
-        }
+        return {mode: meta.display_name for mode, meta in cls._strategies.items() if meta.display_name}
 
 
 def register_strategy(
-    mode: ValuationMethodology,
-    ui_renderer: str | None = None,
-    display_name: str | None = None
+    mode: ValuationMethodology, ui_renderer: str | None = None, display_name: str | None = None
 ) -> Callable[[type[IValuationRunner]], type[IValuationRunner]]:
     """
     Decorator for automated registration of valuation strategies.
     """
+
     def decorator(cls: type[IValuationRunner]) -> type[IValuationRunner]:
-        StrategyRegistry.register(
-            mode=mode,
-            strategy_cls=cls,
-            ui_renderer_name=ui_renderer,
-            display_name=display_name
-        )
+        StrategyRegistry.register(mode=mode, strategy_cls=cls, ui_renderer_name=ui_renderer, display_name=display_name)
         setattr(cls, "_registered_mode", mode)
         return cls
 
@@ -175,21 +166,21 @@ def _register_all_strategies() -> None:
         mode=ValuationMethodology.FCFF_STANDARD,
         strategy_cls=StandardFCFFStrategy,
         ui_renderer_name="render_expert_fcff_standard",
-        display_name=RegistryTexts.FCFF_STANDARD_L  # OK
+        display_name=RegistryTexts.FCFF_STANDARD_L,  # OK
     )
 
     StrategyRegistry.register(
         mode=ValuationMethodology.FCFF_NORMALIZED,
         strategy_cls=FundamentalFCFFStrategy,
         ui_renderer_name="render_expert_fcff_fundamental",
-        display_name=RegistryTexts.FCFF_NORM_L
+        display_name=RegistryTexts.FCFF_NORM_L,
     )
 
     StrategyRegistry.register(
         mode=ValuationMethodology.FCFF_GROWTH,
         strategy_cls=RevenueGrowthFCFFStrategy,
         ui_renderer_name="render_expert_fcff_growth",
-        display_name=RegistryTexts.FCFF_GROWTH_L
+        display_name=RegistryTexts.FCFF_GROWTH_L,
     )
 
     # --- Shareholder Value Approaches (Ke-Based) ---
@@ -197,14 +188,14 @@ def _register_all_strategies() -> None:
         mode=ValuationMethodology.FCFE,
         strategy_cls=FCFEStrategy,
         ui_renderer_name="render_expert_fcfe",
-        display_name=RegistryTexts.FCFE_L
+        display_name=RegistryTexts.FCFE_L,
     )
 
     StrategyRegistry.register(
         mode=ValuationMethodology.DDM,
         strategy_cls=DividendDiscountStrategy,
         ui_renderer_name="render_expert_ddm",
-        display_name=RegistryTexts.DDM_L
+        display_name=RegistryTexts.DDM_L,
     )
 
     # --- Alternative Models ---
@@ -212,14 +203,14 @@ def _register_all_strategies() -> None:
         mode=ValuationMethodology.RIM,
         strategy_cls=RIMBankingStrategy,
         ui_renderer_name="render_expert_rim",
-        display_name=RegistryTexts.RIM_IV_L
+        display_name=RegistryTexts.RIM_IV_L,
     )
 
     StrategyRegistry.register(
         mode=ValuationMethodology.GRAHAM,
         strategy_cls=GrahamNumberStrategy,
         ui_renderer_name="render_expert_graham",
-        display_name=RegistryTexts.GRAHAM_IV_L
+        display_name=RegistryTexts.GRAHAM_IV_L,
     )
 
     _REGISTRY_INITIALIZED = True

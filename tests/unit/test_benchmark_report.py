@@ -7,7 +7,6 @@ Role: Validates the benchmark report helper functions and data access patterns.
 Coverage: Direct attribute access without getattr hacks.
 """
 
-
 from app.views.results.pillars.benchmark_report import (
     _render_piotroski_section,
     _safe_float,
@@ -62,7 +61,7 @@ class TestSafeFloatPattern:
     def test_all_fields_none_safe(self):
         """All CompanyStats fields defaulting to None should be handled safely."""
         stats = CompanyStats()
-        for field in ('pe_ratio', 'ev_ebitda', 'pb_ratio', 'fcf_margin', 'roe', 'revenue_growth'):
+        for field in ("pe_ratio", "ev_ebitda", "pb_ratio", "fcf_margin", "roe", "revenue_growth"):
             val = getattr(stats, field)
             safe_val = val if val is not None else 0.0
             assert safe_val == 0.0
@@ -182,17 +181,20 @@ class TestNoGetattr:
     def test_no_getattr_on_benchmark_texts(self):
         """benchmark_report.py must not use getattr on BenchmarkTexts."""
         import inspect
+
         source = inspect.getsource(_render_piotroski_section)
         assert "getattr(BenchmarkTexts" not in source
 
     def test_no_getattr_on_company_stats_in_render(self):
         """benchmark_report.py render function must not use getattr on company_stats."""
         import inspect
+
         source = inspect.getsource(render_benchmark_view)
         assert "getattr(company_stats" not in source
 
     def test_no_or_zero_pattern_in_render(self):
         """benchmark_report.py must not use 'or 0.0' pattern."""
         import inspect
+
         source = inspect.getsource(render_benchmark_view)
         assert "or 0.0" not in source

@@ -20,6 +20,7 @@ from src.valuation.library.rim import RIMLibrary
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_rim_params():
     """Mock Parameters object for RIM calculations."""
@@ -61,6 +62,7 @@ def mock_rim_params_with_manual_vector():
 # TEST project_residual_income
 # ============================================================================
 
+
 def test_project_residual_income_basic(mock_rim_params):
     """Test basic RI projection with clean surplus relation."""
     current_bv = 1_000_000
@@ -82,7 +84,7 @@ def test_project_residual_income_basic(mock_rim_params):
 
     # Earnings should grow at growth_rate
     for i in range(1, len(earnings)):
-        expected_growth = earnings[i] / earnings[i-1] - 1
+        expected_growth = earnings[i] / earnings[i - 1] - 1
         assert expected_growth == pytest.approx(0.08, rel=1e-6)
 
     # Check step
@@ -150,7 +152,7 @@ def test_project_residual_income_with_manual_vector(mock_rim_params_with_manual_
     expected_earnings = []
     curr_e = base_earnings
     for g in manual_vector:
-        curr_e *= (1 + g)
+        curr_e *= 1 + g
         expected_earnings.append(curr_e)
 
     for i in range(5):
@@ -174,9 +176,7 @@ def test_project_residual_income_zero_payout():
     base_earnings = 100_000
     cost_of_equity = 0.10
 
-    ris, bvs, earnings, step = RIMLibrary.project_residual_income(
-        current_bv, base_earnings, cost_of_equity, params
-    )
+    ris, bvs, earnings, step = RIMLibrary.project_residual_income(current_bv, base_earnings, cost_of_equity, params)
 
     # With low payout (5%), retention = 95%
     # new_bv = prev_bv + earnings * (1 - 0.05)
@@ -203,9 +203,7 @@ def test_project_residual_income_high_payout():
     base_earnings = 200_000
     cost_of_equity = 0.09
 
-    ris, bvs, earnings, step = RIMLibrary.project_residual_income(
-        current_bv, base_earnings, cost_of_equity, params
-    )
+    ris, bvs, earnings, step = RIMLibrary.project_residual_income(current_bv, base_earnings, cost_of_equity, params)
 
     # With high payout, BV grows slowly
     retention = 0.20
@@ -231,9 +229,7 @@ def test_project_residual_income_negative_earnings():
     base_earnings = -50_000  # Loss
     cost_of_equity = 0.10
 
-    ris, bvs, earnings, step = RIMLibrary.project_residual_income(
-        current_bv, base_earnings, cost_of_equity, params
-    )
+    ris, bvs, earnings, step = RIMLibrary.project_residual_income(current_bv, base_earnings, cost_of_equity, params)
 
     # Earnings should remain negative (growing from negative)
     assert all(e < 0 for e in earnings)
@@ -258,9 +254,7 @@ def test_project_residual_income_missing_params():
     base_earnings = 100_000
     cost_of_equity = 0.10
 
-    ris, bvs, earnings, step = RIMLibrary.project_residual_income(
-        current_bv, base_earnings, cost_of_equity, params
-    )
+    ris, bvs, earnings, step = RIMLibrary.project_residual_income(current_bv, base_earnings, cost_of_equity, params)
 
     # Should use defaults
     assert len(ris) == ModelDefaults.DEFAULT_PROJECTION_YEARS
@@ -271,14 +265,13 @@ def test_project_residual_income_missing_params():
 # TEST compute_terminal_value_ohlson
 # ============================================================================
 
+
 def test_compute_terminal_value_ohlson_basic(mock_rim_params):
     """Test Ohlson TV calculation with standard persistence factor."""
     final_ri = 50_000
     cost_of_equity = 0.10
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, mock_rim_params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, mock_rim_params)
 
     # TV = (RI_n * ω) / ((1 + Ke) - ω)
     # TV = (50,000 * 0.60) / (1.10 - 0.60)
@@ -305,9 +298,7 @@ def test_compute_terminal_value_ohlson_high_persistence():
     final_ri = 100_000
     cost_of_equity = 0.12
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # High persistence means higher TV relative to low persistence
     expected_tv = (100_000 * 0.95) / (1.12 - 0.95)
@@ -326,9 +317,7 @@ def test_compute_terminal_value_ohlson_low_persistence():
     final_ri = 100_000
     cost_of_equity = 0.10
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # Low persistence means lower TV
     expected_tv = (100_000 * 0.30) / (1.10 - 0.30)
@@ -346,9 +335,7 @@ def test_compute_terminal_value_ohlson_zero_persistence():
     final_ri = 100_000
     cost_of_equity = 0.10
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # When persistence_factor is 0.0 (falsy), getattr + or triggers default
     # omega = 0.0 or DEFAULT_PERSISTENCE_FACTOR = 0.60
@@ -367,9 +354,7 @@ def test_compute_terminal_value_ohlson_negative_ri():
     final_ri = -20_000
     cost_of_equity = 0.10
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # Negative RI should give negative TV
     expected_tv = (-20_000 * 0.50) / (1.10 - 0.50)
@@ -387,9 +372,7 @@ def test_compute_terminal_value_ohlson_near_singularity():
     final_ri = 50_000
     cost_of_equity = 0.10  # 1 + Ke = 1.10
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # Should clamp denominator to avoid division by zero
     # Denominator becomes 0.001 per the code
@@ -406,9 +389,7 @@ def test_compute_terminal_value_ohlson_missing_persistence():
     final_ri = 60_000
     cost_of_equity = 0.09
 
-    tv, step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, params
-    )
+    tv, step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, params)
 
     # Should use ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
     default_omega = ModelDefaults.DEFAULT_PERSISTENCE_FACTOR
@@ -420,6 +401,7 @@ def test_compute_terminal_value_ohlson_missing_persistence():
 # TEST compute_equity_value
 # ============================================================================
 
+
 def test_compute_equity_value_basic():
     """Test RIM equity value aggregation."""
     current_bv = 1_000_000
@@ -427,12 +409,10 @@ def test_compute_equity_value_basic():
     terminal_value = 500_000
     cost_of_equity = 0.10
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # Manual calculation
-    pv_ri = sum(ri / ((1.10) ** (i+1)) for i, ri in enumerate(residual_incomes))
+    pv_ri = sum(ri / ((1.10) ** (i + 1)) for i, ri in enumerate(residual_incomes))
     pv_tv = terminal_value / ((1.10) ** 5)
     expected_equity = current_bv + pv_ri + pv_tv
 
@@ -452,12 +432,10 @@ def test_compute_equity_value_zero_tv():
     terminal_value = 0
     cost_of_equity = 0.12
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # Only BV and PV of RIs
-    pv_ri = sum(ri / ((1.12) ** (i+1)) for i, ri in enumerate(residual_incomes))
+    pv_ri = sum(ri / ((1.12) ** (i + 1)) for i, ri in enumerate(residual_incomes))
     expected_equity = current_bv + pv_ri
 
     assert total_equity == pytest.approx(expected_equity, rel=1e-6)
@@ -470,12 +448,10 @@ def test_compute_equity_value_negative_ri():
     terminal_value = 0
     cost_of_equity = 0.10
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # Negative RIs reduce equity value below BV
-    pv_ri = sum(ri / ((1.10) ** (i+1)) for i, ri in enumerate(residual_incomes))
+    pv_ri = sum(ri / ((1.10) ** (i + 1)) for i, ri in enumerate(residual_incomes))
     expected_equity = current_bv + pv_ri
 
     assert total_equity == pytest.approx(expected_equity, rel=1e-6)
@@ -489,12 +465,10 @@ def test_compute_equity_value_high_cost_of_equity():
     terminal_value = 800_000
     cost_of_equity = 0.25  # Very high
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # High discount rate means low PV contribution
-    pv_ri = sum(ri / ((1.25) ** (i+1)) for i, ri in enumerate(residual_incomes))
+    pv_ri = sum(ri / ((1.25) ** (i + 1)) for i, ri in enumerate(residual_incomes))
     pv_tv = terminal_value / ((1.25) ** 5)
     expected_equity = current_bv + pv_ri + pv_tv
 
@@ -510,9 +484,7 @@ def test_compute_equity_value_single_period():
     terminal_value = 200_000
     cost_of_equity = 0.08
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     pv_ri = 30_000 / 1.08
     pv_tv = 200_000 / 1.08
@@ -534,9 +506,7 @@ def test_compute_equity_value_empty_ri():
     # For this test, we provide a single RI period instead.
     residual_incomes = [0]  # One period with zero RI
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # Only BV contributes (RI=0, TV=0)
     assert total_equity == pytest.approx(current_bv, rel=1e-6)
@@ -549,9 +519,7 @@ def test_compute_equity_value_large_tv():
     terminal_value = 5_000_000  # Very large
     cost_of_equity = 0.09
 
-    total_equity, step = RIMLibrary.compute_equity_value(
-        current_bv, residual_incomes, terminal_value, cost_of_equity
-    )
+    total_equity, step = RIMLibrary.compute_equity_value(current_bv, residual_incomes, terminal_value, cost_of_equity)
 
     # TV should dominate the valuation
     pv_tv = terminal_value / ((1.09) ** 3)
@@ -561,6 +529,7 @@ def test_compute_equity_value_large_tv():
 # ============================================================================
 # INTEGRATION TESTS
 # ============================================================================
+
 
 def test_rim_full_workflow(mock_rim_params):
     """Integration test: Full RIM workflow."""
@@ -577,16 +546,12 @@ def test_rim_full_workflow(mock_rim_params):
 
     # 2. Calculate TV
     final_ri = ris[-1]
-    tv, tv_step = RIMLibrary.compute_terminal_value_ohlson(
-        final_ri, cost_of_equity, mock_rim_params
-    )
+    tv, tv_step = RIMLibrary.compute_terminal_value_ohlson(final_ri, cost_of_equity, mock_rim_params)
 
     assert tv > 0
 
     # 3. Aggregate equity value
-    total_equity, eq_step = RIMLibrary.compute_equity_value(
-        current_bv, ris, tv, cost_of_equity
-    )
+    total_equity, eq_step = RIMLibrary.compute_equity_value(current_bv, ris, tv, cost_of_equity)
 
     assert total_equity > current_bv  # Should exceed book value
 

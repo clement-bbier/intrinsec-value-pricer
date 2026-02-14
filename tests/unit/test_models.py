@@ -44,6 +44,7 @@ from src.models.results.strategies import FCFFStandardResults
 # 1. COMPANY & IDENTITY MODELS
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_company_creation_minimal():
     """Test Company creation with minimal required fields."""
@@ -70,7 +71,7 @@ def test_company_creation_full():
         country="USA",
         currency="USD",
         current_price=350.50,
-        last_update=update_time
+        last_update=update_time,
     )
 
     assert company.ticker == "MSFT"
@@ -142,7 +143,7 @@ def test_company_snapshot_full():
         beta=1.2,
         risk_free_rate=0.04,
         market_risk_premium=0.05,
-        tax_rate=0.21
+        tax_rate=0.21,
     )
 
     assert snapshot.ticker == "AAPL"
@@ -154,11 +155,7 @@ def test_company_snapshot_full():
 @pytest.mark.unit
 def test_company_snapshot_extra_ignore():
     """Test that extra fields are ignored (extra='ignore')."""
-    snapshot = CompanySnapshot(
-        ticker="AAPL",
-        unknown_field="should_be_ignored",
-        another_extra=123
-    )
+    snapshot = CompanySnapshot(ticker="AAPL", unknown_field="should_be_ignored", another_extra=123)
 
     assert snapshot.ticker == "AAPL"
     assert not hasattr(snapshot, "unknown_field")
@@ -168,6 +165,7 @@ def test_company_snapshot_extra_ignore():
 # ==============================================================================
 # 2. ENUMS
 # ==============================================================================
+
 
 @pytest.mark.unit
 def test_valuation_methodology_enum_values():
@@ -237,13 +235,14 @@ def test_variable_source_enum():
 # 3. PARAMETERS WITH SCALING
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_financial_rates_parameters_percentage_scaling():
     """Test UIKey percentage scaling (5.0 → 0.05)."""
     params = FinancialRatesParameters(
         risk_free_rate=5.0,  # Should become 0.05
         market_risk_premium=7.5,  # Should become 0.075
-        tax_rate=21.0  # Should become 0.21
+        tax_rate=21.0,  # Should become 0.21
     )
 
     assert params.risk_free_rate == pytest.approx(0.05)
@@ -256,7 +255,7 @@ def test_financial_rates_parameters_already_scaled():
     """Test that already-scaled values (< 1.0) are not re-scaled."""
     params = FinancialRatesParameters(
         risk_free_rate=0.05,  # Already in decimal form
-        beta=1.2  # Raw scale, no change
+        beta=1.2,  # Raw scale, no change
     )
 
     assert params.risk_free_rate == pytest.approx(0.05)
@@ -266,10 +265,7 @@ def test_financial_rates_parameters_already_scaled():
 @pytest.mark.unit
 def test_financial_rates_parameters_none_values():
     """Test that None values are preserved during scaling."""
-    params = FinancialRatesParameters(
-        risk_free_rate=None,
-        beta=None
-    )
+    params = FinancialRatesParameters(risk_free_rate=None, beta=None)
 
     assert params.risk_free_rate is None
     assert params.beta is None
@@ -281,7 +277,7 @@ def test_capital_structure_parameters_million_scaling():
     params = CapitalStructureParameters(
         total_debt=100.0,  # Should become 100M
         cash_and_equivalents=50.0,  # Should become 50M
-        shares_outstanding=1.5  # Should become 1.5M
+        shares_outstanding=1.5,  # Should become 1.5M
     )
 
     assert params.total_debt == pytest.approx(100_000_000.0)
@@ -314,12 +310,13 @@ def test_common_parameters_default_factory():
 # 4. STRATEGY PARAMETERS
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_fcff_standard_parameters_creation():
     """Test FCFFStandardParameters with defaults."""
     params = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=5.0  # Should scale to 0.05
+        growth_rate_p1=5.0,  # Should scale to 0.05
     )
 
     assert params.mode == ValuationMethodology.FCFF_STANDARD
@@ -343,7 +340,7 @@ def test_graham_parameters_creation():
     """Test GrahamParameters with defaults."""
     params = GrahamParameters(
         eps_normalized=5.0,
-        growth_estimate=10.0  # Should scale to 0.10
+        growth_estimate=10.0,  # Should scale to 0.10
     )
 
     assert params.mode == ValuationMethodology.GRAHAM
@@ -354,6 +351,7 @@ def test_graham_parameters_creation():
 # ==============================================================================
 # 5. EXTENSION BUNDLE PARAMETERS
 # ==============================================================================
+
 
 @pytest.mark.unit
 def test_extension_bundle_parameters_default_disabled():
@@ -415,6 +413,7 @@ def test_scenarios_parameters_creation():
 # 6. VALUATION REQUEST & RESULT
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_valuation_request_construction():
     """Test ValuationRequest construction with valid data."""
@@ -422,10 +421,7 @@ def test_valuation_request_construction():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
 
-    request = ValuationRequest(
-        mode=ValuationMethodology.FCFF_STANDARD,
-        parameters=params
-    )
+    request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
 
     assert request.mode == ValuationMethodology.FCFF_STANDARD
     assert request.parameters.structure.ticker == "AAPL"
@@ -446,20 +442,15 @@ def test_valuation_result_construction():
         market_cap=2_400_000_000_000.0,
         enterprise_value=2_950_000_000_000.0,
         net_debt_resolved=70_000_000_000.0,
-        equity_value_total=2_880_000_000_000.0
+        equity_value_total=2_880_000_000_000.0,
     )
-    common_results = CommonResults(
-        rates=rates,
-        capital=capital,
-        intrinsic_value_per_share=180.0,
-        upside_pct=0.2
-    )
+    common_results = CommonResults(rates=rates, capital=capital, intrinsic_value_per_share=180.0, upside_pct=0.2)
     strategy_results = FCFFStandardResults(
         projected_flows=[100.0, 105.0, 110.0, 115.0, 120.0],
         discount_factors=[0.935, 0.873, 0.816, 0.763, 0.713],
         terminal_value=2400.0,
         discounted_terminal_value=1711.2,
-        tv_weight_pct=75.0
+        tv_weight_pct=75.0,
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
@@ -483,20 +474,20 @@ def test_valuation_result_compute_upside_positive_market_price():
         market_cap=2_400_000_000_000.0,
         enterprise_value=2_950_000_000_000.0,
         net_debt_resolved=70_000_000_000.0,
-        equity_value_total=2_880_000_000_000.0
+        equity_value_total=2_880_000_000_000.0,
     )
     common_results = CommonResults(
         rates=rates,
         capital=capital,
         intrinsic_value_per_share=180.0,
-        upside_pct=0.0  # Will be calculated
+        upside_pct=0.0,  # Will be calculated
     )
     strategy_results = FCFFStandardResults(
         projected_flows=[100.0, 105.0],
         discount_factors=[0.935, 0.873],
         terminal_value=2400.0,
         discounted_terminal_value=1711.2,
-        tv_weight_pct=75.0
+        tv_weight_pct=75.0,
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
@@ -521,20 +512,15 @@ def test_valuation_result_compute_upside_zero_market_price():
         market_cap=0.0,
         enterprise_value=2_950_000_000_000.0,
         net_debt_resolved=70_000_000_000.0,
-        equity_value_total=2_880_000_000_000.0
+        equity_value_total=2_880_000_000_000.0,
     )
-    common_results = CommonResults(
-        rates=rates,
-        capital=capital,
-        intrinsic_value_per_share=180.0,
-        upside_pct=0.0
-    )
+    common_results = CommonResults(rates=rates, capital=capital, intrinsic_value_per_share=180.0, upside_pct=0.0)
     strategy_results = FCFFStandardResults(
         projected_flows=[100.0],
         discount_factors=[0.935],
         terminal_value=2400.0,
         discounted_terminal_value=1711.2,
-        tv_weight_pct=75.0
+        tv_weight_pct=75.0,
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
@@ -555,24 +541,16 @@ def test_valuation_result_compute_upside_none_iv():
 
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
-        market_cap=2_400_000_000_000.0,
-        enterprise_value=0.0,
-        net_debt_resolved=0.0,
-        equity_value_total=0.0
+        market_cap=2_400_000_000_000.0, enterprise_value=0.0, net_debt_resolved=0.0, equity_value_total=0.0
     )
     # Set intrinsic_value_per_share to 0 (invalid state)
-    common_results = CommonResults(
-        rates=rates,
-        capital=capital,
-        intrinsic_value_per_share=0.0,
-        upside_pct=0.0
-    )
+    common_results = CommonResults(rates=rates, capital=capital, intrinsic_value_per_share=0.0, upside_pct=0.0)
     strategy_results = FCFFStandardResults(
         projected_flows=[100.0],
         discount_factors=[0.935],
         terminal_value=2400.0,
         discounted_terminal_value=1711.2,
-        tv_weight_pct=75.0
+        tv_weight_pct=75.0,
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
@@ -598,20 +576,15 @@ def test_valuation_result_compute_upside_negative():
         market_cap=3_200_000_000_000.0,
         enterprise_value=2_520_000_000_000.0,
         net_debt_resolved=120_000_000_000.0,
-        equity_value_total=2_400_000_000_000.0
+        equity_value_total=2_400_000_000_000.0,
     )
-    common_results = CommonResults(
-        rates=rates,
-        capital=capital,
-        intrinsic_value_per_share=150.0,
-        upside_pct=0.0
-    )
+    common_results = CommonResults(rates=rates, capital=capital, intrinsic_value_per_share=150.0, upside_pct=0.0)
     strategy_results = FCFFStandardResults(
         projected_flows=[100.0],
         discount_factors=[0.935],
         terminal_value=2400.0,
         discounted_terminal_value=1711.2,
-        tv_weight_pct=75.0
+        tv_weight_pct=75.0,
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
@@ -627,10 +600,12 @@ def test_valuation_result_compute_upside_negative():
 # 7. GHOST PATTERN — SYSTEM CONSTANTS (Group B) FALLBACK
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_sensitivity_steps_default_from_constant():
     """SensitivityParameters.steps must default to SensitivityDefaults.DEFAULT_STEPS."""
     from src.config.constants import SensitivityDefaults
+
     params = SensitivityParameters()
     assert params.steps == SensitivityDefaults.DEFAULT_STEPS
 
@@ -655,6 +630,7 @@ def test_sensitivity_steps_accepts_three():
 def test_mc_iterations_default_from_constant():
     """MCParameters.iterations must default to MonteCarloDefaults.DEFAULT_SIMULATIONS."""
     from src.config.constants import MonteCarloDefaults
+
     params = MCParameters()
     assert params.iterations == MonteCarloDefaults.DEFAULT_SIMULATIONS
 
@@ -664,6 +640,7 @@ def test_backtest_lookback_default_from_constant():
     """BacktestParameters.lookback_years must default to BacktestDefaults constant."""
     from src.config.constants import BacktestDefaults
     from src.models.parameters.options import BacktestParameters
+
     params = BacktestParameters()
     assert params.lookback_years == BacktestDefaults.DEFAULT_LOOKBACK_YEARS
 
@@ -684,5 +661,6 @@ def test_sotp_discount_default_from_constant():
     """SOTPParameters.conglomerate_discount must default to SOTPDefaults constant."""
     from src.config.constants import SOTPDefaults
     from src.models.parameters.options import SOTPParameters
+
     params = SOTPParameters()
     assert params.conglomerate_discount == SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT

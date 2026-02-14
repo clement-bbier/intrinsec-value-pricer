@@ -97,42 +97,30 @@ class SOTPBreakdownTab:
         data = []
         for seg_name, seg_value in segment_values.items():
             contribution = (seg_value / raw_ev_sum) if raw_ev_sum > 0 else 0.0
-            data.append({
-                MarketTexts.COL_SEGMENT: seg_name,
-                MarketTexts.COL_VALUE: seg_value,
-                MarketTexts.COL_CONTRIBUTION: contribution
-            })
+            data.append(
+                {
+                    MarketTexts.COL_SEGMENT: seg_name,
+                    MarketTexts.COL_VALUE: seg_value,
+                    MarketTexts.COL_CONTRIBUTION: contribution,
+                }
+            )
 
         df = pd.DataFrame(data)
 
         # --- B. Table Configuration (Modern Streamlit UI) ---
         column_config = {
-            MarketTexts.COL_SEGMENT: st.column_config.TextColumn(
-                label=MarketTexts.COL_SEGMENT,
-                width="medium"
-            ),
+            MarketTexts.COL_SEGMENT: st.column_config.TextColumn(label=MarketTexts.COL_SEGMENT, width="medium"),
             MarketTexts.COL_VALUE: st.column_config.NumberColumn(
-                label=f"{MarketTexts.COL_VALUE} ({currency})",
-                format=f"%.2f {currency}",
-                width="medium"
+                label=f"{MarketTexts.COL_VALUE} ({currency})", format=f"%.2f {currency}", width="medium"
             ),
             MarketTexts.COL_CONTRIBUTION: st.column_config.ProgressColumn(
-                label=MarketTexts.COL_CONTRIBUTION,
-                format="%.1%",
-                min_value=0,
-                max_value=1,
-                width="medium"
-            )
+                label=MarketTexts.COL_CONTRIBUTION, format="%.1%", min_value=0, max_value=1, width="medium"
+            ),
         }
 
         # --- C. Rendering ---
         with st.container(border=True):
-            st.dataframe(
-                df,
-                hide_index=True,
-                column_config=column_config,
-                width="stretch"
-            )
+            st.dataframe(df, hide_index=True, column_config=column_config, width="stretch")
 
             # Footer: Gross Value Check
             st.divider()

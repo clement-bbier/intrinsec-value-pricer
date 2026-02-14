@@ -29,50 +29,40 @@ class TestCountryMatrixDataIntegrity:
             "rf_ticker",
             "url_central_bank",
             "url_tax_source",
-            "url_risk_premium"
+            "url_risk_premium",
         ]
 
         for country_name, country_data in COUNTRY_CONTEXT.items():
             for field in required_fields:
-                assert field in country_data, (
-                    f"Country '{country_name}' is missing required field: {field}"
-                )
+                assert field in country_data, f"Country '{country_name}' is missing required field: {field}"
 
     @pytest.mark.parametrize("country_name", list(COUNTRY_CONTEXT.keys()))
     def test_risk_free_rate_bounds(self, country_name):
         """Risk-free rate must be between 0% and 20%."""
         data = COUNTRY_CONTEXT[country_name]
         rf_rate = data["risk_free_rate"]
-        assert 0.0 <= rf_rate <= 0.20, (
-            f"{country_name}: risk_free_rate={rf_rate} outside bounds [0.0, 0.20]"
-        )
+        assert 0.0 <= rf_rate <= 0.20, f"{country_name}: risk_free_rate={rf_rate} outside bounds [0.0, 0.20]"
 
     @pytest.mark.parametrize("country_name", list(COUNTRY_CONTEXT.keys()))
     def test_market_risk_premium_bounds(self, country_name):
         """Market risk premium must be between 2% and 15%."""
         data = COUNTRY_CONTEXT[country_name]
         mrp = data["market_risk_premium"]
-        assert 0.02 <= mrp <= 0.15, (
-            f"{country_name}: market_risk_premium={mrp} outside bounds [0.02, 0.15]"
-        )
+        assert 0.02 <= mrp <= 0.15, f"{country_name}: market_risk_premium={mrp} outside bounds [0.02, 0.15]"
 
     @pytest.mark.parametrize("country_name", list(COUNTRY_CONTEXT.keys()))
     def test_tax_rate_bounds(self, country_name):
         """Tax rate must be between 0% and 60%."""
         data = COUNTRY_CONTEXT[country_name]
         tax_rate = data["tax_rate"]
-        assert 0.0 <= tax_rate <= 0.60, (
-            f"{country_name}: tax_rate={tax_rate} outside bounds [0.0, 0.60]"
-        )
+        assert 0.0 <= tax_rate <= 0.60, f"{country_name}: tax_rate={tax_rate} outside bounds [0.0, 0.60]"
 
     @pytest.mark.parametrize("country_name", list(COUNTRY_CONTEXT.keys()))
     def test_inflation_rate_bounds(self, country_name):
         """Inflation rate must be between 0% and 30%."""
         data = COUNTRY_CONTEXT[country_name]
         inflation = data["inflation_rate"]
-        assert 0.0 <= inflation <= 0.30, (
-            f"{country_name}: inflation_rate={inflation} outside bounds [0.0, 0.30]"
-        )
+        assert 0.0 <= inflation <= 0.30, f"{country_name}: inflation_rate={inflation} outside bounds [0.0, 0.30]"
 
 
 class TestGetCountryContext:
@@ -150,15 +140,11 @@ class TestSectorFallbackData:
             ev_revenue = sector_data.ev_revenue
 
             # PE ratio: 5-100 (institutional ranges)
-            assert 5.0 <= pe <= 100.0, (
-                f"Sector '{sector_key}': PE ratio {pe} outside range [5, 100]"
-            )
+            assert 5.0 <= pe <= 100.0, f"Sector '{sector_key}': PE ratio {pe} outside range [5, 100]"
 
             # EV/EBITDA: 3-50 (None is acceptable for financials)
             if ev_ebitda is not None:
-                assert 3.0 <= ev_ebitda <= 50.0, (
-                    f"Sector '{sector_key}': EV/EBITDA {ev_ebitda} outside range [3, 50]"
-                )
+                assert 3.0 <= ev_ebitda <= 50.0, f"Sector '{sector_key}': EV/EBITDA {ev_ebitda} outside range [3, 50]"
 
             # EV/Revenue: 0.5-30 (None is acceptable for financials)
             if ev_revenue is not None:

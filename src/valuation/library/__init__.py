@@ -11,9 +11,4 @@ from src.valuation.library.dcf import DCFLibrary
 from src.valuation.library.graham import GrahamLibrary
 from src.valuation.library.rim import RIMLibrary
 
-__all__ = [
-    "CommonLibrary",
-    "DCFLibrary",
-    "GrahamLibrary",
-    "RIMLibrary"
-]
+__all__ = ["CommonLibrary", "DCFLibrary", "GrahamLibrary", "RIMLibrary"]

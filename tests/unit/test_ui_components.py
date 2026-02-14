@@ -22,6 +22,7 @@ from app.views.components.ui_kpis import (
 # UI KPIs
 # =============================================================================
 
+
 class TestAtomKpiMetric:
     """Tests for the atom_kpi_metric rendering adapter."""
 
@@ -32,8 +33,13 @@ class TestAtomKpiMetric:
     def test_color_map_contains_standard_keys(self):
         """The color map must contain all standard delta_color values."""
         color_map = {
-            "green": "normal", "red": "inverse", "orange": "off",
-            "gray": "off", "normal": "normal", "inverse": "inverse", "off": "off",
+            "green": "normal",
+            "red": "inverse",
+            "orange": "off",
+            "gray": "off",
+            "normal": "normal",
+            "inverse": "inverse",
+            "off": "off",
         }
         for key in ("green", "red", "orange", "gray", "normal", "inverse", "off"):
             assert key in color_map
@@ -41,8 +47,13 @@ class TestAtomKpiMetric:
     def test_unknown_color_defaults_to_off(self):
         """Unknown color should default to 'off'."""
         color_map = {
-            "green": "normal", "red": "inverse", "orange": "off",
-            "gray": "off", "normal": "normal", "inverse": "inverse", "off": "off",
+            "green": "normal",
+            "red": "inverse",
+            "orange": "off",
+            "gray": "off",
+            "normal": "normal",
+            "inverse": "inverse",
+            "off": "off",
         }
         assert color_map.get("unknown_color", "off") == "off"
 
@@ -50,8 +61,13 @@ class TestAtomKpiMetric:
         """All mapped values must be valid Streamlit delta_color values."""
         valid_streamlit_colors = {"normal", "inverse", "off"}
         color_map = {
-            "green": "normal", "red": "inverse", "orange": "off",
-            "gray": "off", "normal": "normal", "inverse": "inverse", "off": "off",
+            "green": "normal",
+            "red": "inverse",
+            "orange": "off",
+            "gray": "off",
+            "normal": "normal",
+            "inverse": "inverse",
+            "off": "off",
         }
         for mapped_val in color_map.values():
             assert mapped_val in valid_streamlit_colors
@@ -112,6 +128,7 @@ class TestAtomBenchmarkCard:
 # =============================================================================
 # Step Renderer
 # =============================================================================
+
 
 class TestFormatValue:
     """Tests the _format_value helper for step rendering."""
@@ -207,6 +224,7 @@ class TestRenderCalculationStep:
 # =============================================================================
 # Glass Box Registry
 # =============================================================================
+
 
 class TestStepMetadata:
     """Tests the STEP_METADATA registry and get_step_metadata function."""

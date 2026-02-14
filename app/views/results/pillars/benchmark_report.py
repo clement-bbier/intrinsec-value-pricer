@@ -63,10 +63,7 @@ def _render_piotroski_section(company_stats) -> None:
 
     with c1:
         st.metric(
-            label=BenchmarkTexts.PIOTROSKI_LBL_SCORE,
-            value=f"{f_score}/9",
-            delta=interpretation,
-            delta_color="normal"
+            label=BenchmarkTexts.PIOTROSKI_LBL_SCORE, value=f"{f_score}/9", delta=interpretation, delta_color="normal"
         )
 
     with c2:
@@ -145,7 +142,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             market_value=f"{s_pe:.1f}x",
             status=val_status,
             status_color=val_color,
-            description=BenchmarkTexts.DESC_PREMIUM_DISCOUNT
+            description=BenchmarkTexts.DESC_PREMIUM_DISCOUNT,
         )
 
     # EV/EBITDA
@@ -159,7 +156,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             company_value=f"{c_eve:.1f}x",
             market_value=f"{s_eve:.1f}x",
             status=val_status_ev,
-            status_color=val_color_ev
+            status_color=val_color_ev,
         )
 
     # P/B Ratio
@@ -174,7 +171,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
                 company_value=f"{c_pb:.1f}x",
                 market_value=f"{s_pb:.1f}x",
                 status=val_status_pb,
-                status_color=val_color_pb
+                status_color=val_color_pb,
             )
 
     # Chart visualization
@@ -187,17 +184,12 @@ def render_benchmark_view(result: ValuationResult) -> None:
 
     valuation_metrics = {
         "P/E": {"company": c_pe_val, "sector": s_pe_val},
-        "EV/EBITDA": {"company": c_eve_val, "sector": s_eve_val}
+        "EV/EBITDA": {"company": c_eve_val, "sector": s_eve_val},
     }
 
     ticker_symbol = result.request.parameters.structure.ticker
 
-    display_sector_comparison_chart(
-        ticker_symbol,
-        market.sector_name,
-        valuation_metrics,
-        suffix="x"
-    )
+    display_sector_comparison_chart(ticker_symbol, market.sector_name, valuation_metrics, suffix="x")
 
     st.divider()
 
@@ -223,7 +215,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             company_value=f"{c_m:.1%}",
             market_value=f"{s_m:.1%}",
             status=perf_status,
-            status_color=perf_color
+            status_color=perf_color,
         )
 
     # ROE
@@ -237,7 +229,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             company_value=f"{c_roe:.1%}",
             market_value=f"{s_roe:.1%}",
             status=perf_status_roe,
-            status_color=perf_color_roe
+            status_color=perf_color_roe,
         )
 
     # Growth
@@ -251,7 +243,7 @@ def render_benchmark_view(result: ValuationResult) -> None:
             company_value=f"{c_g:.1%}",
             market_value=f"{s_g:.1%}",
             status=perf_status_g,
-            status_color=perf_color_g
+            status_color=perf_color_g,
         )
 
     # 5. Financial Strength (Piotroski)

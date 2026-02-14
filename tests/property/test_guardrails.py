@@ -54,6 +54,7 @@ shares_strategy = st.floats(min_value=1.0, max_value=1e5, allow_nan=False, allow
 # PROPERTY: Terminal Growth Must Always Return Error/Warning if g >= WACC
 # ==============================================================================
 
+
 @given(g=growth_rate_strategy, wacc=wacc_strategy)
 @settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_property_terminal_growth_divergence_always_caught(g, wacc):
@@ -86,6 +87,7 @@ def test_property_terminal_growth_divergence_always_caught(g, wacc):
 # ==============================================================================
 # PROPERTY: Terminal Growth Monotonicity
 # ==============================================================================
+
 
 @given(g=growth_rate_strategy, wacc1=wacc_strategy, wacc2=wacc_strategy)
 @settings(max_examples=150, deadline=None, suppress_health_check=[HealthCheck.too_slow])
@@ -124,9 +126,8 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
 # PROPERTY: Scenario Probabilities Must Block or Warn if Sum != 1.0
 # ==============================================================================
 
-@given(
-    probs=st.lists(probability_strategy, min_size=1, max_size=5)
-)
+
+@given(probs=st.lists(probability_strategy, min_size=1, max_size=5))
 @settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_property_scenario_probabilities_validation(probs):
     """
@@ -140,8 +141,7 @@ def test_property_scenario_probabilities_validation(probs):
     # Enable scenarios and set probabilities
     params.extensions.scenarios.enabled = True
     params.extensions.scenarios.cases = [
-        ScenarioParameters(name=f"Case{i}", probability=p)
-        for i, p in enumerate(probs)
+        ScenarioParameters(name=f"Case{i}", probability=p) for i, p in enumerate(probs)
     ]
 
     result = validate_scenario_probabilities(params)
@@ -167,6 +167,7 @@ def test_property_scenario_probabilities_validation(probs):
 # ==============================================================================
 # PROPERTY: No Division by Zero in All Guardrails
 # ==============================================================================
+
 
 @given(
     total_debt=financial_amount_strategy,
@@ -228,11 +229,11 @@ def test_property_no_division_by_zero(total_debt, cash, shares, price, wacc, g):
 # PROPERTY: Capital Structure Always Returns Structured Result
 # ==============================================================================
 
+
 @given(
     total_debt=st.floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False),
     cash=st.floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False),
-    shares=st.floats(min_value=-100.0, max_value=1e5, allow_nan=False, allow_infinity=False)
-    | st.none(),
+    shares=st.floats(min_value=-100.0, max_value=1e5, allow_nan=False, allow_infinity=False) | st.none(),
 )
 @settings(max_examples=150, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_property_capital_structure_always_structured_result(total_debt, cash, shares):
@@ -272,6 +273,7 @@ def test_property_capital_structure_always_structured_result(total_debt, cash, s
 # PROPERTY: ROIC Spread Handles Missing/Invalid Data Gracefully
 # ==============================================================================
 
+
 @given(
     ebit=st.floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False) | st.none(),
     total_debt=financial_amount_strategy,
@@ -290,7 +292,7 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
     company = Company(ticker="TEST", name="Test", current_price=price)
     if ebit is not None:
         # Use object.__setattr__ to bypass frozen model
-        object.__setattr__(company, 'ebit_ttm', ebit)
+        object.__setattr__(company, "ebit_ttm", ebit)
 
     strategy = FCFFStandardParameters(projection_years=5, growth_rate_p1=0.05)
     params = Parameters(
@@ -320,6 +322,7 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
 # ==============================================================================
 # PROPERTY: All Guardrail Extra Fields Are JSON-Serializable
 # ==============================================================================
+
 
 @given(
     g=growth_rate_strategy,
@@ -353,6 +356,7 @@ def test_property_extra_fields_json_serializable(g, wacc):
 # ==============================================================================
 # PROPERTY: Terminal Growth Threshold Boundary (0.5%)
 # ==============================================================================
+
 
 @given(
     base_wacc=st.floats(min_value=0.08, max_value=0.20, allow_nan=False, allow_infinity=False),
@@ -397,6 +401,7 @@ def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
 # PROPERTY: Scenario Probability Sum Tolerance (±1%)
 # ==============================================================================
 
+
 @given(
     base_prob=st.floats(min_value=0.95, max_value=1.05, allow_nan=False, allow_infinity=False),
     num_scenarios=st.integers(min_value=2, max_value=5),
@@ -417,8 +422,7 @@ def test_property_scenario_probability_tolerance(base_prob, num_scenarios):
 
     params.extensions.scenarios.enabled = True
     params.extensions.scenarios.cases = [
-        ScenarioParameters(name=f"Case{i}", probability=p)
-        for i, p in enumerate(probs)
+        ScenarioParameters(name=f"Case{i}", probability=p) for i, p in enumerate(probs)
     ]
 
     result = validate_scenario_probabilities(params)

@@ -11,6 +11,7 @@ from typing import Any
 import streamlit as st
 
 from app.views.components.ui_charts import display_simulation_chart
+from src.computation.statistics import calculate_var
 from src.core.formatting import format_smart_number
 from src.i18n import QuantTexts
 from src.models import ValuationResult
@@ -46,19 +47,14 @@ class MonteCarloDistributionTab:
         shocks = mc_params.shocks
         # beta_volatility is only available on BetaModelMCShocksParameters (not Graham)
         if shocks is not None:
-            raw_beta_vol = getattr(shocks, 'beta_volatility', None)
+            raw_beta_vol = getattr(shocks, "beta_volatility", None)
             sig_b = raw_beta_vol if raw_beta_vol is not None else 0.10
             sig_g = shocks.growth_volatility if shocks.growth_volatility is not None else 0.015
         else:
             sig_b = 0.10
             sig_g = 0.015
 
-        config_sub = QuantTexts.MC_CONFIG_SUB.format(
-            sims=mc_params.iterations,
-            sig_b=sig_b,
-            sig_g=sig_g,
-            rho=0.0
-        )
+        config_sub = QuantTexts.MC_CONFIG_SUB.format(sims=mc_params.iterations, sig_b=sig_b, sig_g=sig_g, rho=0.0)
 
         # --- SECTION HEADER ---
         st.subheader(QuantTexts.MC_TITLE)
@@ -67,40 +63,30 @@ class MonteCarloDistributionTab:
 
         # Build stats from MCResults
         median_val = mc_data.quantiles.get("P50", mc_data.mean)
-        var_95 = mc_data.quantiles.get("P5", 0.0)
         p10 = mc_data.quantiles.get("P10", 0.0)
         p90 = mc_data.quantiles.get("P90", 0.0)
 
-        # 1. RISK HUB (Dispersion & Tail Risk)
-        with st.container(border=True):
-            c1, c2, c3, c4 = st.columns(4)
+        # Calculate VaR properly: VaR = Median - P5
+        var_95 = calculate_var(mc_data.simulation_values, confidence_level=0.95)
 
-            c1.metric(
-                QuantTexts.MC_MEDIAN,
-                format_smart_number(median_val, currency=currency)
-            )
+        # 1. RISK HUB (Dispersion & Tail Risk) - Grouped Metrics
+        with st.container(border=True):
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(QuantTexts.MC_MEDIAN, format_smart_number(median_val, currency=currency))
 
             c2.metric(
                 QuantTexts.MC_VAR,
                 format_smart_number(var_95, currency=currency),
-                help=QuantTexts.MC_VAR
+                help="Value at Risk (95%): Median - 5th Percentile. Measures downside risk.",
             )
 
-            c3.metric(
-                QuantTexts.MC_VOLATILITY,
-                format_smart_number(mc_data.std_dev, currency=currency)
-            )
-
-            cv = mc_data.std_dev / median_val if median_val != 0 else 0
-            c4.metric(QuantTexts.MC_TAIL_RISK, f"{cv:.1%}")
+            c3.metric(QuantTexts.MC_VOLATILITY, format_smart_number(mc_data.std_dev, currency=currency))
 
         # 2. PROBABILITY DENSITY CHART (Altair)
         st.write("")
         with st.container(border=True):
-            display_simulation_chart(
-                simulation_results=mc_data.simulation_values,
-                currency=currency
-            )
+            display_simulation_chart(simulation_results=mc_data.simulation_values, currency=currency)
 
         # 3. PROBABILITY ANALYSIS
         st.write("")
@@ -125,16 +111,13 @@ class MonteCarloDistributionTab:
                     label=QuantTexts.MC_PROB_UNDERVALUATION,
                     value=f"{prob_above:.1%}",
                     delta=delta_txt,
-                    delta_color="normal" if is_undervalued else "inverse"
+                    delta_color="normal" if is_undervalued else "inverse",
                 )
 
                 # 80% Confidence Interval
-                range_str = (
-                    f"{format_smart_number(p10)}"
-                    f" — {format_smart_number(p90)}"
-                )
+                range_str = f"{format_smart_number(p10)} — {format_smart_number(p90)}"
                 p_col2.metric(
                     label=QuantTexts.MC_FILTER_SUB.format(valid=len(sim_array), total=len(sim_array)),
                     value=range_str,
-                    help=QuantTexts.CONFIDENCE_INTERVAL
+                    help=QuantTexts.CONFIDENCE_INTERVAL,
                 )

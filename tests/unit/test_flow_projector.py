@@ -25,6 +25,7 @@ from src.models import VariableSource
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_company():
     """Mock Company object."""
@@ -54,11 +55,11 @@ def mock_params_simple():
 def mock_params_ddm():
     """Mock Parameters for DDM (uses growth_rate instead of growth_rate_p1)."""
     params = Mock()
-    strategy = Mock(spec=['growth_rate', 'projection_years', 'terminal_value'])
+    strategy = Mock(spec=["growth_rate", "projection_years", "terminal_value"])
     strategy.growth_rate = 0.06
     strategy.projection_years = 5
 
-    terminal_value = Mock(spec=['perpetual_growth_rate'])
+    terminal_value = Mock(spec=["perpetual_growth_rate"])
     terminal_value.perpetual_growth_rate = 0.025
     strategy.terminal_value = terminal_value
 
@@ -81,6 +82,7 @@ def mock_params_margin_convergence():
 # ============================================================================
 # TEST project_flows (atomic function)
 # ============================================================================
+
 
 def test_project_flows_basic():
     """Test basic flow projection with fade-down."""
@@ -110,7 +112,7 @@ def test_project_flows_with_plateau():
 
     # First 2 years should use g_start
     assert flows[0] == pytest.approx(base_flow * 1.15, rel=1e-6)
-    assert flows[1] == pytest.approx(base_flow * (1.15 ** 2), rel=1e-6)
+    assert flows[1] == pytest.approx(base_flow * (1.15**2), rel=1e-6)
 
     # After year 2, growth should fade
     growth_2_to_3 = (flows[2] / flows[1]) - 1
@@ -154,7 +156,7 @@ def test_project_flows_negative_growth():
     flows = project_flows(base_flow, 5, -0.05, -0.02, 5)
 
     # Flows should decline
-    assert all(flows[i] < flows[i-1] for i in range(1, len(flows)))
+    assert all(flows[i] < flows[i - 1] for i in range(1, len(flows)))
 
 
 def test_project_flows_high_growth_none():
@@ -179,6 +181,7 @@ def test_project_flows_high_growth_exceeds_years():
 # ============================================================================
 # TEST SimpleFlowProjector
 # ============================================================================
+
 
 def test_simple_flow_projector_basic(mock_company, mock_params_simple):
     """Test SimpleFlowProjector with standard FCFF parameters."""
@@ -280,6 +283,7 @@ def test_simple_flow_projector_formatted_values(mock_company, mock_params_simple
 # TEST MarginConvergenceProjector
 # ============================================================================
 
+
 def test_margin_convergence_basic(mock_company, mock_params_margin_convergence):
     """Test MarginConvergenceProjector with basic parameters."""
     projector = MarginConvergenceProjector()
@@ -306,7 +310,7 @@ def test_margin_convergence_margin_interpolation(mock_company, mock_params_margi
     # Linear ramp: applied_margin = 0 + (0.15 - 0) * (1/5) = 0.03
     # Revenue Y1 = 5M * 1.10 = 5.5M
     # FCF Y1 = 5.5M * 0.03 = 165k
-    expected_fcf_y1 = 5_000_000 * 1.10 * (0.15 * 1/5)
+    expected_fcf_y1 = 5_000_000 * 1.10 * (0.15 * 1 / 5)
     assert output.flows[0] == pytest.approx(expected_fcf_y1, rel=1e-6)
 
 
@@ -396,15 +400,11 @@ def test_margin_convergence_negative_revenue_growth():
 # TEST FlowProjector._build_trace_variable (static helper)
 # ============================================================================
 
+
 def test_build_trace_variable_manual_override():
     """Test trace variable with manual override."""
     var = FlowProjector._build_trace_variable(
-        symbol="g",
-        value=0.08,
-        manual_value=0.08,
-        provider_value=0.05,
-        description="Growth Rate",
-        is_pct=True
+        symbol="g", value=0.08, manual_value=0.08, provider_value=0.05, description="Growth Rate", is_pct=True
     )
 
     assert var.symbol == "g"
@@ -418,12 +418,7 @@ def test_build_trace_variable_manual_override():
 def test_build_trace_variable_provider_value():
     """Test trace variable from provider (no override)."""
     var = FlowProjector._build_trace_variable(
-        symbol="eps",
-        value=5.00,
-        manual_value=None,
-        provider_value=5.00,
-        description="EPS",
-        is_pct=False
+        symbol="eps", value=5.00, manual_value=None, provider_value=5.00, description="EPS", is_pct=False
     )
 
     assert var.source == VariableSource.YAHOO_FINANCE
@@ -433,12 +428,7 @@ def test_build_trace_variable_provider_value():
 def test_build_trace_variable_default():
     """Test trace variable with default value (no manual or provider)."""
     var = FlowProjector._build_trace_variable(
-        symbol="r",
-        value=0.10,
-        manual_value=None,
-        provider_value=None,
-        description="Rate",
-        is_pct=True
+        symbol="r", value=0.10, manual_value=None, provider_value=None, description="Rate", is_pct=True
     )
 
     assert var.source == VariableSource.DEFAULT
@@ -448,12 +438,7 @@ def test_build_trace_variable_default():
 def test_build_trace_variable_percentage_formatting():
     """Test percentage formatting."""
     var = FlowProjector._build_trace_variable(
-        symbol="g",
-        value=0.0825,
-        manual_value=0.0825,
-        provider_value=None,
-        description="Growth",
-        is_pct=True
+        symbol="g", value=0.0825, manual_value=0.0825, provider_value=None, description="Growth", is_pct=True
     )
 
     assert var.formatted_value == "8.25%"
@@ -467,7 +452,7 @@ def test_build_trace_variable_number_formatting():
         manual_value=None,
         provider_value=1_234_567.89,
         description="Free Cash Flow",
-        is_pct=False
+        is_pct=False,
     )
 
     # Should use format_smart_number
@@ -478,6 +463,7 @@ def test_build_trace_variable_number_formatting():
 # TEST ProjectionOutput model
 # ============================================================================
 
+
 def test_projection_output_creation():
     """Test ProjectionOutput creation and defaults."""
     output = ProjectionOutput(
@@ -486,7 +472,7 @@ def test_projection_output_creation():
         theoretical_formula="FCF × (1+g)^t",
         actual_calculation="100 × (1.10)^5",
         interpretation="Test interpretation",
-        variables={}
+        variables={},
     )
 
     assert len(output.flows) == 5
@@ -508,6 +494,7 @@ def test_projection_output_defaults():
 # ============================================================================
 # INTEGRATION TESTS
 # ============================================================================
+
 
 def test_simple_projector_full_workflow(mock_company, mock_params_simple):
     """Integration test: SimpleFlowProjector full workflow."""

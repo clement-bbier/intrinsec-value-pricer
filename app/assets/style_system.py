@@ -147,7 +147,7 @@ def render_terminal_header():
             <span class="project-badge">{CommonTexts.PROJECT_BADGE}</span>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     st.markdown(
@@ -158,6 +158,6 @@ def render_terminal_header():
             </p>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.divider()

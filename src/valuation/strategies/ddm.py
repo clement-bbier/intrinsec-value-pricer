@@ -71,9 +71,7 @@ class DividendDiscountStrategy(IValuationRunner):
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # DDM uses Cost of Equity as the discount rate.
         ke, step_ke = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=True
+            financials=financials, params=params, use_cost_of_equity_only=True
         )
         if self._glass_box:
             steps.append(step_ke)
@@ -82,33 +80,38 @@ class DividendDiscountStrategy(IValuationRunner):
         # We resolve the starting Dividend per Share (D0).
         # Priority: User Input (Strategy) > TTM (Snapshot)
         user_div = strategy_params.dividend_per_share
-        d0_per_share = user_div if user_div is not None else (getattr(financials, 'dividend_share', None) or 0.0)
+        d0_per_share = user_div if user_div is not None else (getattr(financials, "dividend_share", None) or 0.0)
 
         # We project the TOTAL Dividend Mass to be consistent with the DCF engine
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         total_dividend_mass = d0_per_share * shares
 
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="DDM_ANCHOR",
-                label=RegistryTexts.DDM_BASE_L,
-                theoretical_formula=StrategyFormulas.DIVIDEND_BASE,
-                actual_calculation=f"{d0_per_share:.2f} (D0) × {shares:,.0f} (Shares)",
-                result=total_dividend_mass,
-                interpretation=StrategyInterpretations.DDM_LOGIC,
-                source=StrategySources.MANUAL_OVERRIDE if user_div else StrategySources.YAHOO_TTM_SIMPLE,
-                variables_map={
-                    "D_0": VariableInfo(
-                        symbol="D_0", value=d0_per_share,
-                        source=VariableSource.MANUAL_OVERRIDE if user_div else VariableSource.YAHOO_FINANCE,
-                        description="Dividend Per Share (Base)"
-                    ),
-                    "Shares": VariableInfo(
-                        symbol="Shares", value=shares,
-                        source=VariableSource.SYSTEM, description=SharedTexts.INP_SHARES
-                    )
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="DDM_ANCHOR",
+                    label=RegistryTexts.DDM_BASE_L,
+                    theoretical_formula=StrategyFormulas.DIVIDEND_BASE,
+                    actual_calculation=f"{d0_per_share:.2f} (D0) × {shares:,.0f} (Shares)",
+                    result=total_dividend_mass,
+                    interpretation=StrategyInterpretations.DDM_LOGIC,
+                    source=StrategySources.MANUAL_OVERRIDE if user_div else StrategySources.YAHOO_TTM_SIMPLE,
+                    variables_map={
+                        "D_0": VariableInfo(
+                            symbol="D_0",
+                            value=d0_per_share,
+                            source=VariableSource.MANUAL_OVERRIDE if user_div else VariableSource.YAHOO_FINANCE,
+                            description="Dividend Per Share (Base)",
+                        ),
+                        "Shares": VariableInfo(
+                            symbol="Shares",
+                            value=shares,
+                            source=VariableSource.SYSTEM,
+                            description=SharedTexts.INP_SHARES,
+                        ),
+                    },
+                )
+            )
 
         # --- STEP 3: Projection ---
         # Checks for manual growth vector
@@ -147,8 +150,8 @@ class DividendDiscountStrategy(IValuationRunner):
         # A. Rates
         res_rates = ResolvedRates(
             cost_of_equity=ke,
-            cost_of_debt_after_tax=0.0, # Not applicable
-            wacc=ke # Proxy for the discount rate used
+            cost_of_debt_after_tax=0.0,  # Not applicable
+            wacc=ke,  # Proxy for the discount rate used
         )
 
         # B. Capital (Implied)
@@ -159,9 +162,9 @@ class DividendDiscountStrategy(IValuationRunner):
 
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
-            enterprise_value=equity_value_total + net_debt, # Implied EV
+            enterprise_value=equity_value_total + net_debt,  # Implied EV
             net_debt_resolved=net_debt,
-            equity_value_total=equity_value_total
+            equity_value_total=equity_value_total,
         )
 
         # C. Common Results
@@ -171,9 +174,10 @@ class DividendDiscountStrategy(IValuationRunner):
             intrinsic_value_per_share=iv_per_share,
             upside_pct=(
                 ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price else 0.0
+                if financials.current_price
+                else 0.0
             ),
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         # D. Strategy Specific
@@ -181,7 +185,7 @@ class DividendDiscountStrategy(IValuationRunner):
         pv_tv = tv * discount_factors[-1] if discount_factors else 0.0
 
         # Audit Ratio: Payout Ratio (D0 / EPS)
-        eps = getattr(financials, 'eps_ttm', None) or 1.0
+        eps = getattr(financials, "eps_ttm", None) or 1.0
         payout = (d0_per_share / eps) if eps > 0 else 0.0
 
         strategy_res = DDMResults(
@@ -192,20 +196,13 @@ class DividendDiscountStrategy(IValuationRunner):
             tv_weight_pct=(pv_tv / equity_value_total) if equity_value_total > 0 else 0.0,
             strategy_trace=[],
             # DDM Specifics
-            projected_dividends=flows, # Same as flows here
-            payout_ratio_observed=payout
+            projected_dividends=flows,  # Same as flows here
+            payout_ratio_observed=payout,
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.DDM,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.DDM, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
@@ -238,15 +235,15 @@ class DividendDiscountStrategy(IValuationRunner):
         # 1. Unpack Vectors (All shape: [N_SIMS])
         # Note: For DDM, the 'wacc' vector from MC engine contains the Cost of Equity (Ke)
         # because resolve_discount_rate logic in MC is generic but driven by Beta shocks.
-        ke_vec = vectors['wacc']
-        g_p1 = vectors['growth']
-        g_n  = vectors['terminal_growth']
+        ke_vec = vectors["wacc"]
+        g_p1 = vectors["growth"]
+        g_n = vectors["terminal_growth"]
 
         # Base Flow is Total Dividend Mass here (D0 * Shares)
-        div_0 = vectors['base_flow']
+        div_0 = vectors["base_flow"]
 
         # 2. Vectorized Projection (Phase 1)
-        years = getattr(params.strategy, 'projection_years', 5) or 5
+        years = getattr(params.strategy, "projection_years", 5) or 5
 
         # Create a time matrix [N_SIMS, YEARS] -> e.g. [1, 2, 3, 4, 5]
         time_exponents = np.arange(1, years + 1)

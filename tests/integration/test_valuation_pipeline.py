@@ -13,7 +13,6 @@ from src.valuation.orchestrator import ValuationOrchestrator
 
 
 class TestValuationPipeline:
-
     def test_fcff_standard_execution_success(self, fcff_request_standard, mock_apple_snapshot):
         """
         Scenario: Nominal case for Apple Inc. using Standard FCFF.
@@ -23,10 +22,7 @@ class TestValuationPipeline:
         orchestrator = ValuationOrchestrator()
 
         # 2. Run Pipeline
-        result = orchestrator.run(
-            request=fcff_request_standard,
-            snapshot=mock_apple_snapshot
-        )
+        result = orchestrator.run(request=fcff_request_standard, snapshot=mock_apple_snapshot)
 
         # 3. Assert Envelope Structure
         assert isinstance(result, ValuationResult)

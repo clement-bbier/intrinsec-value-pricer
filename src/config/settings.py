@@ -27,11 +27,13 @@ from src.config.constants import (
 # 1. MONTE CARLO SIMULATION CONFIGURATION
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class MonteCarloSimulationConfig:
     """
     Comprehensive configuration for probabilistic Monte Carlo simulations.
     """
+
     # Baseline Iteration Parameters
     default_simulations: int = MonteCarloDefaults.DEFAULT_SIMULATIONS
     min_simulations: int = MonteCarloDefaults.MIN_SIMULATIONS
@@ -59,12 +61,14 @@ class MonteCarloSimulationConfig:
 # 2. VALIDATION CONFIGURATION (Ex-Audit)
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class ValidationConfig:
     """
     Configuration for financial sanity checks.
     Used by the engine to validate model integrity.
     """
+
     # Core Financial Health
     icr_minimum: float = ValidationThresholds.ICR_MIN
     beta_minimum: float = ValidationThresholds.BETA_MIN
@@ -92,11 +96,13 @@ class ValidationConfig:
 # 3. SYSTEM AND PERFORMANCE CONFIGURATION
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class SystemPerformanceConfig:
     """
     System-level settings governing caching, API resilience, and logging.
     """
+
     # Cache Time-To-Live (TTL)
     cache_ttl_short: int = SystemDefaults.CACHE_TTL_SHORT
     cache_ttl_long: int = SystemDefaults.CACHE_TTL_LONG
@@ -115,11 +121,13 @@ class SystemPerformanceConfig:
 # 4. VALUATION MODEL CONFIGURATION
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class ValuationModelConfig:
     """
     Global defaults and constraints for valuation models.
     """
+
     # Projection Horizon
     default_projection_years: int = ModelDefaults.DEFAULT_PROJECTION_YEARS
     minimum_projection_years: int = 1

@@ -8,7 +8,6 @@ Focus: Input traceability (Structures, Rates, Growth, Financials).
 Style: Institutional "Fact Sheet" layout using structured tables.
 """
 
-
 import pandas as pd
 import streamlit as st
 
@@ -66,24 +65,28 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     # BLOCK 4: RAW DATA SOURCE (EXPANDER)
     # ==========================================================================
     with st.expander(f"{InputLabels.SECTION_FINANCIALS} ({InputLabels.RAW_DATA_SOURCE_TITLE})", expanded=False):
-        st.json({
-            InputLabels.DATA_SOURCE: InputLabels.DATA_SOURCE_VALUE,
-            InputLabels.LAST_UPDATE: str(params.structure.last_update),
-            InputLabels.TICKER: params.structure.ticker,
-            InputLabels.SECTOR: params.structure.sector.value if params.structure.sector else InputLabels.UNKNOWN,
-            InputLabels.PRICE_REFERENCE: params.structure.current_price
-        })
+        st.json(
+            {
+                InputLabels.DATA_SOURCE: InputLabels.DATA_SOURCE_VALUE,
+                InputLabels.LAST_UPDATE: str(params.structure.last_update),
+                InputLabels.TICKER: params.structure.ticker,
+                InputLabels.SECTOR: params.structure.sector.value if params.structure.sector else InputLabels.UNKNOWN,
+                InputLabels.PRICE_REFERENCE: params.structure.current_price,
+            }
+        )
 
 
 # ==============================================================================
 # SUB-RENDERERS (Private Helpers)
 # ==============================================================================
 
+
 def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
     """Safely formats a value handling None types."""
     if value is None:
         return default
     return format(value, fmt)
+
 
 def _render_capital_structure_table(params) -> None:
     """
@@ -106,9 +109,9 @@ def _render_capital_structure_table(params) -> None:
     # Use formatted strings for the table
     data = [
         {"Item": InputLabels.CURRENT_PRICE, "Value": f"{price:,.2f} {struct.currency}"},
-        {"Item": InputLabels.SHARES_OUT,    "Value": f"{shares:,.0f}"},
+        {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
         {"Item": KPITexts.MARKET_CAP_LABEL, "Value": f"{mkt_cap:,.0f} M"},
-        {"Item": InputLabels.NET_DEBT,      "Value": f"{net_debt:,.0f} M"},
+        {"Item": InputLabels.NET_DEBT, "Value": f"{net_debt:,.0f} M"},
         {"Item": "Enterprise Value (Implied)", "Value": f"{(mkt_cap + net_debt):,.0f} M"},
     ]
 
@@ -128,27 +131,30 @@ def _render_rates_table(params, resolved_rates) -> None:
     # Helper to format input vs calculated
     def fmt_rate(input_val, calc_val):
         if input_val is not None:
-            return f"{input_val:.2%}" # User Override
+            return f"{input_val:.2%}"  # User Override
         if calc_val is not None:
-            return f"{calc_val:.2%} (Auto)" # Calculated
+            return f"{calc_val:.2%} (Auto)"  # Calculated
         return "-"
 
     # Specific logic for Cost of Debt (Input is pre-tax, Resolved is post-tax usually)
     kd_display = _safe_fmt(p_rates.cost_of_debt, ".2%", default="Auto")
 
     data = [
-        {"Parameter": InputLabels.RISK_FREE_RATE,
-         "Value": fmt_rate(
-             p_rates.risk_free_rate,
-             resolved_rates.risk_free_rate if hasattr(resolved_rates, 'risk_free_rate') else None
-         )},
-        {"Parameter": InputLabels.BETA,           "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
-        {"Parameter": InputLabels.ERP,
-         "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
-        {"Parameter": InputLabels.COST_OF_EQUITY,
-         "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity)},
-        {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX,   "Value": kd_display},
-        {"Parameter": InputLabels.WACC_CALC,      "Value": f"**{resolved_rates.wacc:.2%}**"}
+        {
+            "Parameter": InputLabels.RISK_FREE_RATE,
+            "Value": fmt_rate(
+                p_rates.risk_free_rate,
+                resolved_rates.risk_free_rate if hasattr(resolved_rates, "risk_free_rate") else None,
+            ),
+        },
+        {"Parameter": InputLabels.BETA, "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
+        {"Parameter": InputLabels.ERP, "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {
+            "Parameter": InputLabels.COST_OF_EQUITY,
+            "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity),
+        },
+        {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX, "Value": kd_display},
+        {"Parameter": InputLabels.WACC_CALC, "Value": f"**{resolved_rates.wacc:.2%}**"},
     ]
 
     df = pd.DataFrame(data)
@@ -170,33 +176,27 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
     data: list[dict[str, str]]
 
     if mode == ValuationMethodology.RIM:
-        bv_display = (
-            f"{strat_params.book_value_anchor:,.0f} M"
-            if strat_params.book_value_anchor is not None else "-"
-        )
-        growth_val = strat_params.growth_rate if hasattr(strat_params, 'growth_rate') else None
+        bv_display = f"{strat_params.book_value_anchor:,.0f} M" if strat_params.book_value_anchor is not None else "-"
+        growth_val = strat_params.growth_rate if hasattr(strat_params, "growth_rate") else None
         data = [
             {"Assumption": "Anchor (Book Value)", "Value": bv_display},
-            {"Assumption": "Persistence Factor (w)",
-             "Value": _safe_fmt(strat_params.persistence_factor, ".2f")},
-            {"Assumption": "Growth (g)", "Value": _safe_fmt(growth_val, ".2%")}
+            {"Assumption": "Persistence Factor (w)", "Value": _safe_fmt(strat_params.persistence_factor, ".2f")},
+            {"Assumption": "Growth (g)", "Value": _safe_fmt(growth_val, ".2%")},
         ]
 
     elif mode == ValuationMethodology.GRAHAM:
         aaa_yield = (
             result.request.parameters.common.rates.corporate_aaa_yield
-            if hasattr(result.request.parameters.common.rates, 'corporate_aaa_yield')
+            if hasattr(result.request.parameters.common.rates, "corporate_aaa_yield")
             else None
         )
-        if aaa_yield is None and hasattr(result.results.common.rates, 'corporate_aaa_yield'):
+        if aaa_yield is None and hasattr(result.results.common.rates, "corporate_aaa_yield"):
             aaa_yield = result.results.common.rates.corporate_aaa_yield
 
         data = [
-            {"Assumption": "Normalized EPS",
-             "Value": _safe_fmt(strat_params.eps_normalized, ".2f")},
-            {"Assumption": "Conservative Growth",
-             "Value": _safe_fmt(strat_params.growth_estimate, ".2%")},
-            {"Assumption": "AAA Corp Rate", "Value": _safe_fmt(aaa_yield, ".2%")}
+            {"Assumption": "Normalized EPS", "Value": _safe_fmt(strat_params.eps_normalized, ".2f")},
+            {"Assumption": "Conservative Growth", "Value": _safe_fmt(strat_params.growth_estimate, ".2%")},
+            {"Assumption": "AAA Corp Rate", "Value": _safe_fmt(aaa_yield, ".2%")},
         ]
 
     else:
@@ -205,7 +205,7 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         # different attribute name. The priority order matches the most common
         # strategies first (FCFF Standard > Normalized > Growth > DDM > FCFE).
         anchor_val: float = 0.0
-        for attr in ('fcf_anchor', 'fcf_norm', 'revenue_ttm', 'dividend_base', 'fcfe_anchor'):
+        for attr in ("fcf_anchor", "fcf_norm", "revenue_ttm", "dividend_base", "fcfe_anchor"):
             val = getattr(strat_params, attr, None)
             if val is not None:
                 anchor_val = val
@@ -214,7 +214,7 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         # Phase 1 Growth — each strategy stores growth under a different name.
         # Priority: explicit P1 growth > revenue growth > generic growth rate.
         g_p1: float | None = None
-        for attr in ('growth_rate_p1', 'revenue_growth_rate', 'growth_rate'):
+        for attr in ("growth_rate_p1", "revenue_growth_rate", "growth_rate"):
             val = getattr(strat_params, attr, None)
             if val is not None:
                 g_p1 = val
@@ -223,17 +223,20 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         data = [
             {"Assumption": "Base Flow (FCF/Div/EPS)", "Value": f"{anchor_val:,.2f} M"},
             {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
-            {"Assumption": "Projection Years",
-             "Value": f"{strat_params.projection_years} years"},
-            {"Assumption": "Terminal Growth (g)",
-             "Value": _safe_fmt(
-                 strat_params.perpetual_growth_rate
-                 if hasattr(strat_params, 'perpetual_growth_rate') else None,
-                 ".2%"
-             )},
-            {"Assumption": "Terminal Method",
-             "Value": str(strat_params.terminal_method)
-             if hasattr(strat_params, 'terminal_method') else "Gordon Growth"}
+            {"Assumption": "Projection Years", "Value": f"{strat_params.projection_years} years"},
+            {
+                "Assumption": "Terminal Growth (g)",
+                "Value": _safe_fmt(
+                    strat_params.perpetual_growth_rate if hasattr(strat_params, "perpetual_growth_rate") else None,
+                    ".2%",
+                ),
+            },
+            {
+                "Assumption": "Terminal Method",
+                "Value": str(strat_params.terminal_method)
+                if hasattr(strat_params, "terminal_method")
+                else "Gordon Growth",
+            },
         ]
 
     if data:

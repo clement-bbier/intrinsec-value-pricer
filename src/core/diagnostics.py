@@ -22,6 +22,7 @@ from typing import Any
 
 class SeverityLevel(Enum):
     """Classification of diagnostic impact on the valuation lifecycle."""
+
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -30,6 +31,7 @@ class SeverityLevel(Enum):
 
 class DiagnosticDomain(Enum):
     """Categorization of the problem origin for audit routing."""
+
     CONFIG = "CONFIG"
     ENGINE = "ENGINE"
     DATA = "DATA"
@@ -57,6 +59,7 @@ class FinancialContext:
     recommendation : str
         Guidance for the analyst to remediate the risk.
     """
+
     parameter_name: str
     current_value: float
     typical_range: tuple[float, float]
@@ -103,6 +106,7 @@ class DiagnosticEvent:
     financial_context : FinancialContext | None
         Extended financial rationale for institutional auditing.
     """
+
     code: str
     severity: SeverityLevel
     domain: DiagnosticDomain
@@ -130,7 +134,7 @@ class DiagnosticEvent:
             "severity": self.severity.value,
             "domain": self.domain.value,
             "message": self.message,
-            "is_blocking": self.is_blocking
+            "is_blocking": self.is_blocking,
         }
 
         if self.financial_context:
@@ -139,7 +143,7 @@ class DiagnosticEvent:
                 "value": self.financial_context.current_value,
                 "typical_range": list(self.financial_context.typical_range),
                 "risk": self.financial_context.statistical_risk,
-                "recommendation": self.financial_context.recommendation
+                "recommendation": self.financial_context.recommendation,
             }
 
         return result
@@ -168,8 +172,8 @@ class DiagnosticRegistry:
                     f"The Gordon model requires g < WACC. With g={g:.2%} and WACC={wacc:.2%}, "
                     "the formula TV = FCF/(WACC-g) produces a negative or infinite value"
                 ),
-                recommendation="Adjust 'g' to be at least 100bps lower than WACC."
-            )
+                recommendation="Adjust 'g' to be at least 100bps lower than WACC.",
+            ),
         )
 
     @staticmethod
@@ -186,11 +190,10 @@ class DiagnosticRegistry:
                 current_value=valid_ratio,
                 typical_range=(0.90, 1.00),
                 statistical_risk=(
-                    f"Only {valid_ratio:.0%} of simulations converged. "
-                    "Results are not statistically significant."
+                    f"Only {valid_ratio:.0%} of simulations converged. Results are not statistically significant."
                 ),
-                recommendation="Check for aggressive growth assumptions interacting with high WACC volatility."
-            )
+                recommendation="Check for aggressive growth assumptions interacting with high WACC volatility.",
+            ),
         )
 
     @staticmethod
@@ -210,8 +213,8 @@ class DiagnosticRegistry:
                     f"A growth rate of {g:.1%} is rarely sustainable long-term. "
                     "Only hyper-growth tech companies sustain >10% over 5 years."
                 ),
-                recommendation="Consider smoothing the growth ramp-down."
-            )
+                recommendation="Consider smoothing the growth ramp-down.",
+            ),
         )
 
     @staticmethod
@@ -226,12 +229,10 @@ class DiagnosticRegistry:
             financial_context=FinancialContext(
                 parameter_name="Free Cash Flow to Equity",
                 current_value=val,
-                typical_range=(0.0, float('inf')),
-                statistical_risk=(
-                    f"Negative FCFE ({val:,.0f}) implies structural shareholder cash burn."
-                ),
-                recommendation="Use FCFF (Enterprise Value) for loss-making entities."
-            )
+                typical_range=(0.0, float("inf")),
+                statistical_risk=(f"Negative FCFE ({val:,.0f}) implies structural shareholder cash burn."),
+                recommendation="Use FCFF (Enterprise Value) for loss-making entities.",
+            ),
         )
 
     @staticmethod
@@ -248,6 +249,6 @@ class DiagnosticRegistry:
                 current_value=rate,
                 typical_range=(0.01, 0.05),
                 statistical_risk="Ignoring SBC in Tech/Growth leads to intrinsic value overestimation.",
-                recommendation="Apply a dilution rate of 2-3% for this sector."
-            )
+                recommendation="Apply a dilution rate of 2-3% for this sector.",
+            ),
         )

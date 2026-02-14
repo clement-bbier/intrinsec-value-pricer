@@ -36,16 +36,13 @@ class TestSrcLayerPurity:
             content = py_file.read_text(encoding="utf-8")
 
             # Check for streamlit imports
-            if re.search(r'^\s*import\s+streamlit', content, re.MULTILINE):
+            if re.search(r"^\s*import\s+streamlit", content, re.MULTILINE):
                 violations.append(f"{py_file}: direct streamlit import")
 
-            if re.search(r'^\s*from\s+streamlit', content, re.MULTILINE):
+            if re.search(r"^\s*from\s+streamlit", content, re.MULTILINE):
                 violations.append(f"{py_file}: from streamlit import")
 
-        assert len(violations) == 0, (
-            f"Found {len(violations)} streamlit import(s) in src/:\n" +
-            "\n".join(violations)
-        )
+        assert len(violations) == 0, f"Found {len(violations)} streamlit import(s) in src/:\n" + "\n".join(violations)
 
     def test_no_app_imports_in_src(self):
         """No Python file in src/ should import from app/."""
@@ -59,16 +56,13 @@ class TestSrcLayerPurity:
             content = py_file.read_text(encoding="utf-8")
 
             # Check for app imports
-            if re.search(r'^\s*import\s+app\.', content, re.MULTILINE):
+            if re.search(r"^\s*import\s+app\.", content, re.MULTILINE):
                 violations.append(f"{py_file}: import app.*")
 
-            if re.search(r'^\s*from\s+app\.', content, re.MULTILINE):
+            if re.search(r"^\s*from\s+app\.", content, re.MULTILINE):
                 violations.append(f"{py_file}: from app.* import")
 
-        assert len(violations) == 0, (
-            f"Found {len(violations)} app/ import(s) in src/:\n" +
-            "\n".join(violations)
-        )
+        assert len(violations) == 0, f"Found {len(violations)} app/ import(s) in src/:\n" + "\n".join(violations)
 
 
 @pytest.mark.contracts
@@ -87,15 +81,14 @@ class TestInfraLayerBoundaries:
             content = py_file.read_text(encoding="utf-8")
 
             # Check for app imports (not allowed)
-            if re.search(r'^\s*import\s+app\.', content, re.MULTILINE):
+            if re.search(r"^\s*import\s+app\.", content, re.MULTILINE):
                 app_violations.append(f"{py_file}: import app.*")
 
-            if re.search(r'^\s*from\s+app\.', content, re.MULTILINE):
+            if re.search(r"^\s*from\s+app\.", content, re.MULTILINE):
                 app_violations.append(f"{py_file}: from app.* import")
 
-        assert len(app_violations) == 0, (
-            f"Found {len(app_violations)} app/ import(s) in infra/:\n" +
-            "\n".join(app_violations)
+        assert len(app_violations) == 0, f"Found {len(app_violations)} app/ import(s) in infra/:\n" + "\n".join(
+            app_violations
         )
 
     def test_infra_src_imports_allowed(self):
@@ -173,9 +166,7 @@ class TestDirectoryStructure:
 
         for dir_name in required_dirs:
             dir_path = Path(dir_name)
-            assert dir_path.exists() and dir_path.is_dir(), (
-                f"Required directory '{dir_name}' not found"
-            )
+            assert dir_path.exists() and dir_path.is_dir(), f"Required directory '{dir_name}' not found"
 
     def test_src_subdirectories_exist(self):
         """Key src/ subdirectories should exist."""
@@ -189,9 +180,7 @@ class TestDirectoryStructure:
 
         for subdir in src_subdirs:
             dir_path = Path(subdir)
-            assert dir_path.exists() and dir_path.is_dir(), (
-                f"Required src subdirectory '{subdir}' not found"
-            )
+            assert dir_path.exists() and dir_path.is_dir(), f"Required src subdirectory '{subdir}' not found"
 
     def test_infra_subdirectories_exist(self):
         """Key infra/ subdirectories should exist."""
@@ -203,9 +192,7 @@ class TestDirectoryStructure:
 
         for subdir in infra_subdirs:
             dir_path = Path(subdir)
-            assert dir_path.exists() and dir_path.is_dir(), (
-                f"Required infra subdirectory '{subdir}' not found"
-            )
+            assert dir_path.exists() and dir_path.is_dir(), f"Required infra subdirectory '{subdir}' not found"
 
 
 @pytest.mark.contracts
@@ -264,7 +251,7 @@ class TestImportHygiene:
                 content = py_file.read_text(encoding="utf-8")
 
                 # Check for star imports
-                if re.search(r'^\s*from\s+\S+\s+import\s+\*', content, re.MULTILINE):
+                if re.search(r"^\s*from\s+\S+\s+import\s+\*", content, re.MULTILINE):
                     violations.append(str(py_file))
 
         # This is more of a guideline than a hard rule

@@ -45,5 +45,5 @@ __all__ = [
     "BenchmarkTexts",
     "UIRegistryTexts",
     "UIStrategyFormulas",
-    "UISharedTexts"
+    "UISharedTexts",
 ]

@@ -68,7 +68,6 @@ __all__ = [
     "VariableSource",
     "SOTPMethod",
     "DiagnosticLevel",
-
     # Pillars & Root Containers
     "Company",
     "CompanySnapshot",
@@ -78,7 +77,6 @@ __all__ = [
     "ValuationResult",
     "ValuationRunMetadata",
     "AuditReport",
-
     # Parameters Sub-structures
     "CommonParameters",
     "FinancialRatesParameters",
@@ -90,7 +88,6 @@ __all__ = [
     "PeersParameters",
     "SOTPParameters",
     "UIKey",
-
     # Market & Traceability
     "MarketContext",
     "SectorMultiples",
@@ -99,5 +96,5 @@ __all__ = [
     "PeerMetric",
     "CalculationStep",
     "VariableInfo",
-    "TraceHypothesis"
+    "TraceHypothesis",
 ]

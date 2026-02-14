@@ -14,6 +14,7 @@ from typing import Literal
 # Scaling types supported by the architecture
 UIScale = Literal["pct", "million", "raw"]
 
+
 @dataclass(frozen=True)
 class UIKey:
     """
@@ -33,5 +34,6 @@ class UIKey:
         - "raw": No transformation applied.
         The default is "raw".
     """
+
     suffix: str
     scale: UIScale = "raw"

@@ -15,6 +15,7 @@ from src.valuation.strategies.interface import IValuationRunner
 
 logger = logging.getLogger(__name__)
 
+
 class SensitivityRunner:
     """Orchestrates the generation of the Sensitivity Matrix."""
 
@@ -30,17 +31,9 @@ class SensitivityRunner:
         wacc_center = self._get_center_wacc(base_params)
         growth_center = self._get_center_growth(base_params)
 
-        wacc_steps = np.linspace(
-            wacc_center - cfg.wacc_span,
-            wacc_center + cfg.wacc_span,
-            cfg.steps
-        ).tolist()
+        wacc_steps = np.linspace(wacc_center - cfg.wacc_span, wacc_center + cfg.wacc_span, cfg.steps).tolist()
 
-        growth_steps = np.linspace(
-            growth_center - cfg.growth_span,
-            growth_center + cfg.growth_span,
-            cfg.steps
-        ).tolist()
+        growth_steps = np.linspace(growth_center - cfg.growth_span, growth_center + cfg.growth_span, cfg.steps).tolist()
 
         matrix_values: list[list[float]] = []
         work_params = base_params.model_copy(deep=True)
@@ -74,7 +67,7 @@ class SensitivityRunner:
             y_values=list(reversed(growth_steps)),
             values=matrix_values,
             center_value=matrix_values[center_idx][center_idx],
-            sensitivity_score=self._compute_volatility_score(matrix_values)
+            sensitivity_score=self._compute_volatility_score(matrix_values),
         )
 
     @staticmethod
@@ -84,7 +77,7 @@ class SensitivityRunner:
 
     @staticmethod
     def _get_center_growth(params: Parameters) -> float:
-        if hasattr(params.strategy, 'terminal_value'):
+        if hasattr(params.strategy, "terminal_value"):
             return params.strategy.terminal_value.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
         # Special case: Graham model
         if isinstance(params.strategy, GrahamParameters):
@@ -98,7 +91,7 @@ class SensitivityRunner:
 
     @staticmethod
     def _apply_growth(params: Parameters, value: float) -> None:
-        if hasattr(params.strategy, 'terminal_value'):
+        if hasattr(params.strategy, "terminal_value"):
             params.strategy.terminal_value.perpetual_growth_rate = value
         elif isinstance(params.strategy, GrahamParameters):
             params.strategy.growth_estimate = value

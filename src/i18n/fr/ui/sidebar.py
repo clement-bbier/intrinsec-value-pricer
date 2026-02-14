@@ -6,6 +6,7 @@ Textes de la barre latérale.
 
 class SidebarTexts:
     """Labels et en-têtes de la barre latérale."""
+
     SEC_1_COMPANY = "Choix de l'entreprise"
     SEC_2_METHODOLOGY = "Choix de la méthodologie"
     SEC_3_SOURCE = "Source des données"

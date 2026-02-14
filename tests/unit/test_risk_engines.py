@@ -7,7 +7,6 @@ Role: Validates diagnostics, exceptions, and formatting in src/core/
 Coverage: DiagnosticEvent, Exceptions, FinancialContext, Formatting.
 """
 
-
 import pytest
 
 from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, DiagnosticRegistry, FinancialContext, SeverityLevel
@@ -28,6 +27,7 @@ from src.core.formatting import format_smart_number, get_delta_color
 # 1. DIAGNOSTIC EVENT
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_diagnostic_event_creation():
     """Test DiagnosticEvent creation with all fields."""
@@ -38,7 +38,7 @@ def test_diagnostic_event_creation():
         message="Test warning message",
         technical_detail="Some technical details",
         remediation_hint="Fix the issue",
-        financial_context=None
+        financial_context=None,
     )
 
     assert event.code == "TEST_001"
@@ -51,16 +51,10 @@ def test_diagnostic_event_creation():
 def test_diagnostic_event_is_blocking_true():
     """Test is_blocking property returns True for ERROR and CRITICAL."""
     error_event = DiagnosticEvent(
-        code="ERR_001",
-        severity=SeverityLevel.ERROR,
-        domain=DiagnosticDomain.ENGINE,
-        message="Error"
+        code="ERR_001", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.ENGINE, message="Error"
     )
     critical_event = DiagnosticEvent(
-        code="CRIT_001",
-        severity=SeverityLevel.CRITICAL,
-        domain=DiagnosticDomain.CONFIG,
-        message="Critical"
+        code="CRIT_001", severity=SeverityLevel.CRITICAL, domain=DiagnosticDomain.CONFIG, message="Critical"
     )
 
     assert error_event.is_blocking is True
@@ -71,16 +65,10 @@ def test_diagnostic_event_is_blocking_true():
 def test_diagnostic_event_is_blocking_false():
     """Test is_blocking property returns False for INFO and WARNING."""
     info_event = DiagnosticEvent(
-        code="INFO_001",
-        severity=SeverityLevel.INFO,
-        domain=DiagnosticDomain.DATA,
-        message="Info"
+        code="INFO_001", severity=SeverityLevel.INFO, domain=DiagnosticDomain.DATA, message="Info"
     )
     warning_event = DiagnosticEvent(
-        code="WARN_001",
-        severity=SeverityLevel.WARNING,
-        domain=DiagnosticDomain.USER_INPUT,
-        message="Warning"
+        code="WARN_001", severity=SeverityLevel.WARNING, domain=DiagnosticDomain.USER_INPUT, message="Warning"
     )
 
     assert info_event.is_blocking is False
@@ -91,10 +79,7 @@ def test_diagnostic_event_is_blocking_false():
 def test_diagnostic_event_to_dict():
     """Test to_dict() serialization."""
     event = DiagnosticEvent(
-        code="TEST_002",
-        severity=SeverityLevel.INFO,
-        domain=DiagnosticDomain.SYSTEM,
-        message="Test message"
+        code="TEST_002", severity=SeverityLevel.INFO, domain=DiagnosticDomain.SYSTEM, message="Test message"
     )
 
     result = event.to_dict()
@@ -110,6 +95,7 @@ def test_diagnostic_event_to_dict():
 # 2. FINANCIAL CONTEXT
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_financial_context_creation():
     """Test FinancialContext creation."""
@@ -118,7 +104,7 @@ def test_financial_context_creation():
         current_value=2.5,
         typical_range=(0.5, 2.0),
         statistical_risk="Value is abnormally high",
-        recommendation="Review sector benchmark"
+        recommendation="Review sector benchmark",
     )
 
     assert context.parameter_name == "Beta"
@@ -134,7 +120,7 @@ def test_financial_context_to_human_readable():
         current_value=3.0,
         typical_range=(0.5, 2.0),
         statistical_risk="Suggests extreme volatility",
-        recommendation="Verify data source"
+        recommendation="Verify data source",
     )
 
     output = context.to_human_readable()
@@ -149,6 +135,7 @@ def test_financial_context_to_human_readable():
 # ==============================================================================
 # 3. DIAGNOSTIC REGISTRY
 # ==============================================================================
+
 
 @pytest.mark.unit
 def test_diagnostic_registry_model_g_divergence():
@@ -194,10 +181,7 @@ def test_diagnostic_registry_fcfe_negative_flow():
 @pytest.mark.unit
 def test_diagnostic_registry_risk_missing_sbc_dilution():
     """Test risk_missing_sbc_dilution() for tech sector."""
-    event = DiagnosticRegistry.risk_missing_sbc_dilution(
-        sector="TECHNOLOGY",
-        rate=0.0
-    )
+    event = DiagnosticRegistry.risk_missing_sbc_dilution(sector="TECHNOLOGY", rate=0.0)
 
     assert event.code == "RISK_MISSING_SBC_DILUTION"
     assert event.severity == SeverityLevel.WARNING
@@ -208,14 +192,12 @@ def test_diagnostic_registry_risk_missing_sbc_dilution():
 # 4. CUSTOM EXCEPTIONS
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_valuation_exception_base():
     """Test ValuationError base class."""
     event = DiagnosticEvent(
-        code="TEST_FAIL",
-        severity=SeverityLevel.ERROR,
-        domain=DiagnosticDomain.ENGINE,
-        message="Test failure"
+        code="TEST_FAIL", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.ENGINE, message="Test failure"
     )
 
     exc = ValuationError(event)
@@ -309,6 +291,7 @@ def test_configuration_error():
 # 5. FORMATTING FUNCTIONS
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_format_smart_number_none():
     """Test format_smart_number() with None returns dash."""
@@ -318,7 +301,7 @@ def test_format_smart_number_none():
 @pytest.mark.unit
 def test_format_smart_number_nan():
     """Test format_smart_number() with NaN returns dash."""
-    assert format_smart_number(float('nan')) == "-"
+    assert format_smart_number(float("nan")) == "-"
 
 
 @pytest.mark.unit

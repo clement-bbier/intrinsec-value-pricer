@@ -19,38 +19,32 @@ class TestBacktestRunner:
     def setup_method(self):
         """Setup test fixtures for each test."""
         # Create sample financial DataFrames with year columns
-        self.year_2021 = pd.Timestamp('2021-12-31')
-        self.year_2022 = pd.Timestamp('2022-12-31')
-        self.year_2023 = pd.Timestamp('2023-12-31')
+        self.year_2021 = pd.Timestamp("2021-12-31")
+        self.year_2022 = pd.Timestamp("2022-12-31")
+        self.year_2023 = pd.Timestamp("2023-12-31")
 
         # Sample balance sheet with multiple years
-        self.sample_bs = pd.DataFrame({
-            self.year_2021: [100.0, 200.0],
-            self.year_2022: [110.0, 220.0],
-            self.year_2023: [120.0, 240.0]
-        }, index=['Assets', 'Liabilities'])
+        self.sample_bs = pd.DataFrame(
+            {self.year_2021: [100.0, 200.0], self.year_2022: [110.0, 220.0], self.year_2023: [120.0, 240.0]},
+            index=["Assets", "Liabilities"],
+        )
 
         # Sample income statement
-        self.sample_is = pd.DataFrame({
-            self.year_2021: [1000.0, 100.0],
-            self.year_2022: [1100.0, 110.0],
-            self.year_2023: [1200.0, 120.0]
-        }, index=['Revenue', 'Net Income'])
+        self.sample_is = pd.DataFrame(
+            {self.year_2021: [1000.0, 100.0], self.year_2022: [1100.0, 110.0], self.year_2023: [1200.0, 120.0]},
+            index=["Revenue", "Net Income"],
+        )
 
         # Sample cash flow statement
-        self.sample_cf = pd.DataFrame({
-            self.year_2021: [90.0, 10.0],
-            self.year_2022: [100.0, 11.0],
-            self.year_2023: [110.0, 12.0]
-        }, index=['Operating CF', 'Capex'])
+        self.sample_cf = pd.DataFrame(
+            {self.year_2021: [90.0, 10.0], self.year_2022: [100.0, 11.0], self.year_2023: [110.0, 12.0]},
+            index=["Operating CF", "Capex"],
+        )
 
         # Sample price history with datetime index
-        dates = pd.date_range('2021-01-01', '2023-12-31', freq='D')
+        dates = pd.date_range("2021-01-01", "2023-12-31", freq="D")
         prices = [150.0 + i * 0.1 for i in range(len(dates))]
-        self.sample_history = pd.DataFrame({
-            'Close': prices,
-            'Volume': [1000000] * len(dates)
-        }, index=dates)
+        self.sample_history = pd.DataFrame({"Close": prices, "Volume": [1000000] * len(dates)}, index=dates)
 
     def test_isolate_fiscal_year_valid_year(self):
         """Test isolation with valid year - all statements present."""
@@ -63,7 +57,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=self.sample_history,
-            is_valid=True
+            is_valid=True,
         )
 
         result = BacktestRunner.isolate_fiscal_year(raw_data, 2022)
@@ -83,10 +77,9 @@ class TestBacktestRunner:
     def test_isolate_fiscal_year_missing_balance_sheet(self):
         """Test isolation when balance sheet is missing for target year."""
         # Create balance sheet without 2022
-        bs_partial = pd.DataFrame({
-            self.year_2021: [100.0, 200.0],
-            self.year_2023: [120.0, 240.0]
-        }, index=['Assets', 'Liabilities'])
+        bs_partial = pd.DataFrame(
+            {self.year_2021: [100.0, 200.0], self.year_2023: [120.0, 240.0]}, index=["Assets", "Liabilities"]
+        )
 
         raw_data = RawFinancialData(
             ticker="AAPL",
@@ -97,7 +90,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=self.sample_history,
-            is_valid=True
+            is_valid=True,
         )
 
         result = BacktestRunner.isolate_fiscal_year(raw_data, 2022)
@@ -106,10 +99,9 @@ class TestBacktestRunner:
     def test_isolate_fiscal_year_missing_income_statement(self):
         """Test isolation when income statement is missing for target year."""
         # Create income statement without 2022
-        is_partial = pd.DataFrame({
-            self.year_2021: [1000.0, 100.0],
-            self.year_2023: [1200.0, 120.0]
-        }, index=['Revenue', 'Net Income'])
+        is_partial = pd.DataFrame(
+            {self.year_2021: [1000.0, 100.0], self.year_2023: [1200.0, 120.0]}, index=["Revenue", "Net Income"]
+        )
 
         raw_data = RawFinancialData(
             ticker="AAPL",
@@ -120,7 +112,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=self.sample_history,
-            is_valid=True
+            is_valid=True,
         )
 
         result = BacktestRunner.isolate_fiscal_year(raw_data, 2022)
@@ -129,10 +121,9 @@ class TestBacktestRunner:
     def test_isolate_fiscal_year_missing_cash_flow(self):
         """Test isolation when cash flow is missing for target year."""
         # Create cash flow without 2022
-        cf_partial = pd.DataFrame({
-            self.year_2021: [90.0, 10.0],
-            self.year_2023: [110.0, 12.0]
-        }, index=['Operating CF', 'Capex'])
+        cf_partial = pd.DataFrame(
+            {self.year_2021: [90.0, 10.0], self.year_2023: [110.0, 12.0]}, index=["Operating CF", "Capex"]
+        )
 
         raw_data = RawFinancialData(
             ticker="AAPL",
@@ -143,7 +134,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=self.sample_history,
-            is_valid=True
+            is_valid=True,
         )
 
         result = BacktestRunner.isolate_fiscal_year(raw_data, 2022)
@@ -160,7 +151,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=pd.DataFrame(),  # Empty history
-            is_valid=True
+            is_valid=True,
         )
 
         result = BacktestRunner.isolate_fiscal_year(raw_data, 2022)
@@ -178,7 +169,7 @@ class TestBacktestRunner:
 
         # Verify it's from 2022
         year_2022_prices = self.sample_history[self.sample_history.index.year == 2022]
-        expected_price = float(year_2022_prices['Close'].iloc[-1])
+        expected_price = float(year_2022_prices["Close"].iloc[-1])
         assert price == expected_price
 
     def test_get_historical_market_price_empty_dataframe(self):
@@ -200,11 +191,8 @@ class TestBacktestRunner:
     def test_get_historical_market_price_no_close_column(self):
         """Test price retrieval when 'Close' column is missing."""
         # Create DataFrame without 'Close' column
-        dates = pd.date_range('2022-01-01', '2022-12-31', freq='D')
-        df_no_close = pd.DataFrame({
-            'AdjClose': [100.0] * len(dates),
-            'Volume': [1000000] * len(dates)
-        }, index=dates)
+        dates = pd.date_range("2022-01-01", "2022-12-31", freq="D")
+        df_no_close = pd.DataFrame({"AdjClose": [100.0] * len(dates), "Volume": [1000000] * len(dates)}, index=dates)
 
         price = BacktestRunner.get_historical_market_price(df_no_close, 2022)
 
@@ -221,8 +209,8 @@ class TestBacktestRunner:
         assert result.columns[0].year == 2022
 
         # Check values
-        assert result.loc['Assets'].iloc[0] == 110.0
-        assert result.loc['Liabilities'].iloc[0] == 220.0
+        assert result.loc["Assets"].iloc[0] == 110.0
+        assert result.loc["Liabilities"].iloc[0] == 220.0
 
     def test_filter_df_by_year_none_dataframe(self):
         """Test filtering with None DataFrame."""
@@ -243,18 +231,17 @@ class TestBacktestRunner:
     def test_filter_df_by_year_string_columns(self):
         """Test filtering with string column names containing year."""
         # Create DataFrame with string columns
-        df_string = pd.DataFrame({
-            '2021-12-31': [100.0, 200.0],
-            '2022-12-31': [110.0, 220.0],
-            '2023-12-31': [120.0, 240.0]
-        }, index=['Assets', 'Liabilities'])
+        df_string = pd.DataFrame(
+            {"2021-12-31": [100.0, 200.0], "2022-12-31": [110.0, 220.0], "2023-12-31": [120.0, 240.0]},
+            index=["Assets", "Liabilities"],
+        )
 
         result = BacktestRunner._filter_df_by_year(df_string, 2022)
 
         # Should still find the column with '2022' in it
         assert result is not None
         assert len(result.columns) == 1
-        assert '2022' in result.columns[0]
+        assert "2022" in result.columns[0]
 
     def test_isolate_fiscal_year_look_ahead_prevention(self):
         """Test that future data is properly excluded (look-ahead bias prevention)."""
@@ -267,7 +254,7 @@ class TestBacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=self.sample_history,
-            is_valid=True
+            is_valid=True,
         )
 
         # Isolate to 2021

@@ -67,9 +67,7 @@ class StandardFCFFStrategy(IValuationRunner):
 
         # --- STEP 1: WACC & Rates ---
         wacc, step_wacc = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=False
+            financials=financials, params=params, use_cost_of_equity_only=False
         )
         if self._glass_box:
             steps.append(step_wacc)
@@ -114,15 +112,12 @@ class StandardFCFFStrategy(IValuationRunner):
 
         val_ke = trace_ke.value if (self._glass_box and trace_ke) else (r.cost_of_equity or 0.0)
         val_kd = (
-            trace_kd.value if (self._glass_box and trace_kd)
+            trace_kd.value
+            if (self._glass_box and trace_kd)
             else (ModelDefaults.DEFAULT_COST_OF_DEBT * (1 - (r.tax_rate or 0.25)))
         )
 
-        res_rates = ResolvedRates(
-            cost_of_equity=val_ke,
-            cost_of_debt_after_tax=val_kd,
-            wacc=wacc
-        )
+        res_rates = ResolvedRates(cost_of_equity=val_ke, cost_of_debt_after_tax=val_kd, wacc=wacc)
 
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         price = financials.current_price or 0.0
@@ -134,7 +129,7 @@ class StandardFCFFStrategy(IValuationRunner):
             market_cap=shares * price,
             enterprise_value=ev,
             net_debt_resolved=debt - cash,
-            equity_value_total=equity_value
+            equity_value_total=equity_value,
         )
 
         upside = (iv_per_share - price) / price if price > 0 else 0.0
@@ -144,7 +139,7 @@ class StandardFCFFStrategy(IValuationRunner):
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
             upside_pct=upside,
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         discount_factors = calculate_discount_factors(wacc, len(flows))
@@ -157,24 +152,16 @@ class StandardFCFFStrategy(IValuationRunner):
             terminal_value=tv,
             discounted_terminal_value=pv_tv,
             tv_weight_pct=tv_weight,
-            strategy_trace=[]
+            strategy_trace=[],
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.FCFF_STANDARD,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
-    def execute_stochastic(_financials: Company, params: Parameters,
-                           vectors: dict[str, np.ndarray]) -> np.ndarray:
+    def execute_stochastic(_financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
         High-Performance Vectorized Execution for Monte Carlo.
 
@@ -201,14 +188,14 @@ class StandardFCFFStrategy(IValuationRunner):
             Array of Intrinsic Values per Share.
         """
         # 1. Unpack Vectors (All shape: [N_SIMS])
-        wacc = vectors['wacc']
-        g_p1 = vectors['growth']
-        g_n = vectors['terminal_growth']
-        fcf_0 = vectors['base_flow']
+        wacc = vectors["wacc"]
+        g_p1 = vectors["growth"]
+        g_n = vectors["terminal_growth"]
+        fcf_0 = vectors["base_flow"]
 
         # 2. Vectorized Projection (Phase 1)
         # We assume a fixed projection period (e.g. 5 years) for all sims to allow matrix operations
-        years = getattr(params.strategy, 'projection_years', 5) or 5
+        years = getattr(params.strategy, "projection_years", 5) or 5
 
         # Create a time matrix [N_SIMS, YEARS] -> e.g. [1, 2, 3, 4, 5]
         # (1 + g)^t

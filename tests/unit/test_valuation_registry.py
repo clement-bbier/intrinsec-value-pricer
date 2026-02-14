@@ -79,15 +79,18 @@ class TestStrategyRegistryInitialization:
 class TestStrategyInterface:
     """Test suite for validating strategy class interfaces."""
 
-    @pytest.mark.parametrize("mode", [
-        ValuationMethodology.FCFF_STANDARD,
-        ValuationMethodology.FCFF_NORMALIZED,
-        ValuationMethodology.FCFF_GROWTH,
-        ValuationMethodology.FCFE,
-        ValuationMethodology.DDM,
-        ValuationMethodology.RIM,
-        ValuationMethodology.GRAHAM,
-    ])
+    @pytest.mark.parametrize(
+        "mode",
+        [
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_NORMALIZED,
+            ValuationMethodology.FCFF_GROWTH,
+            ValuationMethodology.FCFE,
+            ValuationMethodology.DDM,
+            ValuationMethodology.RIM,
+            ValuationMethodology.GRAHAM,
+        ],
+    )
     def test_each_strategy_has_execute_method(self, mode):
         """Each registered strategy class should have an 'execute' method."""
         strategy_cls = get_strategy(mode)
@@ -96,7 +99,7 @@ class TestStrategyInterface:
 
         # Check that the class has an 'execute' method (from IValuationRunner interface)
         # (We can't instantiate without proper params, but we can check the method exists)
-        assert hasattr(strategy_cls, 'execute'), f"Strategy {mode.value} missing 'execute' method"
+        assert hasattr(strategy_cls, "execute"), f"Strategy {mode.value} missing 'execute' method"
 
 
 class TestStrategySingleton:

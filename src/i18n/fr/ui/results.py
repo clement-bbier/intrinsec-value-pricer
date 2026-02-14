@@ -7,30 +7,36 @@ Rôle : Centralise tous les textes, labels et formats utilisés dans les vues de
 Portée : KPIs, Graphiques, Benchmark, SOTP, Backtest, Inputs.
 """
 
+
 class ResultsTexts:
     """Textes génériques de la page résultats."""
+
     TITLE = "Résultats de Valorisation"
     VALUATION_SUMMARY = "Synthèse Décisionnelle"
     NO_RATES_DATA = "Données de taux non disponibles"
     NO_FINANCIALS_PROVIDED = "Aucun état financier historique fourni"
+
 
 class PillarLabels:
     """
     Labels officiels des onglets (Piliers).
     Séparation explicite entre la Synthèse (Output) et la Configuration (Input).
     """
+
     PILLAR_0_SUMMARY = "Synthèse & Dashboard"  # Output
-    PILLAR_1_CONF = "Configuration & Inputs"   # Input
+    PILLAR_1_CONF = "Configuration & Inputs"  # Input
     PILLAR_2_TRACE = "Trace Mathématique"
-    PILLAR_3_BENCHMARK = "Benchmark Sectoriel" # Ex-Audit
+    PILLAR_3_BENCHMARK = "Benchmark Sectoriel"  # Ex-Audit
     PILLAR_4_RISK = "Ingénierie du Risque"
     PILLAR_5_MARKET = "Marché & SOTP"
+
 
 class InputLabels:
     """
     Labels spécifiques au Pilier 1 (Configuration & Hypothèses).
     Détaille les paramètres entrés dans le modèle.
     """
+
     # Section Headers
     SECTION_STRUCTURE = "1. Structure & Marché"
     SECTION_WACC = "2. Paramètres de Taux (WACC)"
@@ -81,6 +87,7 @@ class InputLabels:
     UNKNOWN = "Inconnu"
     NO_OPERATIONAL_ASSUMPTIONS = "Aucune hypothèse opérationnelle spécifique à afficher pour ce modèle."
 
+
 class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
 
@@ -88,7 +95,7 @@ class KPITexts:
     NOTE_ANALYSIS = "Note d'Analyse"
     TAB_INPUTS = "Données d'Entrée"
     TAB_CALC = "Preuve de calcul"
-    TAB_BENCHMARK = "Benchmark & Fiabilité" # Remplacement de Audit
+    TAB_BENCHMARK = "Benchmark & Fiabilité"  # Remplacement de Audit
     TAB_MC = "Monte Carlo"
     TAB_SCENARIOS = "Analyse de Scénarios"
 
@@ -182,9 +189,10 @@ class KPITexts:
 
 class BenchmarkTexts:
     """
-        Textes Pillar 3 — Benchmark & Fiabilité.
-        Vocabulaire de comparaison sectorielle et de scoring.
-        """
+    Textes Pillar 3 — Benchmark & Fiabilité.
+    Vocabulaire de comparaison sectorielle et de scoring.
+    """
+
     # Titres & Sections
     TITLE_MACRO = "Contexte Macroéconomique"
     SUBTITLE_VALUATION = "1. Positionnement Valorisation (Multiples)"
@@ -220,7 +228,7 @@ class BenchmarkTexts:
     H_INDICATOR = "Indicateurs vérifiés"
     GLOBAL_SCORE = "Score de fiabilité global basé sur {score}% de conformité aux standards du secteur."
     CRITICAL_VIOLATION_MSG = r"{count} écarts critiques détectés par rapport aux normes."
-    NOTES_EXPANDER = "Détail des analyses de cohérence" # Anciennement Procès-verbal...
+    NOTES_EXPANDER = "Détail des analyses de cohérence"  # Anciennement Procès-verbal...
 
     H_RULE = "Standard analysé"
     H_EVIDENCE = "Valeur Modèle"
@@ -370,6 +378,7 @@ class BacktestTexts:
     # Section
     SEC_RESULTS = "Détail des Écarts Historiques"
 
+
 class MarketTexts:
     """Textes Pillar 5 — Analyse de Marché (Peers & Multiples)."""
 
@@ -417,8 +426,10 @@ class MarketTexts:
     # Résumé footer tableau
     CAPTION_MEDIAN_SUMMARY = r"**{label}** : EV/EBITDA = {ebitda} | P/E = {pe}"
 
+
 class SOTPTexts:
     """Textes spécifiques à la méthode Somme des Parties (SOTP) - Pillar 5."""
+
     HELP_SOTP = (
         "Cette méthodologie valorise chaque division indépendamment pour capturer "
         "la réalité économique des conglomérats, souvent masquée par une approche consolidée."
@@ -469,8 +480,10 @@ class ChartTexts:
     CORREL_CAPTION = "Matrice de Corrélation des Inputs (WACC vs Growth)"
     TOOLTIP_VALUATION = "Valorisation"
 
+
 class UIRegistryTexts:
     """Textes pour les métadonnées du Glass Box (Registry) - UI Layer."""
+
     FCFF_STANDARD_L = "Flux de Trésorerie Disponibles (FCFF) - Standard"
     FCFF_GROWTH_L = "Modèle de Croissance des Revenus (FCFF)"
     FCFF_NORM_L = "FCFF Normalisé (Moyenne de cycle)"  # Était FCFF_NORM_L dans l'appel
@@ -536,6 +549,7 @@ class UIRegistryTexts:
 
 class UIStrategyFormulas:
     """Formules LaTeX pour le Glass Box - UI Layer."""
+
     WACC = r"WACC = K_e \times \frac{E}{D+E} + K_d(1-T) \times \frac{D}{D+E}"
     CAPM = r"K_e = R_f + \beta \times ERP"
     FCF_BASE = r"FCF = EBIT(1-t) + D\&A - \Delta WCR - Capex"

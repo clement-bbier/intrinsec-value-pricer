@@ -34,6 +34,7 @@ from src.models.valuation import ValuationMethodology, ValuationRequest
 # Generic Type Variable bound to Pydantic Models
 T = TypeVar("T", bound=BaseModel)
 
+
 class InputFactory:
     """
     Static factory responsible for converting UI State into Backend Contracts.
@@ -56,7 +57,7 @@ class InputFactory:
         # Here we construct the basic identity from the Sidebar input
         structure = Company(
             ticker=state.ticker,
-            current_price=0.0 # Will be resolved by the Backend/Provider
+            current_price=0.0,  # Will be resolved by the Backend/Provider
         )
 
         # 2. Strategy Parameters (Polymorphic)
@@ -80,16 +81,10 @@ class InputFactory:
 
         # 5. Assembly
         full_params = Parameters(
-            structure=structure,
-            common=common_params,
-            strategy=strategy_params,
-            extensions=extension_params
+            structure=structure, common=common_params, strategy=strategy_params, extensions=extension_params
         )
 
-        return ValuationRequest(
-            mode=state.selected_methodology,
-            parameters=full_params
-        )
+        return ValuationRequest(mode=state.selected_methodology, parameters=full_params)
 
     @staticmethod
     def _build_strategy_params(mode: ValuationMethodology) -> StrategyUnionParameters:
@@ -137,8 +132,8 @@ class InputFactory:
             # 1. Recursion for nested models (e.g. Common -> Rates)
             # Check if the field type is a Pydantic model class
             if isinstance(field_info.annotation, type) and issubclass(field_info.annotation, BaseModel):
-                 extracted_data[name] = InputFactory._pull_model(field_info.annotation, prefix)
-                 continue
+                extracted_data[name] = InputFactory._pull_model(field_info.annotation, prefix)
+                continue
 
             # 2. Check for UIKey metadata
             # Annotated stores metadata in the 'metadata' attribute of field_info
@@ -154,8 +149,8 @@ class InputFactory:
                     # Ghost Pattern: Only include if value is not neutral
                     # None and 0 are treated as neutral — the Backend/Provider supplies real data
                     if raw_val is not None and raw_val != 0:
-                         # Scaling logic is handled by the Model's validator (BaseNormalizedModel)
-                         # We pass the raw UI value, Pydantic scales it.
-                         extracted_data[name] = raw_val
+                        # Scaling logic is handled by the Model's validator (BaseNormalizedModel)
+                        # We pass the raw UI value, Pydantic scales it.
+                        extracted_data[name] = raw_val
 
         return model_cls(**extracted_data)

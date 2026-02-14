@@ -241,7 +241,5 @@ def test_guardrails_handle_missing_terminal_value_gracefully(orchestrator, base_
 
     assert result.audit_report is not None
     # Should have an INFO event about terminal growth not being set
-    terminal_growth_events = [
-        e for e in result.audit_report.events if "TERMINAL_GROWTH" in e.code
-    ]
+    terminal_growth_events = [e for e in result.audit_report.events if "TERMINAL_GROWTH" in e.code]
     assert len(terminal_growth_events) > 0

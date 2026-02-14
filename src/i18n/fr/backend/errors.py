@@ -85,6 +85,7 @@ class DiagnosticTexts:
 
 class CalculationErrors:
     """Messages d'erreurs leves lors des phases de calcul."""
+
     CONTRACT_VIOLATION = "Le contrat de sortie n'est pas respecte pour {cls}."
     INVALID_SHARES = "Nombre d'actions en circulation invalide (<= 0)."
     MISSING_BV = "Book Value par action requise et > 0."

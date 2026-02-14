@@ -28,11 +28,7 @@ class TestDefaultMacroProvider:
     def base_snapshot(self):
         """Returns a minimal CompanySnapshot for testing."""
         return CompanySnapshot(
-            ticker="TEST",
-            name="Test Company",
-            sector="Technology",
-            current_price=100.0,
-            country="United States"
+            ticker="TEST", name="Test Company", sector="Technology", current_price=100.0, country="United States"
         )
 
     def test_hydrate_macro_data_fills_all_fields(self, provider, base_snapshot):
@@ -64,11 +60,7 @@ class TestDefaultMacroProvider:
     def test_hydrate_with_none_country_uses_fallback(self, provider):
         """Hydration with snapshot where country=None should use fallback."""
         snapshot = CompanySnapshot(
-            ticker="TEST",
-            name="Test Company",
-            sector="Technology",
-            current_price=100.0,
-            country=None
+            ticker="TEST", name="Test Company", sector="Technology", current_price=100.0, country=None
         )
 
         result = provider.hydrate_macro_data(snapshot)
@@ -81,11 +73,7 @@ class TestDefaultMacroProvider:
     def test_hydrate_with_united_states_gives_us_rates(self, provider):
         """Hydration with country='United States' gives US-specific rates."""
         snapshot = CompanySnapshot(
-            ticker="AAPL",
-            name="Apple Inc.",
-            sector="Technology",
-            current_price=150.0,
-            country="United States"
+            ticker="AAPL", name="Apple Inc.", sector="Technology", current_price=150.0, country="United States"
         )
 
         result = provider.hydrate_macro_data(snapshot)
@@ -98,11 +86,7 @@ class TestDefaultMacroProvider:
     def test_hydrate_with_france_gives_french_rates(self, provider):
         """Hydration with country='France' gives France-specific rates."""
         snapshot = CompanySnapshot(
-            ticker="MC",
-            name="LVMH",
-            sector="Consumer Cyclical",
-            current_price=800.0,
-            country="France"
+            ticker="MC", name="LVMH", sector="Consumer Cyclical", current_price=800.0, country="France"
         )
 
         result = provider.hydrate_macro_data(snapshot)

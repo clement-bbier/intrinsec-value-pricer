@@ -12,6 +12,7 @@ Règles de maintenance :
 - Les titres (TITLE) doivent correspondre exactement aux labels de la sidebar.
 """
 
+
 class UISharedTexts:
     """
     SOCLE COMMUN - Centralise l'intégralité des labels, messages et formules
@@ -55,8 +56,7 @@ class UISharedTexts:
     # Extensions optionnelles (Index 6 à 9)
     SEC_6_MC = "#### Option : Simulation Probabiliste (Incertitude)"
     SEC_6_DESC_MC = (
-        "Analyse de sensibilité par simulation stochastique de Monte Carlo"
-        " pour quantifier la dispersion de la valeur."
+        "Analyse de sensibilité par simulation stochastique de Monte Carlo pour quantifier la dispersion de la valeur."
     )
 
     SEC_7_PEERS = "#### Option : Cohorte de Comparables (Triangulation)"
@@ -64,13 +64,11 @@ class UISharedTexts:
 
     SEC_8_SCENARIOS = "#### Option : Analyse de Scénarios (Convictions)"
     SEC_8_DESC_SCENARIOS = (
-        "Modélisation de variantes stratégiques (Bull/Bear) pour tester"
-        " la robustesse de vos hypothèses."
+        "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
     )
 
     SEC_9_SOTP = "#### Option : Somme des Parties (Segmentation SOTP)"
     SEC_9_DESC = "Décomposition de la valeur d'entreprise par segments métier ou actifs distincts."
-
 
     # ==========================================================================
     # 2. MODULE : ÉTAPE 5 - EQUITY BRIDGE
@@ -88,7 +86,6 @@ class UISharedTexts:
     INP_MINORITIES = "Intérêts Minoritaires (M$)"
     INP_PENSIONS = "Provisions / Engagements Sociaux (M$)"
 
-
     # ==========================================================================
     # 3. MODULE : ÉTAPE 6 - MONTE CARLO
     # ==========================================================================
@@ -100,7 +97,6 @@ class UISharedTexts:
     MC_VOL_G = "Incertitude croissance g (%)"
     LBL_VOL_OMEGA = "Incertitude persistance ω (%)"
     LBL_VOL_GN = "Incertitude croissance perpétuelle gn (%)"
-
 
     # ==========================================================================
     # 4. MODULE : ÉTAPE 8 - SCÉNARIOS (Bull/Base/Bear)
@@ -122,7 +118,6 @@ class UISharedTexts:
     ERR_SCENARIO_PROBA_SUM = "La somme des probabilités est de {sum}% (le total doit être 100%)."
     ERR_SCENARIO_INVALID = "Certains paramètres de scénarios sont incomplets ou invalides."
 
-
     # ==========================================================================
     # 5. MODULE : ÉTAPE 9 - SOTP (Sum-of-the-Parts)
     # ==========================================================================
@@ -142,7 +137,6 @@ class UISharedTexts:
     LBL_DISCOUNT = "Décote de conglomérat (%)"
     LBL_COMPARATIVE = "multiples comparatifs"
 
-
     # ==========================================================================
     # 6. LABELS D'INPUTS UNIVERSELS (Paramètres financiers)
     # ==========================================================================
@@ -159,7 +153,6 @@ class UISharedTexts:
     INP_GROWTH_G = "Taux de croissance moyen (g) (%)"
     INP_PRICE_WEIGHTS = "Cours de l'action ($/action)"
     INP_OMEGA = "Facteur de persistance (ω)"
-
 
     # ==========================================================================
     # 7. TOOLTIPS & TEXTES D'AIDE (Help Texts)
@@ -180,8 +173,7 @@ class UISharedTexts:
     HELP_MC_SIMS = "Nombre de tirages aléatoires. 5000 itérations offrent un ratio précision/vitesse optimal."
     HELP_SCENARIO_ENABLE = "Permet de tester des variantes Bull/Bear pour valider la robustesse opérationnelle."
     HELP_PEER_TRIANGULATION = (
-        "Compare la valeur intrinsèque calculée aux multiples de valorisation"
-        " de sociétés comparables."
+        "Compare la valeur intrinsèque calculée aux multiples de valorisation de sociétés comparables."
     )
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
     HELP_DEBT = "Somme des dettes financières à court et long terme (Dette brute)."
@@ -194,7 +186,6 @@ class UISharedTexts:
     HELP_MC_VOL_G = "Incertitude sur le taux de croissance moyen de la phase 1."
     HELP_MC_VOL_OMEGA = "Volatilité du facteur de persistance des profits (Modèle RIM)."
     HELP_MC_VOL_GN = "Incertitude sur la croissance à l'infini (gn)."
-
 
     # ==========================================================================
     # 8. ÉLÉMENTS D'UI & NAVIGATION (Factory, Boutons, Méthodes)
@@ -225,7 +216,6 @@ class UISharedTexts:
     # Boutons
     BTN_CALCULATE = "Générer le Dossier de Valorisation"
     BTN_VALUATE_STD = "Valoriser {ticker} (Expert)"
-
 
     # ==========================================================================
     # 9. FORMULES FINANCIÈRES (LaTeX)
@@ -267,24 +257,21 @@ class UISharedTexts:
     LBL_SENS_STEP = "Pas de variation (%)"
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
-    HELP_SENS_STEP = (
-        "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit"
-        " donne une granularité plus fine."
-    )
+    HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
     HELP_SENS_RANGE = (
-        "Nombre de colonnes/lignes de part et d'autre de la valeur centrale"
-        " (ex: 2 signifie -2, -1, 0, +1, +2)."
+        "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
     )
+
 
 # ==============================================================================
 # CLASSES NARRATIVES SPÉCIFIQUES (Héritage de SharedTexts)
 # ==============================================================================
 
+
 class FCFFStandardTexts(UISharedTexts):
     TITLE = "FCFF Standard (Modèle à deux étapes)"
     DESCRIPTION = (
-        "Valorisation fondamentale de l'entreprise par l'actualisation"
-        " des flux de trésorerie disponibles (FCFF)."
+        "Valorisation fondamentale de l'entreprise par l'actualisation des flux de trésorerie disponibles (FCFF)."
     )
     STEP_1_TITLE = "#### Étape 1 : Ancrage du Flux Opérationnel"
     STEP_1_DESC = "Définition du flux de trésorerie disponible pour la firme (FCFF) de référence pour l'année 0."
@@ -341,10 +328,10 @@ class RIMTexts(UISharedTexts):
     Textes spécifiques pour le Modèle à Revenu Résiduel (RIM / Ohlson).
     Idéal pour les financières (Banques, Assurances) où la Book Value est centrale.
     """
+
     TITLE = "Revenu Résiduel (RIM)"
     DESCRIPTION = (
-        "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance"
-        " de la création de valeur (ROE > Ke)."
+        "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance de la création de valeur (ROE > Ke)."
     )
 
     # --- ÉTAPE 1 : ANCRAGE BILANCIEL ---
@@ -357,8 +344,7 @@ class RIMTexts(UISharedTexts):
     # Inputs Principaux (Utilisés par rim_bank_view.py)
     INP_BV_BASE = "Valeur Comptable (Book Value) (M$)"
     HELP_BV_BASE = (
-        "Capitaux propres part du groupe (Equity) au dernier bilan publié."
-        " Point de départ de la valorisation."
+        "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
     )
 
     # Inputs Secondaires (Pour d'éventuelles variantes ou affichages détaillés)
@@ -393,6 +379,7 @@ class GrahamTexts(UISharedTexts):
     """
     Textes spécifiques pour la méthode de Valorisation Intrinsèque de Graham.
     """
+
     TITLE = "Nombre de Graham (Screening)"
     DESCRIPTION = "Formule de Benjamin Graham révisée (1974) pour l'évaluation sécuritaire des bénéfices."
 
@@ -416,8 +403,7 @@ class GrahamTexts(UISharedTexts):
     INP_GROWTH = "Croissance Attendue (g) (%)"
     INP_GROWTH_G = "Croissance attendue g (%)"
     HELP_GROWTH_LT = (
-        "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines"
-        " années (doit rester conservateur)."
+        "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
     )
 
     # --- ÉTAPE 2 : CONDITIONS DE MARCHÉ ---
@@ -435,6 +421,7 @@ class GrahamTexts(UISharedTexts):
         " Le facteur 4.4 représente le rendement AAA historique de référence."
     )
 
+
 class FCFETexts(UISharedTexts):
     TITLE = "Flux de Trésorerie Actionnaires (FCFE)"
     DESCRIPTION = "Valorisation directe des fonds propres via les flux résiduels après service de la dette."
@@ -443,8 +430,7 @@ class FCFETexts(UISharedTexts):
     STEP_1_FORMULA = r"FCFE = OCF - Capex + \Delta \text{Net Borrowing}"
     INP_BASE = "Flux FCFE d'ancrage (M$)"
     HELP_FCFE_BASE = (
-        "Flux de trésorerie disponible pour les actionnaires après"
-        " réinvestissement et service de la dette."
+        "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
     )
     INP_NET_BORROWING = "Variation de l'endettement (M$)"
     HELP_NET_BORROWING = "Montant net des nouvelles émissions de dette moins les remboursements de principal."
@@ -465,7 +451,7 @@ class DDMTexts(UISharedTexts):
     STEP_2_DESC = "Projection de la croissance du dividende (g) sur l'horizon explicite."
     NOTE_DDM_SGR = "Note : Le taux de croissance soutenable (SGR) peut être estimé par : ROE × (1 - Payout)."
 
+
 class ExpertTexts:
     TITLE = "Mode Expert"
     SUBTITLE = "Configuration avancée des paramètres"
-

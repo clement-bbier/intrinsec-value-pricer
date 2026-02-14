@@ -14,7 +14,6 @@ from src.valuation.orchestrator import ValuationOrchestrator
 
 
 class TestExtensionsSuite:
-
     @pytest.fixture
     def orchestrator(self):
         return ValuationOrchestrator()
@@ -30,7 +29,7 @@ class TestExtensionsSuite:
         mc_res = result.results.extensions.monte_carlo
         assert mc_res is not None
         assert len(mc_res.simulation_values) == 100
-        assert mc_res.quantiles['P50'] > 0
+        assert mc_res.quantiles["P50"] > 0
         print(f"\n[MC] P50: {mc_res.quantiles['P50']:.2f}")
 
     def test_2_sensitivity_heatmap(self, orchestrator, fcff_request_standard, mock_apple_snapshot):
@@ -73,7 +72,7 @@ class TestExtensionsSuite:
 
         req.parameters.extensions.sotp.segments = [
             BusinessUnit(name="Hardware", value=1500000.0),
-            BusinessUnit(name="Services", value=500000.0)
+            BusinessUnit(name="Services", value=500000.0),
         ]
 
         result = orchestrator.run(req, mock_apple_snapshot)
@@ -116,9 +115,7 @@ class TestExtensionsSuite:
         req.parameters.extensions.scenarios.cases = [
             ScenarioParameters(name="Stress Bear", probability=1.0, growth_override=0.0)
         ]
-        req.parameters.extensions.sotp.segments = [
-            BusinessUnit(name="Stress Unit", value=100.0)
-        ]
+        req.parameters.extensions.sotp.segments = [BusinessUnit(name="Stress Unit", value=100.0)]
 
         print("\n[Stress Test] Launching comprehensive valuation...")
         result = orchestrator.run(req, mock_apple_snapshot)

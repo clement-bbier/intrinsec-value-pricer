@@ -21,6 +21,7 @@ from src.valuation.library.dcf import DCFLibrary
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_params_fcff():
     """Mock Parameters object for FCFF with terminal_value and projection_years."""
@@ -55,11 +56,11 @@ def mock_params_fcff():
 def mock_params_ddm():
     """Mock Parameters for DDM (uses growth_rate instead of growth_rate_p1)."""
     params = Mock(spec=Parameters)
-    strategy = Mock(spec=['growth_rate', 'projection_years', 'terminal_value'])
+    strategy = Mock(spec=["growth_rate", "projection_years", "terminal_value"])
     strategy.growth_rate = 0.06
     strategy.projection_years = 5
 
-    terminal_value = Mock(spec=['perpetual_growth_rate'])
+    terminal_value = Mock(spec=["perpetual_growth_rate"])
     terminal_value.perpetual_growth_rate = 0.025
     strategy.terminal_value = terminal_value
 
@@ -97,6 +98,7 @@ def mock_params_revenue_model():
 # ============================================================================
 # TEST project_flows_simple
 # ============================================================================
+
 
 def test_project_flows_simple_fcff_standard(mock_params_fcff):
     """Test simple projection with FCFF standard parameters."""
@@ -148,19 +150,19 @@ def test_project_flows_simple_convergence(mock_params_fcff):
     flows, _ = DCFLibrary.project_flows_simple(base_flow, mock_params_fcff)
 
     # Calculate implied growth rates
-    growth_rates = [(flows[i] / flows[i-1]) - 1 for i in range(1, len(flows))]
+    growth_rates = [(flows[i] / flows[i - 1]) - 1 for i in range(1, len(flows))]
 
     # Growth should be decreasing (convergence)
     for i in range(len(growth_rates) - 1):
-        assert growth_rates[i] >= growth_rates[i+1] - 1e-6
+        assert growth_rates[i] >= growth_rates[i + 1] - 1e-6
 
 
 def test_project_flows_simple_no_params_defaults():
     """Test projection with missing parameters uses defaults."""
     params = Mock(spec=Parameters)
-    strategy = Mock(spec=['terminal_value'])
+    strategy = Mock(spec=["terminal_value"])
     # No growth_rate_p1, growth_rate, or projection_years - should use defaults
-    terminal_value = Mock(spec=['perpetual_growth_rate'])
+    terminal_value = Mock(spec=["perpetual_growth_rate"])
     terminal_value.perpetual_growth_rate = None  # Explicitly set to None to trigger default
     strategy.terminal_value = terminal_value
     params.strategy = strategy
@@ -176,6 +178,7 @@ def test_project_flows_simple_no_params_defaults():
 # ============================================================================
 # TEST project_flows_manual
 # ============================================================================
+
 
 def test_project_flows_manual_basic():
     """Test manual projection with explicit growth vector."""
@@ -231,6 +234,7 @@ def test_project_flows_manual_negative_growth():
 # ============================================================================
 # TEST project_flows_revenue_model
 # ============================================================================
+
 
 def test_project_flows_revenue_model_basic(mock_params_revenue_model):
     """Test revenue-based projection with margin convergence."""
@@ -300,14 +304,13 @@ def test_project_flows_revenue_model_zero_years(mock_params_revenue_model):
 # TEST compute_terminal_value
 # ============================================================================
 
+
 def test_compute_terminal_value_gordon(mock_params_fcff):
     """Test terminal value using Gordon Growth method."""
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(
-        final_flow, discount_rate, mock_params_fcff
-    )
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * (1+g) / (r - g)
     # TV = 1,500,000 * 1.03 / (0.10 - 0.03)
@@ -327,9 +330,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff):
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(
-        final_flow, discount_rate, mock_params_fcff
-    )
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * Multiple
     expected_tv = 1_500_000 * 10.0
@@ -365,15 +366,14 @@ def test_compute_terminal_value_edge_case_small_spread():
 # TEST compute_discounting
 # ============================================================================
 
+
 def test_compute_discounting_basic():
     """Test NPV calculation of flows and terminal value."""
     flows = [100, 110, 120, 130, 140]
     terminal_value = 2000
     discount_rate = 0.10
 
-    total_ev, step = DCFLibrary.compute_discounting(
-        flows, terminal_value, discount_rate
-    )
+    total_ev, step = DCFLibrary.compute_discounting(flows, terminal_value, discount_rate)
 
     # Manual calculation
     factors = [(1 / (1 + discount_rate) ** t) for t in range(1, 6)]
@@ -396,9 +396,7 @@ def test_compute_discounting_zero_discount_rate():
     terminal_value = 1000
     discount_rate = 0.0
 
-    total_ev, step = DCFLibrary.compute_discounting(
-        flows, terminal_value, discount_rate
-    )
+    total_ev, step = DCFLibrary.compute_discounting(flows, terminal_value, discount_rate)
 
     # With 0% discount, PV = FV
     expected_ev = sum(flows) + terminal_value
@@ -411,9 +409,7 @@ def test_compute_discounting_high_discount_rate():
     terminal_value = 10_000
     discount_rate = 0.50  # 50%!
 
-    total_ev, step = DCFLibrary.compute_discounting(
-        flows, terminal_value, discount_rate
-    )
+    total_ev, step = DCFLibrary.compute_discounting(flows, terminal_value, discount_rate)
 
     # TV should be heavily discounted
     assert total_ev < sum(flows) + 1000  # TV contribution should be minimal
@@ -425,9 +421,7 @@ def test_compute_discounting_single_period():
     terminal_value = 5000
     discount_rate = 0.08
 
-    total_ev, step = DCFLibrary.compute_discounting(
-        flows, terminal_value, discount_rate
-    )
+    total_ev, step = DCFLibrary.compute_discounting(flows, terminal_value, discount_rate)
 
     expected = (1000 + 5000) / 1.08
     assert total_ev == pytest.approx(expected, rel=1e-6)
@@ -436,6 +430,7 @@ def test_compute_discounting_single_period():
 # ============================================================================
 # TEST compute_value_per_share
 # ============================================================================
+
 
 def test_compute_value_per_share_no_dilution(mock_params_fcff):
     """Test per-share calculation without dilution."""
@@ -527,6 +522,7 @@ def test_compute_value_per_share_default_shares():
 # ============================================================================
 # INTEGRATION TESTS
 # ============================================================================
+
 
 def test_dcf_full_workflow(mock_params_fcff):
     """Integration test: Full DCF workflow."""

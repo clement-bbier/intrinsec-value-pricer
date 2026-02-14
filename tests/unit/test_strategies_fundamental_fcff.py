@@ -46,29 +46,14 @@ class TestFundamentalFCFFStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Fundamental FCFF parameters."""
-        strategy = FCFFNormalizedParameters(
-            fcf_norm=95000.0,
-            projection_years=5,
-            cycle_growth_rate=0.04
-        )
+        strategy = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, cycle_growth_rate=0.04)
         common = CommonParameters(
-            rates=FinancialRatesParameters(
-                risk_free_rate=0.04,
-                market_risk_premium=0.05,
-                beta=1.2,
-                tax_rate=0.21
-            ),
+            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
             capital=CapitalStructureParameters(
-                shares_outstanding=16000.0,
-                total_debt=120000.0,
-                cash_and_equivalents=50000.0
-            )
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
         )
-        return Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy,
-            common=common
-        )
+        return Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy, common=common)
 
     def test_glass_box_property(self, strategy):
         """Test glass_box_enabled property getter/setter."""
@@ -78,40 +63,43 @@ class TestFundamentalFCFFStrategy:
         strategy.glass_box_enabled = True
         assert strategy.glass_box_enabled is True
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_execute_with_valid_inputs(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test successful execution with valid inputs."""
         # Create mock step with get_variable method
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
-            Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
+        mock_wacc_step.get_variable = Mock(
+            side_effect=lambda key: (
+                Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
+            )
         )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Projection", result=115582
-        ))
-        mock_tv.return_value = (1800000, CalculationStep(
-            step_key="TV", label="Terminal Value", result=1800000
-        ))
-        mock_discount.return_value = (1500000, CalculationStep(
-            step_key="DISC", label="Discounting", result=1500000
-        ))
-        mock_bridge.return_value = (1430000, CalculationStep(
-            step_key="BRIDGE", label="Equity Bridge", result=1430000
-        ))
-        mock_per_share.return_value = (89.375, CalculationStep(
-            step_key="PS", label="Per Share", result=89.375
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Projection", result=115582),
+        )
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="Terminal Value", result=1800000))
+        mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Discounting", result=1500000))
+        mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Equity Bridge", result=1430000))
+        mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="Per Share", result=89.375))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -124,45 +112,51 @@ class TestFundamentalFCFFStrategy:
         assert len(result.results.common.bridge_trace) > 0
 
         # Verify WACC was used (not cost of equity only)
-        assert mock_rate.call_args[1]['use_cost_of_equity_only'] is False
+        assert mock_rate.call_args[1]["use_cost_of_equity_only"] is False
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_manual')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_manual")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_execute_with_manual_growth_vector(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project_manual, mock_rate,
-        strategy, basic_company
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project_manual,
+        mock_rate,
+        strategy,
+        basic_company,
     ):
         """Test execution with manual growth vector."""
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
-            Mock(value=0.10) if key == "Ke" else Mock(value=0.05)
+        mock_wacc_step.get_variable = Mock(
+            side_effect=lambda key: Mock(value=0.10) if key == "Ke" else Mock(value=0.05)
         )
 
         # Setup params with manual vector
         strategy_params = FCFFNormalizedParameters(
-            fcf_norm=95000.0,
-            projection_years=3,
-            manual_growth_vector=[0.10, 0.08, 0.05]
+            fcf_norm=95000.0, projection_years=3, manual_growth_vector=[0.10, 0.08, 0.05]
         )
         common = CommonParameters(
             rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
-            capital=CapitalStructureParameters(shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0)
+            capital=CapitalStructureParameters(
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
         )
         params = Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy_params,
-            common=common
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
         )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project_manual.return_value = ([104500, 112860, 118503], CalculationStep(
-            step_key="PROJ_MANUAL", label="Manual Projection", result=118503
-        ))
+        mock_project_manual.return_value = (
+            [104500, 112860, 118503],
+            CalculationStep(step_key="PROJ_MANUAL", label="Manual Projection", result=118503),
+        )
         mock_tv.return_value = (1700000, CalculationStep(step_key="TV", label="TV", result=1700000))
         mock_discount.return_value = (1450000, CalculationStep(step_key="DISC", label="Disc", result=1450000))
         mock_bridge.return_value = (1380000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1380000))
@@ -175,15 +169,23 @@ class TestFundamentalFCFFStrategy:
         mock_project_manual.assert_called_once()
         assert result.results.common.intrinsic_value_per_share == 86.25
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_execute_with_zero_normalized_fcf(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test execution with zero normalized FCF."""
         mock_wacc_step = Mock(spec=CalculationStep)
@@ -205,15 +207,23 @@ class TestFundamentalFCFFStrategy:
         # Should handle zero anchor gracefully
         assert result.results.common.intrinsic_value_per_share == 0
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_execute_with_glass_box_disabled(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test execution with glass box disabled."""
         mock_wacc_step = Mock(spec=CalculationStep)
@@ -223,9 +233,10 @@ class TestFundamentalFCFFStrategy:
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Proj", result=115582
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Proj", result=115582),
+        )
         mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
@@ -238,16 +249,25 @@ class TestFundamentalFCFFStrategy:
         assert len(result.results.common.bridge_trace) == 0
         assert result.results.common.intrinsic_value_per_share == 89.375
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
-    @patch('src.valuation.strategies.fundamental_fcff.calculate_discount_factors')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
+    @patch("src.valuation.strategies.fundamental_fcff.calculate_discount_factors")
     def test_terminal_value_weight_calculation(
-        self, mock_disc_factors, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_disc_factors,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test terminal value weight percentage calculation."""
         mock_wacc_step = Mock(spec=CalculationStep)
@@ -255,9 +275,10 @@ class TestFundamentalFCFFStrategy:
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Proj", result=115582
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Proj", result=115582),
+        )
         mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
@@ -272,27 +293,38 @@ class TestFundamentalFCFFStrategy:
         expected_weight = pv_tv / 1500000  # ~0.817
         assert result.results.strategy.tv_weight_pct == pytest.approx(expected_weight, rel=0.01)
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_rates_reconstruction(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test rates are properly reconstructed from calculation steps."""
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
-            Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
+        mock_wacc_step.get_variable = Mock(
+            side_effect=lambda key: (
+                Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
+            )
         )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Proj", result=115582
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Proj", result=115582),
+        )
         mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
@@ -306,15 +338,23 @@ class TestFundamentalFCFFStrategy:
         assert result.results.common.rates.cost_of_equity == 0.10
         assert result.results.common.rates.cost_of_debt_after_tax == 0.05
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_capital_structure_reconstruction(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test capital structure values are properly reconstructed."""
         mock_wacc_step = Mock(spec=CalculationStep)
@@ -322,9 +362,10 @@ class TestFundamentalFCFFStrategy:
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Proj", result=115582
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Proj", result=115582),
+        )
         mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
@@ -341,15 +382,23 @@ class TestFundamentalFCFFStrategy:
         assert result.results.common.capital.net_debt_resolved == 70000000000.0  # 120000000000 - 50000000000
         assert result.results.common.capital.market_cap == 2400000000000.0  # 16000000000 * 150.0
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_normalized_fcf_stored_in_results(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test that normalized FCF is stored in strategy results."""
         mock_wacc_step = Mock(spec=CalculationStep)
@@ -357,9 +406,10 @@ class TestFundamentalFCFFStrategy:
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
-        mock_project.return_value = ([98800, 102752, 106862, 111136, 115582], CalculationStep(
-            step_key="PROJ", label="Proj", result=115582
-        ))
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Proj", result=115582),
+        )
         mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
@@ -373,15 +423,23 @@ class TestFundamentalFCFFStrategy:
         # fcf_norm=95000 -> 95000000000
         assert result.results.strategy.normalized_fcf_used == 95000000000.0
 
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting')
-    @patch('src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge')
-    @patch('src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share')
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
     def test_empty_flows_handling(
-        self, mock_per_share, mock_bridge, mock_discount, mock_tv, mock_project, mock_rate,
-        strategy, basic_company, basic_params
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+        basic_params,
     ):
         """Test handling of empty projected flows."""
         mock_wacc_step = Mock(spec=CalculationStep)

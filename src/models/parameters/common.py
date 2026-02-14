@@ -26,7 +26,7 @@ class BaseNormalizedModel(BaseModel):
     or magnitude (1M x) scaling before validation occurs.
     """
 
-    @model_validator(mode="before") # noqa
+    @model_validator(mode="before")  # noqa
     @classmethod
     def apply_ui_scaling(cls, data: Any) -> Any:
         """
@@ -82,7 +82,13 @@ class FinancialRatesParameters(BaseNormalizedModel):
         The marginal corporate tax rate used to calculate the tax shield.
     corporate_aaa_yield : float | None
         The benchmark yield for high-grade corporate bonds (used in Graham formulas).
+    wacc : float | None
+        Manual WACC override. When provided, bypasses CAPM calculation.
+        Used in sensitivity analysis to test valuation response to discount rate changes.
+    cost_of_equity : float | None
+        Manual Cost of Equity override. When provided, bypasses CAPM calculation.
     """
+
     risk_free_rate: Annotated[float | None, UIKey(UIKeys.RF, scale="pct")] = None
     market_risk_premium: Annotated[float | None, UIKey(UIKeys.MRP, scale="pct")] = None
     beta: Annotated[float | None, UIKey(UIKeys.BETA, scale="raw")] = None
@@ -112,6 +118,7 @@ class CapitalStructureParameters(BaseNormalizedModel):
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
     """
+
     total_debt: Annotated[float | None, UIKey(UIKeys.DEBT, scale="million")] = None
     cash_and_equivalents: Annotated[float | None, UIKey(UIKeys.CASH, scale="million")] = None
     minority_interests: Annotated[float | None, UIKey(UIKeys.MINORITIES, scale="million")] = None
@@ -131,5 +138,6 @@ class CommonParameters(BaseModel):
     capital : CapitalStructureParameters
         Equity bridge and share count components.
     """
+
     rates: FinancialRatesParameters = Field(default_factory=FinancialRatesParameters)
     capital: CapitalStructureParameters = Field(default_factory=CapitalStructureParameters)
