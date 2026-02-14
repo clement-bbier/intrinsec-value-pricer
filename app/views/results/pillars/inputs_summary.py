@@ -220,24 +220,37 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
                 g_p1 = val
                 break
 
+        # Get terminal growth if it exists
+        terminal_growth = None
+        if hasattr(strat_params, "terminal_value") and strat_params.terminal_value:
+            terminal_growth = strat_params.terminal_value.perpetual_growth_rate
+        elif hasattr(strat_params, "perpetual_growth_rate"):
+            terminal_growth = strat_params.perpetual_growth_rate
+
+        # Get terminal method if it exists
+        terminal_method_val = None
+        if hasattr(strat_params, "terminal_value") and strat_params.terminal_value:
+            terminal_method_val = strat_params.terminal_value.method
+
         data = [
             {"Assumption": "Base Flow (FCF/Div/EPS)", "Value": f"{anchor_val:,.2f} M"},
             {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
             {"Assumption": "Projection Years", "Value": f"{strat_params.projection_years} years"},
-            {
-                "Assumption": "Terminal Growth (g)",
-                "Value": _safe_fmt(
-                    strat_params.perpetual_growth_rate if hasattr(strat_params, "perpetual_growth_rate") else None,
-                    ".2%",
-                ),
-            },
-            {
-                "Assumption": "Terminal Method",
-                "Value": str(strat_params.terminal_method)
-                if hasattr(strat_params, "terminal_method")
-                else "Gordon Growth",
-            },
         ]
+        
+        # Only add Terminal Growth if it exists and is not None
+        if terminal_growth is not None:
+            data.append({
+                "Assumption": "Terminal Growth (g)",
+                "Value": _safe_fmt(terminal_growth, ".2%"),
+            })
+        
+        # Only add Terminal Method if it exists and is not None
+        if terminal_method_val is not None:
+            data.append({
+                "Assumption": "Terminal Method",
+                "Value": str(terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val),
+            })
 
     if data:
         df = pd.DataFrame(data)
