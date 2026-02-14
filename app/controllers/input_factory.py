@@ -8,6 +8,7 @@ Mechanism: Uses Pydantic introspection (UIKey) to map flat session keys
            to hierarchical backend parameters.
 """
 
+import logging
 from typing import Any, TypeVar, cast
 
 import streamlit as st
@@ -182,13 +183,39 @@ class InputFactory:
             if editor_data is not None:
                 import pandas as pd
 
-                # Handle both DataFrame and dict formats
-                if isinstance(editor_data, pd.DataFrame):
-                    df = editor_data
-                elif isinstance(editor_data, dict) and "data" in editor_data:
-                    df = pd.DataFrame(editor_data["data"])
-                else:
-                    df = pd.DataFrame(editor_data)
+                # Robust DataFrame construction handling incomplete/empty rows
+                try:
+                    if isinstance(editor_data, pd.DataFrame):
+                        df = editor_data
+                    elif isinstance(editor_data, dict):
+                        # Handle both data_editor dict formats: with/without 'data' key
+                        if "data" in editor_data:
+                            df = pd.DataFrame(editor_data["data"])
+                        else:
+                            # Normalize dictionary columns to ensure equal lengths
+                            # Extract columns and pad with None to match max length
+                            if editor_data:
+                                max_len = max(
+                                    len(v) if isinstance(v, list) else 1 for v in editor_data.values()
+                                )
+                            else:
+                                max_len = 0
+                            normalized_data = {}
+                            for key, value in editor_data.items():
+                                if isinstance(value, list):
+                                    # Pad list to max_len with None
+                                    normalized_data[key] = value + [None] * (max_len - len(value))
+                                else:
+                                    # Single value: replicate to max_len
+                                    normalized_data[key] = [value] * max_len if max_len > 0 else [value]
+                            df = pd.DataFrame(normalized_data) if normalized_data else pd.DataFrame()
+                    else:
+                        # Fallback: try direct conversion
+                        df = pd.DataFrame(editor_data)
+                except (ValueError, TypeError, KeyError) as e:
+                    # If conversion fails, log and skip gracefully
+                    logging.warning(f"[InputFactory] SOTP data conversion failed: {e}. Skipping SOTP segments.")
+                    return
 
                 # Filter out empty rows and convert to BusinessUnit objects
                 segments = []

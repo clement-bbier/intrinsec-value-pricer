@@ -72,7 +72,7 @@ class YahooSnapshotMapper:
         snapshot.shares_outstanding = float(info.get("sharesOutstanding") or 1.0)
         snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"])  # For Cost of Debt
 
-        # TTM Reconstruction (Pillar 3)
+        # TTM Reconstruction (Pillar 3) - Current Year
         snapshot.revenue_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Total Revenue"]) or info.get(
             "totalRevenue"
         )
@@ -91,6 +91,32 @@ class YahooSnapshotMapper:
         snapshot.dividend_share = info.get("dividendRate")
         snapshot.book_value_ps = info.get("bookValue")
         snapshot.beta = float(info.get("beta") or 1.0)
+
+        # Additional TTM metrics for Piotroski calculation
+        snapshot.total_assets_ttm = self._extract_value_at_position(bs, ["Total Assets"], position=0)
+        snapshot.current_assets_ttm = self._extract_value_at_position(bs, ["Current Assets"], position=0)
+        snapshot.current_liabilities_ttm = self._extract_value_at_position(
+            bs, ["Current Liabilities"], position=0
+        )
+        snapshot.gross_profit_ttm = self._sum_last_4_quarters(raw.quarterly_income_stmt, ["Gross Profit"])
+
+        # Historical Data (N-1) - Previous Year for Year-over-Year Comparisons
+        snapshot.net_income_prev = self._sum_quarters_with_offset(
+            raw.quarterly_income_stmt, ["Net Income"], offset=4
+        )
+        snapshot.total_assets_prev = self._extract_value_at_position(bs, ["Total Assets"], position=1)
+        snapshot.long_term_debt_prev = self._extract_value_at_position(bs, ["Long Term Debt"], position=1)
+        snapshot.current_assets_prev = self._extract_value_at_position(bs, ["Current Assets"], position=1)
+        snapshot.current_liabilities_prev = self._extract_value_at_position(
+            bs, ["Current Liabilities"], position=1
+        )
+        snapshot.gross_profit_prev = self._sum_quarters_with_offset(
+            raw.quarterly_income_stmt, ["Gross Profit"], offset=4
+        )
+        snapshot.revenue_prev = self._sum_quarters_with_offset(
+            raw.quarterly_income_stmt, ["Total Revenue"], offset=4
+        )
+        snapshot.shares_outstanding_prev = self._extract_value_at_position(bs, ["Share Issued"], position=1)
 
         return snapshot
 
@@ -124,4 +150,86 @@ class YahooSnapshotMapper:
                 last_4 = df.loc[key].iloc[:4]
                 if len(last_4) == 4 and not last_4.isnull().any():
                     return float(last_4.sum())
+        return None
+
+    @staticmethod
+    def _sum_quarters_with_offset(df: pd.DataFrame | None, keys: list[str], offset: int) -> float | None:
+        """
+        Aggregates 4 quarters starting from a specified offset to build historical TTM.
+
+        This method is used to calculate previous year TTM values by offsetting
+        the starting quarter position.
+
+        Parameters
+        ----------
+        df : pd.DataFrame, optional
+            The quarterly financial statement.
+        keys : List[str]
+            List of accounting keys to search for.
+        offset : int
+            Number of quarters to offset from most recent (e.g., 4 for previous year).
+
+        Returns
+        -------
+        float, optional
+            The sum of the 4 quarters at the offset position or None.
+
+        Examples
+        --------
+        >>> # Get previous year net income (quarters 4-7)
+        >>> prev_ni = _sum_quarters_with_offset(df, ["Net Income"], offset=4)
+        """
+        if df is None or df.empty:
+            return None
+
+        for key in keys:
+            if key in df.index:
+                # Yahoo delivers Newest-to-Oldest, so offset from start
+                values = df.loc[key].iloc[offset : offset + 4]
+                if len(values) == 4 and not values.isnull().any():
+                    return float(values.sum())
+        return None
+
+    @staticmethod
+    def _extract_value_at_position(df: pd.DataFrame | None, keys: list[str], position: int) -> float | None:
+        """
+        Extracts value at a specific chronological position (e.g., 0=latest, 1=previous year).
+
+        Centralizes the extraction logic for balance sheet items at different time periods,
+        following DRY principles.
+
+        Parameters
+        ----------
+        df : pd.DataFrame, optional
+            The financial statement (typically Balance Sheet).
+        keys : List[str]
+            List of potential aliases for the required field.
+        position : int
+            Chronological position (0=most recent, 1=previous year, etc.).
+
+        Returns
+        -------
+        float, optional
+            The extracted numeric value at the specified position or None.
+
+        Examples
+        --------
+        >>> # Get current year total assets
+        >>> assets_current = _extract_value_at_position(bs, ["Total Assets"], position=0)
+        >>> # Get previous year total assets
+        >>> assets_prev = _extract_value_at_position(bs, ["Total Assets"], position=1)
+        """
+        if df is None or df.empty:
+            return None
+
+        for key in keys:
+            if key in df.index:
+                row = df.loc[key]
+                # Handle cases where row might be a Series or a single scalar
+                values = row.values if hasattr(row, "values") else [row]
+                if position < len(values) and pd.notnull(values[position]):
+                    try:
+                        return float(values[position])
+                    except (ValueError, TypeError):
+                        continue
         return None

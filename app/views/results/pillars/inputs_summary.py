@@ -11,6 +11,7 @@ Style: Institutional "Fact Sheet" layout using structured tables.
 import pandas as pd
 import streamlit as st
 
+from src.core.formatting import CurrencyFormatter
 from src.i18n import InputLabels, KPITexts
 from src.models import ValuationMethodology, ValuationResult
 
@@ -82,7 +83,23 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 
 
 def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
-    """Safely formats a value handling None types."""
+    """
+    Safely formats a value handling None types.
+
+    Parameters
+    ----------
+    value : float | None
+        The value to format.
+    fmt : str
+        Python format specification (e.g., ".2%", ".2f").
+    default : str, default="-"
+        The default string to return if value is None.
+
+    Returns
+    -------
+    str
+        Formatted value string.
+    """
     if value is None:
         return default
     return format(value, fmt)
@@ -90,7 +107,7 @@ def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
 
 def _render_capital_structure_table(params) -> None:
     """
-    Displays a clean dataframe for capital structure.
+    Displays a clean dataframe for capital structure with proper currency formatting.
     """
     # Safe data access (V2 Model Path)
     struct = params.structure
@@ -106,13 +123,20 @@ def _render_capital_structure_table(params) -> None:
     cash = cap.cash_and_equivalents if cap.cash_and_equivalents is not None else 0.0
     net_debt = debt - cash
 
+    # Use CurrencyFormatter for proper symbol placement
+    currency = struct.currency if struct.currency else "USD"
+    formatter = CurrencyFormatter()
+
     # Use formatted strings for the table
     data = [
-        {"Item": InputLabels.CURRENT_PRICE, "Value": f"{price:,.2f} {struct.currency}"},
+        {"Item": InputLabels.CURRENT_PRICE, "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
         {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
-        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": f"{mkt_cap:,.0f} M"},
-        {"Item": InputLabels.NET_DEBT, "Value": f"{net_debt:,.0f} M"},
-        {"Item": "Enterprise Value (Implied)", "Value": f"{(mkt_cap + net_debt):,.0f} M"},
+        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
+        {"Item": InputLabels.NET_DEBT, "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
+        {
+            "Item": "Enterprise Value (Implied)",
+            "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
+        },
     ]
 
     df = pd.DataFrame(data)
@@ -179,9 +203,18 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         bv_display = f"{strat_params.book_value_anchor:,.0f} M" if strat_params.book_value_anchor is not None else "-"
         growth_val = strat_params.growth_rate if hasattr(strat_params, "growth_rate") else None
         data = [
-            {"Assumption": "Anchor (Book Value)", "Value": bv_display},
-            {"Assumption": "Persistence Factor (w)", "Value": _safe_fmt(strat_params.persistence_factor, ".2f")},
-            {"Assumption": "Growth (g)", "Value": _safe_fmt(growth_val, ".2%")},
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.ANCHOR_BOOK_VALUE,
+                InputLabels.TABLE_COL_VALUE: bv_display,
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PERSISTENCE_FACTOR,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.persistence_factor, ".2f"),
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(growth_val, ".2%"),
+            },
         ]
 
     elif mode == ValuationMethodology.GRAHAM:
@@ -194,9 +227,18 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
             aaa_yield = result.results.common.rates.corporate_aaa_yield
 
         data = [
-            {"Assumption": "Normalized EPS", "Value": _safe_fmt(strat_params.eps_normalized, ".2f")},
-            {"Assumption": "Conservative Growth", "Value": _safe_fmt(strat_params.growth_estimate, ".2%")},
-            {"Assumption": "AAA Corp Rate", "Value": _safe_fmt(aaa_yield, ".2%")},
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.NORMALIZED_EPS,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.eps_normalized, ".2f"),
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.CONSERVATIVE_GROWTH,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.growth_estimate, ".2%"),
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.AAA_CORP_RATE,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(aaa_yield, ".2%"),
+            },
         ]
 
     else:
@@ -233,16 +275,25 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
             terminal_method_val = strat_params.terminal_value.method
 
         data = [
-            {"Assumption": "Base Flow (FCF/Div/EPS)", "Value": f"{anchor_val:,.2f} M"},
-            {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
-            {"Assumption": "Projection Years", "Value": f"{strat_params.projection_years} years"},
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.BASE_FLOW_LABEL,
+                InputLabels.TABLE_COL_VALUE: f"{anchor_val:,.2f} M",
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PHASE_1_GROWTH_LABEL,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(g_p1, ".2%"),
+            },
+            {
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PROJECTION_YEARS_LABEL,
+                InputLabels.TABLE_COL_VALUE: f"{strat_params.projection_years} ans",
+            },
         ]
 
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
             data.append({
-                "Assumption": "Terminal Growth (g)",
-                "Value": _safe_fmt(terminal_growth, ".2%"),
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
             })
 
         # Only add Terminal Method if it exists and is not None
@@ -251,12 +302,12 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
                 terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
             )
             data.append({
-                "Assumption": "Terminal Method",
-                "Value": method_str,
+                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_METHOD_LABEL,
+                InputLabels.TABLE_COL_VALUE: method_str,
             })
 
     if data:
         df = pd.DataFrame(data)
-        st.table(df.set_index("Assumption"))
+        st.table(df.set_index(InputLabels.TABLE_COL_ASSUMPTION))
     else:
         st.info(InputLabels.NO_OPERATIONAL_ASSUMPTIONS)

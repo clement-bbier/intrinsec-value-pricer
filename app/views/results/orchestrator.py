@@ -28,6 +28,7 @@ from app.views.results.pillars import (
     market_analysis,  # Pillar 5: Market Hub
     risk_engineering,  # Pillar 4: Risk Hub
 )
+from src.core.formatting import CurrencyFormatter
 from src.i18n import KPITexts, PillarLabels, UIMessages
 
 # --- Data Models & i18n ---
@@ -129,8 +130,11 @@ def _render_permanent_header(result: ValuationResult) -> None:
     # Using .common namespace as defined in src/models/results/common.py
     intrinsic_val = result.results.common.intrinsic_value_per_share
     current_price = result.request.parameters.structure.current_price
-    currency = result.request.parameters.structure.currency
+    currency = result.request.parameters.structure.currency or "USD"
     upside = result.results.common.upside_pct
+
+    # Use CurrencyFormatter for proper symbol placement (e.g., "€" suffix for EUR, "$" prefix for USD)
+    formatter = CurrencyFormatter()
 
     # Layout: 3 centered columns for visual impact
     c1, c2, c3 = st.columns([1, 1, 1])
@@ -139,14 +143,14 @@ def _render_permanent_header(result: ValuationResult) -> None:
         # KPI 1: Intrinsic Value (Model Output)
         atom_kpi_metric(
             label=KPITexts.INTRINSIC_PRICE_LABEL,  # "Intrinsic Price"
-            value=f"{intrinsic_val:,.2f} {currency}",
+            value=formatter.format(intrinsic_val, currency, decimals=2, smart_scale=False),
         )
 
     with c2:
         # KPI 2: Market Price (Reality)
         atom_kpi_metric(
             label=KPITexts.LABEL_PRICE,  # "Market Price"
-            value=f"{current_price:,.2f} {currency}",
+            value=formatter.format(current_price, currency, decimals=2, smart_scale=False),
         )
 
     with c3:
