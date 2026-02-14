@@ -45,10 +45,10 @@ class TestGrahamStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Graham parameters."""
-        strategy = GrahamParameters(eps_normalized=6.00, growth_estimate=0.10)
+        strategy = GrahamParameters(eps_normalized=6.00, growth_estimate=10.0)
         common = CommonParameters(
             rates=FinancialRatesParameters(
-                risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21, corporate_aaa_yield=0.045
+                risk_free_rate=4.0, market_risk_premium=5.0, beta=1.2, tax_rate=21.0, corporate_aaa_yield=4.5
             ),
             capital=CapitalStructureParameters(
                 shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
@@ -130,9 +130,9 @@ class TestGrahamStrategy:
     def test_eps_fallback_to_company_data(self, mock_graham_calc, strategy, basic_company):
         """Test fallback to company EPS when strategy param is None."""
         # Setup params without EPS normalized
-        strategy_params = GrahamParameters(eps_normalized=None, growth_estimate=0.10)
+        strategy_params = GrahamParameters(eps_normalized=None, growth_estimate=10.0)
         common = CommonParameters(
-            rates=FinancialRatesParameters(corporate_aaa_yield=0.045),
+            rates=FinancialRatesParameters(corporate_aaa_yield=4.5),
             capital=CapitalStructureParameters(shares_outstanding=16000.0),
         )
         params = Parameters(
@@ -169,7 +169,7 @@ class TestGrahamStrategy:
         # Setup params without growth estimate
         strategy_params = GrahamParameters(eps_normalized=6.00, growth_estimate=None)
         common = CommonParameters(
-            rates=FinancialRatesParameters(corporate_aaa_yield=0.045),
+            rates=FinancialRatesParameters(corporate_aaa_yield=4.5),
             capital=CapitalStructureParameters(shares_outstanding=16000.0),
         )
         params = Parameters(
@@ -204,7 +204,7 @@ class TestGrahamStrategy:
         mock_macro.DEFAULT_CORPORATE_AAA_YIELD = 0.04
 
         # Setup params without AAA yield
-        strategy_params = GrahamParameters(eps_normalized=6.00, growth_estimate=0.10)
+        strategy_params = GrahamParameters(eps_normalized=6.00, growth_estimate=10.0)
         common = CommonParameters(
             rates=FinancialRatesParameters(corporate_aaa_yield=None),
             capital=CapitalStructureParameters(shares_outstanding=16000.0),
@@ -292,7 +292,8 @@ class TestGrahamStrategy:
     @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_negative_growth_handling(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test handling of negative growth estimate."""
-        basic_params.strategy.growth_estimate = -0.05
+        # Reconstruct strategy to trigger scaling
+        basic_params.strategy = GrahamParameters(eps_normalized=6.00, growth_estimate=-5.0)
 
         # Setup mock - Graham formula can handle negative growth
         mock_graham_calc.return_value = (120.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=120.0))
@@ -307,7 +308,8 @@ class TestGrahamStrategy:
     @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_high_growth_handling(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test handling of high growth estimate."""
-        basic_params.strategy.growth_estimate = 0.25  # 25% growth
+        # Reconstruct strategy to trigger scaling
+        basic_params.strategy = GrahamParameters(eps_normalized=6.00, growth_estimate=25.0)  # 25% growth
 
         # Setup mock
         mock_graham_calc.return_value = (250.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=250.0))

@@ -78,11 +78,11 @@ def common_params():
     """Common parameters shared across strategies."""
     return CommonParameters(
         rates=FinancialRatesParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.06,
+            risk_free_rate=4.0,
+            market_risk_premium=6.0,
             beta=1.1,
-            tax_rate=0.25,
-            corporate_aaa_yield=0.045,
+            tax_rate=25.0,
+            corporate_aaa_yield=4.5,
         ),
         capital=CapitalStructureParameters(
             shares_outstanding=16000.0,
@@ -103,7 +103,7 @@ class TestStandardFCFFStochastic:
     def test_output_shape(self, company, common_params, base_vectors):
         strategy_params = FCFFStandardParameters(
             projection_years=5,
-            terminal_value=TerminalValueParameters(perpetual_growth_rate=0.02),
+            terminal_value=TerminalValueParameters(perpetual_growth_rate=2.0),
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -199,7 +199,7 @@ class TestRevenueGrowthFCFFStochastic:
     def test_output_shape(self, company, common_params, base_vectors):
         strategy_params = FCFFGrowthParameters(
             projection_years=5,
-            target_fcf_margin=0.20,
+            target_fcf_margin=20.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -212,7 +212,7 @@ class TestRevenueGrowthFCFFStochastic:
     def test_output_finite(self, company, common_params, base_vectors):
         strategy_params = FCFFGrowthParameters(
             projection_years=5,
-            target_fcf_margin=0.20,
+            target_fcf_margin=20.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -398,7 +398,7 @@ class TestGrahamStochastic:
     def test_output_shape(self, company, common_params, base_vectors):
         strategy_params = GrahamParameters(
             eps_normalized=6.0,
-            growth_estimate=0.10,
+            growth_estimate=10.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -411,7 +411,7 @@ class TestGrahamStochastic:
     def test_output_finite(self, company, common_params, base_vectors):
         strategy_params = GrahamParameters(
             eps_normalized=6.0,
-            growth_estimate=0.10,
+            growth_estimate=10.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -424,7 +424,7 @@ class TestGrahamStochastic:
     def test_output_varies(self, company, common_params, base_vectors):
         strategy_params = GrahamParameters(
             eps_normalized=6.0,
-            growth_estimate=0.10,
+            growth_estimate=10.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -438,7 +438,7 @@ class TestGrahamStochastic:
         """Verify the Graham formula: IV = (EPS * (8.5 + 2g) * 4.4) / Y."""
         strategy_params = GrahamParameters(
             eps_normalized=6.0,
-            growth_estimate=0.10,
+            growth_estimate=10.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),
@@ -514,7 +514,7 @@ class TestVectorizationPerformance:
             (FundamentalFCFFStrategy, FCFFNormalizedParameters(projection_years=5)),
             (FCFEStrategy, FCFEParameters(projection_years=5)),
             (DividendDiscountStrategy, DDMParameters(dividend_per_share=3.0, projection_years=5)),
-            (GrahamNumberStrategy, GrahamParameters(eps_normalized=6.0, growth_estimate=0.10)),
+            (GrahamNumberStrategy, GrahamParameters(eps_normalized=6.0, growth_estimate=10.0)),
         ]
 
         for strategy_cls, strategy_params in strategies_and_params:
@@ -573,7 +573,7 @@ class TestVectorizationPerformance:
         }
         strategy_params = FCFFGrowthParameters(
             projection_years=5,
-            target_fcf_margin=0.20,
+            target_fcf_margin=20.0,
         )
         params = Parameters(
             structure=Company(ticker="TEST", name="Test Corp"),

@@ -66,7 +66,7 @@ def rich_snapshot():
         fcf_ttm=35_000.0,
         capex_ttm=5_000.0,
         beta=1.3,
-        risk_free_rate=0.045,
+        risk_free_rate=0.045,  # Provider data should be in decimal form
         market_risk_premium=0.06,
         tax_rate=0.22,
     )
@@ -171,7 +171,7 @@ class TestResolverCommonRates:
             structure=Company(ticker="TEST"),
             common=CommonParameters(
                 rates=FinancialRatesParameters(
-                    risk_free_rate=0.03,
+                    risk_free_rate=3.0,
                     beta=0.8,
                 )
             ),

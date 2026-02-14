@@ -79,7 +79,7 @@ class InputFactory:
         # Extensions use GLOBAL keys (no prefix) to be consistent across Auto/Expert modes.
         # Pre-process SOTP segments: convert data_editor output to BusinessUnit list
         InputFactory._preprocess_sotp_segments()
-        
+
         extension_params = InputFactory._pull_model(ExtensionBundleParameters, prefix=None)
 
         # 5. Assembly
@@ -162,26 +162,26 @@ class InputFactory:
     def _preprocess_sotp_segments() -> None:
         """
         Adapter Pattern: Transforms SOTP data_editor output to BusinessUnit list.
-        
+
         The UI stores segment data under 'sotp_editor' key (pd.DataFrame from st.data_editor).
         The model expects a list of BusinessUnit objects under 'sotp_segs' key.
         This method bridges the gap without data loss.
         """
         from src.config.constants import UIKeys
         from src.models.parameters.options import BusinessUnit
-        
+
         editor_key = UIKeys.SOTP_EDITOR
         model_key = UIKeys.SOTP_SEGS
-        
+
         # Check if SOTP editor data exists in session state
         if editor_key in st.session_state:
             editor_data = st.session_state[editor_key]
-            
+
             # Convert DataFrame to list of BusinessUnit objects
             # data_editor returns a dict with 'edited_rows' and 'deleted_rows', or a DataFrame
             if editor_data is not None:
                 import pandas as pd
-                
+
                 # Handle both DataFrame and dict formats
                 if isinstance(editor_data, pd.DataFrame):
                     df = editor_data
@@ -189,20 +189,20 @@ class InputFactory:
                     df = pd.DataFrame(editor_data["data"])
                 else:
                     df = pd.DataFrame(editor_data)
-                
+
                 # Filter out empty rows and convert to BusinessUnit objects
                 segments = []
                 for _, row in df.iterrows():
                     name = row.get("name", "")
                     value = row.get("value")
-                    
+
                     # Only include segments with non-empty name
                     if name and str(name).strip():
                         segments.append(BusinessUnit(
                             name=str(name).strip(),
                             value=float(value) if value is not None else None
                         ))
-                
+
                 # Store the converted list in session state under the expected key
                 if segments:
                     st.session_state[model_key] = segments

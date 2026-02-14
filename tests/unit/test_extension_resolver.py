@@ -85,11 +85,11 @@ class TestSensitivityResolution:
 
     def test_user_values_preserved(self, resolver):
         """User-provided values should not be overwritten."""
-        params = SensitivityParameters(enabled=True, steps=7, wacc_span=0.02, growth_span=0.01)
+        params = SensitivityParameters(enabled=True, steps=7, wacc_span=200.0, growth_span=100.0)
         resolver._resolve_sensitivity(params)
         assert params.steps == 7
-        assert params.wacc_span == 0.02
-        assert params.growth_span == 0.01
+        assert params.wacc_span == 2.0
+        assert params.growth_span == 1.0
 
 
 class TestScenariosResolution:
@@ -186,7 +186,7 @@ class TestSOTPResolution:
 
     def test_user_discount_preserved(self, resolver):
         """User-provided discount should be preserved."""
-        params = SOTPParameters(enabled=True, conglomerate_discount=0.15)
+        params = SOTPParameters(enabled=True, conglomerate_discount=15.0)
         resolver._resolve_sotp(params)
         assert params.conglomerate_discount == 0.15
 

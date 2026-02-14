@@ -72,10 +72,10 @@ def base_result():
             structure=company,
             common=CommonParameters(
                 rates=FinancialRatesParameters(
-                    risk_free_rate=0.04,
-                    market_risk_premium=0.05,
+                    risk_free_rate=4.0,
+                    market_risk_premium=5.0,
                     beta=1.2,
-                    tax_rate=0.21,
+                    tax_rate=21.0,
                 ),
             ),
             strategy=FCFFStandardParameters(projection_years=5, fcf_anchor=100_000.0),
@@ -214,7 +214,7 @@ class TestStrategyInputsTableLogic:
     def test_growth_resolution_order(self):
         """Growth rate is resolved from strategy-specific attrs."""
         attrs = ("growth_rate_p1", "revenue_growth_rate", "growth_rate")
-        strat = FCFFStandardParameters(projection_years=5, growth_rate_p1=0.05)
+        strat = FCFFStandardParameters(projection_years=5, growth_rate_p1=5.0)
         g_p1 = None
         for attr in attrs:
             val = getattr(strat, attr, None)
@@ -232,7 +232,7 @@ class TestStrategyInputsTableLogic:
 
     def test_graham_mode_data_access(self):
         """Graham mode should access eps_normalized and growth_estimate."""
-        strat = GrahamParameters(eps_normalized=6.50, growth_estimate=0.05)
+        strat = GrahamParameters(eps_normalized=6.50, growth_estimate=5.0)
         assert strat.eps_normalized == 6.50
         assert strat.growth_estimate == 0.05
 

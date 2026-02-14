@@ -237,19 +237,22 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
             {"Assumption": "Phase 1 Growth", "Value": _safe_fmt(g_p1, ".2%")},
             {"Assumption": "Projection Years", "Value": f"{strat_params.projection_years} years"},
         ]
-        
+
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
             data.append({
                 "Assumption": "Terminal Growth (g)",
                 "Value": _safe_fmt(terminal_growth, ".2%"),
             })
-        
+
         # Only add Terminal Method if it exists and is not None
         if terminal_method_val is not None:
+            method_str = str(
+                terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
+            )
             data.append({
                 "Assumption": "Terminal Method",
-                "Value": str(terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val),
+                "Value": method_str,
             })
 
     if data:
