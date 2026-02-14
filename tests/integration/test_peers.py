@@ -29,21 +29,16 @@ class TestPeersRunner:
         self.mock_company.name = "Apple Inc."
         self.mock_company.current_price = 150.0
         self.mock_company.shares_outstanding = 16_000.0  # 16B shares
-        self.mock_company.net_income_ttm = 95_000.0      # $95B
-        self.mock_company.ebitda_ttm = 110_000.0         # $110B (note: inconsistency in code)
-        self.mock_company.revenue_ttm = 380_000.0        # $380B
-        self.mock_company.total_debt = 120_000.0         # $120B
+        self.mock_company.net_income_ttm = 95_000.0  # $95B
+        self.mock_company.ebitda_ttm = 110_000.0  # $110B (note: inconsistency in code)
+        self.mock_company.revenue_ttm = 380_000.0  # $380B
+        self.mock_company.total_debt = 120_000.0  # $120B
         self.mock_company.cash_and_equivalents = 50_000.0  # $50B
-        self.mock_company.minority_interests = 1_000.0   # $1B
-        self.mock_company.pension_provisions = 500.0      # $500M
+        self.mock_company.minority_interests = 1_000.0  # $1B
+        self.mock_company.pension_provisions = 500.0  # $500M
 
         # Standard multiples data
-        self.mock_multiples = MultiplesData(
-            is_valid=True,
-            median_pe=25.0,
-            median_ev_ebitda=15.0,
-            median_ev_rev=5.0
-        )
+        self.mock_multiples = MultiplesData(is_valid=True, median_pe=25.0, median_ev_ebitda=15.0, median_ev_rev=5.0)
 
     def test_execute_with_all_multiples(self):
         """Test execution with all three multiples available."""
@@ -77,12 +72,7 @@ class TestPeersRunner:
 
     def test_execute_with_invalid_multiples_data(self):
         """Test execution with invalid multiples data."""
-        invalid_multiples = MultiplesData(
-            is_valid=False,
-            median_pe=25.0,
-            median_ev_ebitda=15.0,
-            median_ev_rev=5.0
-        )
+        invalid_multiples = MultiplesData(is_valid=False, median_pe=25.0, median_ev_ebitda=15.0, median_ev_rev=5.0)
 
         result = PeersRunner.execute(self.mock_company, invalid_multiples)
         assert result is None
@@ -93,7 +83,7 @@ class TestPeersRunner:
             is_valid=True,
             median_pe=25.0,
             median_ev_ebitda=0.0,  # Zero indicates missing
-            median_ev_rev=0.0       # Zero indicates missing
+            median_ev_rev=0.0,  # Zero indicates missing
         )
 
         result = PeersRunner.execute(self.mock_company, pe_only)
@@ -108,12 +98,7 @@ class TestPeersRunner:
 
     def test_execute_with_only_ev_ebitda_multiple(self):
         """Test execution with only EV/EBITDA multiple available."""
-        ev_ebitda_only = MultiplesData(
-            is_valid=True,
-            median_pe=0.0,
-            median_ev_ebitda=15.0,
-            median_ev_rev=0.0
-        )
+        ev_ebitda_only = MultiplesData(is_valid=True, median_pe=0.0, median_ev_ebitda=15.0, median_ev_rev=0.0)
 
         result = PeersRunner.execute(self.mock_company, ev_ebitda_only)
 
@@ -126,12 +111,7 @@ class TestPeersRunner:
 
     def test_execute_with_only_ev_revenue_multiple(self):
         """Test execution with only EV/Revenue multiple available."""
-        ev_rev_only = MultiplesData(
-            is_valid=True,
-            median_pe=0.0,
-            median_ev_ebitda=0.0,
-            median_ev_rev=5.0
-        )
+        ev_rev_only = MultiplesData(is_valid=True, median_pe=0.0, median_ev_ebitda=0.0, median_ev_rev=5.0)
 
         result = PeersRunner.execute(self.mock_company, ev_rev_only)
 
@@ -146,9 +126,9 @@ class TestPeersRunner:
         """Test execution with zero or negative multiples."""
         zero_multiples = MultiplesData(
             is_valid=True,
-            median_pe=0.0,         # Zero - should be skipped
+            median_pe=0.0,  # Zero - should be skipped
             median_ev_ebitda=-5.0,  # Negative - should be skipped
-            median_ev_rev=0.0      # Zero - should be skipped
+            median_ev_rev=0.0,  # Zero - should be skipped
         )
 
         result = PeersRunner.execute(self.mock_company, zero_multiples)
@@ -163,9 +143,9 @@ class TestPeersRunner:
         incomplete_company.name = "Test Inc."
         incomplete_company.current_price = 100.0
         incomplete_company.shares_outstanding = 1000.0
-        incomplete_company.net_income_ttm = None   # Missing
-        incomplete_company.ebitda_ttm = None       # Missing
-        incomplete_company.revenue_ttm = None       # Missing
+        incomplete_company.net_income_ttm = None  # Missing
+        incomplete_company.ebitda_ttm = None  # Missing
+        incomplete_company.revenue_ttm = None  # Missing
         incomplete_company.total_debt = None
         incomplete_company.cash_and_equivalents = None
         incomplete_company.minority_interests = None
@@ -213,7 +193,7 @@ class TestPeersRunner:
         cash_rich_company.net_income_ttm = 5_000.0
         cash_rich_company.ebitda_ttm = 8_000.0
         cash_rich_company.revenue_ttm = 20_000.0
-        cash_rich_company.total_debt = 1_000.0       # Low debt
+        cash_rich_company.total_debt = 1_000.0  # Low debt
         cash_rich_company.cash_and_equivalents = 10_000.0  # High cash
         cash_rich_company.minority_interests = 0.0
         cash_rich_company.pension_provisions = 0.0
@@ -236,8 +216,8 @@ class TestPeersRunner:
         company_with_adjustments.revenue_ttm = 15_000.0
         company_with_adjustments.total_debt = 8_000.0
         company_with_adjustments.cash_and_equivalents = 2_000.0
-        company_with_adjustments.minority_interests = 500.0    # Non-zero
-        company_with_adjustments.pension_provisions = 200.0     # Non-zero
+        company_with_adjustments.minority_interests = 500.0  # Non-zero
+        company_with_adjustments.pension_provisions = 200.0  # Non-zero
 
         result = PeersRunner.execute(company_with_adjustments, self.mock_multiples)
 
@@ -248,10 +228,11 @@ class TestPeersRunner:
 
     def test_execute_with_mock_calculation_functions(self):
         """Test that calculation functions are called correctly."""
-        with patch('src.valuation.options.peers.calculate_price_from_pe_multiple') as mock_pe, \
-             patch('src.valuation.options.peers.calculate_price_from_ev_multiple') as mock_ev, \
-             patch('src.valuation.options.peers.calculate_triangulated_price') as mock_tri:
-
+        with (
+            patch("src.valuation.options.peers.calculate_price_from_pe_multiple") as mock_pe,
+            patch("src.valuation.options.peers.calculate_price_from_ev_multiple") as mock_ev,
+            patch("src.valuation.options.peers.calculate_triangulated_price") as mock_tri,
+        ):
             # Setup mocks
             mock_pe.return_value = 148.0
             mock_ev.return_value = 152.0
@@ -297,18 +278,13 @@ class TestPeersRunner:
         result = PeersRunner.execute(self.mock_company, self.mock_multiples)
 
         assert result is not None
-        assert hasattr(result, 'peer_valuations')
+        assert hasattr(result, "peer_valuations")
         assert result.peer_valuations == []
 
     def test_execute_multiples_combinations(self):
         """Test various combinations of available multiples."""
         # Two out of three
-        two_multiples = MultiplesData(
-            is_valid=True,
-            median_pe=25.0,
-            median_ev_ebitda=15.0,
-            median_ev_rev=0.0
-        )
+        two_multiples = MultiplesData(is_valid=True, median_pe=25.0, median_ev_ebitda=15.0, median_ev_rev=0.0)
 
         result = PeersRunner.execute(self.mock_company, two_multiples)
         assert result is not None

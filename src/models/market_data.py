@@ -31,6 +31,7 @@ class PeerMetric(BaseModel):
     ev_revenue : float | None
         Enterprise Value to Revenue ratio.
     """
+
     ticker: str
     company_name: str | None = None
     pe_ratio: float | None = None
@@ -56,6 +57,7 @@ class MultiplesData(BaseModel):
     is_valid : bool
         Flag indicating if enough data was collected to trust these multiples.
     """
+
     median_pe: float = 0.0
     median_ev_ebitda: float = 0.0
     median_ev_rev: float = 0.0

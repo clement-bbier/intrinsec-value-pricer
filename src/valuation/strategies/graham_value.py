@@ -89,7 +89,7 @@ class GrahamNumberStrategy(IValuationRunner):
 
         # 1. Inputs Extraction (for Audit Traceability)
         # Note: We fallback to defaults to ensure safety if params are partial
-        eps_used = s.eps_normalized or getattr(financials, 'eps_ttm', None) or 0.0
+        eps_used = s.eps_normalized or getattr(financials, "eps_ttm", None) or 0.0
 
         # Growth: Graham uses a specific growth estimate or the generic one
         # FIX 3: Direct clean access without going through a nonexistent 'growth' object
@@ -108,10 +108,10 @@ class GrahamNumberStrategy(IValuationRunner):
         # A. Rates
         # Graham doesn't use WACC. The discount mechanism is the AAA Yield.
         res_rates = ResolvedRates(
-            cost_of_equity=aaa_yield, # Proxy for opportunity cost
+            cost_of_equity=aaa_yield,  # Proxy for opportunity cost
             cost_of_debt_after_tax=0.0,
-            wacc=aaa_yield, # Proxy
-            corporate_aaa_yield=aaa_yield
+            wacc=aaa_yield,  # Proxy
+            corporate_aaa_yield=aaa_yield,
         )
 
         # B. Capital
@@ -126,21 +126,22 @@ class GrahamNumberStrategy(IValuationRunner):
 
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
-            enterprise_value=equity_value_total + net_debt, # Implied EV
+            enterprise_value=equity_value_total + net_debt,  # Implied EV
             net_debt_resolved=net_debt,
-            equity_value_total=equity_value_total
+            equity_value_total=equity_value_total,
         )
 
         # C. Common Results
         common_res = CommonResults(
             rates=res_rates,
             capital=res_capital,
-            intrinsic_value_per_share=iv_per_share, # CORRECTIF 4: Pydantic recevra bien la valeur ici
+            intrinsic_value_per_share=iv_per_share,  # CORRECTIF 4: Pydantic recevra bien la valeur ici
             upside_pct=(
                 ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price else 0.0
+                if financials.current_price
+                else 0.0
             ),
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         # D. Strategy Specific Results (Graham)
@@ -149,19 +150,16 @@ class GrahamNumberStrategy(IValuationRunner):
             growth_estimate=growth_used,
             aaa_yield_used=aaa_yield,
             graham_multiplier=graham_multiplier,
-            strategy_trace=[] # Main logic is in bridge_trace
+            strategy_trace=[],  # Main logic is in bridge_trace
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.GRAHAM,
-                parameters=params
-            ),
+            request=ValuationRequest(mode=ValuationMethodology.GRAHAM, parameters=params),
             results=Results(
                 common=common_res,
-                strategy=strategy_res, # Polymorphic slot
-                extensions=ExtensionBundleResults()
-            )
+                strategy=strategy_res,  # Polymorphic slot
+                extensions=ExtensionBundleResults(),
+            ),
         )
 
     @staticmethod
@@ -188,8 +186,8 @@ class GrahamNumberStrategy(IValuationRunner):
             Array of Intrinsic Values per Share.
         """
         # 1. Unpack Vectors
-        eps_vec = vectors['base_flow'] # Maps to EPS in MC engine logic
-        g_vec = vectors['growth']      # Maps to growth_estimate
+        eps_vec = vectors["base_flow"]  # Maps to EPS in MC engine logic
+        g_vec = vectors["growth"]  # Maps to growth_estimate
 
         # Graham uses AAA Yield, not WACC/Ke.
         # Ideally MC should shock AAA yield too, but usually it shocks Beta/MRP.

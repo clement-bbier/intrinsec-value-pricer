@@ -79,7 +79,7 @@ class ScenariosRunner:
         market_price = params.structure.current_price or 1.0
 
         # Optimization: Temporarily disable step-by-step audit for sub-runs
-        original_audit_state = getattr(self.strategy, 'glass_box_enabled', True)
+        original_audit_state = getattr(self.strategy, "glass_box_enabled", True)
         self.strategy.glass_box_enabled = False
 
         for case in sc_cfg.cases:
@@ -90,10 +90,10 @@ class ScenariosRunner:
                 # 2. Apply Overrides
                 # Growth override: applies to terminal value if applicable
                 if case.growth_override is not None:
-                    if hasattr(case_params.strategy, 'terminal_value'):
+                    if hasattr(case_params.strategy, "terminal_value"):
                         case_params.strategy.terminal_value.perpetual_growth_rate = case.growth_override
                     # Fallback for strategies without explicit terminal value (e.g. Graham)
-                    elif hasattr(case_params.strategy, 'growth_estimate'):
+                    elif hasattr(case_params.strategy, "growth_estimate"):
                         case_params.strategy.growth_estimate = case.growth_override
 
                 # 3. Strategy Execution
@@ -103,12 +103,11 @@ class ScenariosRunner:
                 prob = case.probability or 0.0
 
                 # 4. Results Aggregation
-                outcomes.append(ScenarioOutcome(
-                    label=case.name,
-                    intrinsic_value=iv,
-                    upside_pct=(iv / market_price) - 1.0,
-                    probability=prob
-                ))
+                outcomes.append(
+                    ScenarioOutcome(
+                        label=case.name, intrinsic_value=iv, upside_pct=(iv / market_price) - 1.0, probability=prob
+                    )
+                )
 
                 weighted_sum += iv * prob
                 total_prob += prob
@@ -127,7 +126,4 @@ class ScenariosRunner:
         # Ensures a valid expected value even if weights do not sum to 100%
         expected_iv = weighted_sum / total_prob if total_prob > 0 else 0.0
 
-        return ScenariosResults(
-            expected_intrinsic_value=expected_iv,
-            outcomes=outcomes
-        )
+        return ScenariosResults(expected_intrinsic_value=expected_iv, outcomes=outcomes)

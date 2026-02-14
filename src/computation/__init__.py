@@ -65,16 +65,14 @@ __all__ = [
     "calculate_price_from_pe_multiple",
     "calculate_price_from_ev_multiple",
     "calculate_triangulated_price",
-
     # Flow Projections (Strategy)
     "FlowProjector",
     "SimpleFlowProjector",
     "MarginConvergenceProjector",
     "ProjectionOutput",
-
     # Statistics & Monte Carlo (Vectorized)
     "MonteCarloEngine",
     "StochasticOutput",
     "generate_multivariate_samples",
-    "generate_independent_samples"
+    "generate_independent_samples",
 ]

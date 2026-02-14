@@ -39,16 +39,24 @@ from src.models.parameters.options import (
 # 1. UIKeys REGISTRY COMPLETENESS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestUIKeysRegistryCompleteness:
     """UIKeys registry must define every extension key used by options.py."""
 
     EXPECTED_EXTENSION_KEYS = [
-        "MC_ENABLE", "MC_SIMS",
-        "SENS_ENABLE", "SENS_STEP", "SENS_RANGE",
+        "MC_ENABLE",
+        "MC_SIMS",
+        "SENS_ENABLE",
+        "SENS_STEP",
+        "SENS_RANGE",
         "SCENARIO_ENABLE",
-        "BT_ENABLE", "BT_LOOKBACK",
-        "PEER_ENABLE", "PEER_LIST",
-        "SOTP_ENABLE", "SOTP_DISCOUNT", "SOTP_SEGS",
+        "BT_ENABLE",
+        "BT_LOOKBACK",
+        "PEER_ENABLE",
+        "PEER_LIST",
+        "SOTP_ENABLE",
+        "SOTP_DISCOUNT",
+        "SOTP_SEGS",
     ]
 
     @pytest.mark.parametrize("attr", EXPECTED_EXTENSION_KEYS)
@@ -76,6 +84,7 @@ class TestUIKeysRegistryCompleteness:
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. UIKey SUFFIXES MATCH UIKeys CONSTANTS
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def _get_uikey_suffixes(model_cls):
     """Extract all UIKey suffixes from a Pydantic model class."""
@@ -159,6 +168,7 @@ class TestCommonUIKeySuffixes:
 # 3. InputFactory PULLS COMMON PARAMS WITH CORRECT PREFIX
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestInputFactoryPrefixContract:
     """InputFactory must assemble CommonParameters with the correct prefixes."""
 
@@ -166,9 +176,7 @@ class TestInputFactoryPrefixContract:
     def factory_source(self):
         """Load InputFactory.build_request source."""
         return inspect.getsource(
-            __import__(
-                "app.controllers.input_factory", fromlist=["InputFactory"]
-            ).InputFactory.build_request
+            __import__("app.controllers.input_factory", fromlist=["InputFactory"]).InputFactory.build_request
         )
 
     def test_rates_pulled_with_mode_prefix(self, factory_source):
@@ -179,7 +187,7 @@ class TestInputFactoryPrefixContract:
     def test_capital_pulled_with_bridge_prefix(self, factory_source):
         """Capital must be pulled with the bridge prefix."""
         assert "CapitalStructureParameters" in factory_source
-        assert "bridge_prefix" in factory_source or 'bridge_' in factory_source
+        assert "bridge_prefix" in factory_source or "bridge_" in factory_source
 
     def test_extensions_pulled_without_prefix(self, factory_source):
         """Extensions must be pulled with prefix=None."""
@@ -189,6 +197,7 @@ class TestInputFactoryPrefixContract:
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. SENSITIVITY USES GLOBAL KEY (NOT STRATEGY PREFIX)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestSensitivityGlobalKey:
     """Sensitivity widget must use its own global prefix, not the strategy prefix."""
@@ -219,6 +228,7 @@ class TestSensitivityGlobalKey:
 # 5. SHARED WIDGETS REFERENCE UIKeys FOR EXTENSION KEYS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestSharedWidgetsUIKeysUsage:
     """shared_widgets.py must reference UIKeys constants for extension widget keys."""
 
@@ -226,6 +236,7 @@ class TestSharedWidgetsUIKeysUsage:
     def widgets_source(self):
         """Load entire shared_widgets module source."""
         import app.views.inputs.strategies.shared_widgets as mod
+
         return inspect.getsource(mod)
 
     def test_mc_uses_uikeys(self, widgets_source):
@@ -270,6 +281,7 @@ class TestSharedWidgetsUIKeysUsage:
 # 6. ORCHESTRATOR RESOLUTION LOGGING
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestOrchestratorResolutionLogging:
     """Orchestrator must log critical resolved parameters."""
 
@@ -277,6 +289,7 @@ class TestOrchestratorResolutionLogging:
     def orchestrator_source(self):
         """Load orchestrator module source."""
         import src.valuation.orchestrator as mod
+
         return inspect.getsource(mod)
 
     def test_resolver_logs_risk_free_rate(self, orchestrator_source):
@@ -299,6 +312,7 @@ class TestOrchestratorResolutionLogging:
 # ═══════════════════════════════════════════════════════════════════════════
 # 7. MASTER INTROSPECTION: EVERY UIKey POINTS TO A VALID UIKeys CONSTANT
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def _collect_all_uikey_suffixes():
     """
@@ -382,10 +396,7 @@ def _all_uikeys_values():
     set[str]
         The set of all registered UIKeys values.
     """
-    return {
-        v for k, v in vars(UIKeys).items()
-        if not k.startswith("_") and isinstance(v, str)
-    }
+    return {v for k, v in vars(UIKeys).items() if not k.startswith("_") and isinstance(v, str)}
 
 
 _ALL_UIKEY_SUFFIXES = _collect_all_uikey_suffixes()
@@ -422,6 +433,7 @@ class TestUIKeysModuleLocation:
     def test_import_from_core_constants(self):
         """UIKeys must be importable from src.core.constants.ui_keys."""
         from src.core.constants.ui_keys import UIKeys as CanonicalUIKeys
+
         assert hasattr(CanonicalUIKeys, "MC_ENABLE")
         assert hasattr(CanonicalUIKeys, "RF")
 
@@ -429,4 +441,5 @@ class TestUIKeysModuleLocation:
         """UIKeys re-exported from src.config.constants must be the same object."""
         from src.config.constants import UIKeys as ReexportedUIKeys
         from src.core.constants.ui_keys import UIKeys as CanonicalUIKeys
+
         assert ReexportedUIKeys is CanonicalUIKeys

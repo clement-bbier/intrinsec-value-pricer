@@ -1,6 +1,7 @@
 """
 src/i18n/fr/__init__.py
 """
+
 from src.i18n.fr.backend import (
     CalculationErrors,
     DiagnosticTexts,
@@ -43,13 +44,12 @@ __all__ = [
     "CalculationErrors",
     "DiagnosticTexts",
     "ModelTexts",
-    "RegistryTexts",          # Backend registry labels
-    "StrategyFormulas",        # Backend LaTeX formulas
+    "RegistryTexts",  # Backend registry labels
+    "StrategyFormulas",  # Backend LaTeX formulas
     "StrategyInterpretations",
     "StrategySources",
-    "SharedTexts",             # Backend shared texts
+    "SharedTexts",  # Backend shared texts
     "WorkflowTexts",
-
     # UI (presentation layer)
     "CommonTexts",
     "ExpertTexts",
@@ -71,9 +71,8 @@ __all__ = [
     "BenchmarkTexts",
     "MarketTexts",
     "PeersTexts",
-
     # UI renamed (no conflict with backend)
     "UIRegistryTexts",
     "UIStrategyFormulas",
-    "UISharedTexts"
+    "UISharedTexts",
 ]

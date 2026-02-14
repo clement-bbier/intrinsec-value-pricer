@@ -76,9 +76,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # --- STEP 1: WACC & Rates ---
         wacc, step_wacc = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=False
+            financials=financials, params=params, use_cost_of_equity_only=False
         )
         if self._glass_box:
             steps.append(step_wacc)
@@ -86,33 +84,32 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         # --- STEP 2: Revenue Anchor Selection ---
         user_rev = strategy_params.revenue_ttm
         # Use getattr for Company fields that may not be defined in type annotation
-        rev_anchor = user_rev if user_rev is not None else (getattr(financials, 'revenue_ttm', None) or 0.0)
+        rev_anchor = user_rev if user_rev is not None else (getattr(financials, "revenue_ttm", None) or 0.0)
 
-        fcf_ttm = getattr(financials, 'fcf_ttm', None) or 0.0
+        fcf_ttm = getattr(financials, "fcf_ttm", None) or 0.0
         current_margin = (fcf_ttm / rev_anchor) if rev_anchor > 0 else 0.0
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="GROWTH_ANCHORS",
-                label=RegistryTexts.GROWTH_REV_BASE_L,
-                theoretical_formula=StrategyFormulas.REVENUE_BASE,
-                actual_calculation=f"Rev: {rev_anchor:,.0f} | Margin: {current_margin:.1%} -> {target_margin:.1%}",
-                result=rev_anchor,
-                interpretation=StrategyInterpretations.GROWTH_REV,
-                source=StrategySources.MANUAL_OVERRIDE if user_rev else StrategySources.YAHOO_TTM_SIMPLE,
-                variables_map={
-                    "Rev_0": VariableInfo(symbol="Rev_0", value=rev_anchor, source=VariableSource.SYSTEM),
-                    "M_0": VariableInfo(symbol="M_0", value=current_margin, source=VariableSource.CALCULATED)
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="GROWTH_ANCHORS",
+                    label=RegistryTexts.GROWTH_REV_BASE_L,
+                    theoretical_formula=StrategyFormulas.REVENUE_BASE,
+                    actual_calculation=f"Rev: {rev_anchor:,.0f} | Margin: {current_margin:.1%} -> {target_margin:.1%}",
+                    result=rev_anchor,
+                    interpretation=StrategyInterpretations.GROWTH_REV,
+                    source=StrategySources.MANUAL_OVERRIDE if user_rev else StrategySources.YAHOO_TTM_SIMPLE,
+                    variables_map={
+                        "Rev_0": VariableInfo(symbol="Rev_0", value=rev_anchor, source=VariableSource.SYSTEM),
+                        "M_0": VariableInfo(symbol="M_0", value=current_margin, source=VariableSource.CALCULATED),
+                    },
+                )
+            )
 
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
-            base_revenue=rev_anchor,
-            current_margin=current_margin,
-            target_margin=target_margin,
-            params=params
+            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params
         )
 
         if self._glass_box:
@@ -146,7 +143,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         res_rates = ResolvedRates(
             cost_of_equity=ke_var.value if ke_var and self._glass_box else 0.0,
             cost_of_debt_after_tax=kd_var.value if kd_var and self._glass_box else 0.0,
-            wacc=wacc
+            wacc=wacc,
         )
 
         shares = params.common.capital.shares_outstanding or 1.0
@@ -154,10 +151,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             market_cap=shares * (financials.current_price or 0.0),
             enterprise_value=ev,
             net_debt_resolved=(
-                (params.common.capital.total_debt or 0.0)
-                - (params.common.capital.cash_and_equivalents or 0.0)
+                (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
             ),
-            equity_value_total=equity_value
+            equity_value_total=equity_value,
         )
 
         common_res = CommonResults(
@@ -166,9 +162,10 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             intrinsic_value_per_share=iv_per_share,
             upside_pct=(
                 ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price else 0.0
+                if financials.current_price
+                else 0.0
             ),
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         discount_factors = calculate_discount_factors(wacc, len(flows))
@@ -183,19 +180,12 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             strategy_trace=[],
             projected_revenues=revenues,
             projected_margins=margins,
-            target_margin_reached=margins[-1] if margins else target_margin
+            target_margin_reached=margins[-1] if margins else target_margin,
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.FCFF_GROWTH,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.FCFF_GROWTH, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
@@ -210,10 +200,10 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         4. Discount.
         """
         # 1. Unpack Vectors
-        wacc = vectors['wacc']
-        g_p1 = vectors['growth'] # Revenue Growth
-        g_n  = vectors['terminal_growth']
-        rev_0 = vectors['base_flow'] # Shocked Revenue TTM
+        wacc = vectors["wacc"]
+        g_p1 = vectors["growth"]  # Revenue Growth
+        g_n = vectors["terminal_growth"]
+        rev_0 = vectors["base_flow"]  # Shocked Revenue TTM
 
         # 2. Resolve Margins (Static Profile applied to Dynamic Revenue)
         # We need to construct the margin curve [Years]
@@ -223,15 +213,15 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         # Current Margin (Scalar)
         # We use TTM values from financials as the anchor for margin calculation
         # This keeps the margin profile consistent with the fundamental view
-        base_rev_static = getattr(financials, 'revenue_ttm', None) or 1.0
-        fcf_ttm = getattr(financials, 'fcf_ttm', None) or 0.0
+        base_rev_static = getattr(financials, "revenue_ttm", None) or 1.0
+        fcf_ttm = getattr(financials, "fcf_ttm", None) or 0.0
         current_margin = fcf_ttm / base_rev_static
 
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
         # Create Margin Vector [Years] via linear interpolation
         # shape: (Years,) e.g. [0.12, 0.14, 0.16, 0.18, 0.20]
-        margin_curve = np.linspace(current_margin, target_margin, years + 1)[1:] # Skip index 0 (current)
+        margin_curve = np.linspace(current_margin, target_margin, years + 1)[1:]  # Skip index 0 (current)
 
         # 3. Vectorized Revenue Projection
         time_exponents = np.arange(1, years + 1)

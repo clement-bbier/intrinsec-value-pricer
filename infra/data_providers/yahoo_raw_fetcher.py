@@ -32,6 +32,7 @@ class RawFinancialData:
     This DTO ensures that the Mapper receives a structured bundle
     instead of loose variables.
     """
+
     ticker: str
     info: dict[str, Any] = field(default_factory=dict)
     balance_sheet: pd.DataFrame = field(default_factory=pd.DataFrame)
@@ -109,7 +110,7 @@ class YahooRawFetcher:
                 quarterly_income_stmt=safe_api_call(lambda: yf_ticker.quarterly_income_stmt, f"QIS:{ticker}"),
                 quarterly_cash_flow=safe_api_call(lambda: yf_ticker.quarterly_cash_flow, f"QCF:{ticker}"),
                 history=safe_api_call(lambda: yf_ticker.history(period="10y"), f"Hist:{ticker}"),
-                is_valid=True
+                is_valid=True,
             )
 
         except Exception as e:

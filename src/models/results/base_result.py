@@ -28,9 +28,7 @@ class Results(BaseModel):
     """
 
     # --- Pillar 2: Common Results (WACC & Bridge) ---
-    common: CommonResults = Field(
-        description="Resolved financial environment and calculated Equity Bridge outputs."
-    )
+    common: CommonResults = Field(description="Resolved financial environment and calculated Equity Bridge outputs.")
 
     # --- Pillar 3: Strategy Results (Projections) ---
     strategy: StrategyUnionResults = Field(

@@ -23,6 +23,7 @@ class HistoricalBacktestTab:
     Integrated vertically within the RiskEngineering or specific Backtest tab.
     Architecture: Stateless Component.
     """
+
     @staticmethod
     def is_visible(result: ValuationResult) -> bool:
         """
@@ -39,7 +40,7 @@ class HistoricalBacktestTab:
             True if backtest is enabled and contains data points.
         """
         if not result.request.parameters.extensions.backtest.enabled:
-             return False
+            return False
         bt = result.results.extensions.backtest
         return bt is not None and len(bt.points) > 0
 
@@ -99,28 +100,27 @@ class HistoricalBacktestTab:
                     label=BacktestTexts.METRIC_ACCURACY,
                     value=status_label.upper(),
                     delta=grade_label,
-                    delta_color=delta_color
+                    delta_color=delta_color,
                 )
 
         # --- 2. CONVERGENCE CHART ---
         st.write("")
         with st.container(border=True):
-            display_backtest_convergence_chart(
-                backtest_report=bt,
-                currency=currency
-            )
+            display_backtest_convergence_chart(backtest_report=bt, currency=currency)
 
         # --- 3. SEQUENCE DETAILS (Transparency Dataframe) ---
         st.write("")
         with st.expander(BacktestTexts.SEC_RESULTS):
             periods_data = []
             for point in bt.points:
-                periods_data.append({
-                    BacktestTexts.LBL_DATE: point.valuation_date.strftime("%Y-%m"),
-                    BacktestTexts.LBL_HIST_IV: point.calculated_iv,
-                    BacktestTexts.LBL_REAL_PRICE: point.market_price,
-                    BacktestTexts.LBL_ERROR_GAP: point.error_pct
-                })
+                periods_data.append(
+                    {
+                        BacktestTexts.LBL_DATE: point.valuation_date.strftime("%Y-%m"),
+                        BacktestTexts.LBL_HIST_IV: point.calculated_iv,
+                        BacktestTexts.LBL_REAL_PRICE: point.market_price,
+                        BacktestTexts.LBL_ERROR_GAP: point.error_pct,
+                    }
+                )
 
             df = pd.DataFrame(periods_data)
 
@@ -128,14 +128,9 @@ class HistoricalBacktestTab:
             column_config = {
                 BacktestTexts.LBL_HIST_IV: st.column_config.NumberColumn(format=f"%.2f {currency}"),
                 BacktestTexts.LBL_REAL_PRICE: st.column_config.NumberColumn(format=f"%.2f {currency}"),
-                BacktestTexts.LBL_ERROR_GAP: st.column_config.NumberColumn(format="%.1%+")
+                BacktestTexts.LBL_ERROR_GAP: st.column_config.NumberColumn(format="%.1%+"),
             }
 
-            st.dataframe(
-                df,
-                hide_index=True,
-                column_config=column_config,
-                width="stretch"
-            )
+            st.dataframe(df, hide_index=True, column_config=column_config, width="stretch")
 
             st.caption(f"**{CommonTexts.INTERPRETATION_LABEL}** : {QuantTexts.BACKTEST_INTERPRETATION}")

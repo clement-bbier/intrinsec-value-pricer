@@ -16,6 +16,7 @@ class ValuationMethodology(str, Enum):
     """
     Supported valuation strategies available in the engine.
     """
+
     FCFF_STANDARD = "FCFF_STANDARD"
     FCFF_NORMALIZED = "FCFF_NORMALIZED"
     FCFF_GROWTH = "FCFF_GROWTH"
@@ -34,17 +35,14 @@ class ValuationMethodology(str, Enum):
         bool
             True if the model skips Enterprise Value (DDM, RIM, FCFE).
         """
-        return self in [
-            ValuationMethodology.DDM,
-            ValuationMethodology.RIM,
-            ValuationMethodology.FCFE
-        ]
+        return self in [ValuationMethodology.DDM, ValuationMethodology.RIM, ValuationMethodology.FCFE]
 
 
 class TerminalValueMethod(str, Enum):
     """
     Method used to calculate the value beyond the projection horizon.
     """
+
     GORDON_GROWTH = "GORDON_GROWTH"
     EXIT_MULTIPLE = "EXIT_MULTIPLE"
     # Legacy/Fallback
@@ -55,8 +53,9 @@ class DiscountRateMethod(str, Enum):
     """
     Method used to derive the cost of capital.
     """
-    CAPM = "CAPM"         # Capital Asset Pricing Model
-    BUILD_UP = "Build-Up" # Additive risk premiums
+
+    CAPM = "CAPM"  # Capital Asset Pricing Model
+    BUILD_UP = "Build-Up"  # Additive risk premiums
 
 
 class ParametersSource(str, Enum):
@@ -64,10 +63,11 @@ class ParametersSource(str, Enum):
     Provenance of a specific input parameter value.
     Used during the 'Ghost Box' resolution to track data origin.
     """
-    MANUAL = "USER_INPUT"        # Expert override via UI
-    AUTO = "PROVIDER_INPUT"      # Market data provider (Yahoo)
-    SYSTEM = "SYSTEM_INPUT"      # Internal fallback or sector benchmark
-    EMPTY = "EMPTY"              # Placeholder for missing data
+
+    MANUAL = "USER_INPUT"  # Expert override via UI
+    AUTO = "PROVIDER_INPUT"  # Market data provider (Yahoo)
+    SYSTEM = "SYSTEM_INPUT"  # Internal fallback or sector benchmark
+    EMPTY = "EMPTY"  # Placeholder for missing data
 
 
 class VariableSource(str, Enum):
@@ -75,28 +75,30 @@ class VariableSource(str, Enum):
     Provenance of a specific variable within a calculation step.
     Essential for the 'Glass Box' audit trail and UI coloring.
     """
+
     # 1. External Data
-    YAHOO_FINANCE = "YAHOO_FINANCE"     # Raw provider data
-    YAHOO_TTM_SIMPLE = "YAHOO_TTM_SIMPLE" # Aggregated TTM data
-    MACRO_PROVIDER = "MACRO_PROVIDER"   # Risk-free rates, ERP, Yields
+    YAHOO_FINANCE = "YAHOO_FINANCE"  # Raw provider data
+    YAHOO_TTM_SIMPLE = "YAHOO_TTM_SIMPLE"  # Aggregated TTM data
+    MACRO_PROVIDER = "MACRO_PROVIDER"  # Risk-free rates, ERP, Yields
 
     # 2. User Input
-    MANUAL_OVERRIDE = "MANUAL_OVERRIDE" # User forced value
+    MANUAL_OVERRIDE = "MANUAL_OVERRIDE"  # User forced value
 
     # 3. Internal Logic
-    SYSTEM = "SYSTEM"                   # Hardcoded defaults (e.g., 10 years)
-    DEFAULT = "DEFAULT"                 # Fallback constants
+    SYSTEM = "SYSTEM"  # Hardcoded defaults (e.g., 10 years)
+    DEFAULT = "DEFAULT"  # Fallback constants
 
     # 4. Computed Results
-    CALCULATED = "CALCULATED"           # Result of a math operation
-    FORMULA = "FORMULA"                 # Specific formula application (e.g., Graham)
-    EV_CALC = "EV_CALC"                 # Enterprise Value specific steps
+    CALCULATED = "CALCULATED"  # Result of a math operation
+    FORMULA = "FORMULA"  # Specific formula application (e.g., Graham)
+    EV_CALC = "EV_CALC"  # Enterprise Value specific steps
 
 
 class SOTPMethod(str, Enum):
     """
     Valuation techniques for segment-based analysis (Sum-Of-The-Parts).
     """
+
     DCF = "DCF"
     MULTIPLES = "MULTIPLES"
     ASSET_VALUE = "ASSET_VALUE"
@@ -106,9 +108,10 @@ class DiagnosticLevel(str, Enum):
     """
     Classification levels for audit trace findings.
     """
-    CRITICAL = "CRITICAL" # Prevents calculation
-    WARNING = "WARNING"   # Calculation proceeds with risk
-    INFO = "INFO"         # Informational note
+
+    CRITICAL = "CRITICAL"  # Prevents calculation
+    WARNING = "WARNING"  # Calculation proceeds with risk
+    INFO = "INFO"  # Informational note
 
 
 class CompanySector(str, Enum):
@@ -117,6 +120,7 @@ class CompanySector(str, Enum):
 
     Note: Keys must align with `src/config/sector_multiples.py`.
     """
+
     # Technology
     TECHNOLOGY = "technology"
     SOFTWARE_INFRA = "software_infrastructure"

@@ -35,11 +35,12 @@ class ValuationRequest(BaseModel):
     parameters : Parameters
         The complete bundle containing Identity, Common, Strategy, and Extensions.
     """
+
     mode: ValuationMethodology = Field(..., description="Selected valuation model.")
     parameters: Parameters = Field(
-        ...,
-        description="The complete bundle containing Identity, Common, Strategy, and Extensions."
+        ..., description="The complete bundle containing Identity, Common, Strategy, and Extensions."
     )
+
 
 class ValuationRunMetadata(BaseModel):
     """
@@ -64,6 +65,7 @@ class ValuationRunMetadata(BaseModel):
     execution_time_ms : int, optional
         Execution time in milliseconds.
     """
+
     model_config = ConfigDict(frozen=True, protected_namespaces=())
 
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -74,6 +76,7 @@ class ValuationRunMetadata(BaseModel):
     random_seed: int | None = None
     input_hash: str = ""
     execution_time_ms: int | None = None
+
 
 class AuditReport(BaseModel):
     """
@@ -88,9 +91,11 @@ class AuditReport(BaseModel):
     events : list[DiagnosticEvent]
         Detailed list of all validation events.
     """
+
     global_score: float = 100.0
     critical_warnings: int = 0
     events: list[DiagnosticEvent] = Field(default_factory=list)
+
 
 class ValuationResult(BaseModel):
     """
@@ -114,6 +119,7 @@ class ValuationResult(BaseModel):
     company_stats : CompanyStats | None
         Computed ratios for the target company based on TTM data (Pillar 3).
     """
+
     # Traceability
     request: ValuationRequest
 
@@ -127,12 +133,10 @@ class ValuationResult(BaseModel):
 
     # --- Contextual Data (Pillar 3) ---
     market_context: MarketContext | None = Field(
-        default=None,
-        description="Sectoral benchmark data used for relative comparison."
+        default=None, description="Sectoral benchmark data used for relative comparison."
     )
     company_stats: CompanyStats | None = Field(
-        default=None,
-        description="Computed ratios for the target company based on TTM data."
+        default=None, description="Computed ratios for the target company based on TTM data."
     )
 
     def compute_upside(self) -> None:

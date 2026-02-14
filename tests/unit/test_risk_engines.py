@@ -8,32 +8,25 @@ Coverage: DiagnosticEvent, Exceptions, FinancialContext, Formatting.
 """
 
 import pytest
-import math
 
-from src.core.diagnostics import (
-    DiagnosticEvent,
-    FinancialContext,
-    SeverityLevel,
-    DiagnosticDomain,
-    DiagnosticRegistry
-)
+from src.core.diagnostics import DiagnosticDomain, DiagnosticEvent, DiagnosticRegistry, FinancialContext, SeverityLevel
 from src.core.exceptions import (
-    ValuationError,
     CalculationError,
-    TickerNotFoundError,
-    ExternalServiceError,
+    ConfigurationError,
     DataMissingError,
+    ExternalServiceError,
+    InvalidParameterError,
     ModelDivergenceError,
     MonteCarloInstabilityError,
-    InvalidParameterError,
-    ConfigurationError
+    TickerNotFoundError,
+    ValuationError,
 )
 from src.core.formatting import format_smart_number, get_delta_color
-
 
 # ==============================================================================
 # 1. DIAGNOSTIC EVENT
 # ==============================================================================
+
 
 @pytest.mark.unit
 def test_diagnostic_event_creation():
@@ -45,9 +38,9 @@ def test_diagnostic_event_creation():
         message="Test warning message",
         technical_detail="Some technical details",
         remediation_hint="Fix the issue",
-        financial_context=None
+        financial_context=None,
     )
-    
+
     assert event.code == "TEST_001"
     assert event.severity == SeverityLevel.WARNING
     assert event.domain == DiagnosticDomain.MODEL
@@ -58,18 +51,12 @@ def test_diagnostic_event_creation():
 def test_diagnostic_event_is_blocking_true():
     """Test is_blocking property returns True for ERROR and CRITICAL."""
     error_event = DiagnosticEvent(
-        code="ERR_001",
-        severity=SeverityLevel.ERROR,
-        domain=DiagnosticDomain.ENGINE,
-        message="Error"
+        code="ERR_001", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.ENGINE, message="Error"
     )
     critical_event = DiagnosticEvent(
-        code="CRIT_001",
-        severity=SeverityLevel.CRITICAL,
-        domain=DiagnosticDomain.CONFIG,
-        message="Critical"
+        code="CRIT_001", severity=SeverityLevel.CRITICAL, domain=DiagnosticDomain.CONFIG, message="Critical"
     )
-    
+
     assert error_event.is_blocking is True
     assert critical_event.is_blocking is True
 
@@ -78,18 +65,12 @@ def test_diagnostic_event_is_blocking_true():
 def test_diagnostic_event_is_blocking_false():
     """Test is_blocking property returns False for INFO and WARNING."""
     info_event = DiagnosticEvent(
-        code="INFO_001",
-        severity=SeverityLevel.INFO,
-        domain=DiagnosticDomain.DATA,
-        message="Info"
+        code="INFO_001", severity=SeverityLevel.INFO, domain=DiagnosticDomain.DATA, message="Info"
     )
     warning_event = DiagnosticEvent(
-        code="WARN_001",
-        severity=SeverityLevel.WARNING,
-        domain=DiagnosticDomain.USER_INPUT,
-        message="Warning"
+        code="WARN_001", severity=SeverityLevel.WARNING, domain=DiagnosticDomain.USER_INPUT, message="Warning"
     )
-    
+
     assert info_event.is_blocking is False
     assert warning_event.is_blocking is False
 
@@ -98,14 +79,11 @@ def test_diagnostic_event_is_blocking_false():
 def test_diagnostic_event_to_dict():
     """Test to_dict() serialization."""
     event = DiagnosticEvent(
-        code="TEST_002",
-        severity=SeverityLevel.INFO,
-        domain=DiagnosticDomain.SYSTEM,
-        message="Test message"
+        code="TEST_002", severity=SeverityLevel.INFO, domain=DiagnosticDomain.SYSTEM, message="Test message"
     )
-    
+
     result = event.to_dict()
-    
+
     assert isinstance(result, dict)
     assert result["code"] == "TEST_002"
     assert result["severity"] == "INFO"
@@ -117,6 +95,7 @@ def test_diagnostic_event_to_dict():
 # 2. FINANCIAL CONTEXT
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_financial_context_creation():
     """Test FinancialContext creation."""
@@ -125,9 +104,9 @@ def test_financial_context_creation():
         current_value=2.5,
         typical_range=(0.5, 2.0),
         statistical_risk="Value is abnormally high",
-        recommendation="Review sector benchmark"
+        recommendation="Review sector benchmark",
     )
-    
+
     assert context.parameter_name == "Beta"
     assert context.current_value == 2.5
     assert context.typical_range == (0.5, 2.0)
@@ -141,11 +120,11 @@ def test_financial_context_to_human_readable():
         current_value=3.0,
         typical_range=(0.5, 2.0),
         statistical_risk="Suggests extreme volatility",
-        recommendation="Verify data source"
+        recommendation="Verify data source",
     )
-    
+
     output = context.to_human_readable()
-    
+
     assert "Market Beta" in output
     assert "3.00" in output
     assert "0.50 - 2.00" in output
@@ -157,11 +136,12 @@ def test_financial_context_to_human_readable():
 # 3. DIAGNOSTIC REGISTRY
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_diagnostic_registry_model_g_divergence():
     """Test model_g_divergence() returns correct event."""
     event = DiagnosticRegistry.model_g_divergence(g=0.08, wacc=0.07)
-    
+
     assert event.code == "MODEL_G_DIVERGENCE"
     assert event.severity == SeverityLevel.CRITICAL
     assert "8.00%" in event.message
@@ -172,7 +152,7 @@ def test_diagnostic_registry_model_g_divergence():
 def test_diagnostic_registry_mc_instability():
     """Test model_mc_instability() with below threshold ratio."""
     event = DiagnosticRegistry.model_mc_instability(valid_ratio=0.65, threshold=0.75)
-    
+
     assert event.code == "MODEL_MC_INSTABILITY"
     assert event.severity == SeverityLevel.ERROR
     assert "65%" in event.message
@@ -182,7 +162,7 @@ def test_diagnostic_registry_mc_instability():
 def test_diagnostic_registry_risk_excessive_growth():
     """Test risk_excessive_growth() for unrealistic growth."""
     event = DiagnosticRegistry.risk_excessive_growth(g=0.25)
-    
+
     assert event.code == "RISK_EXCESSIVE_GROWTH"
     assert event.severity == SeverityLevel.WARNING
     assert "25.0%" in event.message
@@ -192,7 +172,7 @@ def test_diagnostic_registry_risk_excessive_growth():
 def test_diagnostic_registry_fcfe_negative_flow():
     """Test fcfe_negative_flow() diagnostic."""
     event = DiagnosticRegistry.fcfe_negative_flow(val=-500_000_000.0)
-    
+
     assert event.code == "FCFE_NEGATIVE_FLOW"
     assert event.severity == SeverityLevel.CRITICAL
     assert "negative" in event.message.lower()
@@ -201,11 +181,8 @@ def test_diagnostic_registry_fcfe_negative_flow():
 @pytest.mark.unit
 def test_diagnostic_registry_risk_missing_sbc_dilution():
     """Test risk_missing_sbc_dilution() for tech sector."""
-    event = DiagnosticRegistry.risk_missing_sbc_dilution(
-        sector="TECHNOLOGY",
-        rate=0.0
-    )
-    
+    event = DiagnosticRegistry.risk_missing_sbc_dilution(sector="TECHNOLOGY", rate=0.0)
+
     assert event.code == "RISK_MISSING_SBC_DILUTION"
     assert event.severity == SeverityLevel.WARNING
     assert "dilution" in event.message.lower()
@@ -215,18 +192,16 @@ def test_diagnostic_registry_risk_missing_sbc_dilution():
 # 4. CUSTOM EXCEPTIONS
 # ==============================================================================
 
+
 @pytest.mark.unit
 def test_valuation_exception_base():
     """Test ValuationError base class."""
     event = DiagnosticEvent(
-        code="TEST_FAIL",
-        severity=SeverityLevel.ERROR,
-        domain=DiagnosticDomain.ENGINE,
-        message="Test failure"
+        code="TEST_FAIL", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.ENGINE, message="Test failure"
     )
-    
+
     exc = ValuationError(event)
-    
+
     assert exc.diagnostic == event
     assert str(exc) == "Test failure"
 
@@ -235,7 +210,7 @@ def test_valuation_exception_base():
 def test_calculation_error():
     """Test CalculationError exception."""
     exc = CalculationError("Invalid discount rate")
-    
+
     assert isinstance(exc, ValuationError)
     assert "Invalid discount rate" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.ERROR
@@ -246,7 +221,7 @@ def test_calculation_error():
 def test_ticker_not_found_error():
     """Test TickerNotFoundError exception."""
     exc = TickerNotFoundError("INVALID")
-    
+
     assert isinstance(exc, ValuationError)
     assert "INVALID" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.CRITICAL
@@ -256,7 +231,7 @@ def test_ticker_not_found_error():
 def test_external_service_error():
     """Test ExternalServiceError exception."""
     exc = ExternalServiceError("Yahoo Finance", "Timeout after 30s")
-    
+
     assert isinstance(exc, ValuationError)
     assert "Yahoo Finance" in str(exc)
     assert exc.diagnostic.technical_detail == "Timeout after 30s"
@@ -266,7 +241,7 @@ def test_external_service_error():
 def test_data_missing_error():
     """Test DataMissingError exception."""
     exc = DataMissingError("total_debt", "AAPL")
-    
+
     assert isinstance(exc, ValuationError)
     assert "total_debt" in str(exc)
     assert "AAPL" in str(exc)
@@ -277,7 +252,7 @@ def test_data_missing_error():
 def test_model_divergence_error():
     """Test ModelDivergenceError exception."""
     exc = ModelDivergenceError(g=0.08, wacc=0.07)
-    
+
     assert isinstance(exc, ValuationError)
     assert "8.00%" in str(exc)
     assert "7.00%" in str(exc)
@@ -287,7 +262,7 @@ def test_model_divergence_error():
 def test_monte_carlo_instability_error():
     """Test MonteCarloInstabilityError exception."""
     exc = MonteCarloInstabilityError(valid_ratio=0.45, threshold=0.75)
-    
+
     assert isinstance(exc, ValuationError)
     assert "45%" in str(exc)
 
@@ -296,7 +271,7 @@ def test_monte_carlo_instability_error():
 def test_invalid_parameter_error():
     """Test InvalidParameterError exception."""
     exc = InvalidParameterError("projection_years", 100, (1, 50))
-    
+
     assert isinstance(exc, ValuationError)
     assert "projection_years" in str(exc)
     assert exc.diagnostic.domain == DiagnosticDomain.CONFIG
@@ -306,7 +281,7 @@ def test_invalid_parameter_error():
 def test_configuration_error():
     """Test ConfigurationError exception."""
     exc = ConfigurationError("/path/to/config.yaml", "File not found")
-    
+
     assert isinstance(exc, ValuationError)
     assert "config.yaml" in str(exc)
     assert exc.diagnostic.severity == SeverityLevel.CRITICAL
@@ -315,6 +290,7 @@ def test_configuration_error():
 # ==============================================================================
 # 5. FORMATTING FUNCTIONS
 # ==============================================================================
+
 
 @pytest.mark.unit
 def test_format_smart_number_none():
@@ -325,7 +301,7 @@ def test_format_smart_number_none():
 @pytest.mark.unit
 def test_format_smart_number_nan():
     """Test format_smart_number() with NaN returns dash."""
-    assert format_smart_number(float('nan')) == "-"
+    assert format_smart_number(float("nan")) == "-"
 
 
 @pytest.mark.unit
@@ -404,7 +380,7 @@ def test_get_delta_color_inverse_mode():
     # Positive value with inverse should return red (negative)
     color = get_delta_color(0.05, inverse=True)
     assert color == "#EF4444"  # Red
-    
+
     # Negative value with inverse should return green (positive)
     color = get_delta_color(-0.05, inverse=True)
     assert color == "#22C55E"  # Green

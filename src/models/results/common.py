@@ -31,6 +31,7 @@ class ResolvedRates(BaseModel):
     corporate_aaa_yield : float | None
         The benchmark yield used for Graham valuation (if applicable).
     """
+
     cost_of_equity: float = Field(..., description="Calculated Ke (CAPM result).")
     cost_of_debt_after_tax: float = Field(..., description="Resolved Kd after tax shield.")
     wacc: float = Field(..., description="Final WACC result.")
@@ -52,6 +53,7 @@ class ResolvedCapital(BaseModel):
     equity_value_total : float
         Final Intrinsic Equity Value (Enterprise Value - Net Debt).
     """
+
     market_cap: float = Field(..., description="Price x Shares (Market Witness).")
     enterprise_value: float = Field(..., description="Operating value result from the engine.")
     net_debt_resolved: float = Field(..., description="Calculated Net Debt (Total Debt - Cash).")
@@ -75,6 +77,7 @@ class CommonResults(BaseModel):
     bridge_trace : List[CalculationStep]
         The step-by-step audit trail of the Equity Bridge calculation.
     """
+
     rates: ResolvedRates
     capital: ResolvedCapital
 

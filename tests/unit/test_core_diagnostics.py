@@ -59,7 +59,7 @@ class TestDiagnosticEventBlocking:
             code="TEST_CRITICAL",
             severity=SeverityLevel.CRITICAL,
             domain=DiagnosticDomain.MODEL,
-            message="Test critical event"
+            message="Test critical event",
         )
 
         assert event.is_blocking is True
@@ -67,10 +67,7 @@ class TestDiagnosticEventBlocking:
     def test_error_is_blocking(self):
         """ERROR severity events should be blocking."""
         event = DiagnosticEvent(
-            code="TEST_ERROR",
-            severity=SeverityLevel.ERROR,
-            domain=DiagnosticDomain.MODEL,
-            message="Test error event"
+            code="TEST_ERROR", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.MODEL, message="Test error event"
         )
 
         assert event.is_blocking is True
@@ -81,7 +78,7 @@ class TestDiagnosticEventBlocking:
             code="TEST_WARNING",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.MODEL,
-            message="Test warning event"
+            message="Test warning event",
         )
 
         assert event.is_blocking is False
@@ -89,10 +86,7 @@ class TestDiagnosticEventBlocking:
     def test_info_not_blocking(self):
         """INFO severity events should NOT be blocking."""
         event = DiagnosticEvent(
-            code="TEST_INFO",
-            severity=SeverityLevel.INFO,
-            domain=DiagnosticDomain.MODEL,
-            message="Test info event"
+            code="TEST_INFO", severity=SeverityLevel.INFO, domain=DiagnosticDomain.MODEL, message="Test info event"
         )
 
         assert event.is_blocking is False
@@ -107,7 +101,7 @@ class TestDiagnosticEventSerialization:
             code="TEST_EVENT",
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.USER_INPUT,
-            message="Test event message"
+            message="Test event message",
         )
 
         result = event.to_dict()
@@ -122,10 +116,7 @@ class TestDiagnosticEventSerialization:
     def test_to_dict_values_correct(self):
         """to_dict() should serialize values correctly."""
         event = DiagnosticEvent(
-            code="TEST_CODE",
-            severity=SeverityLevel.ERROR,
-            domain=DiagnosticDomain.ENGINE,
-            message="Test message"
+            code="TEST_CODE", severity=SeverityLevel.ERROR, domain=DiagnosticDomain.ENGINE, message="Test message"
         )
 
         result = event.to_dict()
@@ -143,7 +134,7 @@ class TestDiagnosticEventSerialization:
             current_value=0.15,
             typical_range=(0.0, 0.10),
             statistical_risk="Test risk",
-            recommendation="Test recommendation"
+            recommendation="Test recommendation",
         )
 
         event = DiagnosticEvent(
@@ -151,7 +142,7 @@ class TestDiagnosticEventSerialization:
             severity=SeverityLevel.WARNING,
             domain=DiagnosticDomain.MODEL,
             message="Test message",
-            financial_context=context
+            financial_context=context,
         )
 
         result = event.to_dict()
@@ -172,7 +163,7 @@ class TestFinancialContext:
             current_value=2.5,
             typical_range=(0.5, 2.0),
             statistical_risk="Beta is unusually high",
-            recommendation="Verify calculation with industry peers"
+            recommendation="Verify calculation with industry peers",
         )
 
         assert context.parameter_name == "Market Beta"
@@ -188,7 +179,7 @@ class TestFinancialContext:
             current_value=0.25,
             typical_range=(0.08, 0.15),
             statistical_risk="WACC is exceptionally high",
-            recommendation="Review cost of debt and equity assumptions"
+            recommendation="Review cost of debt and equity assumptions",
         )
 
         result = context.to_human_readable()
@@ -205,7 +196,7 @@ class TestFinancialContext:
             current_value=0.20,
             typical_range=(0.02, 0.08),
             statistical_risk="Growth rate is unsustainable",
-            recommendation="Reduce to market average"
+            recommendation="Reduce to market average",
         )
 
         result = context.to_human_readable()

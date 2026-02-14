@@ -28,7 +28,7 @@ class TestFormatSmartNumberNullHandling:
 
     def test_nan_returns_dash(self):
         """format_smart_number(float('nan')) should return '-'."""
-        result = format_smart_number(float('nan'))
+        result = format_smart_number(float("nan"))
         assert result == "-"
 
 
@@ -40,39 +40,39 @@ class TestFormatSmartNumberMagnitudes:
         result = format_smart_number(1_500_000)
 
         # Should contain 'M' for millions
-        assert 'M' in result
+        assert "M" in result
         # Should not contain B or T
-        assert 'B' not in result
-        assert 'T' not in result
+        assert "B" not in result
+        assert "T" not in result
 
     def test_billion_magnitude(self):
         """2,300,000,000 should format with 'B' suffix."""
         result = format_smart_number(2_300_000_000)
 
         # Should contain 'B' for billions
-        assert 'B' in result
+        assert "B" in result
         # Should not contain M or T
-        assert 'M' not in result
-        assert 'T' not in result
+        assert "M" not in result
+        assert "T" not in result
 
     def test_trillion_magnitude(self):
         """1,200,000,000,000 should format with 'T' suffix."""
         result = format_smart_number(1_200_000_000_000)
 
         # Should contain 'T' for trillions
-        assert 'T' in result
+        assert "T" in result
         # Should not contain M or B
-        assert 'M' not in result
-        assert 'B' not in result
+        assert "M" not in result
+        assert "B" not in result
 
     def test_small_number_no_suffix(self):
         """150 should format without M/B/T suffix."""
         result = format_smart_number(150.0)
 
         # Should not contain any suffix
-        assert 'M' not in result
-        assert 'B' not in result
-        assert 'T' not in result
+        assert "M" not in result
+        assert "B" not in result
+        assert "T" not in result
 
 
 class TestFormatSmartNumberPercentage:
@@ -83,17 +83,17 @@ class TestFormatSmartNumberPercentage:
         result = format_smart_number(0.05, is_pct=True)
 
         # Should contain % symbol
-        assert '%' in result
+        assert "%" in result
         # Should be properly formatted (5.00% or similar)
-        assert '5' in result
+        assert "5" in result
 
     def test_percentage_format_with_decimals(self):
         """Percentage formatting should respect decimal places."""
         result = format_smart_number(0.1234, is_pct=True, decimals=2)
 
-        assert '%' in result
+        assert "%" in result
         # With decimals=2, should show 12.34%
-        assert '12.34' in result
+        assert "12.34" in result
 
 
 class TestFormatSmartNumberCurrency:
@@ -103,22 +103,22 @@ class TestFormatSmartNumberCurrency:
         """150.0 with currency='USD' should include 'USD' in output."""
         result = format_smart_number(150.0, currency="USD")
 
-        assert 'USD' in result
+        assert "USD" in result
 
     def test_currency_with_magnitude(self):
         """Large numbers with currency should show both."""
         result = format_smart_number(1_500_000, currency="EUR")
 
-        assert 'EUR' in result
-        assert 'M' in result
+        assert "EUR" in result
+        assert "M" in result
 
     def test_empty_currency_no_suffix(self):
         """Empty currency string should not add extra spacing."""
         result = format_smart_number(100.0, currency="")
 
         # Should just be the number without currency
-        assert 'USD' not in result
-        assert 'EUR' not in result
+        assert "USD" not in result
+        assert "EUR" not in result
 
 
 class TestFormatSmartNumberEdgeCases:
@@ -130,15 +130,15 @@ class TestFormatSmartNumberEdgeCases:
 
         assert result is not None
         assert result != "-"  # Should not be treated as None
-        assert '0' in result
+        assert "0" in result
 
     def test_negative_values(self):
         """Negative values should format correctly."""
         result = format_smart_number(-1_500_000)
 
-        assert 'M' in result
+        assert "M" in result
         # Should show negative somehow (either '-' or in formatting)
-        assert '-' in result or result.startswith('(')
+        assert "-" in result or result.startswith("(")
 
     def test_very_small_positive(self):
         """Very small positive numbers should format."""

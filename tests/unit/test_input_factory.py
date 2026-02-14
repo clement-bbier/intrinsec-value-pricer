@@ -6,7 +6,6 @@ INPUT FACTORY UNIT TESTS
 Role: Validate the projection_years flow from AppState to ValuationRequest.
 """
 
-
 from src.config.constants import UIWidgetDefaults
 from src.models.parameters.strategies import (
     BaseProjectedParameters,

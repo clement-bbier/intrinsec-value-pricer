@@ -33,6 +33,7 @@ class TerminalValueParameters(BaseNormalizedModel):
     exit_multiple : float | None
         The EV/EBITDA or PE multiple applied to the final projected year.
     """
+
     method: TerminalValueMethod | None = None
     perpetual_growth_rate: Annotated[float | None, UIKey(UIKeys.GN, scale="pct")] = None
     exit_multiple: Annotated[float | None, UIKey(UIKeys.EXIT_MULT, scale="raw")] = None
@@ -51,6 +52,7 @@ class BaseProjectedParameters(BaseNormalizedModel):
     terminal_value : TerminalValueParameters
         Configuration for the post-projection value.
     """
+
     projection_years: Annotated[int | None, UIKey(UIKeys.YEARS, scale="raw")] = Field(None, ge=1, le=50)
     manual_growth_vector: Annotated[list[float] | None, UIKey(UIKeys.GROWTH_VECTOR, scale="pct")] = None
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
@@ -69,6 +71,7 @@ class FCFFStandardParameters(BaseProjectedParameters):
     growth_rate_p1 : float | None
         The CAGR applied during the explicit projection period.
     """
+
     mode: Literal[ValuationMethodology.FCFF_STANDARD] = ValuationMethodology.FCFF_STANDARD
     fcf_anchor: Annotated[float | None, UIKey(UIKeys.FCF_BASE, scale="million")] = None
     growth_rate_p1: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
@@ -87,6 +90,7 @@ class FCFFNormalizedParameters(BaseProjectedParameters):
     cycle_growth_rate : float | None
         The growth rate applied to the normalized base.
     """
+
     mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
     fcf_norm: Annotated[float | None, UIKey(UIKeys.FCF_NORM, scale="million")] = None
     cycle_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
@@ -107,6 +111,7 @@ class FCFFGrowthParameters(BaseProjectedParameters):
     target_fcf_margin : float | None
         The expected FCF margin (FCF / Revenue) at maturity.
     """
+
     mode: Literal[ValuationMethodology.FCFF_GROWTH] = ValuationMethodology.FCFF_GROWTH
     revenue_ttm: Annotated[float | None, UIKey(UIKeys.REVENUE_TTM, scale="million")] = None
     revenue_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
@@ -126,6 +131,7 @@ class FCFEParameters(BaseProjectedParameters):
     growth_rate : float | None
         Growth rate of equity cash flows.
     """
+
     mode: Literal[ValuationMethodology.FCFE] = ValuationMethodology.FCFE
     fcfe_anchor: Annotated[float | None, UIKey(UIKeys.FCFE_ANCHOR, scale="million")] = None
     growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
@@ -144,6 +150,7 @@ class DDMParameters(BaseProjectedParameters):
     dividend_growth_rate : float | None
         Expected annual growth of dividends.
     """
+
     mode: Literal[ValuationMethodology.DDM] = ValuationMethodology.DDM
     dividend_per_share: Annotated[float | None, UIKey(UIKeys.DIV_BASE, scale="raw")] = None
     dividend_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
@@ -162,6 +169,7 @@ class RIMParameters(BaseProjectedParameters):
     persistence_factor : float | None
         The 'Omega' factor (0-1) determining how long excess returns persist.
     """
+
     mode: Literal[ValuationMethodology.RIM] = ValuationMethodology.RIM
     book_value_anchor: Annotated[float | None, UIKey(UIKeys.BV_ANCHOR, scale="million")] = None
     persistence_factor: Annotated[float | None, UIKey(UIKeys.OMEGA, scale="raw")] = None
@@ -180,12 +188,18 @@ class GrahamParameters(BaseNormalizedModel):
     growth_estimate : float | None
         Conservative growth estimate (7-10 years).
     """
+
     mode: Literal[ValuationMethodology.GRAHAM] = ValuationMethodology.GRAHAM
     eps_normalized: Annotated[float | None, UIKey(UIKeys.EPS_NORMALIZED, scale="raw")] = None
     growth_estimate: Annotated[float | None, UIKey(UIKeys.GROWTH_ESTIMATE, scale="pct")] = None
 
 
 StrategyUnionParameters = (
-    FCFFStandardParameters | FCFFNormalizedParameters | FCFFGrowthParameters
-    | FCFEParameters | DDMParameters | RIMParameters | GrahamParameters
+    FCFFStandardParameters
+    | FCFFNormalizedParameters
+    | FCFFGrowthParameters
+    | FCFEParameters
+    | DDMParameters
+    | RIMParameters
+    | GrahamParameters
 )

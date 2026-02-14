@@ -16,6 +16,7 @@ from src.models import CalculationStep, ValuationResult
 # Constants for filtering internal/technical steps that shouldn't appear in the audit
 EXCLUDED_STEP_PREFIXES = ("_meta", "internal_", "debug_")
 
+
 def render_glass_box(result: ValuationResult) -> None:
     """
     Renders Pillar 2: The Mathematical Trace (Glass Box).
@@ -51,8 +52,7 @@ def render_glass_box(result: ValuationResult) -> None:
         return
 
     core_steps = [
-        step for step in full_trace
-        if not any(step.step_key.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)
+        step for step in full_trace if not any(step.step_key.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)
     ]
 
     # 4. Empty State Management

@@ -27,10 +27,7 @@ logger = logging.getLogger(__name__)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _get_cached_snapshot(
-    ticker: str,
-    _fetcher: YahooRawFetcher,
-    _mapper: YahooSnapshotMapper,
-    _macro_provider: MacroDataProvider
+    ticker: str, _fetcher: YahooRawFetcher, _mapper: YahooSnapshotMapper, _macro_provider: MacroDataProvider
 ) -> CompanySnapshot | None:
     """
     Module-level private function to handle Streamlit caching.
@@ -77,9 +74,4 @@ class YahooFinancialProvider(FinancialDataProvider):
         """
         Public entry point. Delegates to a cached module function.
         """
-        return _get_cached_snapshot(
-            ticker,
-            self.fetcher,
-            self.mapper,
-            self.macro_provider
-        )
+        return _get_cached_snapshot(ticker, self.fetcher, self.mapper, self.macro_provider)

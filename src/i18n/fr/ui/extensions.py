@@ -2,8 +2,11 @@
 core/i18n/fr/ui/extensions.py
 Textes des extensions (SOTP, Backtest).
 """
+
+
 class MonteCarloTexts:
     NO_MC_FOUND = None
+
 
 class ScenarioTexts:
     """Textes pour l'affichage des scénarios déterministes."""
@@ -23,6 +26,7 @@ class ScenarioTexts:
     # Métriques de synthèse
     METRIC_WEIGHTED_VALUE = "Valeur Pondérée"
     METRIC_WEIGHTED_UPSIDE = "Upside Pondéré"
+
 
 class BacktestTexts:
     NO_BACKTEST_FOUND = (
@@ -46,14 +50,17 @@ class BacktestTexts:
     GRADE_A = "Grade A"
     GRADE_B = "Grade B"
 
+
 class PeersTexts:
     NO_PEERS_FOUND = (
         "Aucune entreprise comparable identifiée ou données sectorielles manquantes."
         " La triangulation par multiples boursiers n'est pas disponible pour ce ticker."
     )
 
+
 class SOTPTexts:
     """Labels pour la valorisation par somme des parties."""
+
     FORMULA_BRIDGE = r"Equity = EV - Debt + Cash - Min - Pens"
     FORMULA_CONSOLIDATION = r"EV_{Total} = \left( \sum EV_{segments} \right) \times (1 - \text{Discount})"
     NO_SOTP_FOUND = "Aucun segment défini pour l'analyse SOTP."
@@ -100,6 +107,7 @@ class SOTPTexts:
     METRIC_NET_VALUE = "Valeur Nette SOTP"
 
     LBL_SEGMENT_CONTRIBUTION = "Contribution"
+
 
 class ExtensionTexts:
     TITLE = "Extensions & Analyses"

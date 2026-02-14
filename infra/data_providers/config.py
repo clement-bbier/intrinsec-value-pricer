@@ -2,12 +2,14 @@
 infra/data_providers/config.py
 Technical configuration for API calls and data extraction.
 """
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class ProviderConfig:
     """Resiliency and performance parameters for API providers."""
+
     # Resiliency
     MAX_RETRY_ATTEMPTS: int = 3
     RETRY_DELAY_BASE: float = 1.0  # seconds

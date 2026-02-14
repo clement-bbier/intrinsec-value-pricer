@@ -30,6 +30,7 @@ from src.models.parameters.strategies import (
 
 logger = logging.getLogger(__name__)
 
+
 class Resolver:
     """
     Coordinates the hydration of the valuation input bundle.
@@ -82,7 +83,7 @@ class Resolver:
             industry=identity.industry or snap.industry or "Unknown Industry",
             country=identity.country or snap.country or "Unknown",
             currency=identity.currency or snap.currency or "USD",
-            current_price=identity.current_price or snap.current_price
+            current_price=identity.current_price or snap.current_price,
         )
 
     def _resolve_common(self, params: Parameters, snap: CompanySnapshot) -> None:
@@ -96,35 +97,42 @@ class Resolver:
         # --- Capital Structure (Pick Logic) ---
         cap.total_debt = self._pick(cap.total_debt, snap.total_debt, ModelDefaults.DEFAULT_TOTAL_DEBT)
         cap.cash_and_equivalents = self._pick(
-            cap.cash_and_equivalents, snap.cash_and_equivalents,
+            cap.cash_and_equivalents,
+            snap.cash_and_equivalents,
             ModelDefaults.DEFAULT_CASH_EQUIVALENTS,
         )
         cap.minority_interests = self._pick(
-            cap.minority_interests, snap.minority_interests,
+            cap.minority_interests,
+            snap.minority_interests,
             ModelDefaults.DEFAULT_MINORITY_INTERESTS,
         )
         cap.pension_provisions = self._pick(
-            cap.pension_provisions, snap.pension_provisions,
+            cap.pension_provisions,
+            snap.pension_provisions,
             ModelDefaults.DEFAULT_PENSION_PROVISIONS,
         )
         cap.shares_outstanding = self._pick(
-            cap.shares_outstanding, snap.shares_outstanding,
+            cap.shares_outstanding,
+            snap.shares_outstanding,
             ModelDefaults.DEFAULT_SHARES_OUTSTANDING,
         )
 
         # Dilution is rarely in provider data, usually a System Default or User Override
         cap.annual_dilution_rate = self._pick(
-            cap.annual_dilution_rate, None,
+            cap.annual_dilution_rate,
+            None,
             ModelDefaults.DEFAULT_ANNUAL_DILUTION_RATE,
         )
 
         # --- Rates & Risk ---
         rates.risk_free_rate = self._pick(
-            rates.risk_free_rate, snap.risk_free_rate,
+            rates.risk_free_rate,
+            snap.risk_free_rate,
             MacroDefaults.DEFAULT_RISK_FREE_RATE,
         )
         rates.market_risk_premium = self._pick(
-            rates.market_risk_premium, snap.market_risk_premium,
+            rates.market_risk_premium,
+            snap.market_risk_premium,
             MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM,
         )
         rates.beta = self._pick(rates.beta, snap.beta, ModelDefaults.DEFAULT_BETA)
@@ -132,7 +140,8 @@ class Resolver:
 
         # AAA Yield logic (Specific to Graham, but stored in common rates for consistency)
         rates.corporate_aaa_yield = self._pick(
-            rates.corporate_aaa_yield, snap.corporate_aaa_yield,
+            rates.corporate_aaa_yield,
+            snap.corporate_aaa_yield,
             MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD,
         )
 
@@ -165,24 +174,27 @@ class Resolver:
         # --- FCFF GROWTH (Top-Down) ---
         elif isinstance(strat, FCFFGrowthParameters):
             strat.revenue_ttm = self._pick(strat.revenue_ttm, snap.revenue_ttm, ModelDefaults.DEFAULT_REVENUE_TTM)
-            if hasattr(strat, 'ebit_ttm'):
+            if hasattr(strat, "ebit_ttm"):
                 strat.ebit_ttm = self._pick(strat.ebit_ttm, snap.ebit_ttm, ModelDefaults.DEFAULT_EBIT_TTM)
 
         # --- DDM ---
         elif isinstance(strat, DDMParameters):
             strat.dividend_per_share = self._pick(
-                strat.dividend_per_share, snap.dividend_share,
+                strat.dividend_per_share,
+                snap.dividend_share,
                 ModelDefaults.DEFAULT_DIVIDEND_PS,
             )
 
         # --- RIM (Banks) ---
         elif isinstance(strat, RIMParameters):
             strat.book_value_anchor = self._pick(
-                strat.book_value_anchor, snap.book_value_ps,
+                strat.book_value_anchor,
+                snap.book_value_ps,
                 ModelDefaults.DEFAULT_BOOK_VALUE_PS,
             )
             strat.persistence_factor = self._pick(
-                strat.persistence_factor, None,
+                strat.persistence_factor,
+                None,
                 ModelDefaults.DEFAULT_PERSISTENCE_FACTOR,
             )
 

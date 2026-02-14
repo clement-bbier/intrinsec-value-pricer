@@ -38,11 +38,8 @@ DEBT_KEYS = ["Total Debt", "Net Debt", "Long Term Debt", "Current Debt"]
 # 2. API RESILIENCY (Infrastructure Layer)
 # ==============================================================================
 
-def safe_api_call(
-    func: Callable,
-    context: str = "API",
-    max_retries: int = ProviderConfig.MAX_RETRY_ATTEMPTS
-) -> Any:
+
+def safe_api_call(func: Callable, context: str = "API", max_retries: int = ProviderConfig.MAX_RETRY_ATTEMPTS) -> Any:
     """
     Executes an API function with exponential backoff and timeout protection.
 
@@ -68,19 +65,21 @@ def safe_api_call(
                 future = executor.submit(func)
                 return future.result(timeout=timeout)
         except FuturesTimeoutError:
-            logger.warning(f"[{context}] Timeout reached (attempt {i+1})")
+            logger.warning(f"[{context}] Timeout reached (attempt {i + 1})")
             continue
         except Exception as e:
-            wait = ProviderConfig.RETRY_DELAY_BASE * (2 ** i)
+            wait = ProviderConfig.RETRY_DELAY_BASE * (2**i)
             logger.warning(f"[{context}] Error: {e}. Retry in {wait}s...")
             time.sleep(wait)
 
     logger.error(f"[{context}] All API retries exhausted.")
     return None
 
+
 # ==============================================================================
 # 3. ATOMIC PARSING (Technical Utilities)
 # ==============================================================================
+
 
 def extract_most_recent_value(df: pd.DataFrame, keys: list[str]) -> float | None:
     """
@@ -112,7 +111,7 @@ def extract_most_recent_value(df: pd.DataFrame, keys: list[str]) -> float | None
         if key in df.index:
             row = df.loc[key]
             # Handle cases where row might be a Series or a single scalar
-            values = row.values if hasattr(row, 'values') else [row]
+            values = row.values if hasattr(row, "values") else [row]
             for val in values:
                 if pd.notnull(val):
                     try:
@@ -121,6 +120,7 @@ def extract_most_recent_value(df: pd.DataFrame, keys: list[str]) -> float | None
                         continue
     return None
 
+
 def normalize_currency_and_price(info: dict) -> tuple[str, float]:
     """
     Handles technical currency normalization (e.g., GBp to GBP).
@@ -128,7 +128,7 @@ def normalize_currency_and_price(info: dict) -> tuple[str, float]:
     currency = info.get("currency", "USD")
     price = info.get("currentPrice") or info.get("regularMarketPrice", 0.0)
 
-    if currency == "GBp": # British Pence to Pounds
+    if currency == "GBp":  # British Pence to Pounds
         currency = "GBP"
         price /= 100.0
 

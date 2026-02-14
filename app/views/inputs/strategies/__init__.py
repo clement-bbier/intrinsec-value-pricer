@@ -19,5 +19,5 @@ STRATEGY_VIEW_MAP = {
     "FCFF_GROWTH": FCFFGrowthView,
     "FCFF_NORMALIZED": FCFFNormalizedView,
     "RIM_BANK": RIMBankView,
-    "GRAHAM": GrahamValueView
+    "GRAHAM": GrahamValueView,
 }

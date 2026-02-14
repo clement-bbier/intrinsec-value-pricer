@@ -32,12 +32,10 @@ from src.models.results.strategies import (
 __all__ = [
     # Root
     "Results",
-
     # Common
     "CommonResults",
     "ResolvedRates",
     "ResolvedCapital",
-
     # Strategies
     "StrategyUnionResults",
     "BaseFlowResults",
@@ -48,7 +46,6 @@ __all__ = [
     "DDMResults",
     "RIMResults",
     "GrahamResults",
-
     # Options
     "ExtensionBundleResults",
     "MCResults",

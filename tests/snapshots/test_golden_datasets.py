@@ -33,6 +33,7 @@ DEFAULT_TAX_RATE = 0.21  # 21%
 # GOLDEN DATASET FIXTURES
 # ==============================================================================
 
+
 @pytest.fixture
 def golden_aapl_large_cap_tech():
     """
@@ -46,27 +47,23 @@ def golden_aapl_large_cap_tech():
         name="Apple Inc. (Mock)",
         sector="Technology",
         current_price=180.0,
-
         # Balance Sheet - Large Cap
-        total_debt=120_000.0,          # $120B
-        cash_and_equivalents=50_000.0, # $50B
-        shares_outstanding=16_000.0,   # 16B shares
-
+        total_debt=120_000.0,  # $120B
+        cash_and_equivalents=50_000.0,  # $50B
+        shares_outstanding=16_000.0,  # 16B shares
         # Income Statement
-        revenue_ttm=400_000.0,         # $400B
-        ebit_ttm=120_000.0,            # $120B
-        net_income_ttm=100_000.0,      # $100B
-        interest_expense=3_000.0,      # $3B
-
+        revenue_ttm=400_000.0,  # $400B
+        ebit_ttm=120_000.0,  # $120B
+        net_income_ttm=100_000.0,  # $100B
+        interest_expense=3_000.0,  # $3B
         # Cash Flow
-        fcf_ttm=110_000.0,             # $110B
-        capex_ttm=12_000.0,            # $12B
-
+        fcf_ttm=110_000.0,  # $110B
+        capex_ttm=12_000.0,  # $12B
         # Market Rates
         beta=1.2,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
         market_risk_premium=DEFAULT_MARKET_RISK_PREMIUM,
-        tax_rate=DEFAULT_TAX_RATE
+        tax_rate=DEFAULT_TAX_RATE,
     )
 
 
@@ -83,27 +80,23 @@ def golden_high_growth_tech():
         name="High Growth Tech (Mock)",
         sector="Technology",
         current_price=100.0,
-
         # Balance Sheet
-        total_debt=10_000.0,           # $10B
+        total_debt=10_000.0,  # $10B
         cash_and_equivalents=5_000.0,  # $5B
-        shares_outstanding=500.0,      # 500M shares
-
+        shares_outstanding=500.0,  # 500M shares
         # Income Statement
-        revenue_ttm=15_000.0,          # $15B
-        ebit_ttm=3_000.0,              # $3B
-        net_income_ttm=2_000.0,        # $2B
-        interest_expense=500.0,        # $500M
-
+        revenue_ttm=15_000.0,  # $15B
+        ebit_ttm=3_000.0,  # $3B
+        net_income_ttm=2_000.0,  # $2B
+        interest_expense=500.0,  # $500M
         # Cash Flow
-        fcf_ttm=2_000.0,               # $2B
-        capex_ttm=1_000.0,             # $1B
-
+        fcf_ttm=2_000.0,  # $2B
+        capex_ttm=1_000.0,  # $1B
         # Market Rates - High Risk
         beta=1.8,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=0.055,     # 5.5%
-        tax_rate=DEFAULT_TAX_RATE
+        market_risk_premium=0.055,  # 5.5%
+        tax_rate=DEFAULT_TAX_RATE,
     )
 
 
@@ -120,27 +113,23 @@ def golden_mature_utility():
         name="Stable Utility Corp (Mock)",
         sector="Utilities",
         current_price=75.0,
-
         # Balance Sheet
-        total_debt=50_000.0,           # $50B (high for utilities)
+        total_debt=50_000.0,  # $50B (high for utilities)
         cash_and_equivalents=5_000.0,  # $5B
-        shares_outstanding=1_000.0,    # 1B shares
-
+        shares_outstanding=1_000.0,  # 1B shares
         # Income Statement
-        revenue_ttm=25_000.0,          # $25B
-        ebit_ttm=10_000.0,             # $10B
-        net_income_ttm=7_000.0,        # $7B
-        interest_expense=2_000.0,      # $2B
-
+        revenue_ttm=25_000.0,  # $25B
+        ebit_ttm=10_000.0,  # $10B
+        net_income_ttm=7_000.0,  # $7B
+        interest_expense=2_000.0,  # $2B
         # Cash Flow
-        fcf_ttm=8_000.0,               # $8B
-        capex_ttm=3_000.0,             # $3B
-
+        fcf_ttm=8_000.0,  # $8B
+        capex_ttm=3_000.0,  # $3B
         # Market Rates - Low Risk
         beta=0.5,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
         market_risk_premium=DEFAULT_MARKET_RISK_PREMIUM,
-        tax_rate=DEFAULT_TAX_RATE
+        tax_rate=DEFAULT_TAX_RATE,
     )
 
 
@@ -157,27 +146,23 @@ def golden_distressed_company():
         name="Distressed Corp (Mock)",
         sector="Retail",
         current_price=10.0,
-
         # Balance Sheet - Stressed
-        total_debt=8_000.0,            # $8B
-        cash_and_equivalents=500.0,    # $500M
-        shares_outstanding=500.0,      # 500M shares
-
+        total_debt=8_000.0,  # $8B
+        cash_and_equivalents=500.0,  # $500M
+        shares_outstanding=500.0,  # 500M shares
         # Income Statement - Losses
-        revenue_ttm=5_000.0,           # $5B
-        ebit_ttm=-500.0,               # -$500M (negative)
-        net_income_ttm=-800.0,         # -$800M
-        interest_expense=400.0,        # $400M
-
+        revenue_ttm=5_000.0,  # $5B
+        ebit_ttm=-500.0,  # -$500M (negative)
+        net_income_ttm=-800.0,  # -$800M
+        interest_expense=400.0,  # $400M
         # Cash Flow - Negative
-        fcf_ttm=-500.0,                # -$500M (cash burn)
-        capex_ttm=300.0,               # $300M
-
+        fcf_ttm=-500.0,  # -$500M (cash burn)
+        capex_ttm=300.0,  # $300M
         # Market Rates - Very High Risk
         beta=2.5,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=0.06,      # 6%
-        tax_rate=DEFAULT_TAX_RATE
+        market_risk_premium=0.06,  # 6%
+        tax_rate=DEFAULT_TAX_RATE,
     )
 
 
@@ -185,9 +170,14 @@ def golden_distressed_company():
 # HELPER FUNCTIONS
 # ==============================================================================
 
-def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
-                        enable_mc: bool = False, mc_iterations: int = 1000,
-                        random_seed: int = 42) -> ValuationRequest:
+
+def create_fcff_request(
+    snapshot: CompanySnapshot,
+    growth_rate: float = 0.05,
+    enable_mc: bool = False,
+    mc_iterations: int = 1000,
+    random_seed: int = 42,
+) -> ValuationRequest:
     """
     Creates a standard FCFF valuation request from a snapshot.
 
@@ -223,7 +213,7 @@ def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
         sector=sector_enum,
         current_price=snapshot.current_price,
         currency="USD",
-        last_update=datetime.now(timezone.utc)
+        last_update=datetime.now(timezone.utc),
     )
 
     strategy_params = FCFFStandardParameters(
@@ -238,28 +228,22 @@ def create_fcff_request(snapshot: CompanySnapshot, growth_rate: float = 0.05,
         random_seed=random_seed,
         shocks=StandardMCShocksParameters(
             fcf_volatility=0.10,
-
-        ) if enable_mc else None
+        )
+        if enable_mc
+        else None,
     )
 
     extensions = ExtensionBundleParameters(monte_carlo=mc_config)
 
-    params = Parameters(
-        structure=company,
-        strategy=strategy_params,
-        extensions=extensions
-    )
+    params = Parameters(structure=company, strategy=strategy_params, extensions=extensions)
 
-    return ValuationRequest(
-        mode=ValuationMethodology.FCFF_STANDARD,
-        parameters=params
-    )
-
+    return ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
 
 
 # ==============================================================================
 # DETERMINISTIC VALUATION TESTS
 # ==============================================================================
+
 
 class TestDeterministicValuations:
     """Tests that frozen datasets produce consistent intrinsic values."""
@@ -369,9 +353,12 @@ class TestDeterministicValuations:
             # We only assert that a CalculationError is raised, not on its message,
             # to keep the test robust against message wording changes.
             pass
+
+
 # ==============================================================================
 # MONTE CARLO REPRODUCIBILITY TESTS
 # ==============================================================================
+
 
 class TestMonteCarloReproducibility:
     """Tests that MC simulations are deterministic with same seed."""
@@ -384,21 +371,13 @@ class TestMonteCarloReproducibility:
 
         # Run 1 with seed=42
         request1 = create_fcff_request(
-            golden_aapl_large_cap_tech,
-            growth_rate=0.08,
-            enable_mc=True,
-            mc_iterations=1000,
-            random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result1 = orchestrator.run(request1, golden_aapl_large_cap_tech)
 
         # Run 2 with same seed=42
         request2 = create_fcff_request(
-            golden_aapl_large_cap_tech,
-            growth_rate=0.08,
-            enable_mc=True,
-            mc_iterations=1000,
-            random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result2 = orchestrator.run(request2, golden_aapl_large_cap_tech)
 
@@ -413,6 +392,7 @@ class TestMonteCarloReproducibility:
 
         # Check that all values are identical (deterministic) using numpy for precision
         import numpy as np
+
         values1 = np.array(mc1.simulation_values)
         values2 = np.array(mc2.simulation_values)
         assert np.array_equal(values1, values2), "MC values should be identical with same seed"
@@ -429,21 +409,13 @@ class TestMonteCarloReproducibility:
 
         # Run 1 with seed=42
         request1 = create_fcff_request(
-            golden_aapl_large_cap_tech,
-            growth_rate=0.08,
-            enable_mc=True,
-            mc_iterations=1000,
-            random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result1 = orchestrator.run(request1, golden_aapl_large_cap_tech)
 
         # Run 2 with different seed=123
         request2 = create_fcff_request(
-            golden_aapl_large_cap_tech,
-            growth_rate=0.08,
-            enable_mc=True,
-            mc_iterations=1000,
-            random_seed=123
+            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=123
         )
         result2 = orchestrator.run(request2, golden_aapl_large_cap_tech)
 
@@ -455,8 +427,7 @@ class TestMonteCarloReproducibility:
 
         # Check that at least some values are different
         different_count = sum(
-            1 for v1, v2 in zip(mc1.simulation_values[:100], mc2.simulation_values[:100])
-            if abs(v1 - v2) > 0.01
+            1 for v1, v2 in zip(mc1.simulation_values[:100], mc2.simulation_values[:100]) if abs(v1 - v2) > 0.01
         )
 
         # Most values should be different with different seed
@@ -466,6 +437,7 @@ class TestMonteCarloReproducibility:
 # ==============================================================================
 # PERFORMANCE GATE TESTS
 # ==============================================================================
+
 
 class TestPerformanceGates:
     """Tests that valuations meet performance requirements."""
@@ -486,10 +458,7 @@ class TestPerformanceGates:
         assert exec_time is not None
 
         # Performance gate: Should complete in < 500ms (generous for CI)
-        assert exec_time < 500, (
-            f"Standard valuation took {exec_time}ms, exceeds 500ms gate "
-            f"(target is <200ms locally)"
-        )
+        assert exec_time < 500, f"Standard valuation took {exec_time}ms, exceeds 500ms gate (target is <200ms locally)"
 
     def test_monte_carlo_performance_gate(self, golden_aapl_large_cap_tech):
         """
@@ -498,11 +467,7 @@ class TestPerformanceGates:
         """
         orchestrator = ValuationOrchestrator()
         request = create_fcff_request(
-            golden_aapl_large_cap_tech,
-            growth_rate=0.08,
-            enable_mc=True,
-            mc_iterations=10_000,
-            random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=10_000, random_seed=42
         )
 
         result = orchestrator.run(request, golden_aapl_large_cap_tech)
@@ -514,8 +479,7 @@ class TestPerformanceGates:
 
         # Performance gate: Should complete in < 5000ms (generous for CI)
         assert exec_time < 5000, (
-            f"MC simulation (10k) took {exec_time}ms, exceeds 5000ms gate "
-            f"(target is <2000ms locally)"
+            f"MC simulation (10k) took {exec_time}ms, exceeds 5000ms gate (target is <2000ms locally)"
         )
 
         # Verify MC actually ran

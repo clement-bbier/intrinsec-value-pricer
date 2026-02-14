@@ -24,20 +24,20 @@ logger = logging.getLogger(__name__)
 def _normalize_sector_key(sector: str) -> str:
     """
     Maps Yahoo Finance sector nomenclature to internal canonical keys.
-    
+
     Implements fuzzy matching with synonym support for robust sector resolution.
     Handles all 11 official Yahoo Finance sectors plus common variations.
-    
+
     Parameters
     ----------
     sector : str
         Raw sector name from Yahoo Finance API.
-    
+
     Returns
     -------
     str
         Normalized sector key matching configuration.
-    
+
     Notes
     -----
     Yahoo Finance Standard Sectors (2026):
@@ -58,50 +58,39 @@ def _normalize_sector_key(sector: str) -> str:
         # Technology
         "technology": "technology",
         "tech": "technology",
-        
         # Financial Services
         "financial services": "financial_services",
         "financials": "financial_services",
         "finance": "financial_services",
-        
         # Healthcare
         "healthcare": "healthcare",
         "health care": "healthcare",
         "medical": "healthcare",
-        
         # Consumer Cyclical
         "consumer cyclical": "consumer_cyclical",
         "consumer discretionary": "consumer_cyclical",  # Synonym
         "cyclical": "consumer_cyclical",
-        
         # Consumer Defensive
         "consumer defensive": "consumer_defensive",
         "consumer staples": "consumer_defensive",  # Synonym
         "defensive": "consumer_defensive",
-        
         # Industrials
         "industrials": "industrials",
         "industrial": "industrials",
-        
         # Energy
         "energy": "energy",
-        
         # Basic Materials
         "basic materials": "basic_materials",
         "materials": "basic_materials",
-        
         # Chemicals (specific subsector of basic materials)
         "chemicals": "chemicals",  # Keep specific if available
-        
         # Real Estate
         "real estate": "real_estate",
         "realty": "real_estate",
         "reit": "real_estate",
-        
         # Utilities
         "utilities": "utilities",
         "utility": "utilities",
-        
         # Communication Services
         "communication services": "communication_services",
         "communications": "communication_services",
@@ -120,14 +109,7 @@ def _slugify(text: str | None) -> str:
     if not text or not isinstance(text, str):
         return ""
 
-    return (
-        text.lower()
-        .replace("—", "_")
-        .replace("-", "_")
-        .replace(" ", "_")
-        .replace("__", "_")
-        .strip("_")
-    )
+    return text.lower().replace("—", "_").replace("-", "_").replace(" ", "_").replace("__", "_").strip("_")
 
 
 def get_sector_data(industry: str | None, sector: str | None) -> SectorBenchmarks:

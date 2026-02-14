@@ -32,6 +32,7 @@ class StochasticOutput:
     quantiles : Dict[str, float]
         Key statistical percentiles (p10, p50, p90, std).
     """
+
     values: list[float]
     quantiles: dict[str, float]
 
@@ -39,6 +40,7 @@ class StochasticOutput:
 # ============================================================================
 # VECTORIZED MONTE CARLO ENGINE
 # ============================================================================
+
 
 class MonteCarloEngine:
     """
@@ -107,14 +109,17 @@ class MonteCarloEngine:
             mu_growth=base_growth,
             sigma_growth=vol_growth,
             rho=rho,
-            num_simulations=n_sims
+            num_simulations=n_sims,
         )
 
         # 5. Vectorized Valuation Dispatch
         mode = result.request.mode
 
-        if mode in [ValuationMethodology.FCFF_STANDARD, ValuationMethodology.FCFF_GROWTH,
-                    ValuationMethodology.FCFF_NORMALIZED]:
+        if mode in [
+            ValuationMethodology.FCFF_STANDARD,
+            ValuationMethodology.FCFF_GROWTH,
+            ValuationMethodology.FCFF_NORMALIZED,
+        ]:
             simulated_values = MonteCarloEngine._simulate_dcf_vector(result, params, beta_samples, growth_samples)
 
         elif mode == ValuationMethodology.GRAHAM:
@@ -144,13 +149,12 @@ class MonteCarloEngine:
                 "p50": float(np.median(valid_values)),
                 "p90": float(np.percentile(valid_values, 90)),
                 "std": std_val,
-                "cv": cv_val
-            }
+                "cv": cv_val,
+            },
         )
 
     @staticmethod
-    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray,
-                             growths: np.ndarray) -> np.ndarray:
+    def _simulate_dcf_vector(res: ValuationResult, p: Parameters, betas: np.ndarray, growths: np.ndarray) -> np.ndarray:
         """
         Vectorized DCF formula:
         Equity Value = [Sum(DFCF) + (FCF_n * (1+g) / (WACC - g)) - NetDebt] / Shares
@@ -241,15 +245,16 @@ class MonteCarloEngine:
 # CORRELATED SAMPLING GENERATION
 # ============================================================================
 
+
 def generate_multivariate_samples(
-        *,
-        mu_beta: float,
-        sigma_beta: float,
-        mu_growth: float,
-        sigma_growth: float,
-        rho: float,
-        num_simulations: int,
-        seed: int | None = 42
+    *,
+    mu_beta: float,
+    sigma_beta: float,
+    mu_growth: float,
+    sigma_growth: float,
+    rho: float,
+    num_simulations: int,
+    seed: int | None = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Generates correlated random samples for Beta and Growth using Cholesky or SVD.
@@ -285,27 +290,24 @@ def generate_multivariate_samples(
 
     # Covariance Matrix
     covariance = rho * sigma_beta * sigma_growth
-    cov_matrix = np.array([
-        [sigma_beta ** 2, covariance],
-        [covariance, sigma_growth ** 2]
-    ])
+    cov_matrix = np.array([[sigma_beta**2, covariance], [covariance, sigma_growth**2]])
 
     mean_vector = np.array([mu_beta, mu_growth])
 
     # Multivariate Normal Draw
-    draws = rng.multivariate_normal(mean=mean_vector, cov=cov_matrix, size=num_simulations, method='svd')
+    draws = rng.multivariate_normal(mean=mean_vector, cov=cov_matrix, size=num_simulations, method="svd")
 
     return draws[:, 0], draws[:, 1]
 
 
 def generate_independent_samples(
-        *,
-        mean: float,
-        sigma: float,
-        num_simulations: int,
-        clip_min: float | None = None,
-        clip_max: float | None = None,
-        seed: int | None = None
+    *,
+    mean: float,
+    sigma: float,
+    num_simulations: int,
+    clip_min: float | None = None,
+    clip_max: float | None = None,
+    seed: int | None = None,
 ) -> np.ndarray:
     """
     Generates independent normal distribution samples.
@@ -339,10 +341,7 @@ def generate_independent_samples(
     return draws
 
 
-def calculate_var(
-        simulation_values: list[float] | np.ndarray,
-        confidence_level: float = 0.95
-) -> float:
+def calculate_var(simulation_values: list[float] | np.ndarray, confidence_level: float = 0.95) -> float:
     """
     Calculate Value at Risk (VaR) from Monte Carlo simulation results.
 

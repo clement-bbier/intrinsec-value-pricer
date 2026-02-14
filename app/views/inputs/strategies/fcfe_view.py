@@ -21,7 +21,7 @@ class FCFEView(BaseStrategyView):
     # --- UI Pipeline Configuration (Sections Standards) ---
     SHOW_DISCOUNT_SECTION = True  # FCFE uses Ke (Cost of Equity), not WACC
     SHOW_TERMINAL_SECTION = True  # Terminal value needed
-    SHOW_BRIDGE_SECTION = False   # Direct equity method, no bridge from EV to Equity
+    SHOW_BRIDGE_SECTION = False  # Direct equity method, no bridge from EV to Equity
 
     # --- Extensions Flags ---
     SHOW_MONTE_CARLO = True
@@ -39,18 +39,27 @@ class FCFEView(BaseStrategyView):
         c1, c2 = st.columns(2)
         with c1:
             st.number_input(
-                Texts.INP_BASE, value=None, format="%.0f",
-                help=Texts.HELP_FCFE_BASE, key=f"{prefix}_{UIKeys.FCFE_ANCHOR}",
+                Texts.INP_BASE,
+                value=None,
+                format="%.0f",
+                help=Texts.HELP_FCFE_BASE,
+                key=f"{prefix}_{UIKeys.FCFE_ANCHOR}",
             )
         with c2:
             st.number_input(
-                Texts.INP_NET_BORROWING, value=None, format="%.0f",
-                help=Texts.HELP_NET_BORROWING, key=f"{prefix}_{UIKeys.NET_BORROWING_DELTA}",
+                Texts.INP_NET_BORROWING,
+                value=None,
+                format="%.0f",
+                help=Texts.HELP_NET_BORROWING,
+                key=f"{prefix}_{UIKeys.NET_BORROWING_DELTA}",
             )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(
-            UISharedTexts.INP_GROWTH_G, value=None, format="%.2f",
-            help=UISharedTexts.HELP_GROWTH_RATE, key=f"{prefix}_{UIKeys.GROWTH_RATE}",
+            UISharedTexts.INP_GROWTH_G,
+            value=None,
+            format="%.2f",
+            help=UISharedTexts.HELP_GROWTH_RATE,
+            key=f"{prefix}_{UIKeys.GROWTH_RATE}",
         )
         st.divider()

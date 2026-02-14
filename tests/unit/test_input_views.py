@@ -9,12 +9,10 @@ Coverage Target: >85% per file for input views.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-
 # =============================================================================
 # AUTO FORM
 # =============================================================================
+
 
 class TestAutoFormRendering:
     """Tests render_auto_form with mocked streamlit."""
@@ -81,12 +79,14 @@ class TestAutoFormRendering:
 # EXPERT FORM
 # =============================================================================
 
+
 class TestExpertFormRendering:
     """Tests render_expert_form with mocked streamlit."""
 
     def test_render_expert_form_callable(self):
         """render_expert_form must be callable."""
         from app.views.inputs.expert_form import render_expert_form
+
         assert callable(render_expert_form)
 
     @patch("app.views.inputs.expert_form.get_state")
@@ -214,12 +214,14 @@ class TestExpertFormRendering:
 # SIDEBAR
 # =============================================================================
 
+
 class TestSidebarRendering:
     """Tests render_sidebar with mocked streamlit."""
 
     def test_render_sidebar_callable(self):
         """render_sidebar must be callable."""
         from app.views.common.sidebar import render_sidebar
+
         assert callable(render_sidebar)
 
     @patch("app.views.common.sidebar.get_state")
@@ -264,6 +266,7 @@ class TestSidebarRendering:
 # =============================================================================
 # MAIN APP RENDERING
 # =============================================================================
+
 
 class TestMainRendering:
     """Tests main.py render_footer with mocked streamlit."""

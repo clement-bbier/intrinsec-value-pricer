@@ -33,9 +33,7 @@ class CommonLibrary:
 
     @staticmethod
     def resolve_discount_rate(
-        financials: Company,
-        params: Parameters,
-        use_cost_of_equity_only: bool = False
+        financials: Company, params: Parameters, use_cost_of_equity_only: bool = False
     ) -> tuple[float, CalculationStep]:
         """
         Computes the appropriate discount rate (WACC or Ke) with full provenance.
@@ -58,20 +56,23 @@ class CommonLibrary:
         if use_cost_of_equity_only:
             variables = {
                 "Rf": VariableInfo(
-                    symbol="Rf", value=rf,
+                    symbol="Rf",
+                    value=rf,
                     source=VariableSource.MANUAL_OVERRIDE if r.risk_free_rate else VariableSource.SYSTEM,
-                    description="Risk-Free Rate"
+                    description="Risk-Free Rate",
                 ),
                 "Beta": VariableInfo(
-                    symbol="β", value=beta_raw,
+                    symbol="β",
+                    value=beta_raw,
                     source=VariableSource.MANUAL_OVERRIDE if r.beta else VariableSource.YAHOO_FINANCE,
-                    description="Beta"
+                    description="Beta",
                 ),
                 "MRP": VariableInfo(
-                    symbol="MRP", value=mrp,
+                    symbol="MRP",
+                    value=mrp,
                     source=VariableSource.MANUAL_OVERRIDE if r.market_risk_premium else VariableSource.SYSTEM,
-                    description="Market Risk Premium"
-                )
+                    description="Market Risk Premium",
+                ),
             }
 
             step = CalculationStep(
@@ -82,7 +83,7 @@ class CommonLibrary:
                 result=ke,
                 interpretation=StrategyInterpretations.KE_CONTEXT,
                 source=StrategySources.CAPM_CALC,
-                variables_map=variables
+                variables_map=variables,
             )
             return ke, step
 
@@ -122,22 +123,12 @@ class CommonLibrary:
 
         # 2.4 Trace Building
         wacc_vars = {
-            "Ke": VariableInfo(
-                symbol="Ke", value=ke,
-                source=VariableSource.CALCULATED, description="Cost of Equity"
-            ),
+            "Ke": VariableInfo(symbol="Ke", value=ke, source=VariableSource.CALCULATED, description="Cost of Equity"),
             "Kd_net": VariableInfo(
-                symbol="Kd(1-t)", value=kd_net,
-                source=kd_source, description="Cost of Debt (After Tax)"
+                symbol="Kd(1-t)", value=kd_net, source=kd_source, description="Cost of Debt (After Tax)"
             ),
-            "We": VariableInfo(
-                symbol="We", value=we,
-                source=VariableSource.CALCULATED, description="Equity Weight"
-            ),
-            "Wd": VariableInfo(
-                symbol="Wd", value=wd,
-                source=VariableSource.CALCULATED, description="Debt Weight"
-            ),
+            "We": VariableInfo(symbol="We", value=we, source=VariableSource.CALCULATED, description="Equity Weight"),
+            "Wd": VariableInfo(symbol="Wd", value=wd, source=VariableSource.CALCULATED, description="Debt Weight"),
         }
 
         step = CalculationStep(
@@ -148,16 +139,13 @@ class CommonLibrary:
             result=wacc,
             interpretation=StrategyInterpretations.WACC_CONTEXT,
             source=StrategySources.WACC_MARKET,
-            variables_map=wacc_vars
+            variables_map=wacc_vars,
         )
 
         return wacc, step
 
     @staticmethod
-    def compute_equity_bridge(
-        enterprise_value: float,
-        params: Parameters
-    ) -> tuple[float, CalculationStep]:
+    def compute_equity_bridge(enterprise_value: float, params: Parameters) -> tuple[float, CalculationStep]:
         """
         Walks from Enterprise Value (EV) to Equity Value using the Bridge.
         """
@@ -172,19 +160,17 @@ class CommonLibrary:
 
         variables = {
             "EV": VariableInfo(
-                symbol="EV", value=enterprise_value,
-                source=VariableSource.CALCULATED, description=RegistryTexts.DCF_EV_L
+                symbol="EV",
+                value=enterprise_value,
+                source=VariableSource.CALCULATED,
+                description=RegistryTexts.DCF_EV_L,
             ),
             "Debt": VariableInfo(
-                symbol="Debt", value=debt,
-                source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_DEBT
+                symbol="Debt", value=debt, source=VariableSource.SYSTEM, description=KPITexts.LABEL_DEBT
             ),
             "Cash": VariableInfo(
-                symbol="Cash", value=cash,
-                source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_CASH
-            )
+                symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH
+            ),
         }
 
         step = CalculationStep(
@@ -200,7 +186,7 @@ class CommonLibrary:
             unit="currency",
             interpretation=StrategyInterpretations.BRIDGE,
             source=StrategySources.YAHOO_TTM_SIMPLE,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return equity_value, step

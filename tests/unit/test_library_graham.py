@@ -20,6 +20,7 @@ from src.valuation.library.graham import GrahamLibrary
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_graham_params():
     """Mock Parameters object for Graham Formula."""
@@ -46,6 +47,7 @@ def mock_graham_params():
 # TEST compute_intrinsic_value
 # ============================================================================
 
+
 def test_compute_intrinsic_value_basic(mock_graham_params):
     """Test Graham formula with standard inputs."""
     iv, step = GrahamLibrary.compute_intrinsic_value(mock_graham_params)
@@ -55,7 +57,7 @@ def test_compute_intrinsic_value_basic(mock_graham_params):
     # V = (5.00 * 28.5 * 4.4) / 4.5
     eps = 5.00
     g = 10.0  # Graham uses integer growth (10 for 10%)
-    y = 4.5   # Graham uses percentage (4.5 for 4.5%)
+    y = 4.5  # Graham uses percentage (4.5 for 4.5%)
     expected_iv = (eps * (8.5 + 2 * g) * 4.4) / y
 
     assert iv == pytest.approx(expected_iv, rel=1e-6)
@@ -400,6 +402,7 @@ def test_compute_intrinsic_value_variable_sources(mock_graham_params):
 
     # EPS comes from system (fetched data)
     from src.models.enums import VariableSource
+
     assert step.variables_map["EPS"].source == VariableSource.SYSTEM
 
     # Growth is manual override (user input)
@@ -412,6 +415,7 @@ def test_compute_intrinsic_value_variable_sources(mock_graham_params):
 # ============================================================================
 # EDGE CASES AND VALIDATION
 # ============================================================================
+
 
 def test_compute_intrinsic_value_extreme_yield():
     """Test with extreme AAA yield values."""

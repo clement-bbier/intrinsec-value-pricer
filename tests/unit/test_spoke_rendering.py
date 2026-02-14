@@ -8,12 +8,8 @@ Coverage Target: >85% per file for all spoke pillar files.
 """
 
 from datetime import date
-from unittest.mock import MagicMock, patch, call
-from typing import Any
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from src.models.benchmarks import CompanyStats, MarketContext, SectorMultiples, SectorPerformance
 from src.models.company import Company
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
@@ -54,7 +50,10 @@ def _make_result(**ext_params_kw) -> ValuationResult:
             structure=company,
             common=CommonParameters(
                 rates=FinancialRatesParameters(
-                    risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21,
+                    risk_free_rate=0.04,
+                    market_risk_premium=0.05,
+                    beta=1.2,
+                    tax_rate=0.21,
                 ),
             ),
             strategy=FCFFStandardParameters(projection_years=5, fcf_anchor=100_000.0),
@@ -65,14 +64,20 @@ def _make_result(**ext_params_kw) -> ValuationResult:
         common=CommonResults(
             rates=ResolvedRates(cost_of_equity=0.10, cost_of_debt_after_tax=0.04, wacc=0.08),
             capital=ResolvedCapital(
-                market_cap=2_400_000.0, enterprise_value=2_500_000.0,
-                net_debt_resolved=100_000.0, equity_value_total=2_400_000.0,
+                market_cap=2_400_000.0,
+                enterprise_value=2_500_000.0,
+                net_debt_resolved=100_000.0,
+                equity_value_total=2_400_000.0,
             ),
-            intrinsic_value_per_share=160.0, upside_pct=0.067,
+            intrinsic_value_per_share=160.0,
+            upside_pct=0.067,
         ),
         strategy=FCFFStandardResults(
-            projected_flows=[100_000.0], discount_factors=[0.926],
-            terminal_value=2_000_000.0, discounted_terminal_value=1_500_000.0, tv_weight_pct=0.75,
+            projected_flows=[100_000.0],
+            discount_factors=[0.926],
+            terminal_value=2_000_000.0,
+            discounted_terminal_value=1_500_000.0,
+            tv_weight_pct=0.75,
         ),
         extensions=ExtensionBundleResults(),
     )
@@ -82,6 +87,7 @@ def _make_result(**ext_params_kw) -> ValuationResult:
 # =============================================================================
 # MONTE CARLO DISTRIBUTION
 # =============================================================================
+
 
 class TestMonteCarloRendering:
     """Tests MonteCarloDistributionTab.render with mocked streamlit."""
@@ -96,7 +102,8 @@ class TestMonteCarloRendering:
         result.results.extensions.monte_carlo = MCResults(
             simulation_values=[140.0, 150.0, 160.0, 170.0, 180.0],
             quantiles={"P5": 135.0, "P10": 140.0, "P50": 160.0, "P90": 180.0},
-            mean=160.0, std_dev=15.0,
+            mean=160.0,
+            std_dev=15.0,
         )
 
         # Mock columns for the risk hub (4 columns)
@@ -136,7 +143,8 @@ class TestMonteCarloRendering:
         result.results.extensions.monte_carlo = MCResults(
             simulation_values=[150.0, 160.0],
             quantiles={"P5": 140.0, "P10": 145.0, "P50": 155.0, "P90": 170.0},
-            mean=155.0, std_dev=10.0,
+            mean=155.0,
+            std_dev=10.0,
         )
 
         cols_4 = [MagicMock() for _ in range(4)]
@@ -154,6 +162,7 @@ class TestMonteCarloRendering:
 # SENSITIVITY ANALYSIS
 # =============================================================================
 
+
 class TestSensitivityRendering:
     """Tests SensitivityAnalysisTab.render with mocked streamlit."""
 
@@ -165,11 +174,13 @@ class TestSensitivityRendering:
 
         result = _make_result(sensitivity=SensitivityParameters(enabled=True))
         result.results.extensions.sensitivity = SensitivityResults(
-            x_axis_name="WACC", y_axis_name="Growth",
+            x_axis_name="WACC",
+            y_axis_name="Growth",
             x_values=[0.07, 0.08, 0.09],
             y_values=[0.02, 0.03, 0.04],
             values=[[100.0, 110.0, 120.0], [95.0, 105.0, 115.0], [90.0, 100.0, 110.0]],
-            center_value=105.0, sensitivity_score=10.0,
+            center_value=105.0,
+            sensitivity_score=10.0,
         )
 
         col_kpi = MagicMock()
@@ -205,9 +216,12 @@ class TestSensitivityRendering:
 
         result = _make_result(sensitivity=SensitivityParameters(enabled=True))
         result.results.extensions.sensitivity = SensitivityResults(
-            x_axis_name="WACC", y_axis_name="Growth",
-            x_values=[0.08], y_values=[0.03],
-            values=[[100.0]], center_value=100.0,
+            x_axis_name="WACC",
+            y_axis_name="Growth",
+            x_values=[0.08],
+            y_values=[0.03],
+            values=[[100.0]],
+            center_value=100.0,
             sensitivity_score=20.0,  # Volatile
         )
 
@@ -233,9 +247,12 @@ class TestSensitivityRendering:
 
         result = _make_result(sensitivity=SensitivityParameters(enabled=True))
         result.results.extensions.sensitivity = SensitivityResults(
-            x_axis_name="WACC", y_axis_name="Growth",
-            x_values=[0.08], y_values=[0.03],
-            values=[[100.0]], center_value=100.0,
+            x_axis_name="WACC",
+            y_axis_name="Growth",
+            x_values=[0.08],
+            y_values=[0.03],
+            values=[[100.0]],
+            center_value=100.0,
             sensitivity_score=35.0,  # Critical
         )
 
@@ -256,6 +273,7 @@ class TestSensitivityRendering:
 # =============================================================================
 # SCENARIO ANALYSIS
 # =============================================================================
+
 
 class TestScenarioRendering:
     """Tests ScenarioAnalysisTab.render with mocked streamlit."""
@@ -308,6 +326,7 @@ class TestScenarioRendering:
 # HISTORICAL BACKTEST
 # =============================================================================
 
+
 class TestBacktestRendering:
     """Tests HistoricalBacktestTab.render with mocked streamlit."""
 
@@ -322,11 +341,15 @@ class TestBacktestRendering:
             points=[
                 HistoricalPoint(
                     valuation_date=date(2023, 6, 30),
-                    calculated_iv=155.0, market_price=150.0, error_pct=0.033,
+                    calculated_iv=155.0,
+                    market_price=150.0,
+                    error_pct=0.033,
                 ),
                 HistoricalPoint(
                     valuation_date=date(2023, 9, 30),
-                    calculated_iv=160.0, market_price=155.0, error_pct=0.032,
+                    calculated_iv=160.0,
+                    market_price=155.0,
+                    error_pct=0.032,
                 ),
             ],
             mean_absolute_error=0.033,
@@ -366,6 +389,7 @@ class TestBacktestRendering:
 # =============================================================================
 # PEER MULTIPLES
 # =============================================================================
+
 
 class TestPeerMultiplesRendering:
     """Tests PeerMultiples.render with mocked streamlit."""
@@ -414,6 +438,7 @@ class TestPeerMultiplesRendering:
 # =============================================================================
 # SOTP BREAKDOWN
 # =============================================================================
+
 
 class TestSOTPRendering:
     """Tests SOTPBreakdownTab.render with mocked streamlit."""

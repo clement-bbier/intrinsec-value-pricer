@@ -69,9 +69,7 @@ class FCFEStrategy(IValuationRunner):
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         ke, step_ke = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=True
+            financials=financials, params=params, use_cost_of_equity_only=True
         )
         if self._glass_box:
             steps.append(step_ke)
@@ -80,21 +78,25 @@ class FCFEStrategy(IValuationRunner):
         fcfe_base = strategy_params.fcfe_anchor or 0.0
 
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="FCFE_ANCHOR",
-                label=RegistryTexts.FCFE_BASE_L,
-                theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
-                actual_calculation=f"Starting FCFE: {fcfe_base:,.2f}",
-                result=fcfe_base,
-                interpretation=StrategyInterpretations.FCFE_LOGIC,
-                source=StrategySources.SYSTEM,
-                variables_map={
-                    "FCFE_0": VariableInfo(
-                        symbol="FCFE_0", value=fcfe_base,
-                        source=VariableSource.SYSTEM, description="Base Year Free Cash Flow to Equity"
-                    )
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="FCFE_ANCHOR",
+                    label=RegistryTexts.FCFE_BASE_L,
+                    theoretical_formula=StrategyFormulas.FCFE_RECONSTRUCTION,
+                    actual_calculation=f"Starting FCFE: {fcfe_base:,.2f}",
+                    result=fcfe_base,
+                    interpretation=StrategyInterpretations.FCFE_LOGIC,
+                    source=StrategySources.SYSTEM,
+                    variables_map={
+                        "FCFE_0": VariableInfo(
+                            symbol="FCFE_0",
+                            value=fcfe_base,
+                            source=VariableSource.SYSTEM,
+                            description="Base Year Free Cash Flow to Equity",
+                        )
+                    },
+                )
+            )
 
         # --- STEP 3: Projection ---
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
@@ -123,23 +125,26 @@ class FCFEStrategy(IValuationRunner):
         total_equity_value = pv_equity + cash
 
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="FCFE_EQUITY_SUM",
-                label=RegistryTexts.FCFE_EQUITY_VALUE,
-                theoretical_formula="Equity = PV(FCFE) + Cash",
-                actual_calculation=f"{pv_equity:,.0f} + {cash:,.0f}",
-                result=total_equity_value,
-                interpretation="Adding non-operating cash to operating equity value.",
-                source=StrategySources.CALCULATED,
-                variables_map={
-                    "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
-                    "Cash": VariableInfo(
-                        symbol="Cash", value=cash,
-                        source=VariableSource.SYSTEM,
-                        description=KPITexts.LABEL_CASH,
-                    )
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="FCFE_EQUITY_SUM",
+                    label=RegistryTexts.FCFE_EQUITY_VALUE,
+                    theoretical_formula="Equity = PV(FCFE) + Cash",
+                    actual_calculation=f"{pv_equity:,.0f} + {cash:,.0f}",
+                    result=total_equity_value,
+                    interpretation="Adding non-operating cash to operating equity value.",
+                    source=StrategySources.CALCULATED,
+                    variables_map={
+                        "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
+                        "Cash": VariableInfo(
+                            symbol="Cash",
+                            value=cash,
+                            source=VariableSource.SYSTEM,
+                            description=KPITexts.LABEL_CASH,
+                        ),
+                    },
+                )
+            )
 
         # --- STEP 7: Per Share ---
         iv_per_share, step_iv = DCFLibrary.compute_value_per_share(total_equity_value, params)
@@ -147,11 +152,7 @@ class FCFEStrategy(IValuationRunner):
             steps.append(step_iv)
 
         # --- RESULT CONSTRUCTION ---
-        res_rates = ResolvedRates(
-            cost_of_equity=ke,
-            cost_of_debt_after_tax=0.0,
-            wacc=ke
-        )
+        res_rates = ResolvedRates(cost_of_equity=ke, cost_of_debt_after_tax=0.0, wacc=ke)
 
         debt = params.common.capital.total_debt or 0.0
         implied_ev = total_equity_value + debt - cash
@@ -161,7 +162,7 @@ class FCFEStrategy(IValuationRunner):
             market_cap=shares * (financials.current_price or 0.0),
             enterprise_value=implied_ev,
             net_debt_resolved=debt - cash,
-            equity_value_total=total_equity_value
+            equity_value_total=total_equity_value,
         )
 
         common_res = CommonResults(
@@ -170,9 +171,10 @@ class FCFEStrategy(IValuationRunner):
             intrinsic_value_per_share=iv_per_share,
             upside_pct=(
                 ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price else 0.0
+                if financials.current_price
+                else 0.0
             ),
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         discount_factors = calculate_discount_factors(ke, len(flows))
@@ -185,19 +187,12 @@ class FCFEStrategy(IValuationRunner):
             discounted_terminal_value=pv_tv,
             tv_weight_pct=(pv_tv / pv_equity) if pv_equity > 0 else 0.0,
             strategy_trace=[],
-            projected_net_borrowing=[]
+            projected_net_borrowing=[],
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.FCFE,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.FCFE, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
@@ -209,13 +204,13 @@ class FCFEStrategy(IValuationRunner):
         Note: We do NOT subtract debt here (unlike FCFF), we add Cash.
         """
         # 1. Unpack Vectors
-        ke_vec = vectors['wacc'] # Maps to Ke for FCFE
-        g_p1 = vectors['growth']
-        g_n  = vectors['terminal_growth']
-        fcfe_0 = vectors['base_flow']
+        ke_vec = vectors["wacc"]  # Maps to Ke for FCFE
+        g_p1 = vectors["growth"]
+        g_n = vectors["terminal_growth"]
+        fcfe_0 = vectors["base_flow"]
 
         # 2. Vectorized Projection
-        years = getattr(params.strategy, 'projection_years', 5) or 5
+        years = getattr(params.strategy, "projection_years", 5) or 5
         time_exponents = np.arange(1, years + 1)
 
         # Growth

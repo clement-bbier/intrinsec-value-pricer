@@ -23,6 +23,7 @@ from src.models.glass_box import CalculationStep
 # PILLAR 4: RISK ENGINEERING (Simulation, Sensitivity, Scenarios & Backtest)
 # ==============================================================================
 
+
 class MCResults(BaseModel):
     """
     Statistical outputs of the Monte Carlo simulation.
@@ -38,6 +39,7 @@ class MCResults(BaseModel):
     std_dev : float
         Standard deviation of the distribution (Volatility).
     """
+
     simulation_values: list[float] = Field(..., description="Raw intrinsic values from all iterations.")
     quantiles: dict[str, float] = Field(..., description="Key probability points (P10, P50, P90).")
     mean: float = Field(..., description="Arithmetic average of all simulations.")
@@ -65,6 +67,7 @@ class SensitivityResults(BaseModel):
     sensitivity_score : float
         A metric of volatility (Spread / Base).
     """
+
     x_axis_name: str = Field(..., description="Name of the parameter on X axis (e.g. 'WACC').")
     y_axis_name: str = Field(..., description="Name of the parameter on Y axis (e.g. 'Growth').")
     x_values: list[float] = Field(..., description="The variation steps for X axis.")
@@ -89,6 +92,7 @@ class ScenarioOutcome(BaseModel):
     probability : float
         Weight assigned to this scenario (0-1).
     """
+
     label: str
     intrinsic_value: float
     upside_pct: float
@@ -106,6 +110,7 @@ class ScenariosResults(BaseModel):
     outcomes : List[ScenarioOutcome]
         Detailed results for each scenario.
     """
+
     expected_intrinsic_value: float = Field(..., description="Weighted average IV across all cases.")
     outcomes: list[ScenarioOutcome] = Field(default_factory=list)
 
@@ -125,6 +130,7 @@ class HistoricalPoint(BaseModel):
     error_pct : float
         The deviation ((IV - Price) / Price).
     """
+
     valuation_date: date
     calculated_iv: float
     market_price: float
@@ -144,6 +150,7 @@ class BacktestResults(BaseModel):
     accuracy_score : float
         A computed score (0-100) reflecting model predictive power.
     """
+
     points: list[HistoricalPoint] = Field(default_factory=list)
     mean_absolute_error: float = Field(..., description="Average error over the period.")
     accuracy_score: float = Field(..., ge=0, le=100)
@@ -152,6 +159,7 @@ class BacktestResults(BaseModel):
 # ==============================================================================
 # PILLAR 5: MARKET ANALYSIS (Peers & SOTP)
 # ==============================================================================
+
 
 class PeerIntrinsicDetail(BaseModel):
     """
@@ -166,6 +174,7 @@ class PeerIntrinsicDetail(BaseModel):
     upside_pct : float
         Upside/Downside of the peer vs its own market price.
     """
+
     ticker: str
     intrinsic_value: float = Field(..., description="IV calculated for the peer using the same strategy.")
     upside_pct: float = Field(..., description="Upside/Downside of the peer vs its own market price.")
@@ -186,6 +195,7 @@ class PeersResults(BaseModel):
     final_relative_iv : float
         Synthesized Intrinsic Value from peer triangulation.
     """
+
     median_multiples_used: dict[str, float] = Field(
         ...,
         description="Medians (P/E, EV/EBITDA, etc.) extracted from the peer group.",
@@ -218,6 +228,7 @@ class SOTPResults(BaseModel):
     sotp_trace : List[CalculationStep]
         Glass Box steps for the SOTP aggregation.
     """
+
     total_enterprise_value: float = Field(..., description="Sum of all operating segment values.")
     segment_values: dict[str, float] = Field(..., description="Final value attributed to each segment name.")
     implied_equity_value: float = Field(..., description="Final Equity Value after Bridge.")
@@ -229,11 +240,13 @@ class SOTPResults(BaseModel):
 # THE BUNDLE (Unified Container)
 # ==============================================================================
 
+
 class ExtensionBundleResults(BaseModel):
     """
     Unified container for all optional analytical outputs.
     Attributes remain None if the corresponding extension was not executed.
     """
+
     # Pillar 4: Risk Engineering
     monte_carlo: MCResults | None = None
     sensitivity: SensitivityResults | None = None

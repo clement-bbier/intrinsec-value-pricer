@@ -22,26 +22,36 @@ from src.models.parameters.input_metadata import UIKey
 # 1. MONTE CARLO (STOCHASTIC)
 # ==============================================================================
 
+
 class BaseMCShocksParameters(BaseNormalizedModel):
     """Universal stochastic foundation."""
+
     growth_volatility: Annotated[float | None, UIKey(UIKeys.VOL_GROWTH, scale="pct")] = None
+
 
 class BetaModelMCShocksParameters(BaseMCShocksParameters):
     """Models requiring Beta sensitivity."""
+
     beta_volatility: Annotated[float | None, UIKey(UIKeys.VOL_BETA, scale="pct")] = None
+
 
 class StandardMCShocksParameters(BetaModelMCShocksParameters):
     """Shocks for standard DCF models."""
+
     type: Literal["standard"] = "standard"
     fcf_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
     dividend_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
+
 class GrahamMCShocksParameters(BaseMCShocksParameters):
     """Shocks specific to Graham formula."""
+
     type: Literal["graham"] = "graham"
     eps_volatility: Annotated[float | None, UIKey(UIKeys.VOL_FLOW, scale="pct")] = None
 
+
 MCShockUnion = StandardMCShocksParameters | GrahamMCShocksParameters
+
 
 class MCParameters(BaseNormalizedModel):
     """
@@ -58,11 +68,12 @@ class MCParameters(BaseNormalizedModel):
     random_seed : int | None
         Random seed for reproducibility (default: 42).
     """
+
     enabled: Annotated[bool, UIKey(UIKeys.MC_ENABLE, scale="raw")] = False
     iterations: Annotated[int, UIKey(UIKeys.MC_SIMS, scale="raw")] = Field(
         default=MonteCarloDefaults.DEFAULT_SIMULATIONS,
         ge=MonteCarloDefaults.MIN_SIMULATIONS,
-        le=MonteCarloDefaults.MAX_SIMULATIONS
+        le=MonteCarloDefaults.MAX_SIMULATIONS,
     )
     shocks: MCShockUnion | None = None
     random_seed: int | None = 42
@@ -71,6 +82,7 @@ class MCParameters(BaseNormalizedModel):
 # ==============================================================================
 # 2. SENSITIVITY (DETERMINISTIC)
 # ==============================================================================
+
 
 class SensitivityParameters(BaseNormalizedModel):
     """
@@ -87,22 +99,19 @@ class SensitivityParameters(BaseNormalizedModel):
     growth_span : float | None
         Range of deviation for Growth (e.g., 0.005 for +/- 0.5%).
     """
+
     enabled: Annotated[bool, UIKey(UIKeys.SENS_ENABLE, scale="raw")] = False
     steps: Annotated[int, UIKey(UIKeys.SENS_RANGE, scale="raw")] = Field(
-        default=SensitivityDefaults.DEFAULT_STEPS,
-        ge=3, le=9
+        default=SensitivityDefaults.DEFAULT_STEPS, ge=3, le=9
     )
-    wacc_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = (
-        SensitivityDefaults.DEFAULT_WACC_SPAN
-    )
-    growth_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = (
-        SensitivityDefaults.DEFAULT_GROWTH_SPAN
-    )
+    wacc_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
+    growth_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
 
 # ==============================================================================
 # 3. SCENARIOS & EXTENSIONS
 # ==============================================================================
+
 
 class ScenarioParameters(BaseNormalizedModel):
     """
@@ -119,33 +128,42 @@ class ScenarioParameters(BaseNormalizedModel):
     margin_override : float | None
         Hard adjustment to the base margins.
     """
+
     name: str = "Base Case"
     probability: Annotated[float | None, UIKey(UIKeys.SCENARIO_P, scale="raw")] = None
     growth_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_G, scale="pct")] = None
     margin_override: Annotated[float | None, UIKey(UIKeys.SCENARIO_M, scale="pct")] = None
 
+
 class ScenariosParameters(BaseNormalizedModel):
     """Collection of deterministic scenarios."""
+
     enabled: Annotated[bool, UIKey(UIKeys.SCENARIO_ENABLE, scale="raw")] = False
     cases: list[ScenarioParameters] = Field(default_factory=list)
 
+
 class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
+
     enabled: Annotated[bool, UIKey(UIKeys.BT_ENABLE, scale="raw")] = False
     lookback_years: Annotated[int, UIKey(UIKeys.BT_LOOKBACK, scale="raw")] = Field(
-        default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS,
-        ge=1, le=10
+        default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS, ge=1, le=10
     )
+
 
 class PeersParameters(BaseNormalizedModel):
     """Configuration for peer-based relative valuation."""
+
     enabled: Annotated[bool, UIKey(UIKeys.PEER_ENABLE, scale="raw")] = False
     tickers: Annotated[list[str], UIKey(UIKeys.PEER_LIST)] = Field(default_factory=list)
 
+
 class BusinessUnit(BaseModel):
     """A single segment in Sum-Of-The-Parts."""
+
     name: str
     value: float | None = None
+
 
 class SOTPParameters(BaseNormalizedModel):
     """
@@ -160,6 +178,7 @@ class SOTPParameters(BaseNormalizedModel):
     segments : List[BusinessUnit]
         List of manual valuations per business unit.
     """
+
     enabled: Annotated[bool, UIKey(UIKeys.SOTP_ENABLE, scale="raw")] = False
     conglomerate_discount: Annotated[float, UIKey(UIKeys.SOTP_DISCOUNT, scale="pct")] = (
         SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
@@ -170,6 +189,7 @@ class SOTPParameters(BaseNormalizedModel):
 # ==============================================================================
 # 4. THE BUNDLE
 # ==============================================================================
+
 
 class ExtensionBundleParameters(BaseModel):
     """
@@ -190,6 +210,7 @@ class ExtensionBundleParameters(BaseModel):
     sotp : SOTPParameters
         Sum-Of-The-Parts settings.
     """
+
     monte_carlo: MCParameters = Field(default_factory=MCParameters)
     sensitivity: SensitivityParameters = Field(default_factory=SensitivityParameters)
     scenarios: ScenariosParameters = Field(default_factory=ScenariosParameters)

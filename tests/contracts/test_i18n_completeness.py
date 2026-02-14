@@ -42,9 +42,9 @@ class I18nUsageScanner(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         """Track imports from src.i18n"""
-        if node.module and node.module.startswith('src.i18n'):
+        if node.module and node.module.startswith("src.i18n"):
             for alias in node.names:
-                if alias.name.endswith('Texts') or alias.name.endswith('Labels') or alias.name.endswith('Messages'):
+                if alias.name.endswith("Texts") or alias.name.endswith("Labels") or alias.name.endswith("Messages"):
                     self.imports.add(alias.name)
         self.generic_visit(node)
 
@@ -52,11 +52,11 @@ class I18nUsageScanner(ast.NodeVisitor):
         """Track attribute accesses like SomeTexts.ATTRIBUTE"""
         if isinstance(node.value, ast.Name):
             class_name = node.value.id
-            if class_name in self.imports and class_name.endswith(('Texts', 'Labels', 'Messages')):
+            if class_name in self.imports and class_name.endswith(("Texts", "Labels", "Messages")):
                 attr_name = node.attr
                 # Track constants: uppercase or special prefixes (LABEL_, SUB_, HELP_, etc.)
                 # These naming patterns are exceptions to the pure UPPERCASE convention
-                if attr_name.isupper() or attr_name.startswith(('LABEL_', 'SUB_', 'HELP_', 'LBL_')):
+                if attr_name.isupper() or attr_name.startswith(("LABEL_", "SUB_", "HELP_", "LBL_")):
                     self.usages.append((class_name, attr_name, node.lineno))
         self.generic_visit(node)
 
@@ -76,7 +76,7 @@ def scan_file_for_i18n_usage(file_path: Path) -> list[tuple[str, str, int]]:
         List of (class_name, attribute_name, line_number) tuples.
     """
     try:
-        content = file_path.read_text(encoding='utf-8')
+        content = file_path.read_text(encoding="utf-8")
         tree = ast.parse(content, filename=str(file_path))
         scanner = I18nUsageScanner(str(file_path))
         scanner.visit(tree)
@@ -155,28 +155,28 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
 
     # Map class names to actual classes
     i18n_classes = {
-        'BacktestTexts': BacktestTexts,
-        'BenchmarkTexts': BenchmarkTexts,
-        'ChartTexts': ChartTexts,
-        'CommonTexts': CommonTexts,
-        'ExpertTexts': ExpertTexts,
-        'ExtensionTexts': ExtensionTexts,
-        'FeedbackMessages': FeedbackMessages,
-        'InputLabels': InputLabels,
-        'KPITexts': KPITexts,
-        'LegalTexts': LegalTexts,
-        'MarketTexts': MarketTexts,
-        'OnboardingTexts': OnboardingTexts,
-        'PeersTexts': PeersTexts,
-        'PillarLabels': PillarLabels,
-        'QuantTexts': QuantTexts,
-        'ResultsTexts': ResultsTexts,
-        'SidebarTexts': SidebarTexts,
-        'SOTPTexts': SOTPTexts,
-        'TooltipsTexts': TooltipsTexts,
-        'UIMessages': UIMessages,
-        'UIRegistryTexts': UIRegistryTexts,
-        'UISharedTexts': UISharedTexts,
+        "BacktestTexts": BacktestTexts,
+        "BenchmarkTexts": BenchmarkTexts,
+        "ChartTexts": ChartTexts,
+        "CommonTexts": CommonTexts,
+        "ExpertTexts": ExpertTexts,
+        "ExtensionTexts": ExtensionTexts,
+        "FeedbackMessages": FeedbackMessages,
+        "InputLabels": InputLabels,
+        "KPITexts": KPITexts,
+        "LegalTexts": LegalTexts,
+        "MarketTexts": MarketTexts,
+        "OnboardingTexts": OnboardingTexts,
+        "PeersTexts": PeersTexts,
+        "PillarLabels": PillarLabels,
+        "QuantTexts": QuantTexts,
+        "ResultsTexts": ResultsTexts,
+        "SidebarTexts": SidebarTexts,
+        "SOTPTexts": SOTPTexts,
+        "TooltipsTexts": TooltipsTexts,
+        "UIMessages": UIMessages,
+        "UIRegistryTexts": UIRegistryTexts,
+        "UISharedTexts": UISharedTexts,
     }
 
     # Scan app/ directory
@@ -193,17 +193,12 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
     for file_path, references in usages.items():
         for class_name, attr_name, line_no in references:
             if class_name not in i18n_classes:
-                errors.append(
-                    f"{file_path}:{line_no} - Unknown i18n class: {class_name}"
-                )
+                errors.append(f"{file_path}:{line_no} - Unknown i18n class: {class_name}")
                 continue
 
             text_class = i18n_classes[class_name]
             if not hasattr(text_class, attr_name):
-                error_msg = (
-                    f"{file_path}:{line_no} - "
-                    f"Missing attribute: {class_name}.{attr_name}"
-                )
+                error_msg = f"{file_path}:{line_no} - Missing attribute: {class_name}.{attr_name}"
                 errors.append(error_msg)
 
                 # Track missing attributes by class
@@ -282,13 +277,29 @@ class TestI18nCompleteness:
                 UIRegistryTexts,
                 UISharedTexts,
             )
+
             # Mark imports as tested to satisfy linter
             _ = [
-                BacktestTexts, BenchmarkTexts, ChartTexts, CommonTexts,
-                ExpertTexts, FeedbackMessages, InputLabels, KPITexts,
-                LegalTexts, MarketTexts, OnboardingTexts, PeersTexts,
-                PillarLabels, QuantTexts, ResultsTexts, SidebarTexts,
-                SOTPTexts, TooltipsTexts, UIMessages, UIRegistryTexts,
+                BacktestTexts,
+                BenchmarkTexts,
+                ChartTexts,
+                CommonTexts,
+                ExpertTexts,
+                FeedbackMessages,
+                InputLabels,
+                KPITexts,
+                LegalTexts,
+                MarketTexts,
+                OnboardingTexts,
+                PeersTexts,
+                PillarLabels,
+                QuantTexts,
+                ResultsTexts,
+                SidebarTexts,
+                SOTPTexts,
+                TooltipsTexts,
+                UIMessages,
+                UIRegistryTexts,
                 UISharedTexts,
             ]
         except ImportError as e:
@@ -301,8 +312,9 @@ class TestI18nCompleteness:
         # Check that these key classes have at least some attributes
         for text_class in [CommonTexts, KPITexts, SidebarTexts, UIMessages]:
             attrs = [
-                attr for attr in dir(text_class)
-                if not attr.startswith('_') and isinstance(getattr(text_class, attr, None), str)
+                attr
+                for attr in dir(text_class)
+                if not attr.startswith("_") and isinstance(getattr(text_class, attr, None), str)
             ]
             assert len(attrs) > 0, f"{text_class.__name__} has no string attributes"
 
@@ -332,9 +344,9 @@ class TestI18nCompleteness:
 
         # Patterns to exclude (not user-facing)
         exclude_patterns = [
-            r'logger\.',  # Developer logs
-            r'raise\s+\w+Error',  # Exception messages
-            r'#.*$',  # Comments
+            r"logger\.",  # Developer logs
+            r"raise\s+\w+Error",  # Exception messages
+            r"#.*$",  # Comments
         ]
 
         violations = []
@@ -344,8 +356,8 @@ class TestI18nCompleteness:
                 continue
 
             try:
-                content = py_file.read_text(encoding='utf-8')
-                lines = content.split('\n')
+                content = py_file.read_text(encoding="utf-8")
+                lines = content.split("\n")
 
                 for line_no, line in enumerate(lines, start=1):
                     # Skip excluded patterns
@@ -358,7 +370,7 @@ class TestI18nCompleteness:
                         if match:
                             text = match.group(1) if match.lastindex >= 1 else match.group(0)
                             # Filter out very short strings (likely not user-facing)
-                            if len(text) > 10 and ' ' in text:
+                            if len(text) > 10 and " " in text:
                                 violations.append(
                                     f"{py_file.relative_to(app_dir.parent)}:{line_no} - "
                                     f"Potential hard-coded string: '{text}'"
@@ -398,7 +410,7 @@ class TestI18nNamingConventions:
         """
         from src.i18n import __all__ as i18n_exports
 
-        valid_suffixes = ['Texts', 'Labels', 'Messages']
+        valid_suffixes = ["Texts", "Labels", "Messages"]
 
         for export_name in i18n_exports:
             # Skip non-text classes (like enums, utilities)
@@ -411,9 +423,7 @@ class TestI18nNamingConventions:
             )
 
             # Check that it starts with uppercase (PascalCase)
-            assert export_name[0].isupper(), (
-                f"i18n class '{export_name}' should start with uppercase letter"
-            )
+            assert export_name[0].isupper(), f"i18n class '{export_name}' should start with uppercase letter"
 
     def test_i18n_constants_are_uppercase(self):
         """
@@ -431,13 +441,14 @@ class TestI18nNamingConventions:
 
         for text_class in [CommonTexts, KPITexts, SidebarTexts]:
             attrs = [
-                attr for attr in dir(text_class)
-                if not attr.startswith('_') and isinstance(getattr(text_class, attr, None), str)
+                attr
+                for attr in dir(text_class)
+                if not attr.startswith("_") and isinstance(getattr(text_class, attr, None), str)
             ]
 
             for attr in attrs:
                 # Allow exceptions for special patterns
-                if attr.startswith(('SUB_', 'LABEL_', 'HELP_', 'LBL_')):
+                if attr.startswith(("SUB_", "LABEL_", "HELP_", "LBL_")):
                     continue
 
                 # Most constants should be uppercase

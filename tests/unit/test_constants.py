@@ -68,7 +68,7 @@ def test_spreads_small_mid_cap_sorted_descending():
 @pytest.mark.unit
 def test_macro_defaults_risk_free_rate():
     """Test MacroDefaults has DEFAULT_RISK_FREE_RATE."""
-    assert hasattr(MacroDefaults, 'DEFAULT_RISK_FREE_RATE')
+    assert hasattr(MacroDefaults, "DEFAULT_RISK_FREE_RATE")
     assert isinstance(MacroDefaults.DEFAULT_RISK_FREE_RATE, float)
     assert 0.0 <= MacroDefaults.DEFAULT_RISK_FREE_RATE <= 0.20
 
@@ -76,7 +76,7 @@ def test_macro_defaults_risk_free_rate():
 @pytest.mark.unit
 def test_macro_defaults_market_risk_premium():
     """Test MacroDefaults has DEFAULT_MARKET_RISK_PREMIUM."""
-    assert hasattr(MacroDefaults, 'DEFAULT_MARKET_RISK_PREMIUM')
+    assert hasattr(MacroDefaults, "DEFAULT_MARKET_RISK_PREMIUM")
     assert isinstance(MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM, float)
     assert 0.0 <= MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM <= 0.20
 
@@ -84,7 +84,7 @@ def test_macro_defaults_market_risk_premium():
 @pytest.mark.unit
 def test_macro_defaults_tax_rate():
     """Test MacroDefaults has DEFAULT_TAX_RATE."""
-    assert hasattr(MacroDefaults, 'DEFAULT_TAX_RATE')
+    assert hasattr(MacroDefaults, "DEFAULT_TAX_RATE")
     assert isinstance(MacroDefaults.DEFAULT_TAX_RATE, float)
     assert 0.0 <= MacroDefaults.DEFAULT_TAX_RATE <= 0.50
 
@@ -92,7 +92,7 @@ def test_macro_defaults_tax_rate():
 @pytest.mark.unit
 def test_model_defaults_beta():
     """Test ModelDefaults has DEFAULT_BETA."""
-    assert hasattr(ModelDefaults, 'DEFAULT_BETA')
+    assert hasattr(ModelDefaults, "DEFAULT_BETA")
     assert isinstance(ModelDefaults.DEFAULT_BETA, float)
     assert ModelDefaults.DEFAULT_BETA == pytest.approx(1.0)
 
@@ -100,7 +100,7 @@ def test_model_defaults_beta():
 @pytest.mark.unit
 def test_monte_carlo_defaults_min_simulations():
     """Test MonteCarloDefaults has MIN_SIMULATIONS."""
-    assert hasattr(MonteCarloDefaults, 'MIN_SIMULATIONS')
+    assert hasattr(MonteCarloDefaults, "MIN_SIMULATIONS")
     assert isinstance(MonteCarloDefaults.MIN_SIMULATIONS, int)
     assert MonteCarloDefaults.MIN_SIMULATIONS >= 100
 
@@ -108,7 +108,7 @@ def test_monte_carlo_defaults_min_simulations():
 @pytest.mark.unit
 def test_monte_carlo_defaults_max_simulations():
     """Test MonteCarloDefaults has MAX_SIMULATIONS."""
-    assert hasattr(MonteCarloDefaults, 'MAX_SIMULATIONS')
+    assert hasattr(MonteCarloDefaults, "MAX_SIMULATIONS")
     assert isinstance(MonteCarloDefaults.MAX_SIMULATIONS, int)
     assert MonteCarloDefaults.MAX_SIMULATIONS <= 100_000
 
@@ -116,7 +116,7 @@ def test_monte_carlo_defaults_max_simulations():
 @pytest.mark.unit
 def test_monte_carlo_defaults_default_simulations():
     """Test MonteCarloDefaults has DEFAULT_SIMULATIONS within bounds."""
-    assert hasattr(MonteCarloDefaults, 'DEFAULT_SIMULATIONS')
+    assert hasattr(MonteCarloDefaults, "DEFAULT_SIMULATIONS")
     assert (
         MonteCarloDefaults.MIN_SIMULATIONS
         <= MonteCarloDefaults.DEFAULT_SIMULATIONS
@@ -127,7 +127,7 @@ def test_monte_carlo_defaults_default_simulations():
 @pytest.mark.unit
 def test_sensitivity_defaults_steps():
     """Test SensitivityDefaults has DEFAULT_STEPS."""
-    assert hasattr(SensitivityDefaults, 'DEFAULT_STEPS')
+    assert hasattr(SensitivityDefaults, "DEFAULT_STEPS")
     assert isinstance(SensitivityDefaults.DEFAULT_STEPS, int)
     assert 3 <= SensitivityDefaults.DEFAULT_STEPS <= 9
 
@@ -135,7 +135,7 @@ def test_sensitivity_defaults_steps():
 @pytest.mark.unit
 def test_sensitivity_defaults_wacc_span():
     """Test SensitivityDefaults has DEFAULT_WACC_SPAN."""
-    assert hasattr(SensitivityDefaults, 'DEFAULT_WACC_SPAN')
+    assert hasattr(SensitivityDefaults, "DEFAULT_WACC_SPAN")
     assert isinstance(SensitivityDefaults.DEFAULT_WACC_SPAN, float)
     assert 0.0 < SensitivityDefaults.DEFAULT_WACC_SPAN <= 0.10
 
@@ -143,6 +143,6 @@ def test_sensitivity_defaults_wacc_span():
 @pytest.mark.unit
 def test_sensitivity_defaults_growth_span():
     """Test SensitivityDefaults has DEFAULT_GROWTH_SPAN."""
-    assert hasattr(SensitivityDefaults, 'DEFAULT_GROWTH_SPAN')
+    assert hasattr(SensitivityDefaults, "DEFAULT_GROWTH_SPAN")
     assert isinstance(SensitivityDefaults.DEFAULT_GROWTH_SPAN, float)
     assert 0.0 < SensitivityDefaults.DEFAULT_GROWTH_SPAN <= 0.10

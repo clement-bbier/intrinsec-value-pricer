@@ -37,10 +37,7 @@ class RIMLibrary:
 
     @staticmethod
     def project_residual_income(
-            current_book_value: float,
-            base_earnings: float,
-            cost_of_equity: float,
-            params: Parameters
+        current_book_value: float, base_earnings: float, cost_of_equity: float, params: Parameters
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects Earnings, Book Values, and Residual Incomes based on Clean Surplus.
@@ -69,15 +66,12 @@ class RIMLibrary:
             else:
                 current_g = g_rate
 
-            current_earn *= (1.0 + current_g)
+            current_earn *= 1.0 + current_g
             projected_earnings.append(current_earn)
 
         # 3. Calculate Vectors (RI and BV)
         residual_incomes, book_values = calculate_rim_vectors(
-            current_bv=current_book_value,
-            ke=cost_of_equity,
-            earnings=projected_earnings,
-            payout=payout
+            current_bv=current_book_value, ke=cost_of_equity, earnings=projected_earnings, payout=payout
         )
 
         # 4. Trace
@@ -85,22 +79,25 @@ class RIMLibrary:
 
         variables = {
             "B_0": VariableInfo(
-                symbol="B_0", value=current_book_value,
-                source=VariableSource.SYSTEM, description="Current Book Value"
+                symbol="B_0", value=current_book_value, source=VariableSource.SYSTEM, description="Current Book Value"
             ),
             "E_0": VariableInfo(
-                symbol="E_0", value=base_earnings,
-                source=VariableSource.SYSTEM, description="Base Earnings (EPS/NI)"
+                symbol="E_0", value=base_earnings, source=VariableSource.SYSTEM, description="Base Earnings (EPS/NI)"
             ),
             "Ke": VariableInfo(
-                symbol="Ke", value=cost_of_equity, formatted_value=f"{cost_of_equity:.2%}",
-                source=VariableSource.CALCULATED, description="Cost of Equity"
+                symbol="Ke",
+                value=cost_of_equity,
+                formatted_value=f"{cost_of_equity:.2%}",
+                source=VariableSource.CALCULATED,
+                description="Cost of Equity",
             ),
             "p": VariableInfo(
-                symbol="p", value=payout, formatted_value=f"{payout:.1%}",
+                symbol="p",
+                value=payout,
+                formatted_value=f"{payout:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Payout Ratio"
-            )
+                description="Payout Ratio",
+            ),
         }
 
         step = CalculationStep(
@@ -111,16 +108,14 @@ class RIMLibrary:
             result=sum_ri,
             interpretation=StrategyInterpretations.RIM_PROJ.format(years=years),
             source=StrategySources.CALCULATED,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return residual_incomes, book_values, projected_earnings, step
 
     @staticmethod
     def compute_terminal_value_ohlson(
-            final_ri: float,
-            cost_of_equity: float,
-            params: Parameters
+        final_ri: float, cost_of_equity: float, params: Parameters
     ) -> tuple[float, CalculationStep]:
         """Calculates Terminal Value using the Ohlson Model with Persistence Factor (omega)."""
 
@@ -136,18 +131,26 @@ class RIMLibrary:
 
         variables = {
             "RI_n": VariableInfo(
-                symbol="RI_n", value=final_ri, formatted_value=format_smart_number(final_ri),
-                source=VariableSource.CALCULATED, description="Final Year Residual Income"
+                symbol="RI_n",
+                value=final_ri,
+                formatted_value=format_smart_number(final_ri),
+                source=VariableSource.CALCULATED,
+                description="Final Year Residual Income",
             ),
             "ω": VariableInfo(
-                symbol="ω", value=omega, formatted_value=f"{omega:.2f}",
+                symbol="ω",
+                value=omega,
+                formatted_value=f"{omega:.2f}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Ohlson Persistence Factor"
+                description="Ohlson Persistence Factor",
             ),
             "Ke": VariableInfo(
-                symbol="Ke", value=cost_of_equity, formatted_value=f"{cost_of_equity:.2%}",
-                source=VariableSource.CALCULATED, description="Cost of Equity"
-            )
+                symbol="Ke",
+                value=cost_of_equity,
+                formatted_value=f"{cost_of_equity:.2%}",
+                source=VariableSource.CALCULATED,
+                description="Cost of Equity",
+            ),
         }
 
         step = CalculationStep(
@@ -155,23 +158,19 @@ class RIMLibrary:
             label=RegistryTexts.RIM_TV_L,
             theoretical_formula=StrategyFormulas.RIM_TV,
             actual_calculation=(
-                f"({format_smart_number(final_ri)} × {omega:.2f})"
-                f" / (1 + {cost_of_equity:.1%} - {omega:.2f})"
+                f"({format_smart_number(final_ri)} × {omega:.2f}) / (1 + {cost_of_equity:.1%} - {omega:.2f})"
             ),
             result=tv,
             interpretation=StrategyInterpretations.RIM_PERSISTENCE.format(val=omega),
             source=StrategySources.CALCULATED,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return tv, step
 
     @staticmethod
     def compute_equity_value(
-            current_book_value: float,
-            residual_incomes: list[float],
-            terminal_value: float,
-            cost_of_equity: float
+        current_book_value: float, residual_incomes: list[float], terminal_value: float, cost_of_equity: float
     ) -> tuple[float, CalculationStep]:
         """Aggregates components to find Total Equity Value."""
         # 1. Discount Factors
@@ -188,20 +187,23 @@ class RIMLibrary:
 
         variables = {
             "B_0": VariableInfo(
-                symbol="B_0", value=current_book_value,
+                symbol="B_0",
+                value=current_book_value,
                 formatted_value=format_smart_number(current_book_value),
                 source=VariableSource.SYSTEM,
             ),
             "ΣPV_RI": VariableInfo(
-                symbol="ΣPV_RI", value=pv_ri,
+                symbol="ΣPV_RI",
+                value=pv_ri,
                 formatted_value=format_smart_number(pv_ri),
                 source=VariableSource.CALCULATED,
             ),
             "PV_TV": VariableInfo(
-                symbol="PV_TV", value=pv_tv,
+                symbol="PV_TV",
+                value=pv_tv,
                 formatted_value=format_smart_number(pv_tv),
                 source=VariableSource.CALCULATED,
-            )
+            ),
         }
 
         step = CalculationStep(
@@ -216,7 +218,7 @@ class RIMLibrary:
             result=total_equity,
             interpretation=StrategyInterpretations.RIM_FINAL,
             source=StrategySources.CALCULATED,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return total_equity, step

@@ -37,12 +37,7 @@ from src import __version__  # noqa: E402
 from src.i18n import UIMessages  # noqa: E402
 
 # Configuration of the page must be the first Streamlit command
-st.set_page_config(
-    page_title=UIMessages.PAGE_TITLE,
-    page_icon="IVP",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title=UIMessages.PAGE_TITLE, page_icon="IVP", layout="wide", initial_sidebar_state="expanded")
 
 
 def render_footer() -> None:

@@ -15,9 +15,11 @@ from dataclasses import dataclass
 # 1. MONTE CARLO SIMULATION
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class MonteCarloDefaults:
     """Standard parameters for stochastic simulations."""
+
     MIN_SIMULATIONS: int = 100
     MAX_SIMULATIONS: int = 20_000
     DEFAULT_SIMULATIONS: int = 5_000
@@ -31,6 +33,7 @@ class MonteCarloDefaults:
 # 2. SENSITIVITY ANALYSIS
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class SensitivityDefaults:
     DEFAULT_STEPS: int = 5
@@ -42,6 +45,7 @@ class SensitivityDefaults:
 # ==============================================================================
 # 3. PEERS / MULTIPLES
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class PeerDefaults:
@@ -55,10 +59,12 @@ class PeerDefaults:
 # 4. BACKTEST & SOTP
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class BacktestDefaults:
     DEFAULT_LOOKBACK_YEARS: int = 3
     MAX_LOOKBACK_YEARS: int = 10
+
 
 @dataclass(frozen=True)
 class SOTPDefaults:
@@ -68,6 +74,7 @@ class SOTPDefaults:
 # ==============================================================================
 # 5. SCENARIOS
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class ScenarioDefaults:
@@ -82,6 +89,7 @@ class ScenarioDefaults:
 # ==============================================================================
 # 6. VALIDATION THRESHOLDS
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class ValidationThresholds:
@@ -103,6 +111,7 @@ class ValidationThresholds:
 # 7. MACRO & MARKET
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class MacroDefaults:
     """
@@ -115,6 +124,7 @@ class MacroDefaults:
     - DEFAULT_TAX_RATE: Approximate OECD average corporate tax rate (~25%).
     - DEFAULT_CORPORATE_AAA_YIELD: Moody's AAA Corporate Bond Yield (~4.5%).
     """
+
     DEFAULT_RISK_FREE_RATE: float = 0.0425
     FALLBACK_GROWTH_RATE: float = 0.03
     FALLBACK_RISK_FREE_RATE: float = 0.04
@@ -124,14 +134,17 @@ class MacroDefaults:
     DEFAULT_CORPORATE_AAA_YIELD: float = 0.045
     LARGE_CAP_THRESHOLD: float = 5_000_000_000
 
+
 # ==============================================================================
 # 8. MODEL DEFAULTS
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class GrowthCalculationDefaults:
     DEFAULT_FCF_MARGIN_TARGET: float = 0.15
     DEFAULT_REVENUE_GROWTH_START: float = 0.10
+
 
 @dataclass(frozen=True)
 class ModelDefaults:
@@ -146,6 +159,7 @@ class ModelDefaults:
     - DEFAULT_PROJECTION_YEARS: Standard 5-year DCF horizon.
     - DEFAULT_TERMINAL_GROWTH: 2% matching long-term nominal GDP growth.
     """
+
     # Capital Structure
     DEFAULT_WACC: float = 0.10
     DEFAULT_PAYOUT_RATIO: float = 0.50
@@ -186,6 +200,7 @@ class ModelDefaults:
 # 9. VALUATION ENGINES CONSTANTS (STATIC)
 # ==============================================================================
 
+
 class ValuationEngineDefaults:
     """
     Static constants for the valuation engine.
@@ -205,21 +220,21 @@ class ValuationEngineDefaults:
 
     # Large Cap (> $5B)
     SPREADS_LARGE_CAP: tuple = (
-        (8.5, 0.0069),    # AAA
-        (6.5, 0.0085),    # AA
-        (5.5, 0.0107),    # A+
-        (4.25, 0.0118),   # A
-        (3.0, 0.0133),    # A-
-        (2.5, 0.0171),    # BBB
-        (2.25, 0.0216),   # BB+
-        (2.0, 0.0270),    # BB
-        (1.75, 0.0387),   # B+
-        (1.5, 0.0522),    # B
-        (1.25, 0.0810),   # B-
-        (0.8, 0.1116),    # CCC
-        (0.65, 0.1575),   # CC
-        (0.2, 0.1750),    # C
-        (-999.0, 0.2000), # D (Default)
+        (8.5, 0.0069),  # AAA
+        (6.5, 0.0085),  # AA
+        (5.5, 0.0107),  # A+
+        (4.25, 0.0118),  # A
+        (3.0, 0.0133),  # A-
+        (2.5, 0.0171),  # BBB
+        (2.25, 0.0216),  # BB+
+        (2.0, 0.0270),  # BB
+        (1.75, 0.0387),  # B+
+        (1.5, 0.0522),  # B
+        (1.25, 0.0810),  # B-
+        (0.8, 0.1116),  # CCC
+        (0.65, 0.1575),  # CC
+        (0.2, 0.1750),  # C
+        (-999.0, 0.2000),  # D (Default)
     )
 
     # Small/Mid Cap (< $5B)
@@ -241,9 +256,11 @@ class ValuationEngineDefaults:
         (-999.0, 0.2000),
     )
 
+
 # ==============================================================================
 # 10. UI WIDGETS
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class UIWidgetDefaults:
@@ -254,16 +271,17 @@ class UIWidgetDefaults:
 
     # Growth Rate (g) - Bounds (%)
     MIN_GROWTH_RATE: float = -100.0  # Total decline possible
-    MAX_GROWTH_RATE: float = 500.0   # Hyper-growth (Startup/Biotech)
+    MAX_GROWTH_RATE: float = 500.0  # Hyper-growth (Startup/Biotech)
 
     # Tax and Risk Parameters
-    MAX_TAX_RATE: float = 100.0      # Theoretical confiscatory tax
-    MAX_BETA: float = 5.0            # Extreme volatility (> 5 is often noise)
+    MAX_TAX_RATE: float = 100.0  # Theoretical confiscatory tax
+    MAX_BETA: float = 5.0  # Extreme volatility (> 5 is often noise)
 
 
 # ==============================================================================
 # 11. SYSTEM CONFIGURATION
 # ==============================================================================
+
 
 @dataclass(frozen=True)
 class SystemDefaults:

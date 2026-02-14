@@ -9,13 +9,11 @@ Coverage: Direct access without getattr chains or 'or 0.0' patterns.
 
 import inspect
 
-import pytest
-
 from app.views.results.pillars.inputs_summary import (
+    _render_capital_structure_table,
+    _render_rates_table,
     _render_strategy_inputs_table,
     _safe_fmt,
-    _render_rates_table,
-    _render_capital_structure_table,
 )
 
 

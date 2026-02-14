@@ -17,6 +17,7 @@ from src.models.glass_box import CalculationStep
 
 # --- Reusable DCF Components ---
 
+
 class BaseFlowResults(BaseModel):
     """
     Base components for any flow-based projection (DCF family).
@@ -36,6 +37,7 @@ class BaseFlowResults(BaseModel):
     strategy_trace : List[CalculationStep]
         Detailed audit trail of the projection steps.
     """
+
     projected_flows: list[float] = Field(..., description="The sequence of projected flows (FCF, Dividends, etc.).")
     discount_factors: list[float] = Field(..., description="The discount factors (1/(1+r)^n) used for NPV.")
     terminal_value: float = Field(..., description="The calculated exit value (Gordon or Multiple).")
@@ -46,11 +48,13 @@ class BaseFlowResults(BaseModel):
 
 # --- Concrete Strategy Results ---
 
+
 class FCFFStandardResults(BaseFlowResults):
     """
     Outputs for Standard FCFF.
     Inherits all flow fields. Focus on simple FCF projection from EBIT/EBITDA.
     """
+
     pass
 
 
@@ -63,6 +67,7 @@ class FCFFNormalizedResults(BaseFlowResults):
     normalized_fcf_used : float
         The mid-cycle Free Cash Flow value used as the anchor.
     """
+
     normalized_fcf_used: float
 
 
@@ -79,6 +84,7 @@ class FCFFGrowthResults(BaseFlowResults):
     target_margin_reached : float
         The final margin achieved in the terminal year.
     """
+
     projected_revenues: list[float] = Field(..., description="Revenue trajectory used to derive FCF.")
     projected_margins: list[float] = Field(..., description="FCF Margin evolution.")
     target_margin_reached: float
@@ -93,6 +99,7 @@ class FCFEResults(BaseFlowResults):
     projected_net_borrowing : List[float]
         The net debt issuance/repayment projected each year.
     """
+
     projected_net_borrowing: list[float]
 
 
@@ -107,6 +114,7 @@ class DDMResults(BaseFlowResults):
     payout_ratio_observed : float
         The payout ratio used to derive dividends from earnings.
     """
+
     projected_dividends: list[float]
     payout_ratio_observed: float
 
@@ -131,6 +139,7 @@ class RIMResults(BaseModel):
     strategy_trace : List[CalculationStep]
         Audit trail specific to RIM.
     """
+
     current_book_value: float
     projected_book_values: list[float] = Field(..., description="Evolution of Equity Book Value.")
     projected_residual_incomes: list[float] = Field(..., description="Net Income - (Ke * BV).")
@@ -156,6 +165,7 @@ class GrahamResults(BaseModel):
     strategy_trace : List[CalculationStep]
         Audit trail of the formula inputs.
     """
+
     eps_used: float
     growth_estimate: float
     aaa_yield_used: float

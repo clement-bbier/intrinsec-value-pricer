@@ -75,9 +75,7 @@ class PeersRunner:
         # Signal A: P/E (Equity-based)
         if m.median_pe and m.median_pe > 0:
             signals["P/E"] = calculate_price_from_pe_multiple(
-                net_income=f.net_income_ttm or 0.0,
-                median_pe=m.median_pe,
-                shares=shares
+                net_income=f.net_income_ttm or 0.0, median_pe=m.median_pe, shares=shares
             )
 
         # Signal B: EV/EBITDA (Enterprise-based)
@@ -88,7 +86,7 @@ class PeersRunner:
                 net_debt=net_debt,
                 shares=shares,
                 minorities=minorities,
-                pensions=pensions
+                pensions=pensions,
             )
 
         # Signal C: EV/Revenue (Enterprise-based)
@@ -99,7 +97,7 @@ class PeersRunner:
                 net_debt=net_debt,
                 shares=shares,
                 minorities=minorities,
-                pensions=pensions
+                pensions=pensions,
             )
 
         if not signals:
@@ -110,16 +108,10 @@ class PeersRunner:
         # Weighted synthesis of all available signals
         final_iv = calculate_triangulated_price(signals)
 
-
-
         # --- 4. PACKAGING RESULTS ---
         return PeersResults(
-            median_multiples_used={
-                "P/E": m.median_pe,
-                "EV/EBITDA": m.median_ev_ebitda,
-                "EV/Revenue": m.median_ev_rev
-            },
+            median_multiples_used={"P/E": m.median_pe, "EV/EBITDA": m.median_ev_ebitda, "EV/Revenue": m.median_ev_rev},
             implied_prices=signals,
             peer_valuations=[],  # Reserved for future peer-by-peer deep analysis
-            final_relative_iv=final_iv
+            final_relative_iv=final_iv,
         )

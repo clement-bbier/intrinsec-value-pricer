@@ -54,20 +54,18 @@ class ScenarioAnalysisTab:
         # Prepare data for the generic UI chart component
         chart_data = []
         for variant in scenarios_res.outcomes:
-             chart_data.append({
-                "Scenario": variant.label,
-                "Value": variant.intrinsic_value,
-                "Upside": variant.upside_pct,
-                "Color": "green" if variant.upside_pct > 0 else "red"
-            })
+            chart_data.append(
+                {
+                    "Scenario": variant.label,
+                    "Value": variant.intrinsic_value,
+                    "Upside": variant.upside_pct,
+                    "Color": "green" if variant.upside_pct > 0 else "red",
+                }
+            )
 
         with st.container(border=True):
             # Visualization engine call (DRY / SoC)
-            display_scenario_comparison_chart(
-                scenarios_data=chart_data,
-                market_price=market_price,
-                currency=currency
-            )
+            display_scenario_comparison_chart(scenarios_data=chart_data, market_price=market_price, currency=currency)
 
         st.write("")
 
@@ -75,12 +73,14 @@ class ScenarioAnalysisTab:
         with st.container(border=True):
             table_data = []
             for variant in scenarios_res.outcomes:
-                table_data.append({
-                    QuantTexts.COL_SCENARIO: variant.label,
-                    QuantTexts.COL_PROBABILITY: variant.probability,
-                    QuantTexts.COL_VALUE_PER_SHARE: variant.intrinsic_value,
-                    QuantTexts.COL_UPSIDE: variant.upside_pct
-                })
+                table_data.append(
+                    {
+                        QuantTexts.COL_SCENARIO: variant.label,
+                        QuantTexts.COL_PROBABILITY: variant.probability,
+                        QuantTexts.COL_VALUE_PER_SHARE: variant.intrinsic_value,
+                        QuantTexts.COL_UPSIDE: variant.upside_pct,
+                    }
+                )
 
             df = pd.DataFrame(table_data)
 
@@ -94,16 +94,11 @@ class ScenarioAnalysisTab:
                     format="%.1%+",
                     min_value=-0.5,
                     max_value=0.5,
-                    color="blue" # Blue is neutral, the +/- sign indicates direction
-                )
+                    color="blue",  # Blue is neutral, the +/- sign indicates direction
+                ),
             }
 
-            st.dataframe(
-                df,
-                hide_index=True,
-                column_config=column_config,
-                width="stretch"
-            )
+            st.dataframe(df, hide_index=True, column_config=column_config, width="stretch")
 
         # --- 3. WEIGHTED SYNTHESIS (EXPECTED VALUE HUB) ---
         expected_val = scenarios_res.expected_intrinsic_value
@@ -117,7 +112,7 @@ class ScenarioAnalysisTab:
                     atom_kpi_metric(
                         label=QuantTexts.METRIC_WEIGHTED_VALUE,
                         value=format_smart_number(expected_val, currency=currency),
-                        help_text=KPITexts.HELP_IV
+                        help_text=KPITexts.HELP_IV,
                     )
 
                 with col_upside:
@@ -132,5 +127,5 @@ class ScenarioAnalysisTab:
                         value=f"{weighted_upside:+.1%}",
                         delta=f"{weighted_upside:+.1%}",
                         delta_color=color_delta,
-                        help_text=KPITexts.HELP_MOS
+                        help_text=KPITexts.HELP_MOS,
                     )

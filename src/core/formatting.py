@@ -21,11 +21,12 @@ from enum import Enum
 # Standard Institutional Colors (Tailwind CSS Palette)
 COLOR_POSITIVE = "#22C55E"  # Green-500
 COLOR_NEGATIVE = "#EF4444"  # Red-500
-COLOR_NEUTRAL = "#808080"   # Gray-500
+COLOR_NEUTRAL = "#808080"  # Gray-500
 
 
 class CurrencyPlacement(Enum):
     """Currency symbol placement strategy."""
+
     PREFIX = "prefix"  # e.g., $100
     SUFFIX = "suffix"  # e.g., 100 €
 
@@ -44,6 +45,7 @@ class CurrencyInfo:
     placement : CurrencyPlacement
         Where to position the symbol relative to the value.
     """
+
     code: str
     symbol: str
     placement: CurrencyPlacement
@@ -97,11 +99,7 @@ class CurrencyFormatter:
         pass
 
     def format(
-        self,
-        value: float | int | None,
-        currency_code: str = "USD",
-        decimals: int = 2,
-        smart_scale: bool = True
+        self, value: float | int | None, currency_code: str = "USD", decimals: int = 2, smart_scale: bool = True
     ) -> str:
         """
         Format a monetary value with proper currency symbol and placement.
@@ -139,8 +137,7 @@ class CurrencyFormatter:
 
         # Get currency info
         currency_info = self._CURRENCY_REGISTRY.get(
-            currency_code.upper(),
-            CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
+            currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
         )
 
         # Format the numeric value
@@ -155,7 +152,8 @@ class CurrencyFormatter:
         else:
             return f"{formatted_value} {currency_info.symbol}"
 
-    def _format_with_scale(self, value: float | int, decimals: int) -> str:
+    @staticmethod
+    def _format_with_scale(value: float | int, decimals: int) -> str:
         """
         Apply institutional scaling (M, B, T) to large values.
 
@@ -202,18 +200,12 @@ class CurrencyFormatter:
             Currency symbol.
         """
         currency_info = self._CURRENCY_REGISTRY.get(
-            currency_code.upper(),
-            CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
+            currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
         )
         return currency_info.symbol
 
 
-def format_smart_number(
-    val: float | int | None,
-    currency: str = "",
-    is_pct: bool = False,
-    decimals: int = 2
-) -> str:
+def format_smart_number(val: float | int | None, currency: str = "", is_pct: bool = False, decimals: int = 2) -> str:
     """
     Applies institutional Bloomberg-style formatting to numeric values.
     Handles large magnitudes (M, B, T) automatically.
@@ -238,6 +230,8 @@ def format_smart_number(
     -----
     Uses CurrencyFormatter for proper symbol placement when currency is provided.
     """
+    import math
+
     # 1. Handling Nulls/NaNs safely
     if val is None:
         return "-"
@@ -249,16 +243,11 @@ def format_smart_number(
     if is_pct:
         return f"{val:.{decimals}%}"
 
-    # 3. Use CurrencyFormatter if currency is provided
-    if currency:
-        formatter = CurrencyFormatter()
-        return formatter.format(val, currency_code=currency, decimals=decimals)
-
-    # 4. Fallback to simple scaling without currency
     abs_val = abs(val)
     suffix = ""
     scaled_val = float(val)
 
+    # 3. Magnitude scaling
     if abs_val >= 1e12:
         scaled_val = val / 1e12
         suffix = "T"
@@ -269,7 +258,13 @@ def format_smart_number(
         scaled_val = val / 1e6
         suffix = "M"
 
-    return f"{scaled_val:,.{decimals}f}{suffix}"
+    formatted = f"{scaled_val:,.{decimals}f}{suffix}"
+
+    # 4. Currency suffix (ISO code, not symbol)
+    if currency:
+        return f"{formatted} {currency}"
+
+    return formatted
 
 
 def get_delta_color(val: float, inverse: bool = False) -> str:

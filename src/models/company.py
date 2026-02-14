@@ -41,6 +41,7 @@ class Company(BaseModel):
     current_price : float
         Current share price (Reference Witness).
     """
+
     model_config = ConfigDict(frozen=True)
 
     ticker: str
@@ -67,7 +68,7 @@ class CompanySnapshot(BaseModel):
     Data Providers and the Resolver.
     """
 
-    model_config = ConfigDict(extra='ignore', arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)
 
     # --- 1. Identity Trace ---
     ticker: str

@@ -7,16 +7,17 @@ Comprehensive test suite for Graham Number valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/graham_value.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import GrahamParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import GrahamParameters
 from src.valuation.strategies.graham_value import GrahamNumberStrategy
 
 
@@ -44,29 +45,16 @@ class TestGrahamStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Graham parameters."""
-        strategy = GrahamParameters(
-            eps_normalized=6.00,
-            growth_estimate=0.10
-        )
+        strategy = GrahamParameters(eps_normalized=6.00, growth_estimate=0.10)
         common = CommonParameters(
             rates=FinancialRatesParameters(
-                risk_free_rate=0.04,
-                market_risk_premium=0.05,
-                beta=1.2,
-                tax_rate=0.21,
-                corporate_aaa_yield=0.045
+                risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21, corporate_aaa_yield=0.045
             ),
             capital=CapitalStructureParameters(
-                shares_outstanding=16000.0,
-                total_debt=120000.0,
-                cash_and_equivalents=50000.0
-            )
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
         )
-        return Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy,
-            common=common
-        )
+        return Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy, common=common)
 
     def test_glass_box_property(self, strategy):
         """Test glass_box_enabled property getter/setter."""
@@ -76,14 +64,19 @@ class TestGrahamStrategy:
         strategy.glass_box_enabled = True
         assert strategy.glass_box_enabled is True
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_execute_with_valid_inputs(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test successful execution with valid inputs."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0,
-            theoretical_formula="IV = (EPS * (8.5 + 2*g) * 4.4) / Y"
-        ))
+        mock_graham_calc.return_value = (
+            180.0,
+            CalculationStep(
+                step_key="GRAHAM",
+                label="Graham Value",
+                result=180.0,
+                theoretical_formula="IV = (EPS * (8.5 + 2*g) * 4.4) / Y",
+            ),
+        )
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -94,15 +87,13 @@ class TestGrahamStrategy:
         assert result.results.common.intrinsic_value_per_share == 180.0
         assert len(result.results.common.bridge_trace) > 0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_execute_with_glass_box_disabled(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test execution with glass box disabled."""
         strategy.glass_box_enabled = False
 
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -111,13 +102,11 @@ class TestGrahamStrategy:
         assert len(result.results.common.bridge_trace) == 0
         assert result.results.common.intrinsic_value_per_share == 180.0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_graham_multiplier_calculation(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test Graham multiplier calculation (8.5 + 2*g)."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute with 10% growth
         result = strategy.execute(basic_company, basic_params)
@@ -125,13 +114,11 @@ class TestGrahamStrategy:
         # Graham Multiplier = 8.5 + 2 * (0.10 * 100) = 8.5 + 20 = 28.5
         assert result.results.strategy.graham_multiplier == pytest.approx(28.5, rel=0.01)
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_eps_used_from_strategy_params(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test that EPS from strategy params is used."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -139,28 +126,21 @@ class TestGrahamStrategy:
         # Verify EPS used
         assert result.results.strategy.eps_used == 6.00
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_eps_fallback_to_company_data(self, mock_graham_calc, strategy, basic_company):
         """Test fallback to company EPS when strategy param is None."""
         # Setup params without EPS normalized
-        strategy_params = GrahamParameters(
-            eps_normalized=None,
-            growth_estimate=0.10
-        )
+        strategy_params = GrahamParameters(eps_normalized=None, growth_estimate=0.10)
         common = CommonParameters(
             rates=FinancialRatesParameters(corporate_aaa_yield=0.045),
-            capital=CapitalStructureParameters(shares_outstanding=16000.0)
+            capital=CapitalStructureParameters(shares_outstanding=16000.0),
         )
         params = Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy_params,
-            common=common
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
         )
 
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, params)
@@ -168,13 +148,11 @@ class TestGrahamStrategy:
         # Should use company EPS (6.00) as fallback
         assert result.results.strategy.eps_used == 6.00
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_growth_estimate_used(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test that growth estimate is properly used."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -182,31 +160,24 @@ class TestGrahamStrategy:
         # Verify growth estimate
         assert result.results.strategy.growth_estimate == 0.10
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
-    @patch('src.valuation.strategies.graham_value.ModelDefaults')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
+    @patch("src.valuation.strategies.graham_value.ModelDefaults")
     def test_growth_fallback_to_defaults(self, mock_defaults, mock_graham_calc, strategy, basic_company):
         """Test fallback to default growth when not provided."""
         mock_defaults.DEFAULT_GROWTH_RATE = 0.05
 
         # Setup params without growth estimate
-        strategy_params = GrahamParameters(
-            eps_normalized=6.00,
-            growth_estimate=None
-        )
+        strategy_params = GrahamParameters(eps_normalized=6.00, growth_estimate=None)
         common = CommonParameters(
             rates=FinancialRatesParameters(corporate_aaa_yield=0.045),
-            capital=CapitalStructureParameters(shares_outstanding=16000.0)
+            capital=CapitalStructureParameters(shares_outstanding=16000.0),
         )
         params = Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy_params,
-            common=common
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
         )
 
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, params)
@@ -214,13 +185,11 @@ class TestGrahamStrategy:
         # Should use default growth
         assert result.results.strategy.growth_estimate == 0.05
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_aaa_yield_used(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test that AAA yield is properly used."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -228,8 +197,8 @@ class TestGrahamStrategy:
         # Verify AAA yield
         assert result.results.strategy.aaa_yield_used == 0.045
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
-    @patch('src.valuation.strategies.graham_value.MacroDefaults')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
+    @patch("src.valuation.strategies.graham_value.MacroDefaults")
     def test_aaa_yield_fallback_to_defaults(self, mock_macro, mock_graham_calc, strategy, basic_company):
         """Test fallback to default AAA yield when not provided."""
         mock_macro.DEFAULT_CORPORATE_AAA_YIELD = 0.04
@@ -238,18 +207,14 @@ class TestGrahamStrategy:
         strategy_params = GrahamParameters(eps_normalized=6.00, growth_estimate=0.10)
         common = CommonParameters(
             rates=FinancialRatesParameters(corporate_aaa_yield=None),
-            capital=CapitalStructureParameters(shares_outstanding=16000.0)
+            capital=CapitalStructureParameters(shares_outstanding=16000.0),
         )
         params = Parameters(
-            structure=Company(ticker="AAPL", name="Apple Inc."),
-            strategy=strategy_params,
-            common=common
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
         )
 
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, params)
@@ -257,13 +222,11 @@ class TestGrahamStrategy:
         # Should use default AAA yield
         assert result.results.strategy.aaa_yield_used == 0.04
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_capital_structure_reconstruction(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test capital structure values are properly reconstructed."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -276,13 +239,11 @@ class TestGrahamStrategy:
         assert result.results.common.capital.enterprise_value == pytest.approx(2950000000000, rel=0.01)
         assert result.results.common.capital.market_cap == pytest.approx(2400000000000, rel=0.01)  # 16B * 150.0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_upside_calculation(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test upside percentage calculation."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute (current price is 150.0)
         result = strategy.execute(basic_company, basic_params)
@@ -290,13 +251,11 @@ class TestGrahamStrategy:
         # Upside = (180 - 150) / 150 = 0.20 (20%)
         assert result.results.common.upside_pct == pytest.approx(0.20, rel=0.01)
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_rates_reconstruction(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test rates are properly reconstructed."""
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -307,7 +266,7 @@ class TestGrahamStrategy:
         assert result.results.common.rates.cost_of_debt_after_tax == 0.0
         assert result.results.common.rates.corporate_aaa_yield == 0.045
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_zero_eps_handling(self, mock_graham_calc, strategy, basic_params):
         """Test handling of zero EPS."""
         # Create company with zero EPS
@@ -317,13 +276,11 @@ class TestGrahamStrategy:
         company_zero_eps.sector = CompanySector.TECHNOLOGY
         company_zero_eps.current_price = 150.0
         company_zero_eps.eps_ttm = 0.0
-        
+
         basic_params.strategy.eps_normalized = 0.0
 
         # Setup mock
-        mock_graham_calc.return_value = (0.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=0.0
-        ))
+        mock_graham_calc.return_value = (0.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=0.0))
 
         # Execute
         result = strategy.execute(company_zero_eps, basic_params)
@@ -332,15 +289,13 @@ class TestGrahamStrategy:
         assert result.results.common.intrinsic_value_per_share == 0.0
         assert result.results.strategy.eps_used == 0.0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_negative_growth_handling(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test handling of negative growth estimate."""
         basic_params.strategy.growth_estimate = -0.05
 
         # Setup mock - Graham formula can handle negative growth
-        mock_graham_calc.return_value = (120.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=120.0
-        ))
+        mock_graham_calc.return_value = (120.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=120.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -349,15 +304,13 @@ class TestGrahamStrategy:
         assert result.results.strategy.graham_multiplier == pytest.approx(-1.5, rel=0.01)
         assert result.results.common.intrinsic_value_per_share == 120.0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_high_growth_handling(self, mock_graham_calc, strategy, basic_company, basic_params):
         """Test handling of high growth estimate."""
         basic_params.strategy.growth_estimate = 0.25  # 25% growth
 
         # Setup mock
-        mock_graham_calc.return_value = (250.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=250.0
-        ))
+        mock_graham_calc.return_value = (250.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=250.0))
 
         # Execute
         result = strategy.execute(basic_company, basic_params)
@@ -366,7 +319,7 @@ class TestGrahamStrategy:
         assert result.results.strategy.graham_multiplier == pytest.approx(58.5, rel=0.01)
         assert result.results.common.intrinsic_value_per_share == 250.0
 
-    @patch('src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value')
+    @patch("src.valuation.strategies.graham_value.GrahamLibrary.compute_intrinsic_value")
     def test_missing_company_price_handling(self, mock_graham_calc, strategy, basic_params):
         """Test handling when company has no current price."""
         company_no_price = Mock(spec=Company)
@@ -379,9 +332,7 @@ class TestGrahamStrategy:
         company_no_price.eps_ttm = 6.00
 
         # Setup mock
-        mock_graham_calc.return_value = (180.0, CalculationStep(
-            step_key="GRAHAM", label="Graham Value", result=180.0
-        ))
+        mock_graham_calc.return_value = (180.0, CalculationStep(step_key="GRAHAM", label="Graham Value", result=180.0))
 
         # Execute
         result = strategy.execute(company_no_price, basic_params)

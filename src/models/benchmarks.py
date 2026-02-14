@@ -35,6 +35,7 @@ class SectorMultiples(BaseModel):
     pb_ratio : float | None
         Price to Book ratio (P/B).
     """
+
     pe_ratio: float | None = None
     ev_ebitda: float | None = None
     ev_revenue: float | None = None
@@ -56,6 +57,7 @@ class SectorPerformance(BaseModel):
     net_margin : float | None
         Average Net Income margin.
     """
+
     fcf_margin: float | None = Field(None, description="Average FCF margin of the sector.")
     revenue_growth: float | None = Field(None, description="Average revenue growth (3Y/5Y).")
     roe: float | None = Field(None, description="Average Return on Equity.")
@@ -84,6 +86,7 @@ class CompanyStats(BaseModel):
     piotroski_score : int
         Financial strength score (0-9).
     """
+
     # Valuation Multiples (Spot / TTM)
     pe_ratio: float | None = None
     ev_ebitda: float | None = None
@@ -191,6 +194,7 @@ class MarketContext(BaseModel):
     percentiles : Dict[str, Dict[str, float]]
         Percentile thresholds for key metrics (e.g., {'fcf_margin': {'p75': 0.18}}).
     """
+
     # --- Reference Identity ---
     reference_ticker: str = Field(..., description="The ETF or Index used as benchmark (e.g., XLK).")
     sector_name: str
@@ -205,6 +209,5 @@ class MarketContext(BaseModel):
 
     # --- Statistical Distribution (Optional) ---
     percentiles: dict[str, dict[str, float]] = Field(
-        default_factory=dict,
-        description="Percentile thresholds for key metrics."
+        default_factory=dict, description="Percentile thresholds for key metrics."
     )

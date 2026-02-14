@@ -42,16 +42,17 @@ def render_sidebar():
 
         # Use st.form to prevent rerun on every keystroke (debounce)
         with st.form("ticker_form", clear_on_submit=False):
-            new_ticker = st.text_input(
-                SidebarTexts.TICKER_LABEL,
-                value=state.ticker,
-                help="Enter a valid Yahoo Finance ticker (e.g. AAPL, MSFT, ^GSPC)."
-            ).upper().strip()
-
-            ticker_submitted = st.form_submit_button(
-                "Confirm Ticker",
-                width="stretch"
+            new_ticker = (
+                st.text_input(
+                    SidebarTexts.TICKER_LABEL,
+                    value=state.ticker,
+                    help="Enter a valid Yahoo Finance ticker (e.g. AAPL, MSFT, ^GSPC).",
+                )
+                .upper()
+                .strip()
             )
+
+            ticker_submitted = st.form_submit_button("Confirm Ticker", width="stretch")
 
         if ticker_submitted and new_ticker and new_ticker != state.ticker:
             state.ticker = new_ticker
@@ -85,7 +86,7 @@ def render_sidebar():
             SidebarTexts.METHOD_LABEL,
             options=method_options,
             index=method_options.index(state.selected_methodology),
-            format_func=lambda x: display_names.get(x, x.value)
+            format_func=lambda x: display_names.get(x, x.value),
         )
 
         if selected_method != state.selected_methodology:
@@ -100,7 +101,7 @@ def render_sidebar():
         is_expert = st.toggle(
             SidebarTexts.SOURCE_EXPERT,
             value=state.is_expert_mode,
-            help="Enable detailed manual overrides for all parameters."
+            help="Enable detailed manual overrides for all parameters.",
         )
 
         if is_expert != state.is_expert_mode:
@@ -111,11 +112,7 @@ def render_sidebar():
         st.divider()
 
         # Primary Action Button
-        if st.button(
-                CommonTexts.RUN_BUTTON,
-                type="primary",
-                width="stretch"
-        ):
+        if st.button(CommonTexts.RUN_BUTTON, type="primary", width="stretch"):
             AppController.handle_run_analysis()
 
         # --- FOOTER ---

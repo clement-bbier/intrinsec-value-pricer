@@ -61,7 +61,7 @@ class BacktestRunner:
             quarterly_income_stmt=pd.DataFrame(),
             quarterly_cash_flow=pd.DataFrame(),
             history=frozen_history,
-            is_valid=True
+            is_valid=True,
         )
 
     @staticmethod
@@ -95,7 +95,7 @@ class BacktestRunner:
 
             # Retrieve the last available closing price of the year
             # Note: We prioritize 'Close' over 'Adj Close' for historical valuation comparison
-            col = 'Close' if 'Close' in year_prices.columns else year_prices.columns[0]
+            col = "Close" if "Close" in year_prices.columns else year_prices.columns[0]
 
             # Use iloc[-1] to get the last trading day (e.g., Dec 29th or 30th)
             return float(year_prices[col].iloc[-1])
@@ -117,7 +117,7 @@ class BacktestRunner:
         target_col = None
         for col in df.columns:
             # Handle standard Datetime objects in columns
-            if hasattr(col, 'year') and col.year == year:
+            if hasattr(col, "year") and col.year == year:
                 target_col = col
                 break
             # Handle string columns if data was parsed differently (fallback)

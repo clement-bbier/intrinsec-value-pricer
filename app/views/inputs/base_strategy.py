@@ -97,15 +97,9 @@ class BaseStrategyView(ABC):
         # Step 4: Exit Value (Terminal Value logic)
         if self.SHOW_TERMINAL_SECTION:
             if self.MODE == ValuationMethodology.RIM:
-                widget_terminal_value_rim(
-                    formula_latex=UISharedTexts.FORMULA_TV_RIM,
-                    key_prefix=self.MODE.name
-                )
+                widget_terminal_value_rim(formula_latex=UISharedTexts.FORMULA_TV_RIM, key_prefix=self.MODE.name)
             else:
-                widget_terminal_value_dcf(
-                    mode=self.MODE,
-                    key_prefix=self.MODE.name
-                )
+                widget_terminal_value_dcf(mode=self.MODE, key_prefix=self.MODE.name)
 
         # Step 5: Equity Bridge (Structure adjustments)
         if self.SHOW_BRIDGE_SECTION:
@@ -150,11 +144,7 @@ class BaseStrategyView(ABC):
             term_method_key = f"{prefix}_{UIKeys.TV_METHOD}"
             term_method = st.session_state.get(term_method_key)
 
-            widget_monte_carlo(
-                self.MODE,
-                term_method,
-                custom_vols=self.get_custom_monte_carlo_vols()
-            )
+            widget_monte_carlo(self.MODE, term_method, custom_vols=self.get_custom_monte_carlo_vols())
 
         # 7. Sensitivity Analysis (WACC vs g)
         # Uses default "sens" prefix for global extension keys (no strategy prefix).
@@ -188,7 +178,7 @@ class BaseStrategyView(ABC):
         mapping = {
             ValuationMethodology.GRAHAM: {"base_flow_volatility": UISharedTexts.MC_VOL_EPS},
             ValuationMethodology.RIM: {"base_flow_volatility": UISharedTexts.MC_VOL_NI},
-            ValuationMethodology.DDM: {"base_flow_volatility": UISharedTexts.MC_VOL_DIV}
+            ValuationMethodology.DDM: {"base_flow_volatility": UISharedTexts.MC_VOL_DIV},
         }
         return mapping.get(self.MODE)
 

@@ -48,8 +48,7 @@ class TestNoDuplicateProjectionYears:
         """Strategy views must NOT display a projection years caption."""
         source = inspect.getsource(view_cls)
         assert "projection_years" not in source, (
-            f"{view_cls.__name__} still references 'projection_years' — "
-            "this must be managed solely by the sidebar."
+            f"{view_cls.__name__} still references 'projection_years' — this must be managed solely by the sidebar."
         )
 
     @pytest.mark.parametrize("view_cls", ALL_VIEWS, ids=lambda v: v.__name__)
@@ -57,8 +56,7 @@ class TestNoDuplicateProjectionYears:
         """Strategy views must NOT import SidebarTexts (DRY violation)."""
         source = inspect.getsource(view_cls)
         assert "SidebarTexts" not in source, (
-            f"{view_cls.__name__} imports SidebarTexts — "
-            "projection configuration belongs exclusively in the sidebar."
+            f"{view_cls.__name__} imports SidebarTexts — projection configuration belongs exclusively in the sidebar."
         )
 
     @pytest.mark.parametrize("view_cls", ALL_VIEWS, ids=lambda v: v.__name__)
@@ -66,8 +64,7 @@ class TestNoDuplicateProjectionYears:
         """Strategy views should NOT import get_state (state is sidebar-managed)."""
         source = inspect.getsource(view_cls)
         assert "get_state" not in source, (
-            f"{view_cls.__name__} imports get_state — "
-            "state access for projection years should be in the sidebar only."
+            f"{view_cls.__name__} imports get_state — state access for projection years should be in the sidebar only."
         )
 
 
@@ -77,7 +74,8 @@ class TestSharedWidgetsDRY:
     def test_no_widget_projection_years(self):
         """The widget_projection_years function must be removed from shared_widgets."""
         from app.views.inputs.strategies import shared_widgets
-        assert not hasattr(shared_widgets, 'widget_projection_years'), (
+
+        assert not hasattr(shared_widgets, "widget_projection_years"), (
             "widget_projection_years still exists in shared_widgets.py — must be removed."
         )
 
@@ -85,15 +83,19 @@ class TestSharedWidgetsDRY:
 class TestStrategyViewConfiguration:
     """Tests that each strategy view has correct configuration."""
 
-    @pytest.mark.parametrize("view_cls,expected_mode", [
-        (FCFFStandardView, ValuationMethodology.FCFF_STANDARD),
-        (FCFFNormalizedView, ValuationMethodology.FCFF_NORMALIZED),
-        (FCFFGrowthView, ValuationMethodology.FCFF_GROWTH),
-        (FCFEView, ValuationMethodology.FCFE),
-        (DDMView, ValuationMethodology.DDM),
-        (RIMBankView, ValuationMethodology.RIM),
-        (GrahamValueView, ValuationMethodology.GRAHAM),
-    ], ids=lambda v: v.__name__ if isinstance(v, type) else str(v))
+    @pytest.mark.parametrize(
+        "view_cls,expected_mode",
+        [
+            (FCFFStandardView, ValuationMethodology.FCFF_STANDARD),
+            (FCFFNormalizedView, ValuationMethodology.FCFF_NORMALIZED),
+            (FCFFGrowthView, ValuationMethodology.FCFF_GROWTH),
+            (FCFEView, ValuationMethodology.FCFE),
+            (DDMView, ValuationMethodology.DDM),
+            (RIMBankView, ValuationMethodology.RIM),
+            (GrahamValueView, ValuationMethodology.GRAHAM),
+        ],
+        ids=lambda v: v.__name__ if isinstance(v, type) else str(v),
+    )
     def test_mode_assignment(self, view_cls, expected_mode):
         """Each view must be correctly bound to its methodology."""
         assert view_cls.MODE == expected_mode
@@ -157,6 +159,4 @@ class TestViewDocstrings:
     def test_render_method_has_docstring(self, view_cls):
         """Each render_model_inputs method must have a docstring."""
         method = view_cls.render_model_inputs
-        assert method.__doc__ is not None, (
-            f"{view_cls.__name__}.render_model_inputs lacks a docstring."
-        )
+        assert method.__doc__ is not None, f"{view_cls.__name__}.render_model_inputs lacks a docstring."

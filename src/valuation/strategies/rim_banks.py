@@ -71,9 +71,7 @@ class RIMBankingStrategy(IValuationRunner):
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # RIM is a Direct Equity method -> Discount at Cost of Equity
         ke, step_ke = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=True
+            financials=financials, params=params, use_cost_of_equity_only=True
         )
         if self._glass_box:
             steps.append(step_ke)
@@ -82,40 +80,39 @@ class RIMBankingStrategy(IValuationRunner):
         # A. Book Value Per Share (B0)
         # Priority: Strategy Input > TTM Snapshot
         user_bv = strategy_params.book_value_anchor
-        bv_anchor = user_bv if user_bv is not None else (getattr(financials, 'book_value_ps', None) or 0.0)
+        bv_anchor = user_bv if user_bv is not None else (getattr(financials, "book_value_ps", None) or 0.0)
 
         # B. Earnings Per Share (E0)
         # Note: RIMParameters might not have eps_anchor explicit field (inherits from BaseProjectedParameters),
         # but we can check if it exists or fallback to TTM.
         # Ideally, we should add 'eps_anchor' to RIMParameters.
         # Fallback logic: check 'eps_normalized' if Graham params shared, else TTM.
-        eps_ttm = getattr(financials, 'eps_ttm', None) or 0.0
+        eps_ttm = getattr(financials, "eps_ttm", None) or 0.0
         # If user overrides net income or EPS via a specific field (to be defined in Model), we use it.
         # Here we use TTM as primary or assume Resolver handled overrides into `eps_ttm` equivalent.
         eps_anchor = eps_ttm
 
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="RIM_ANCHORS",
-                label=RegistryTexts.RIM_BV_L,
-                theoretical_formula=StrategyFormulas.BV_BASE,
-                actual_calculation=f"BVPS: {bv_anchor:.2f} | EPS: {eps_anchor:.2f}",
-                result=bv_anchor,
-                interpretation=StrategyInterpretations.RIM_BV_D,
-                source=StrategySources.MANUAL_OVERRIDE if user_bv else StrategySources.YAHOO_TTM_SIMPLE,
-                variables_map={
-                    "B_0": VariableInfo(symbol="B_0", value=bv_anchor, source=VariableSource.SYSTEM),
-                    "E_0": VariableInfo(symbol="E_0", value=eps_anchor, source=VariableSource.SYSTEM)
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="RIM_ANCHORS",
+                    label=RegistryTexts.RIM_BV_L,
+                    theoretical_formula=StrategyFormulas.BV_BASE,
+                    actual_calculation=f"BVPS: {bv_anchor:.2f} | EPS: {eps_anchor:.2f}",
+                    result=bv_anchor,
+                    interpretation=StrategyInterpretations.RIM_BV_D,
+                    source=StrategySources.MANUAL_OVERRIDE if user_bv else StrategySources.YAHOO_TTM_SIMPLE,
+                    variables_map={
+                        "B_0": VariableInfo(symbol="B_0", value=bv_anchor, source=VariableSource.SYSTEM),
+                        "E_0": VariableInfo(symbol="E_0", value=eps_anchor, source=VariableSource.SYSTEM),
+                    },
+                )
+            )
 
         # --- STEP 3: Projection (Clean Surplus) ---
         # Projects RI, BV, and EPS
         ri_flows, bv_flows, eps_flows, step_proj = RIMLibrary.project_residual_income(
-            current_book_value=bv_anchor,
-            base_earnings=eps_anchor,
-            cost_of_equity=ke,
-            params=params
+            current_book_value=bv_anchor, base_earnings=eps_anchor, cost_of_equity=ke, params=params
         )
         if self._glass_box:
             steps.append(step_proj)
@@ -129,10 +126,7 @@ class RIMBankingStrategy(IValuationRunner):
         # --- STEP 5: Aggregation (Total Value) ---
         # Note: The result is directly Value Per Share because inputs were Per Share
         iv_raw, step_agg = RIMLibrary.compute_equity_value(
-            current_book_value=bv_anchor,
-            residual_incomes=ri_flows,
-            terminal_value=tv,
-            cost_of_equity=ke
+            current_book_value=bv_anchor, residual_incomes=ri_flows, terminal_value=tv, cost_of_equity=ke
         )
         if self._glass_box:
             steps.append(step_agg)
@@ -143,7 +137,7 @@ class RIMBankingStrategy(IValuationRunner):
         iv_per_share, step_dil = DCFLibrary.compute_value_per_share(
             # Convert to Total for the standard func
             equity_value=iv_raw * (params.common.capital.shares_outstanding or 1.0),
-            params=params
+            params=params,
         )
         # Note: compute_value_per_share divides by shares again.
         # Optimization: Call simple dilution utility directly?
@@ -169,7 +163,7 @@ class RIMBankingStrategy(IValuationRunner):
             market_cap=shares * price,
             enterprise_value=equity_total + net_debt,
             net_debt_resolved=net_debt,
-            equity_value_total=equity_total
+            equity_value_total=equity_total,
         )
 
         # C. Common Results
@@ -178,7 +172,7 @@ class RIMBankingStrategy(IValuationRunner):
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
             upside_pct=((iv_per_share - price) / price) if price > 0 else 0.0,
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         # D. Strategy Specific (RIM)
@@ -191,19 +185,12 @@ class RIMBankingStrategy(IValuationRunner):
             projected_residual_incomes=ri_flows,
             terminal_value_ri=tv,
             discounted_terminal_value=pv_tv,
-            strategy_trace=[]
+            strategy_trace=[],
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.RIM,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.RIM, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
@@ -234,21 +221,21 @@ class RIMBankingStrategy(IValuationRunner):
         strategy_params = cast(RIMParameters, params.strategy)
 
         # 1. Unpack Vectors
-        ke_vec = vectors['wacc'] # Cost of Equity
-        g_p1 = vectors['growth'] # Growth of EPS/Book
+        ke_vec = vectors["wacc"]  # Cost of Equity
+        g_p1 = vectors["growth"]  # Growth of EPS/Book
 
         # 2. Establish Anchors (B0 and EPS0)
         # Note: We use 'financials' here because params might not have the anchor set.
-        b0 = strategy_params.book_value_anchor or (getattr(financials, 'book_value_ps', None) or 10.0)
+        b0 = strategy_params.book_value_anchor or (getattr(financials, "book_value_ps", None) or 10.0)
 
         # Base Flow Vector represents the shocked starting Earnings Power (EPS)
         # Assumes vectors['base_flow'] is centered around the TTM EPS or 1.0 multiplier
-        eps_vec = vectors['base_flow']
+        eps_vec = vectors["base_flow"]
 
         # 3. Clean Surplus Recursion
         # We iterate over time (T=5), calculating full vectors at each step.
-        years = getattr(params.strategy, 'projection_years', 5) or 5
-        payout = 0.0 # Conservative assumption: Retain all earnings to grow Book
+        years = getattr(params.strategy, "projection_years", 5) or 5
+        payout = 0.0  # Conservative assumption: Retain all earnings to grow Book
 
         # Initialize state vectors [N_SIMS]
         current_b = np.full_like(ke_vec, b0)
@@ -275,7 +262,7 @@ class RIMBankingStrategy(IValuationRunner):
 
         # 4. Terminal Value (Ohlson Persistence)
         # TV = RI_n * omega / (1 + Ke - omega)
-        omega = getattr(params.strategy, 'persistence_factor', 0.6) or 0.6
+        omega = getattr(params.strategy, "persistence_factor", 0.6) or 0.6
 
         # Guardrail for denominator
         denom = np.maximum(1 + ke_vec - omega, 0.001)

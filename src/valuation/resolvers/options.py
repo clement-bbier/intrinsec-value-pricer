@@ -104,7 +104,7 @@ class ExtensionResolver:
                 name=ScenarioDefaults.DEFAULT_CASE_NAME,
                 probability=ScenarioDefaults.DEFAULT_PROBABILITY,
                 growth_override=None,  # None respects the base model value
-                margin_override=None
+                margin_override=None,
             )
             params.cases.append(default_case)
 
@@ -129,7 +129,7 @@ class ExtensionResolver:
             logger.debug(
                 "[Resolver] Peer list size (%d) below recommended minimum (%d).",
                 len(params.tickers),
-                PeerDefaults.MIN_PEERS_REQUIRED
+                PeerDefaults.MIN_PEERS_REQUIRED,
             )
 
     @staticmethod

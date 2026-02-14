@@ -74,28 +74,30 @@ class SOTPRunner:
                 value=raw_ev_sum,
                 formatted_value=format_smart_number(raw_ev_sum),
                 source=VariableSource.MANUAL_OVERRIDE,  # Segments are user inputs
-                description=SOTPTexts.LBL_RAW_EV_SUM
+                description=SOTPTexts.LBL_RAW_EV_SUM,
             ),
             "Disc": VariableInfo(
                 symbol="Disc",
                 value=discount_rate,
                 formatted_value=f"{discount_rate:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description=SOTPTexts.LBL_DISCOUNT
-            )
+                description=SOTPTexts.LBL_DISCOUNT,
+            ),
         }
 
-        steps.append(CalculationStep(
-            step_id=1,
-            step_key="SOTP_EV_CONSOLIDATION",
-            label=SOTPTexts.STEP_LABEL_CONSOLIDATION,
-            theoretical_formula=SOTPTexts.FORMULA_CONSOLIDATION,
-            actual_calculation=f"{format_smart_number(raw_ev_sum)} × (1 - {discount_rate:.1%})",
-            result=consolidated_ev,
-            unit="currency",
-            interpretation=SOTPTexts.INTERP_CONSOLIDATION.format(count=len(sotp_cfg.segments)),
-            variables_map=step1_vars
-        ))
+        steps.append(
+            CalculationStep(
+                step_id=1,
+                step_key="SOTP_EV_CONSOLIDATION",
+                label=SOTPTexts.STEP_LABEL_CONSOLIDATION,
+                theoretical_formula=SOTPTexts.FORMULA_CONSOLIDATION,
+                actual_calculation=f"{format_smart_number(raw_ev_sum)} × (1 - {discount_rate:.1%})",
+                result=consolidated_ev,
+                unit="currency",
+                interpretation=SOTPTexts.INTERP_CONSOLIDATION.format(count=len(sotp_cfg.segments)),
+                variables_map=step1_vars,
+            )
+        )
 
         # --- STEP 2: CONSOLIDATED EQUITY BRIDGE ---
         # Global adjustments from the consolidated balance sheet.
@@ -120,53 +122,55 @@ class SOTPRunner:
                 symbol="EV",
                 value=consolidated_ev,
                 formatted_value=format_smart_number(consolidated_ev),
-                source=VariableSource.CALCULATED, # It comes from Step 1
-                description=RegistryTexts.DCF_EV_L
+                source=VariableSource.CALCULATED,  # It comes from Step 1
+                description=RegistryTexts.DCF_EV_L,
             ),
             "Debt": VariableInfo(
                 symbol="Debt",
                 value=debt,
                 formatted_value=format_smart_number(debt),
                 source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_DEBT
+                description=KPITexts.LABEL_DEBT,
             ),
             "Cash": VariableInfo(
                 symbol="Cash",
                 value=cash,
                 formatted_value=format_smart_number(cash),
                 source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_CASH
+                description=KPITexts.LABEL_CASH,
             ),
             "Min": VariableInfo(
                 symbol="Min",
                 value=minorities,
                 formatted_value=format_smart_number(minorities),
                 source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_MINORITIES
+                description=KPITexts.LABEL_MINORITIES,
             ),
             "Pens": VariableInfo(
                 symbol="Pens",
                 value=pensions,
                 formatted_value=format_smart_number(pensions),
                 source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_PENSIONS
-            )
+                description=KPITexts.LABEL_PENSIONS,
+            ),
         }
 
-        steps.append(CalculationStep(
-            step_id=2,
-            step_key="SOTP_EQUITY_BRIDGE",
-            label=RegistryTexts.DCF_BRIDGE_L,
-            theoretical_formula=SOTPTexts.FORMULA_BRIDGE,
-            actual_calculation=(
-                f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
-                f"{format_smart_number(cash)} ..."
-            ),
-            result=equity_value,
-            unit="currency",
-            interpretation=RegistryTexts.DCF_BRIDGE_D,
-            variables_map=step2_vars
-        ))
+        steps.append(
+            CalculationStep(
+                step_id=2,
+                step_key="SOTP_EQUITY_BRIDGE",
+                label=RegistryTexts.DCF_BRIDGE_L,
+                theoretical_formula=SOTPTexts.FORMULA_BRIDGE,
+                actual_calculation=(
+                    f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
+                    f"{format_smart_number(cash)} ..."
+                ),
+                result=equity_value,
+                unit="currency",
+                interpretation=RegistryTexts.DCF_BRIDGE_D,
+                variables_map=step2_vars,
+            )
+        )
 
         # --- STEP 3: PACKAGING ---
         segment_map = {s.name: (s.value or 0.0) for s in sotp_cfg.segments}
@@ -176,5 +180,5 @@ class SOTPRunner:
             segment_values=segment_map,
             implied_equity_value=equity_value,
             equity_value_per_share=per_share_value,
-            sotp_trace=steps
+            sotp_trace=steps,
         )

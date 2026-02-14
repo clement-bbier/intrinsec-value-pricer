@@ -35,9 +35,7 @@ class GrahamLibrary:
     """
 
     @staticmethod
-    def compute_intrinsic_value(
-            params: Parameters
-    ) -> tuple[float, CalculationStep]:
+    def compute_intrinsic_value(params: Parameters) -> tuple[float, CalculationStep]:
         """
         Calculates value using the Graham Formula (1974).
 
@@ -66,18 +64,26 @@ class GrahamLibrary:
         # 3. Trace
         variables = {
             "EPS": VariableInfo(
-                symbol="EPS", value=eps, formatted_value=format_smart_number(eps),
-                source=VariableSource.SYSTEM, description="Normalized Earnings Per Share"
+                symbol="EPS",
+                value=eps,
+                formatted_value=format_smart_number(eps),
+                source=VariableSource.SYSTEM,
+                description="Normalized Earnings Per Share",
             ),
             "g": VariableInfo(
-                symbol="g", value=g_decimal, formatted_value=f"{g_decimal:.1%}",
+                symbol="g",
+                value=g_decimal,
+                formatted_value=f"{g_decimal:.1%}",
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Expected Growth Rate"
+                description="Expected Growth Rate",
             ),
             "Y": VariableInfo(
-                symbol="Y", value=aaa_yield, formatted_value=f"{aaa_yield:.2%}",
-                source=VariableSource.SYSTEM, description="AAA Corporate Bond Yield"
-            )
+                symbol="Y",
+                value=aaa_yield,
+                formatted_value=f"{aaa_yield:.2%}",
+                source=VariableSource.SYSTEM,
+                description="AAA Corporate Bond Yield",
+            ),
         }
 
         # Pre-format calculation string for clarity
@@ -92,7 +98,7 @@ class GrahamLibrary:
             result=iv,
             interpretation=StrategyInterpretations.GRAHAM_INT,
             source=StrategySources.FORMULA,
-            variables_map=variables
+            variables_map=variables,
         )
 
         return iv, step

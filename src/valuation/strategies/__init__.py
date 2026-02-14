@@ -33,16 +33,13 @@ from .standard_fcff import StandardFCFFStrategy
 __all__ = [
     # Interface
     "IValuationRunner",
-
     # Firm-Level DCF
     "StandardFCFFStrategy",
     "FundamentalFCFFStrategy",
     "RevenueGrowthFCFFStrategy",
-
     # Equity-Level
     "FCFEStrategy",
     "DividendDiscountStrategy",
-
     # Specific Models
     "RIMBankingStrategy",
     "GrahamNumberStrategy",

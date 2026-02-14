@@ -8,15 +8,16 @@ Coverage: End-to-end testing of guardrails blocking/warning/info behavior.
 """
 
 import pytest
-from src.valuation.orchestrator import ValuationOrchestrator
-from src.models.valuation import ValuationRequest
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import FCFFStandardParameters, TerminalValueParameters
-from src.models.parameters.common import CommonParameters, CapitalStructureParameters
-from src.models.parameters.options import ScenariosParameters, ScenarioParameters
-from src.models.company import Company, CompanySnapshot
-from src.models.enums import ValuationMethodology, CompanySector
+
 from src.core.exceptions import CalculationError
+from src.models.company import Company, CompanySnapshot
+from src.models.enums import CompanySector, ValuationMethodology
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters
+from src.models.parameters.options import ScenarioParameters
+from src.models.parameters.strategies import FCFFStandardParameters, TerminalValueParameters
+from src.models.valuation import ValuationRequest
+from src.valuation.orchestrator import ValuationOrchestrator
 
 
 @pytest.fixture
@@ -240,7 +241,5 @@ def test_guardrails_handle_missing_terminal_value_gracefully(orchestrator, base_
 
     assert result.audit_report is not None
     # Should have an INFO event about terminal growth not being set
-    terminal_growth_events = [
-        e for e in result.audit_report.events if "TERMINAL_GROWTH" in e.code
-    ]
+    terminal_growth_events = [e for e in result.audit_report.events if "TERMINAL_GROWTH" in e.code]
     assert len(terminal_growth_events) > 0

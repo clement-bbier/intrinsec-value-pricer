@@ -68,9 +68,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
 
         # --- STEP 1: WACC & Rates ---
         wacc, step_wacc = CommonLibrary.resolve_discount_rate(
-            financials=financials,
-            params=params,
-            use_cost_of_equity_only=False
+            financials=financials, params=params, use_cost_of_equity_only=False
         )
         if self._glass_box:
             steps.append(step_wacc)
@@ -81,22 +79,25 @@ class FundamentalFCFFStrategy(IValuationRunner):
 
         # Trace the Anchor Selection
         if self._glass_box:
-            steps.append(CalculationStep(
-                step_key="FCF_NORM_ANCHOR",
-                label=RegistryTexts.DCF_FCF_NORM_L,
-                theoretical_formula=StrategyFormulas.FCF_NORMALIZED,
-                actual_calculation=f"Selected Anchor: {fcf_anchor:,.2f}",
-                result=fcf_anchor,
-                interpretation=StrategyInterpretations.FUND_NORM,
-                source=StrategySources.MANUAL_OVERRIDE if user_norm_fcf else StrategySources.YAHOO_FUNDAMENTAL,
-                variables_map={
-                    "FCF_norm": VariableInfo(
-                        symbol="FCF_norm", value=fcf_anchor,
-                        source=VariableSource.MANUAL_OVERRIDE if user_norm_fcf else VariableSource.YAHOO_FINANCE,
-                        description="Normalized Free Cash Flow"
-                    )
-                }
-            ))
+            steps.append(
+                CalculationStep(
+                    step_key="FCF_NORM_ANCHOR",
+                    label=RegistryTexts.DCF_FCF_NORM_L,
+                    theoretical_formula=StrategyFormulas.FCF_NORMALIZED,
+                    actual_calculation=f"Selected Anchor: {fcf_anchor:,.2f}",
+                    result=fcf_anchor,
+                    interpretation=StrategyInterpretations.FUND_NORM,
+                    source=StrategySources.MANUAL_OVERRIDE if user_norm_fcf else StrategySources.YAHOO_FUNDAMENTAL,
+                    variables_map={
+                        "FCF_norm": VariableInfo(
+                            symbol="FCF_norm",
+                            value=fcf_anchor,
+                            source=VariableSource.MANUAL_OVERRIDE if user_norm_fcf else VariableSource.YAHOO_FINANCE,
+                            description="Normalized Free Cash Flow",
+                        )
+                    },
+                )
+            )
 
         # --- STEP 3: FCF Projection ---
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
@@ -137,7 +138,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
         res_rates = ResolvedRates(
             cost_of_equity=ke_var.value if ke_var and self._glass_box else 0.0,
             cost_of_debt_after_tax=kd_var.value if kd_var and self._glass_box else 0.0,
-            wacc=wacc
+            wacc=wacc,
         )
 
         shares = params.common.capital.shares_outstanding or 1.0
@@ -145,10 +146,9 @@ class FundamentalFCFFStrategy(IValuationRunner):
             market_cap=shares * (financials.current_price or 0.0),
             enterprise_value=ev,
             net_debt_resolved=(
-                (params.common.capital.total_debt or 0.0)
-                - (params.common.capital.cash_and_equivalents or 0.0)
+                (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
             ),
-            equity_value_total=equity_value
+            equity_value_total=equity_value,
         )
 
         common_res = CommonResults(
@@ -157,9 +157,10 @@ class FundamentalFCFFStrategy(IValuationRunner):
             intrinsic_value_per_share=iv_per_share,
             upside_pct=(
                 ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price else 0.0
+                if financials.current_price
+                else 0.0
             ),
-            bridge_trace=steps if self._glass_box else []
+            bridge_trace=steps if self._glass_box else [],
         )
 
         discount_factors = calculate_discount_factors(wacc, len(flows))
@@ -172,19 +173,12 @@ class FundamentalFCFFStrategy(IValuationRunner):
             discounted_terminal_value=pv_tv,
             tv_weight_pct=(pv_tv / ev) if ev > 0 else 0.0,
             strategy_trace=[],
-            normalized_fcf_used=fcf_anchor
+            normalized_fcf_used=fcf_anchor,
         )
 
         return ValuationResult(
-            request=ValuationRequest(
-                mode=ValuationMethodology.FCFF_NORMALIZED,
-                parameters=params
-            ),
-            results=Results(
-                common=common_res,
-                strategy=strategy_res,
-                extensions=ExtensionBundleResults()
-            )
+            request=ValuationRequest(mode=ValuationMethodology.FCFF_NORMALIZED, parameters=params),
+            results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
         )
 
     @staticmethod
@@ -194,13 +188,13 @@ class FundamentalFCFFStrategy(IValuationRunner):
         Identical math to Standard DCF, just using the shocked 'base_flow' which maps to Normalized FCF.
         """
         # 1. Unpack Vectors
-        wacc = vectors['wacc']
-        g_p1 = vectors['growth']
-        g_n  = vectors['terminal_growth']
-        fcf_0 = vectors['base_flow'] # Represents the shocked Normalized FCF
+        wacc = vectors["wacc"]
+        g_p1 = vectors["growth"]
+        g_n = vectors["terminal_growth"]
+        fcf_0 = vectors["base_flow"]  # Represents the shocked Normalized FCF
 
         # 2. Vectorized Projection
-        years = getattr(params.strategy, 'projection_years', 5) or 5
+        years = getattr(params.strategy, "projection_years", 5) or 5
         time_exponents = np.arange(1, years + 1)
 
         # Growth factors: (1+g)^t

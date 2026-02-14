@@ -1,6 +1,7 @@
 """
 src/i18n/fr/backend/__init__.py
 """
+
 # 2. Core Modules (Les survivants)
 from src.i18n.fr.backend.errors import CalculationErrors, DiagnosticTexts
 from src.i18n.fr.backend.models import ModelTexts
@@ -17,5 +18,5 @@ __all__ = [
     "StrategyInterpretations",
     "StrategySources",
     "SharedTexts",
-    "WorkflowTexts"
+    "WorkflowTexts",
 ]

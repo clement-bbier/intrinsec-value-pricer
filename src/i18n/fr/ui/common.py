@@ -3,6 +3,7 @@ core/i18n/fr/ui/common.py
 Textes transverses et métadonnées de base du système.
 Note : Version Institutionnelle - Zéro émoji - Terminologie Finance de Marché.
 """
+
 from src.models import VariableSource
 
 
@@ -53,9 +54,9 @@ class CommonTexts:
 
 class OnboardingTexts:
     """Contenu structurel de la page d'accueil et des piliers."""
+
     INTRO_INFO = (
-        "Solution d'analyse fondamentale quantitative pour l'estimation"
-        " de la valeur intrinsèque des capitaux propres."
+        "Solution d'analyse fondamentale quantitative pour l'estimation de la valeur intrinsèque des capitaux propres."
     )
     COMPLIANCE_BODY = (
         "Les modélisations produites reposent sur des algorithmes de flux"
@@ -70,14 +71,12 @@ class OnboardingTexts:
 
     MODEL_DCF_TITLE = "Approche Entité (FCFF)"
     MODEL_DCF_DESC = (
-        "Valeur de l'actif économique. Flux opérationnels actualisés"
-        " au coût moyen pondéré du capital (WACC)."
+        "Valeur de l'actif économique. Flux opérationnels actualisés au coût moyen pondéré du capital (WACC)."
     )
 
     MODEL_EQUITY_TITLE = "Approche Actionnaire (FCFE/DDM)"
     MODEL_EQUITY_DESC = (
-        "Valeur directe des fonds propres. Actualisation des flux nets"
-        " de dette au coût des fonds propres (Ke)."
+        "Valeur directe des fonds propres. Actualisation des flux nets de dette au coût des fonds propres (Ke)."
     )
 
     MODEL_RIM_TITLE = "Revenu Résiduel (Residual Income)"
@@ -88,22 +87,19 @@ class OnboardingTexts:
 
     MODEL_GRAHAM_TITLE = "Formule de Benjamin Graham"
     MODEL_GRAHAM_DESC = (
-        "Approche sécuritaire reliant la capacité bénéficiaire normalisée"
-        " aux taux obligataires sans risque."
+        "Approche sécuritaire reliant la capacité bénéficiaire normalisée aux taux obligataires sans risque."
     )
 
     # Section : Intelligence de Données
     TITLE_PROCESS = "Acquisition des données"
     STRATEGY_ACQUISITION_TITLE = "Extraction Automatisée"
     STRATEGY_ACQUISITION_DESC = (
-        "Récupération des états financiers et données macro"
-        " via fournisseurs de données institutionnels."
+        "Récupération des états financiers et données macro via fournisseurs de données institutionnels."
     )
 
     STRATEGY_MANUAL_TITLE = "Mode Ingénierie (Manual Override)"
     STRATEGY_MANUAL_DESC = (
-        "Permet l'ajustement granulaire des hypothèses de croissance,"
-        " de marge et de structure du capital."
+        "Permet l'ajustement granulaire des hypothèses de croissance, de marge et de structure du capital."
     )
 
     STRATEGY_FALLBACK_TITLE = "Données de Substitution"
@@ -146,12 +142,15 @@ class OnboardingTexts:
 
 class FeedbackMessages:
     """Messages système et alertes de validation."""
+
     TICKER_REQUIRED_SIDEBAR = "Identifiant (Ticker) requis pour initialiser l'analyse."
     TICKER_INVALID = "Symbole boursier non identifié par le fournisseur de données."
     CALCULATION_SUCCESS = "Valorisation terminée avec succès."
 
+
 class TooltipsTexts:
     """Aide contextuelle pour les concepts financiers (Indispensable pour corriger l'ImportError)."""
+
     MARKET_CAP_HELP = "Capitalisation boursière à la date d'analyse."
     WACC_HELP = "Coût Moyen Pondéré du Capital (WACC) utilisé pour actualiser les flux FCFF."
     KE_HELP = "Coût des fonds propres (Ke) utilisé pour actualiser les flux FCFE ou DDM."
@@ -163,6 +162,7 @@ class TooltipsTexts:
 
 class UIMessages:
     """Messages d'information et d'erreur de l'interface utilisateur."""
+
     BACKTEST_INSUFFICIENT_DATA = "Données historiques insuffisantes pour le backtesting."
     TECHNICAL_DETAILS = "Détails techniques"
     NO_VALID_PERIOD_DATA = "Historique financier insuffisant pour établir une tendance robuste."
@@ -188,10 +188,12 @@ class UIMessages:
     PDF_UNAVAILABLE = "Module d'exportation non détecté sur l'instance courante."
     PDF_ERROR = "Erreur lors de la génération du flux PDF."
 
+
 class LegalTexts:
     """
     Textes juridiques et de conformité (Disclaimers).
     """
+
     COMPLIANCE_TITLE = "AVERTISSEMENT LÉGAL"
     COMPLIANCE_BODY = (
         "Cet outil est une aide à la décision à usage strictement éducatif et informatif. "
