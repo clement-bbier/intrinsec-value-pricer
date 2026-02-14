@@ -417,7 +417,7 @@ def test_validate_scenario_probabilities_ok(base_parameters):
 
     assert result.type == "info"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_OK"
-    assert result.extra["prob_sum"] == 1.0
+    assert result.extra["prob_sum"] == pytest.approx(1.0)
 
 
 def test_validate_scenario_probabilities_over_limit(base_parameters):
