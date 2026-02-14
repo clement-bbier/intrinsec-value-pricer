@@ -95,7 +95,7 @@ def golden_high_growth_tech():
         # Market Rates - High Risk
         beta=1.8,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=0.055,  # 5.5%
+        market_risk_premium=5.5,  # 5.5% (whole number for percentage scaling)
         tax_rate=DEFAULT_TAX_RATE,
     )
 
@@ -161,7 +161,7 @@ def golden_distressed_company():
         # Market Rates - Very High Risk
         beta=2.5,
         risk_free_rate=DEFAULT_RISK_FREE_RATE,
-        market_risk_premium=0.06,  # 6%
+        market_risk_premium=6.0,  # 6% (whole number for percentage scaling)
         tax_rate=DEFAULT_TAX_RATE,
     )
 
@@ -227,7 +227,7 @@ def create_fcff_request(
         iterations=mc_iterations,
         random_seed=random_seed,
         shocks=StandardMCShocksParameters(
-            fcf_volatility=0.10,
+            fcf_volatility=10.0,  # 10% (whole number for percentage scaling)
         )
         if enable_mc
         else None,
@@ -254,7 +254,7 @@ class TestDeterministicValuations:
         Expected IV: ~$200-220 per share (frozen baseline).
         """
         orchestrator = ValuationOrchestrator()
-        request = create_fcff_request(golden_aapl_large_cap_tech, growth_rate=0.08)
+        request = create_fcff_request(golden_aapl_large_cap_tech, growth_rate=8.0)  # 8%
 
         result = orchestrator.run(request, golden_aapl_large_cap_tech)
 
@@ -287,7 +287,7 @@ class TestDeterministicValuations:
         Expected IV: High due to growth, but risk-adjusted.
         """
         orchestrator = ValuationOrchestrator()
-        request = create_fcff_request(golden_high_growth_tech, growth_rate=0.25)
+        request = create_fcff_request(golden_high_growth_tech, growth_rate=25.0)  # 25%
 
         result = orchestrator.run(request, golden_high_growth_tech)
 
@@ -309,7 +309,7 @@ class TestDeterministicValuations:
         Expected IV: Moderate, stable value due to low growth and low risk.
         """
         orchestrator = ValuationOrchestrator()
-        request = create_fcff_request(golden_mature_utility, growth_rate=0.02)
+        request = create_fcff_request(golden_mature_utility, growth_rate=2.0)  # 2%
 
         result = orchestrator.run(request, golden_mature_utility)
 
@@ -371,13 +371,13 @@ class TestMonteCarloReproducibility:
 
         # Run 1 with seed=42
         request1 = create_fcff_request(
-            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=8.0, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result1 = orchestrator.run(request1, golden_aapl_large_cap_tech)
 
         # Run 2 with same seed=42
         request2 = create_fcff_request(
-            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=8.0, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result2 = orchestrator.run(request2, golden_aapl_large_cap_tech)
 
@@ -409,13 +409,13 @@ class TestMonteCarloReproducibility:
 
         # Run 1 with seed=42
         request1 = create_fcff_request(
-            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=8.0, enable_mc=True, mc_iterations=1000, random_seed=42
         )
         result1 = orchestrator.run(request1, golden_aapl_large_cap_tech)
 
         # Run 2 with different seed=123
         request2 = create_fcff_request(
-            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=1000, random_seed=123
+            golden_aapl_large_cap_tech, growth_rate=8.0, enable_mc=True, mc_iterations=1000, random_seed=123
         )
         result2 = orchestrator.run(request2, golden_aapl_large_cap_tech)
 
@@ -448,7 +448,7 @@ class TestPerformanceGates:
         Target: <200ms locally, <500ms in CI.
         """
         orchestrator = ValuationOrchestrator()
-        request = create_fcff_request(golden_aapl_large_cap_tech, growth_rate=0.08)
+        request = create_fcff_request(golden_aapl_large_cap_tech, growth_rate=8.0)  # 8%
 
         result = orchestrator.run(request, golden_aapl_large_cap_tech)
 
@@ -467,7 +467,7 @@ class TestPerformanceGates:
         """
         orchestrator = ValuationOrchestrator()
         request = create_fcff_request(
-            golden_aapl_large_cap_tech, growth_rate=0.08, enable_mc=True, mc_iterations=10_000, random_seed=42
+            golden_aapl_large_cap_tech, growth_rate=8.0, enable_mc=True, mc_iterations=10_000, random_seed=42
         )
 
         result = orchestrator.run(request, golden_aapl_large_cap_tech)
