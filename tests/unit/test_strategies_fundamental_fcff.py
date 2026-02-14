@@ -7,17 +7,17 @@ Comprehensive test suite for Fundamental FCFF (Normalized) valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/fundamental_fcff.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
+from src.models.enums import CompanySector, ValuationMethodology
+from src.models.glass_box import CalculationStep
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
 from src.models.parameters.strategies import FCFFNormalizedParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
-from src.models.glass_box import CalculationStep, VariableInfo
-from src.models.enums import VariableSource
 from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 
 
@@ -91,7 +91,7 @@ class TestFundamentalFCFFStrategy:
         """Test successful execution with valid inputs."""
         # Create mock step with get_variable method
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key: 
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
             Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
         )
 
@@ -122,7 +122,7 @@ class TestFundamentalFCFFStrategy:
         assert result.results.common.intrinsic_value_per_share == 89.375
         assert result.results.common.rates.wacc == 0.08
         assert len(result.results.common.bridge_trace) > 0
-        
+
         # Verify WACC was used (not cost of equity only)
         assert mock_rate.call_args[1]['use_cost_of_equity_only'] is False
 
@@ -138,7 +138,7 @@ class TestFundamentalFCFFStrategy:
     ):
         """Test execution with manual growth vector."""
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key: 
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
             Mock(value=0.10) if key == "Ke" else Mock(value=0.05)
         )
 
@@ -284,7 +284,7 @@ class TestFundamentalFCFFStrategy:
     ):
         """Test rates are properly reconstructed from calculation steps."""
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key: 
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
             Mock(value=0.10) if key == "Ke" else Mock(value=0.05) if key == "Kd(1-t)" else Mock(value=0.0)
         )
 

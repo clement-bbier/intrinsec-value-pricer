@@ -10,8 +10,6 @@ Coverage Target: >85% for app/main.py.
 
 import inspect
 
-import pytest
-
 
 class TestMainStructure:
     """Tests the main application structure and imports."""
@@ -42,7 +40,7 @@ class TestFooterContent:
         source = inspect.getsource(render_footer)
         forbidden = ["\u2705", "\U0001f4ca", "\U0001f525", "\U0001f680"]
         for emoji in forbidden:
-            assert emoji not in source, f"Found forbidden emoji in render_footer"
+            assert emoji not in source, "Found forbidden emoji in render_footer"
 
 
 class TestPageConfig:
@@ -53,7 +51,7 @@ class TestPageConfig:
         source_file = inspect.getfile(
             __import__("app.main", fromlist=["main"]).main
         )
-        with open(source_file, "r") as f:
+        with open(source_file) as f:
             content = f.read()
         # The old emoji was replaced with a text icon
         assert "\U0001f4ca" not in content

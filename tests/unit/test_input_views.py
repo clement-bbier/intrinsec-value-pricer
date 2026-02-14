@@ -9,9 +9,6 @@ Coverage Target: >85% per file for input views.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-
 # =============================================================================
 # AUTO FORM
 # =============================================================================

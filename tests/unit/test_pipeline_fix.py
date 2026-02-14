@@ -19,7 +19,6 @@ import pytest
 from src.i18n import ExtensionTexts
 from src.models.parameters.options import (
     BacktestParameters,
-    ExtensionBundleParameters,
     MCParameters,
     PeersParameters,
     ScenariosParameters,

@@ -9,11 +9,9 @@ to result structure, ensuring all V2 paths are correct.
 
 import pytest
 
-from src.config.constants import MacroDefaults, ModelDefaults
 from src.models.company import Company, CompanySnapshot
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.common import CommonParameters
 from src.models.parameters.strategies import (
     FCFFStandardParameters,
     GrahamParameters,

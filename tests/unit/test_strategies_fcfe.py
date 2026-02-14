@@ -7,16 +7,17 @@ Comprehensive test suite for FCFE valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/fcfe.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import FCFEParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import FCFEParameters
 from src.valuation.strategies.fcfe import FCFEStrategy
 
 
@@ -114,7 +115,7 @@ class TestFCFEStrategy:
         assert result.results.common.intrinsic_value_per_share == 62.5
         assert result.results.common.rates.cost_of_equity == 0.10
         assert len(result.results.common.bridge_trace) > 0
-        
+
         # Verify mocks called with use_cost_of_equity_only=True
         assert mock_rate.call_args[1]['use_cost_of_equity_only'] is True
 
@@ -234,7 +235,7 @@ class TestFCFEStrategy:
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Total equity = PV(FCFE) + Cash
         # Note: cash_and_equivalents=50000.0 gets scaled to 50000000000 via BaseNormalizedModel
@@ -242,7 +243,7 @@ class TestFCFEStrategy:
         pv_equity = 950000
         scaled_cash = 50000 * 1_000_000  # 50000000000
         expected_equity_value = pv_equity + scaled_cash
-        
+
         # This value is passed to compute_value_per_share
         mock_per_share.assert_called_once()
         call_args = mock_per_share.call_args[0]
@@ -307,16 +308,16 @@ class TestFCFEStrategy:
         debt_base = 120000
         shares_base = 16000
         current_price = 150.0
-        
+
         scaled_cash = cash_base * scale_factor  # 50B
         scaled_debt = debt_base * scale_factor  # 120B
         scaled_shares = shares_base * scale_factor  # 16B
-        
+
         expected_equity_value = pv_equity + scaled_cash
         expected_net_debt = scaled_debt - scaled_cash
         expected_ev = expected_equity_value + scaled_debt - scaled_cash
         expected_market_cap = scaled_shares * current_price
-        
+
         assert result.results.common.capital.equity_value_total == expected_equity_value
         assert result.results.common.capital.net_debt_resolved == expected_net_debt
         assert result.results.common.capital.enterprise_value == expected_ev
@@ -407,7 +408,7 @@ class TestFCFEStrategy:
         mock_per_share.return_value = (59.375, CalculationStep(step_key="PS", label="PS", result=59.375))
 
         # Execute
-        result = strategy.execute(basic_company, params)
+        strategy.execute(basic_company, params)
 
         # Total equity should equal PV(FCFE) only (no cash to add)
         mock_per_share.assert_called_once()

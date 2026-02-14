@@ -7,16 +7,17 @@ Comprehensive test suite for Graham Number valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/graham_value.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import GrahamParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import GrahamParameters
 from src.valuation.strategies.graham_value import GrahamNumberStrategy
 
 
@@ -317,7 +318,7 @@ class TestGrahamStrategy:
         company_zero_eps.sector = CompanySector.TECHNOLOGY
         company_zero_eps.current_price = 150.0
         company_zero_eps.eps_ttm = 0.0
-        
+
         basic_params.strategy.eps_normalized = 0.0
 
         # Setup mock

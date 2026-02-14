@@ -7,16 +7,17 @@ Comprehensive test suite for RIM (Banks/Financial) valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/rim_banks.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import RIMParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import RIMParameters
 from src.valuation.strategies.rim_banks import RIMBankingStrategy
 
 
@@ -183,7 +184,7 @@ class TestRIMBankingStrategy:
         mock_per_share.return_value = (110.0, CalculationStep(step_key="PS", label="PS", result=110.0))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Verify EPS was passed to project_residual_income (12.0 from company)
         assert mock_project.call_args[1]['base_earnings'] == 12.0  # base_earnings as keyword arg

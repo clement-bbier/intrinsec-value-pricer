@@ -7,16 +7,17 @@ Comprehensive test suite for Revenue Growth FCFF valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/revenue_growth_fcff.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import FCFFGrowthParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import FCFFGrowthParameters
 from src.valuation.strategies.revenue_growth_fcff import RevenueGrowthFCFFStrategy
 
 
@@ -90,7 +91,7 @@ class TestRevenueGrowthFCFFStrategy:
     ):
         """Test successful execution with valid inputs."""
         mock_wacc_step = Mock(spec=CalculationStep)
-        mock_wacc_step.get_variable = Mock(side_effect=lambda key: 
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key:
             Mock(value=0.13) if key == "Ke" else Mock(value=0.06) if key == "Kd(1-t)" else Mock(value=0.0)
         )
 
@@ -194,7 +195,7 @@ class TestRevenueGrowthFCFFStrategy:
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
 
         # Execute
-        result = strategy.execute(basic_company, basic_params)
+        strategy.execute(basic_company, basic_params)
 
         # Current margin = FCF / Revenue = 8000 / 80000 = 0.10 (10%)
         # This is passed to project_flows_revenue_model

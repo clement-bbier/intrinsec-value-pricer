@@ -7,16 +7,17 @@ Comprehensive test suite for DDM valuation strategy.
 Target: ≥90% coverage of src/valuation/strategies/ddm.py
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+
+import pytest
 
 from src.models.company import Company
-from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.strategies import DDMParameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
-from src.models.enums import ValuationMethodology, CompanySector
+from src.models.enums import CompanySector, ValuationMethodology
 from src.models.glass_box import CalculationStep
+from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import CapitalStructureParameters, CommonParameters, FinancialRatesParameters
+from src.models.parameters.strategies import DDMParameters
 from src.valuation.strategies.ddm import DividendDiscountStrategy
 
 
@@ -83,7 +84,7 @@ class TestDDMStrategy:
     @patch('src.valuation.strategies.ddm.DCFLibrary.compute_discounting')
     @patch('src.valuation.strategies.ddm.DCFLibrary.compute_value_per_share')
     def test_execute_with_valid_inputs(
-        self, mock_per_share, mock_discount, mock_tv, mock_project, mock_rate, 
+        self, mock_per_share, mock_discount, mock_tv, mock_project, mock_rate,
         strategy, basic_company, basic_params
     ):
         """Test successful execution with valid inputs."""
@@ -115,7 +116,7 @@ class TestDDMStrategy:
         assert result.results.common.rates.cost_of_equity == 0.10
         assert len(result.results.common.bridge_trace) > 0
         assert result.results.strategy.projected_dividends == [3150, 3300, 3450, 3600, 3750]
-        
+
         # Verify mocks called
         mock_rate.assert_called_once()
         mock_project.assert_called_once()

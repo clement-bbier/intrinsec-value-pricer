@@ -8,27 +8,26 @@ Coverage Target: 100%
 """
 
 import pytest
-from src.valuation.guardrails import (
-    GuardrailCheckResult,
-    validate_terminal_growth,
-    validate_roic_spread,
-    validate_capital_structure,
-    validate_scenario_probabilities,
-    _extract_growth_rate,
-)
+
 from src.models.company import Company
+from src.models.enums import CompanySector
 from src.models.parameters.base_parameter import Parameters
-from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
+from src.models.parameters.options import ScenarioParameters
 from src.models.parameters.strategies import (
-    FCFFStandardParameters,
-    FCFFNormalizedParameters,
-    FCFFGrowthParameters,
     DDMParameters,
+    FCFFGrowthParameters,
+    FCFFNormalizedParameters,
+    FCFFStandardParameters,
     TerminalValueParameters,
 )
-from src.models.parameters.options import ExtensionBundleParameters, ScenariosParameters, ScenarioParameters
-from src.models.enums import CompanySector
-
+from src.valuation.guardrails import (
+    GuardrailCheckResult,
+    _extract_growth_rate,
+    validate_capital_structure,
+    validate_roic_spread,
+    validate_scenario_probabilities,
+    validate_terminal_growth,
+)
 
 # ==============================================================================
 # FIXTURES
@@ -98,9 +97,9 @@ def test_validate_terminal_growth_not_set(base_parameters):
     """Test when terminal growth is not specified."""
     # Remove terminal growth
     base_parameters.strategy.terminal_value.perpetual_growth_rate = None
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_NOT_SET"
     assert "not specified" in result.message.lower()
@@ -109,9 +108,9 @@ def test_validate_terminal_growth_not_set(base_parameters):
 def test_validate_terminal_growth_exceeds_wacc(base_parameters):
     """Test ERROR when g >= WACC."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.12
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC"
     assert "cannot converge" in result.message.lower()
@@ -122,9 +121,9 @@ def test_validate_terminal_growth_exceeds_wacc(base_parameters):
 def test_validate_terminal_growth_equals_wacc(base_parameters):
     """Test ERROR when g == WACC."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.10
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC"
 
@@ -132,9 +131,9 @@ def test_validate_terminal_growth_equals_wacc(base_parameters):
 def test_validate_terminal_growth_close_to_wacc(base_parameters):
     """Test WARNING when g is very close to WACC."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.096
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "warning"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_CLOSE_TO_WACC"
     assert "dangerously close" in result.message.lower()
@@ -144,9 +143,9 @@ def test_validate_terminal_growth_close_to_wacc(base_parameters):
 def test_validate_terminal_growth_ok(base_parameters):
     """Test INFO when g is positive and reasonable."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.03
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_OK"
     assert "adequate spread" in result.message.lower()
@@ -155,9 +154,9 @@ def test_validate_terminal_growth_ok(base_parameters):
 def test_validate_terminal_growth_conservative(base_parameters):
     """Test INFO when g is zero or negative."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.0
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_CONSERVATIVE"
     assert "conservative" in result.message.lower()
@@ -166,9 +165,9 @@ def test_validate_terminal_growth_conservative(base_parameters):
 def test_validate_terminal_growth_negative(base_parameters):
     """Test INFO when g is negative."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = -0.02
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_CONSERVATIVE"
 
@@ -181,7 +180,7 @@ def test_validate_roic_insufficient_data(base_company, base_parameters):
     """Test when EBIT data is not available."""
     # Company without ebit_ttm attribute
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_ROIC_DATA_INSUFFICIENT"
 
@@ -194,9 +193,9 @@ def test_validate_roic_invalid_capital(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 0.0
     base_parameters.common.capital.cash_and_equivalents = 50000.0  # Huge cash
     base_parameters.common.capital.shares_outstanding = 1.0
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code in ["GUARDRAIL_ROIC_INVALID_CAPITAL", "GUARDRAIL_ROIC_BELOW_WACC_WITH_GROWTH"]
 
@@ -208,9 +207,9 @@ def test_validate_roic_no_growth(base_company, base_parameters):
     base_parameters.common.capital.cash_and_equivalents = 1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
     base_parameters.strategy.growth_rate_p1 = 0.0  # No growth
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_ROIC_NO_GROWTH"
 
@@ -223,9 +222,9 @@ def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
     base_parameters.common.capital.shares_outstanding = 100.0
     base_parameters.common.rates.tax_rate = 0.21
     base_parameters.strategy.growth_rate_p1 = 0.05  # Positive growth
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
-    
+
     assert result.type == "warning"
     assert result.code == "GUARDRAIL_ROIC_BELOW_WACC_WITH_GROWTH"
     assert "value destruction" in result.message.lower()
@@ -243,9 +242,9 @@ def test_validate_roic_neutral(base_company, base_parameters):
     # Invested Capital = 5000 + 10000 - 1000 = 14000
     # ROIC = 790 / 14000 ≈ 0.056 (5.6%)
     base_parameters.strategy.growth_rate_p1 = 0.05
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.056)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_ROIC_NEUTRAL"
 
@@ -258,9 +257,9 @@ def test_validate_roic_above_wacc(base_company, base_parameters):
     base_parameters.common.capital.shares_outstanding = 100.0
     base_parameters.common.rates.tax_rate = 0.21
     base_parameters.strategy.growth_rate_p1 = 0.05
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.08)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_ROIC_ABOVE_WACC"
     assert "value creation" in result.message.lower()
@@ -274,9 +273,9 @@ def test_validate_capital_negative_debt(base_company, base_parameters):
     """Test ERROR when debt is negative."""
     base_parameters.common.capital.total_debt = -1000.0
     base_parameters.common.capital.shares_outstanding = 100.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_CAPITAL_NEGATIVE_DEBT"
 
@@ -286,9 +285,9 @@ def test_validate_capital_negative_cash(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 1000.0
     base_parameters.common.capital.cash_and_equivalents = -500.0
     base_parameters.common.capital.shares_outstanding = 100.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_CAPITAL_NEGATIVE_CASH"
 
@@ -298,9 +297,9 @@ def test_validate_capital_invalid_shares_none(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 1000.0
     base_parameters.common.capital.cash_and_equivalents = 500.0
     base_parameters.common.capital.shares_outstanding = None
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_CAPITAL_INVALID_SHARES"
 
@@ -310,9 +309,9 @@ def test_validate_capital_invalid_shares_zero(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 1000.0
     base_parameters.common.capital.cash_and_equivalents = 500.0
     base_parameters.common.capital.shares_outstanding = 0.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_CAPITAL_INVALID_SHARES"
 
@@ -322,9 +321,9 @@ def test_validate_capital_extreme_debt_equity(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 110000.0  # Very high debt (>10x equity)
     base_parameters.common.capital.cash_and_equivalents = 500.0
     base_parameters.common.capital.shares_outstanding = 100.0  # Market equity = 10000
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "warning"
     assert result.code == "GUARDRAIL_CAPITAL_EXTREME_DEBT_EQUITY"
     assert "extremely high" in result.message.lower()
@@ -335,9 +334,9 @@ def test_validate_capital_excessive_cash(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 1000.0
     base_parameters.common.capital.cash_and_equivalents = 6000.0  # 6x debt
     base_parameters.common.capital.shares_outstanding = 100.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "warning"
     assert result.code == "GUARDRAIL_CAPITAL_EXCESSIVE_CASH"
     assert "holding company" in result.message.lower()
@@ -348,9 +347,9 @@ def test_validate_capital_ok(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 5000.0
     base_parameters.common.capital.cash_and_equivalents = 2000.0
     base_parameters.common.capital.shares_outstanding = 100.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_CAPITAL_OK"
     assert result.extra["net_debt"] == 3000.0
@@ -363,9 +362,9 @@ def test_validate_capital_ok(base_company, base_parameters):
 def test_validate_scenario_not_enabled(base_parameters):
     """Test when scenarios are not enabled."""
     base_parameters.extensions.scenarios.enabled = False
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_SCENARIOS_NOT_ENABLED"
 
@@ -378,9 +377,9 @@ def test_validate_scenario_probabilities_invalid_sum(base_parameters):
         ScenarioParameters(name="Base", probability=0.4),
         ScenarioParameters(name="Bull", probability=0.2),  # Sum = 0.9
     ]
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM"
     assert result.extra["prob_sum"] == 0.9
@@ -394,9 +393,9 @@ def test_validate_scenario_probabilities_inexact(base_parameters):
         ScenarioParameters(name="Base", probability=0.34),
         ScenarioParameters(name="Bull", probability=0.33),  # Sum = 1.00 (approx)
     ]
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     # This should be WARNING or INFO depending on exact sum
     assert result.type in ["warning", "info"]
     if result.type == "warning":
@@ -411,9 +410,9 @@ def test_validate_scenario_probabilities_ok(base_parameters):
         ScenarioParameters(name="Base", probability=0.50),
         ScenarioParameters(name="Bull", probability=0.25),  # Sum = 1.0
     ]
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_OK"
     assert result.extra["prob_sum"] == 1.0
@@ -427,9 +426,9 @@ def test_validate_scenario_probabilities_over_limit(base_parameters):
         ScenarioParameters(name="Base", probability=0.5),
         ScenarioParameters(name="Bull", probability=0.3),  # Sum = 1.2
     ]
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     assert result.type == "error"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM"
 
@@ -441,9 +440,9 @@ def test_validate_scenario_probabilities_with_none(base_parameters):
         ScenarioParameters(name="Bear", probability=None),
         ScenarioParameters(name="Base", probability=1.0),
     ]
-    
+
     result = validate_scenario_probabilities(base_parameters)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_OK"
 
@@ -517,9 +516,9 @@ def test_extract_growth_rate_none():
 def test_validate_terminal_growth_very_small_spread(base_parameters):
     """Test boundary at exactly 0.5% spread."""
     base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.0955  # 9.55%, spread = 0.45%
-    
+
     result = validate_terminal_growth(base_parameters, wacc=0.10)
-    
+
     # Should be WARNING since spread is less than threshold
     assert result.type == "warning"
 
@@ -532,9 +531,9 @@ def test_validate_roic_with_zero_tax_rate(base_company, base_parameters):
     base_parameters.common.capital.shares_outstanding = 100.0
     base_parameters.common.rates.tax_rate = 0.0  # No tax
     base_parameters.strategy.growth_rate_p1 = 0.05
-    
+
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
-    
+
     # Should complete without error
     assert result.type in ["info", "warning"]
 
@@ -544,9 +543,9 @@ def test_validate_capital_zero_debt(base_company, base_parameters):
     base_parameters.common.capital.total_debt = 0.0
     base_parameters.common.capital.cash_and_equivalents = 5000.0
     base_parameters.common.capital.shares_outstanding = 100.0
-    
+
     result = validate_capital_structure(base_company, base_parameters)
-    
+
     # Should be OK, no warnings about excessive cash when debt is zero
     assert result.type == "info"
     assert result.code == "GUARDRAIL_CAPITAL_OK"
@@ -555,11 +554,11 @@ def test_validate_capital_zero_debt(base_company, base_parameters):
 def test_validate_terminal_growth_with_no_terminal_value_object(base_company):
     """Test when strategy has no terminal_value attribute at all."""
     from src.models.parameters.strategies import GrahamParameters
-    
+
     strategy = GrahamParameters()
     params = Parameters(structure=base_company, strategy=strategy)
-    
+
     result = validate_terminal_growth(params, wacc=0.10)
-    
+
     assert result.type == "info"
     assert result.code == "GUARDRAIL_TERMINAL_GROWTH_NOT_SET"

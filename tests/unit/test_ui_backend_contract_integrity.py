@@ -16,7 +16,6 @@ Coverage:
   6. shared_widgets.py references UIKeys for extension keys.
 """
 
-import ast
 import inspect
 
 import pytest
@@ -35,7 +34,6 @@ from src.models.parameters.options import (
     SensitivityParameters,
     SOTPParameters,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. UIKeys REGISTRY COMPLETENESS

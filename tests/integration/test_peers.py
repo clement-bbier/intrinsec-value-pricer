@@ -10,12 +10,11 @@ Note: peers.py has attribute name inconsistencies (uses ebitda_ttm instead of eb
 Tests use Mock objects to work around this.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from src.valuation.options.peers import PeersRunner
 from src.models.market_data import MultiplesData
 from src.models.results.options import PeersResults
+from src.valuation.options.peers import PeersRunner
 
 
 class TestPeersRunner:
@@ -37,7 +36,7 @@ class TestPeersRunner:
         self.mock_company.cash_and_equivalents = 50_000.0  # $50B
         self.mock_company.minority_interests = 1_000.0   # $1B
         self.mock_company.pension_provisions = 500.0      # $500M
-        
+
         # Standard multiples data
         self.mock_multiples = MultiplesData(
             is_valid=True,
@@ -49,23 +48,23 @@ class TestPeersRunner:
     def test_execute_with_all_multiples(self):
         """Test execution with all three multiples available."""
         result = PeersRunner.execute(self.mock_company, self.mock_multiples)
-        
+
         assert result is not None
         assert isinstance(result, PeersResults)
-        
+
         # Verify all three signals are present
         assert "P/E" in result.implied_prices
         assert "EV/EBITDA" in result.implied_prices
         assert "EV/Revenue" in result.implied_prices
-        
+
         # Verify signals are positive
         assert result.implied_prices["P/E"] > 0
         assert result.implied_prices["EV/EBITDA"] > 0
         assert result.implied_prices["EV/Revenue"] > 0
-        
+
         # Verify final IV is calculated
         assert result.final_relative_iv > 0
-        
+
         # Verify multiples are recorded
         assert result.median_multiples_used["P/E"] == 25.0
         assert result.median_multiples_used["EV/EBITDA"] == 15.0
@@ -84,7 +83,7 @@ class TestPeersRunner:
             median_ev_ebitda=15.0,
             median_ev_rev=5.0
         )
-        
+
         result = PeersRunner.execute(self.mock_company, invalid_multiples)
         assert result is None
 
@@ -96,14 +95,14 @@ class TestPeersRunner:
             median_ev_ebitda=0.0,  # Zero indicates missing
             median_ev_rev=0.0       # Zero indicates missing
         )
-        
+
         result = PeersRunner.execute(self.mock_company, pe_only)
-        
+
         assert result is not None
         assert "P/E" in result.implied_prices
         assert "EV/EBITDA" not in result.implied_prices
         assert "EV/Revenue" not in result.implied_prices
-        
+
         # Should still have a final IV based on P/E alone
         assert result.final_relative_iv > 0
 
@@ -115,14 +114,14 @@ class TestPeersRunner:
             median_ev_ebitda=15.0,
             median_ev_rev=0.0
         )
-        
+
         result = PeersRunner.execute(self.mock_company, ev_ebitda_only)
-        
+
         assert result is not None
         assert "P/E" not in result.implied_prices
         assert "EV/EBITDA" in result.implied_prices
         assert "EV/Revenue" not in result.implied_prices
-        
+
         assert result.final_relative_iv > 0
 
     def test_execute_with_only_ev_revenue_multiple(self):
@@ -133,14 +132,14 @@ class TestPeersRunner:
             median_ev_ebitda=0.0,
             median_ev_rev=5.0
         )
-        
+
         result = PeersRunner.execute(self.mock_company, ev_rev_only)
-        
+
         assert result is not None
         assert "P/E" not in result.implied_prices
         assert "EV/EBITDA" not in result.implied_prices
         assert "EV/Revenue" in result.implied_prices
-        
+
         assert result.final_relative_iv > 0
 
     def test_execute_with_zero_multiples(self):
@@ -151,9 +150,9 @@ class TestPeersRunner:
             median_ev_ebitda=-5.0,  # Negative - should be skipped
             median_ev_rev=0.0      # Zero - should be skipped
         )
-        
+
         result = PeersRunner.execute(self.mock_company, zero_multiples)
-        
+
         # Should return None as no valid signals generated
         assert result is None
 
@@ -171,9 +170,9 @@ class TestPeersRunner:
         incomplete_company.cash_and_equivalents = None
         incomplete_company.minority_interests = None
         incomplete_company.pension_provisions = None
-        
+
         result = PeersRunner.execute(incomplete_company, self.mock_multiples)
-        
+
         # Should still execute but with zero values
         # The calculation functions should handle zero inputs
         assert result is not None
@@ -192,7 +191,7 @@ class TestPeersRunner:
         zero_shares.cash_and_equivalents = 0.0
         zero_shares.minority_interests = 0.0
         zero_shares.pension_provisions = 0.0
-        
+
         # This might fail or return strange values - testing defensive behavior
         # The financial_math functions should handle this
         try:
@@ -218,9 +217,9 @@ class TestPeersRunner:
         cash_rich_company.cash_and_equivalents = 10_000.0  # High cash
         cash_rich_company.minority_interests = 0.0
         cash_rich_company.pension_provisions = 0.0
-        
+
         result = PeersRunner.execute(cash_rich_company, self.mock_multiples)
-        
+
         # Should handle negative net debt (net cash) properly
         assert result is not None
         assert result.final_relative_iv > 0
@@ -239,9 +238,9 @@ class TestPeersRunner:
         company_with_adjustments.cash_and_equivalents = 2_000.0
         company_with_adjustments.minority_interests = 500.0    # Non-zero
         company_with_adjustments.pension_provisions = 200.0     # Non-zero
-        
+
         result = PeersRunner.execute(company_with_adjustments, self.mock_multiples)
-        
+
         assert result is not None
         # The EV-based valuations should account for minorities and pensions
         assert "EV/EBITDA" in result.implied_prices
@@ -252,19 +251,19 @@ class TestPeersRunner:
         with patch('src.valuation.options.peers.calculate_price_from_pe_multiple') as mock_pe, \
              patch('src.valuation.options.peers.calculate_price_from_ev_multiple') as mock_ev, \
              patch('src.valuation.options.peers.calculate_triangulated_price') as mock_tri:
-            
+
             # Setup mocks
             mock_pe.return_value = 148.0
             mock_ev.return_value = 152.0
             mock_tri.return_value = 150.0
-            
+
             result = PeersRunner.execute(self.mock_company, self.mock_multiples)
-            
+
             # Verify functions were called
             assert mock_pe.called
             assert mock_ev.called  # Called twice for EV/EBITDA and EV/Revenue
             assert mock_tri.called
-            
+
             # Verify result
             assert result is not None
             assert result.final_relative_iv == 150.0
@@ -284,10 +283,10 @@ class TestPeersRunner:
         zero_company.cash_and_equivalents = 0.0
         zero_company.minority_interests = 0.0
         zero_company.pension_provisions = 0.0
-        
+
         # With valid multiples but zero financials
         result = PeersRunner.execute(zero_company, self.mock_multiples)
-        
+
         # Should handle gracefully - either return None or return result with zero/low values
         # The behavior depends on the financial_math functions
         if result is not None:
@@ -296,7 +295,7 @@ class TestPeersRunner:
     def test_execute_peer_valuations_list_is_empty(self):
         """Test that peer_valuations list is present but empty (reserved for future)."""
         result = PeersRunner.execute(self.mock_company, self.mock_multiples)
-        
+
         assert result is not None
         assert hasattr(result, 'peer_valuations')
         assert result.peer_valuations == []
@@ -310,7 +309,7 @@ class TestPeersRunner:
             median_ev_ebitda=15.0,
             median_ev_rev=0.0
         )
-        
+
         result = PeersRunner.execute(self.mock_company, two_multiples)
         assert result is not None
         assert len(result.implied_prices) == 2

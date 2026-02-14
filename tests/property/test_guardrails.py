@@ -9,26 +9,23 @@ Coverage: Invariants and mathematical properties that must hold for all inputs.
 """
 
 import pytest
-from hypothesis import given, assume, strategies as st
-from hypothesis import settings, HealthCheck
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
-from src.valuation.guardrails import (
-    validate_terminal_growth,
-    validate_roic_spread,
-    validate_capital_structure,
-    validate_scenario_probabilities,
-)
 from src.models.company import Company
 from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.common import (
-    CommonParameters,
-    FinancialRatesParameters,
     CapitalStructureParameters,
+    CommonParameters,
 )
+from src.models.parameters.options import ScenarioParameters
 from src.models.parameters.strategies import FCFFStandardParameters, TerminalValueParameters
-from src.models.parameters.options import ScenariosParameters, ScenarioParameters
-from src.models.enums import CompanySector
-
+from src.valuation.guardrails import (
+    validate_capital_structure,
+    validate_roic_spread,
+    validate_scenario_probabilities,
+    validate_terminal_growth,
+)
 
 # ==============================================================================
 # HYPOTHESIS STRATEGIES
@@ -62,7 +59,7 @@ shares_strategy = st.floats(min_value=1.0, max_value=1e5, allow_nan=False, allow
 def test_property_terminal_growth_divergence_always_caught(g, wacc):
     """
     Property: If g >= WACC, validate_terminal_growth MUST return error.
-    
+
     This ensures the guardrail never allows model divergence.
     """
     # Create minimal parameters with terminal growth
@@ -72,14 +69,14 @@ def test_property_terminal_growth_divergence_always_caught(g, wacc):
         terminal_value=TerminalValueParameters(perpetual_growth_rate=g),
     )
     params = Parameters(structure=company, strategy=strategy)
-    
+
     result = validate_terminal_growth(params, wacc=wacc)
-    
+
     # INVARIANT: If g >= WACC, must be ERROR
     if g >= wacc:
         assert result.type == "error", f"Failed: g={g}, wacc={wacc} should be ERROR but got {result.type}"
         assert result.code == "GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC"
-    
+
     # Additional check: result should always be valid
     assert result.type in ["error", "warning", "info"]
     assert isinstance(result.message, str)
@@ -95,30 +92,30 @@ def test_property_terminal_growth_divergence_always_caught(g, wacc):
 def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     """
     Property: For increasing WACC, the severity should decrease (more lenient).
-    
+
     If wacc1 < wacc2:
     - If ERROR at wacc1, should be ERROR or less severe at wacc2
     - If WARNING at wacc1, should be WARNING/INFO at wacc2
     """
     assume(wacc1 < wacc2)  # Ensure ordered
     assume(wacc2 - wacc1 > 0.01)  # Significant difference
-    
+
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(
         projection_years=5,
         terminal_value=TerminalValueParameters(perpetual_growth_rate=g),
     )
     params = Parameters(structure=company, strategy=strategy)
-    
+
     result1 = validate_terminal_growth(params, wacc=wacc1)
     result2 = validate_terminal_growth(params, wacc=wacc2)
-    
+
     # Map severity to numeric values for comparison
     severity_map = {"error": 3, "warning": 2, "info": 1}
-    
+
     sev1 = severity_map.get(result1.type, 0)
     sev2 = severity_map.get(result2.type, 0)
-    
+
     # INVARIANT: Increasing WACC should not increase severity
     assert sev2 <= sev1, f"Monotonicity violated: g={g}, wacc1={wacc1} ({result1.type}), wacc2={wacc2} ({result2.type})"
 
@@ -139,28 +136,28 @@ def test_property_scenario_probabilities_validation(probs):
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
-    
+
     # Enable scenarios and set probabilities
     params.extensions.scenarios.enabled = True
     params.extensions.scenarios.cases = [
         ScenarioParameters(name=f"Case{i}", probability=p)
         for i, p in enumerate(probs)
     ]
-    
+
     result = validate_scenario_probabilities(params)
-    
+
     prob_sum = sum(probs)
     tolerance = 0.01
-    
+
     # INVARIANT: If sum is outside [0.99, 1.01], must be ERROR
     if prob_sum < (1.0 - tolerance) or prob_sum > (1.0 + tolerance):
         assert result.type == "error", f"Failed: prob_sum={prob_sum} should be ERROR"
         assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM"
-    
+
     # INVARIANT: If sum is within tolerance but not exact, may be WARNING
     elif prob_sum != 1.0:
         assert result.type in ["warning", "info"], f"Unexpected type for prob_sum={prob_sum}: {result.type}"
-    
+
     # INVARIANT: If sum is exactly 1.0, must be INFO (OK)
     else:
         assert result.type == "info"
@@ -183,18 +180,18 @@ def test_property_scenario_probabilities_validation(probs):
 def test_property_no_division_by_zero(total_debt, cash, shares, price, wacc, g):
     """
     Property: Guardrail functions should never crash with division by zero.
-    
+
     Tests with various edge cases including zero values.
     """
     # Create company and parameters
     company = Company(ticker="TEST", name="Test", current_price=price)
-    
+
     strategy = FCFFStandardParameters(
         projection_years=5,
         growth_rate_p1=g,
         terminal_value=TerminalValueParameters(perpetual_growth_rate=g * 0.6),  # Terminal g < projection g
     )
-    
+
     params = Parameters(
         structure=company,
         strategy=strategy,
@@ -206,18 +203,18 @@ def test_property_no_division_by_zero(total_debt, cash, shares, price, wacc, g):
             )
         ),
     )
-    
+
     # All these should complete without exceptions (no division by zero)
     try:
         result1 = validate_terminal_growth(params, wacc=wacc)
         assert result1.type in ["error", "warning", "info"]
-        
+
         result2 = validate_capital_structure(company, params)
         assert result2.type in ["error", "warning", "info"]
-        
+
         result3 = validate_roic_spread(company, params, wacc=wacc)
         assert result3.type in ["error", "warning", "info"]
-        
+
     except ZeroDivisionError:
         pytest.fail("Division by zero occurred in guardrail validation")
     except Exception as e:
@@ -241,7 +238,7 @@ def test_property_no_division_by_zero(total_debt, cash, shares, price, wacc, g):
 def test_property_capital_structure_always_structured_result(total_debt, cash, shares):
     """
     Property: validate_capital_structure always returns a valid GuardrailCheckResult.
-    
+
     Even with invalid/negative inputs, should return structured error, not crash.
     """
     company = Company(ticker="TEST", name="Test", current_price=100.0)
@@ -257,9 +254,9 @@ def test_property_capital_structure_always_structured_result(total_debt, cash, s
             )
         ),
     )
-    
+
     result = validate_capital_structure(company, params)
-    
+
     # INVARIANT: Always returns a structured result
     assert hasattr(result, "type")
     assert hasattr(result, "message")
@@ -287,14 +284,14 @@ def test_property_capital_structure_always_structured_result(total_debt, cash, s
 def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, price, wacc):
     """
     Property: validate_roic_spread handles missing or invalid EBIT gracefully.
-    
+
     Should return INFO when data is insufficient, not crash.
     """
     company = Company(ticker="TEST", name="Test", current_price=price)
     if ebit is not None:
         # Use object.__setattr__ to bypass frozen model
         object.__setattr__(company, 'ebit_ttm', ebit)
-    
+
     strategy = FCFFStandardParameters(projection_years=5, growth_rate_p1=0.05)
     params = Parameters(
         structure=company,
@@ -307,13 +304,13 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
             )
         ),
     )
-    
+
     result = validate_roic_spread(company, params, wacc=wacc)
-    
+
     # INVARIANT: Never crashes, always returns structured result
     assert result.type in ["error", "warning", "info"]
     assert isinstance(result.code, str)
-    
+
     # If EBIT is None or invalid, should return INFO with insufficient data code
     if ebit is None or ebit <= 0:
         assert result.type == "info"
@@ -332,20 +329,20 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
 def test_property_extra_fields_json_serializable(g, wacc):
     """
     Property: All extra fields in GuardrailCheckResult must be JSON-serializable.
-    
+
     This ensures the results can be logged and transmitted.
     """
     import json
-    
+
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(
         projection_years=5,
         terminal_value=TerminalValueParameters(perpetual_growth_rate=g),
     )
     params = Parameters(structure=company, strategy=strategy)
-    
+
     result = validate_terminal_growth(params, wacc=wacc)
-    
+
     # INVARIANT: Extra dict must be JSON-serializable
     try:
         json.dumps(result.extra)
@@ -365,24 +362,24 @@ def test_property_extra_fields_json_serializable(g, wacc):
 def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
     """
     Property: The 0.5% threshold for WARNING is correctly applied.
-    
+
     Tests the boundary around WACC - 0.005 to ensure classification is correct.
     """
     # Set g to be just above or below the threshold
     threshold = 0.005
     g = base_wacc - threshold + epsilon
-    
+
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(
         projection_years=5,
         terminal_value=TerminalValueParameters(perpetual_growth_rate=g),
     )
     params = Parameters(structure=company, strategy=strategy)
-    
+
     result = validate_terminal_growth(params, wacc=base_wacc)
-    
+
     spread = base_wacc - g
-    
+
     # INVARIANT: Classification must be consistent with spread
     if g >= base_wacc:
         assert result.type == "error"
@@ -408,27 +405,27 @@ def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
 def test_property_scenario_probability_tolerance(base_prob, num_scenarios):
     """
     Property: The ±1% tolerance for scenario probabilities is correctly enforced.
-    
+
     Tests boundary cases around the 0.99-1.01 range.
     """
     # Distribute base_prob across num_scenarios
     probs = [base_prob / num_scenarios] * num_scenarios
-    
+
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
-    
+
     params.extensions.scenarios.enabled = True
     params.extensions.scenarios.cases = [
         ScenarioParameters(name=f"Case{i}", probability=p)
         for i, p in enumerate(probs)
     ]
-    
+
     result = validate_scenario_probabilities(params)
-    
+
     prob_sum = sum(probs)
     tolerance = 0.01
-    
+
     # INVARIANT: Tolerance enforcement is consistent
     if prob_sum < (1.0 - tolerance) or prob_sum > (1.0 + tolerance):
         assert result.type == "error"

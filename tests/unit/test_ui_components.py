@@ -10,16 +10,13 @@ Coverage Target: >85% per file.
 
 import inspect
 
-import pytest
-
+from app.views.components.step_renderer import _format_value, render_calculation_step
+from app.views.components.ui_glass_box_registry import STEP_METADATA, get_step_metadata
 from app.views.components.ui_kpis import (
     atom_benchmark_card,
     atom_kpi_metric,
     render_score_gauge,
 )
-from app.views.components.step_renderer import _format_value, render_calculation_step
-from app.views.components.ui_glass_box_registry import STEP_METADATA, get_step_metadata
-
 
 # =============================================================================
 # UI KPIs

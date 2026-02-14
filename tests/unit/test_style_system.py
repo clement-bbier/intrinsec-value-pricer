@@ -7,10 +7,7 @@ Role: Validates the centralized design system configuration.
 Coverage Target: >85% for app/assets/style_system.py.
 """
 
-import inspect
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import patch
 
 from app.assets.style_system import INSTITUTIONAL_CSS, inject_institutional_design, render_terminal_header
 

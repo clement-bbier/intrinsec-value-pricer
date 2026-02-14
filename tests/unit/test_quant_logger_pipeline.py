@@ -7,10 +7,11 @@ Role: Validates the new descriptive pipeline stage logging methods.
 Coverage Target: >85% for quant_logger.py pipeline methods.
 """
 
-import pytest
 from unittest.mock import patch
 
-from src.core.quant_logger import QuantLogger, LogDomain, LogLevel
+import pytest
+
+from src.core.quant_logger import LogDomain, QuantLogger
 
 
 @pytest.fixture

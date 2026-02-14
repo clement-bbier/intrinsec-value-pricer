@@ -7,41 +7,38 @@ Role: Validates all Pydantic models across the src/models/ package.
 Coverage: Company, Enums, Parameters (with scaling), Valuation envelopes.
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from pydantic import ValidationError
 
 from src.models import (
-    # Identity & Snapshots
-    Company,
-    CompanySnapshot,
-    
-    # Enums
-    ValuationMethodology,
-    TerminalValueMethod,
-    CompanySector,
-    ParametersSource,
-    VariableSource,
-    
-    # Parameters
-    FinancialRatesParameters,
     CapitalStructureParameters,
     CommonParameters,
+    # Identity & Snapshots
+    Company,
+    CompanySector,
+    CompanySnapshot,
     ExtensionBundleParameters,
+    # Parameters
+    FinancialRatesParameters,
     MCParameters,
     Parameters,
-    
+    ParametersSource,
+    TerminalValueMethod,
+    # Enums
+    ValuationMethodology,
     # Valuation Envelopes
     ValuationRequest,
     ValuationResult,
+    VariableSource,
 )
+from src.models.parameters.options import ScenariosParameters, SensitivityParameters
 from src.models.parameters.strategies import FCFFStandardParameters, GrahamParameters
-from src.models.parameters.options import SensitivityParameters, ScenariosParameters
 from src.models.results.base_result import Results
-from src.models.results.common import CommonResults, ResolvedRates, ResolvedCapital
-from src.models.results.strategies import FCFFStandardResults
+from src.models.results.common import CommonResults, ResolvedCapital, ResolvedRates
 from src.models.results.options import ExtensionBundleResults
-
+from src.models.results.strategies import FCFFStandardResults
 
 # ==============================================================================
 # 1. COMPANY & IDENTITY MODELS
@@ -51,7 +48,7 @@ from src.models.results.options import ExtensionBundleResults
 def test_company_creation_minimal():
     """Test Company creation with minimal required fields."""
     company = Company(ticker="AAPL")
-    
+
     assert company.ticker == "AAPL"
     assert company.name == "Unknown Entity"
     assert company.sector == CompanySector.UNKNOWN
@@ -64,7 +61,7 @@ def test_company_creation_minimal():
 def test_company_creation_full():
     """Test Company creation with all fields."""
     update_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-    
+
     company = Company(
         ticker="MSFT",
         name="Microsoft Corporation",
@@ -75,7 +72,7 @@ def test_company_creation_full():
         current_price=350.50,
         last_update=update_time
     )
-    
+
     assert company.ticker == "MSFT"
     assert company.name == "Microsoft Corporation"
     assert company.sector == CompanySector.TECHNOLOGY
@@ -89,7 +86,7 @@ def test_company_creation_full():
 def test_company_frozen_model():
     """Test that Company model is immutable (frozen)."""
     company = Company(ticker="AAPL", name="Apple Inc.")
-    
+
     with pytest.raises(ValidationError):
         company.ticker = "MSFT"
 
@@ -98,7 +95,7 @@ def test_company_frozen_model():
 def test_company_display_name_property():
     """Test the display_name computed property."""
     company = Company(ticker="TSLA", name="Tesla Inc.")
-    
+
     assert company.display_name == "TSLA - Tesla Inc."
 
 
@@ -106,7 +103,7 @@ def test_company_display_name_property():
 def test_company_timezone_aware_default():
     """Test that last_update uses timezone-aware datetime by default."""
     company = Company(ticker="GOOG")
-    
+
     assert company.last_update.tzinfo == timezone.utc
 
 
@@ -121,7 +118,7 @@ def test_company_negative_price_validation():
 def test_company_snapshot_minimal():
     """Test CompanySnapshot with minimal data."""
     snapshot = CompanySnapshot(ticker="AAPL")
-    
+
     assert snapshot.ticker == "AAPL"
     assert snapshot.name is None
     assert snapshot.current_price is None
@@ -147,7 +144,7 @@ def test_company_snapshot_full():
         market_risk_premium=0.05,
         tax_rate=0.21
     )
-    
+
     assert snapshot.ticker == "AAPL"
     assert snapshot.name == "Apple Inc."
     assert snapshot.total_debt == 120_000.0
@@ -162,7 +159,7 @@ def test_company_snapshot_extra_ignore():
         unknown_field="should_be_ignored",
         another_extra=123
     )
-    
+
     assert snapshot.ticker == "AAPL"
     assert not hasattr(snapshot, "unknown_field")
     assert not hasattr(snapshot, "another_extra")
@@ -248,7 +245,7 @@ def test_financial_rates_parameters_percentage_scaling():
         market_risk_premium=7.5,  # Should become 0.075
         tax_rate=21.0  # Should become 0.21
     )
-    
+
     assert params.risk_free_rate == pytest.approx(0.05)
     assert params.market_risk_premium == pytest.approx(0.075)
     assert params.tax_rate == pytest.approx(0.21)
@@ -261,7 +258,7 @@ def test_financial_rates_parameters_already_scaled():
         risk_free_rate=0.05,  # Already in decimal form
         beta=1.2  # Raw scale, no change
     )
-    
+
     assert params.risk_free_rate == pytest.approx(0.05)
     assert params.beta == pytest.approx(1.2)
 
@@ -273,7 +270,7 @@ def test_financial_rates_parameters_none_values():
         risk_free_rate=None,
         beta=None
     )
-    
+
     assert params.risk_free_rate is None
     assert params.beta is None
 
@@ -286,7 +283,7 @@ def test_capital_structure_parameters_million_scaling():
         cash_and_equivalents=50.0,  # Should become 50M
         shares_outstanding=1.5  # Should become 1.5M
     )
-    
+
     assert params.total_debt == pytest.approx(100_000_000.0)
     assert params.cash_and_equivalents == pytest.approx(50_000_000.0)
     assert params.shares_outstanding == pytest.approx(1_500_000.0)
@@ -298,7 +295,7 @@ def test_capital_structure_parameters_dilution_rate_scaling():
     params = CapitalStructureParameters(
         annual_dilution_rate=2.5  # Should become 0.025
     )
-    
+
     assert params.annual_dilution_rate == pytest.approx(0.025)
 
 
@@ -306,7 +303,7 @@ def test_capital_structure_parameters_dilution_rate_scaling():
 def test_common_parameters_default_factory():
     """Test CommonParameters creates nested defaults."""
     params = CommonParameters()
-    
+
     assert isinstance(params.rates, FinancialRatesParameters)
     assert isinstance(params.capital, CapitalStructureParameters)
     assert params.rates.risk_free_rate is None
@@ -324,7 +321,7 @@ def test_fcff_standard_parameters_creation():
         projection_years=5,
         growth_rate_p1=5.0  # Should scale to 0.05
     )
-    
+
     assert params.mode == ValuationMethodology.FCFF_STANDARD
     assert params.projection_years == 5
     assert params.growth_rate_p1 == pytest.approx(0.05)
@@ -336,7 +333,7 @@ def test_fcff_standard_parameters_validation():
     """Test validation bounds on projection_years."""
     with pytest.raises(ValidationError):
         FCFFStandardParameters(projection_years=0)  # Must be >= 1
-    
+
     with pytest.raises(ValidationError):
         FCFFStandardParameters(projection_years=100)  # Must be <= 50
 
@@ -348,7 +345,7 @@ def test_graham_parameters_creation():
         eps_normalized=5.0,
         growth_estimate=10.0  # Should scale to 0.10
     )
-    
+
     assert params.mode == ValuationMethodology.GRAHAM
     assert params.eps_normalized == pytest.approx(5.0)  # Raw scale
     assert params.growth_estimate == pytest.approx(0.10)
@@ -362,13 +359,13 @@ def test_graham_parameters_creation():
 def test_extension_bundle_parameters_default_disabled():
     """Test ExtensionBundleParameters defaults — all extensions disabled."""
     bundle = ExtensionBundleParameters()
-    
+
     assert isinstance(bundle.monte_carlo, MCParameters)
     assert bundle.monte_carlo.enabled is False
-    
+
     assert isinstance(bundle.sensitivity, SensitivityParameters)
     assert bundle.sensitivity.enabled is False
-    
+
     assert isinstance(bundle.scenarios, ScenariosParameters)
     assert bundle.scenarios.enabled is False
 
@@ -379,11 +376,11 @@ def test_mc_parameters_bounds_validation():
     # Valid range
     params = MCParameters(enabled=True, iterations=5000)
     assert params.iterations == 5000
-    
+
     # Test minimum bound
     with pytest.raises(ValidationError):
         MCParameters(iterations=50)  # Below minimum
-    
+
     # Test maximum bound
     with pytest.raises(ValidationError):
         MCParameters(iterations=100_000)  # Above maximum
@@ -395,11 +392,11 @@ def test_sensitivity_parameters_bounds_validation():
     # Valid range
     params = SensitivityParameters(enabled=True, steps=5)
     assert params.steps == 5
-    
+
     # Test minimum bound
     with pytest.raises(ValidationError):
         SensitivityParameters(steps=2)  # Below minimum
-    
+
     # Test maximum bound
     with pytest.raises(ValidationError):
         SensitivityParameters(steps=10)  # Above maximum
@@ -409,7 +406,7 @@ def test_sensitivity_parameters_bounds_validation():
 def test_scenarios_parameters_creation():
     """Test ScenariosParameters with empty cases list."""
     params = ScenariosParameters(enabled=True)
-    
+
     assert params.enabled is True
     assert params.cases == []
 
@@ -424,12 +421,12 @@ def test_valuation_request_construction():
     company = Company(ticker="AAPL", name="Apple Inc.")
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
-    
+
     request = ValuationRequest(
         mode=ValuationMethodology.FCFF_STANDARD,
         parameters=params
     )
-    
+
     assert request.mode == ValuationMethodology.FCFF_STANDARD
     assert request.parameters.structure.ticker == "AAPL"
     assert isinstance(request.parameters.strategy, FCFFStandardParameters)
@@ -442,7 +439,7 @@ def test_valuation_result_construction():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
     request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
-    
+
     # Create minimal results
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
@@ -466,9 +463,9 @@ def test_valuation_result_construction():
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
-    
+
     result = ValuationResult(request=request, results=results)
-    
+
     assert result.request.mode == ValuationMethodology.FCFF_STANDARD
     assert result.results.common.intrinsic_value_per_share == pytest.approx(180.0)
 
@@ -480,7 +477,7 @@ def test_valuation_result_compute_upside_positive_market_price():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
     request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
-    
+
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
         market_cap=2_400_000_000_000.0,
@@ -503,10 +500,10 @@ def test_valuation_result_compute_upside_positive_market_price():
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
-    
+
     result = ValuationResult(request=request, results=results)
     result.compute_upside()
-    
+
     # Upside = (180 - 150) / 150 = 0.2 (20%)
     assert result.upside_pct == pytest.approx(0.2)
 
@@ -518,7 +515,7 @@ def test_valuation_result_compute_upside_zero_market_price():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
     request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
-    
+
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
         market_cap=0.0,
@@ -541,10 +538,10 @@ def test_valuation_result_compute_upside_zero_market_price():
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
-    
+
     result = ValuationResult(request=request, results=results)
     result.compute_upside()
-    
+
     assert result.upside_pct is None
 
 
@@ -555,7 +552,7 @@ def test_valuation_result_compute_upside_none_iv():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
     request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
-    
+
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
         market_cap=2_400_000_000_000.0,
@@ -579,12 +576,12 @@ def test_valuation_result_compute_upside_none_iv():
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
-    
+
     result = ValuationResult(request=request, results=results)
     # Manually set IV to None to test the None case
     result.results.common.intrinsic_value_per_share = None  # type: ignore
     result.compute_upside()
-    
+
     assert result.upside_pct is None
 
 
@@ -595,7 +592,7 @@ def test_valuation_result_compute_upside_negative():
     strategy = FCFFStandardParameters(projection_years=5)
     params = Parameters(structure=company, strategy=strategy)
     request = ValuationRequest(mode=ValuationMethodology.FCFF_STANDARD, parameters=params)
-    
+
     rates = ResolvedRates(cost_of_equity=0.08, cost_of_debt_after_tax=0.03, wacc=0.07)
     capital = ResolvedCapital(
         market_cap=3_200_000_000_000.0,
@@ -618,10 +615,10 @@ def test_valuation_result_compute_upside_negative():
     )
     extensions = ExtensionBundleResults()
     results = Results(common=common_results, strategy=strategy_results, extensions=extensions)
-    
+
     result = ValuationResult(request=request, results=results)
     result.compute_upside()
-    
+
     # Upside = (150 - 200) / 200 = -0.25 (-25%)
     assert result.upside_pct == pytest.approx(-0.25)
 
