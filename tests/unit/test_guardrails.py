@@ -224,13 +224,13 @@ def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
     """Test WARNING when ROIC < WACC with positive growth."""
     object.__setattr__(base_company, "ebit_ttm", 500.0)  # Low EBIT
     # Reconstruct parameters to trigger scaling
-    # Note: capital values are in millions, so 0.01 = 10,000, 0.001 = 1,000, 0.0001 = 100
+    # Note: capital values use million scale (×1,000,000): 0.01 → 10,000, 0.001 → 1,000, 0.0001 → 100
     base_parameters.common = CommonParameters(
         rates=FinancialRatesParameters(tax_rate=21.0),
         capital=CapitalStructureParameters(
-            total_debt=0.01,  # 10,000
-            cash_and_equivalents=0.001,  # 1,000
-            shares_outstanding=0.0001  # 100 shares
+            total_debt=0.01,  # Input 0.01 × 1M = 10,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
+            shares_outstanding=0.0001  # Input 0.0001 × 1M = 100 shares
         )
     )
     base_parameters.strategy = FCFFStandardParameters(
@@ -251,12 +251,12 @@ def test_validate_roic_neutral(base_company, base_parameters):
     # Set up to get ROIC ≈ WACC
     object.__setattr__(base_company, "ebit_ttm", 1000.0)
     # Reconstruct parameters to trigger scaling
-    # Note: capital values are in millions, so 0.005 = 5,000, 0.001 = 1,000, 0.0001 = 100
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
     base_parameters.common = CommonParameters(
         rates=FinancialRatesParameters(tax_rate=21.0),
         capital=CapitalStructureParameters(
-            total_debt=0.005,  # 5,000
-            cash_and_equivalents=0.001,  # 1,000
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
             shares_outstanding=0.0001  # 100 shares -> Market equity = 10,000 (100 * 100)
         )
     )
@@ -279,12 +279,12 @@ def test_validate_roic_above_wacc(base_company, base_parameters):
     """Test INFO when ROIC > WACC (value creation)."""
     object.__setattr__(base_company, "ebit_ttm", 2000.0)  # High EBIT
     # Reconstruct parameters to trigger scaling
-    # Note: capital values are in millions, so 0.005 = 5,000, 0.001 = 1,000, 0.0001 = 100
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
     base_parameters.common = CommonParameters(
         rates=FinancialRatesParameters(tax_rate=21.0),
         capital=CapitalStructureParameters(
-            total_debt=0.005,  # 5,000
-            cash_and_equivalents=0.001,  # 1,000
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
             shares_outstanding=0.0001  # 100 shares
         )
     )
@@ -567,12 +567,12 @@ def test_validate_roic_with_zero_tax_rate(base_company, base_parameters):
     """Test ROIC calculation with zero tax rate."""
     object.__setattr__(base_company, "ebit_ttm", 1000.0)
     # Reconstruct parameters to trigger scaling
-    # Note: capital values are in millions, so 0.005 = 5,000, 0.001 = 1,000, 0.0001 = 100
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
     base_parameters.common = CommonParameters(
         rates=FinancialRatesParameters(tax_rate=0.0),  # No tax
         capital=CapitalStructureParameters(
-            total_debt=0.005,  # 5,000
-            cash_and_equivalents=0.001,  # 1,000
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
             shares_outstanding=0.0001  # 100 shares
         )
     )
