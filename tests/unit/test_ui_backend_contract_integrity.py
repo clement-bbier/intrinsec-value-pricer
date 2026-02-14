@@ -35,7 +35,6 @@ from src.models.parameters.options import (
     SOTPParameters,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. UIKeys REGISTRY COMPLETENESS
 # ═══════════════════════════════════════════════════════════════════════════

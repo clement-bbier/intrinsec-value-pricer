@@ -20,7 +20,6 @@ from app.views.inputs.strategies.graham_value_view import GrahamValueView
 from app.views.inputs.strategies.rim_bank_view import RIMBankView
 from src.models.enums import ValuationMethodology
 
-
 ALL_VIEWS = [
     FCFFStandardView,
     FCFFNormalizedView,

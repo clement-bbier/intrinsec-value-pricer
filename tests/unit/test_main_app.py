@@ -10,6 +10,7 @@ Coverage Target: >85% for app/main.py.
 
 import inspect
 
+import pytest
 
 
 class TestMainStructure:

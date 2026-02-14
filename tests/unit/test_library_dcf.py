@@ -9,11 +9,12 @@ Standards: pytest + unittest.mock for dependencies
 """
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock, patch
+from typing import List
 
 from src.valuation.library.dcf import DCFLibrary
 from src.models.parameters.base_parameter import Parameters
-from src.models.enums import TerminalValueMethod
+from src.models.enums import TerminalValueMethod, VariableSource
 from src.config.constants import ModelDefaults
 
 

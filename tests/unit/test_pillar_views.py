@@ -13,6 +13,24 @@ from datetime import date
 
 import pytest
 
+from app.views.results.pillars.calculation_proof import EXCLUDED_STEP_PREFIXES, render_glass_box
+from app.views.results.pillars.historical_backtest import HistoricalBacktestTab
+from app.views.results.pillars.inputs_summary import (
+    _render_capital_structure_table,
+    _render_rates_table,
+    _render_strategy_inputs_table,
+    _safe_fmt,
+    render_detailed_inputs,
+)
+from app.views.results.pillars.market_analysis import render_market_context
+from app.views.results.pillars.monte_carlo_distribution import MonteCarloDistributionTab
+from app.views.results.pillars.peer_multiples import PeerMultiples
+
+# Pillar imports
+from app.views.results.pillars.risk_engineering import render_risk_analysis
+from app.views.results.pillars.scenario_analysis import ScenarioAnalysisTab
+from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
+from app.views.results.pillars.sotp_breakdown import SOTPBreakdownTab
 from src.models.company import Company
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters
@@ -42,24 +60,6 @@ from src.models.results.options import (
 )
 from src.models.results.strategies import FCFFStandardResults
 from src.models.valuation import ValuationRequest, ValuationResult
-
-# Pillar imports
-from app.views.results.pillars.risk_engineering import render_risk_analysis
-from app.views.results.pillars.inputs_summary import (
-    _safe_fmt,
-    _render_capital_structure_table,
-    _render_rates_table,
-    _render_strategy_inputs_table,
-    render_detailed_inputs,
-)
-from app.views.results.pillars.calculation_proof import render_glass_box, EXCLUDED_STEP_PREFIXES
-from app.views.results.pillars.market_analysis import render_market_context
-from app.views.results.pillars.monte_carlo_distribution import MonteCarloDistributionTab
-from app.views.results.pillars.sensitivity import SensitivityAnalysisTab
-from app.views.results.pillars.scenario_analysis import ScenarioAnalysisTab
-from app.views.results.pillars.historical_backtest import HistoricalBacktestTab
-from app.views.results.pillars.peer_multiples import PeerMultiples
-from app.views.results.pillars.sotp_breakdown import SOTPBreakdownTab
 
 
 @pytest.fixture

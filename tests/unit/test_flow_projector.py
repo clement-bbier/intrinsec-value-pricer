@@ -9,7 +9,8 @@ Standards: pytest + unittest.mock for dependencies
 """
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
+from typing import List
 
 from src.computation.flow_projector import (
     FlowProjector,

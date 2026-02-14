@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/graham_value.py
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 
 from src.models.company import Company

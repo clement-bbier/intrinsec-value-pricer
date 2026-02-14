@@ -8,7 +8,7 @@ Target: ≥90% coverage of src/valuation/strategies/fundamental_fcff.py
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 
 from src.models.company import Company
@@ -16,7 +16,8 @@ from src.models.parameters.base_parameter import Parameters
 from src.models.parameters.strategies import FCFFNormalizedParameters
 from src.models.parameters.common import CommonParameters, FinancialRatesParameters, CapitalStructureParameters
 from src.models.enums import ValuationMethodology, CompanySector
-from src.models.glass_box import CalculationStep
+from src.models.glass_box import CalculationStep, VariableInfo
+from src.models.enums import VariableSource
 from src.valuation.strategies.fundamental_fcff import FundamentalFCFFStrategy
 
 
@@ -148,12 +149,8 @@ class TestFundamentalFCFFStrategy:
             manual_growth_vector=[0.10, 0.08, 0.05]
         )
         common = CommonParameters(
-            rates=FinancialRatesParameters(
-                risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21
-            ),
-            capital=CapitalStructureParameters(
-                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
-            )
+            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
+            capital=CapitalStructureParameters(shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0)
         )
         params = Parameters(
             structure=Company(ticker="AAPL", name="Apple Inc."),

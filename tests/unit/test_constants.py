@@ -8,12 +8,13 @@ Coverage: ValuationEngineDefaults, MacroDefaults, ModelDefaults, etc.
 """
 
 import pytest
+
 from src.config.constants import (
-    ValuationEngineDefaults,
     MacroDefaults,
     ModelDefaults,
     MonteCarloDefaults,
-    SensitivityDefaults
+    SensitivityDefaults,
+    ValuationEngineDefaults,
 )
 
 
@@ -21,10 +22,10 @@ from src.config.constants import (
 def test_spreads_large_cap_structure():
     """Test SPREADS_LARGE_CAP is a tuple of tuples with correct structure."""
     spreads = ValuationEngineDefaults.SPREADS_LARGE_CAP
-    
+
     assert isinstance(spreads, tuple)
     assert len(spreads) > 0
-    
+
     # Check each element is a tuple with 2 values (threshold, spread)
     for item in spreads:
         assert isinstance(item, tuple)
@@ -37,7 +38,7 @@ def test_spreads_large_cap_structure():
 def test_spreads_large_cap_sorted_descending():
     """Test SPREADS_LARGE_CAP is sorted in descending order by threshold."""
     spreads = ValuationEngineDefaults.SPREADS_LARGE_CAP
-    
+
     thresholds = [item[0] for item in spreads]
     assert thresholds == sorted(thresholds, reverse=True)
 
@@ -46,10 +47,10 @@ def test_spreads_large_cap_sorted_descending():
 def test_spreads_small_mid_cap_structure():
     """Test SPREADS_SMALL_MID_CAP has same structure as SPREADS_LARGE_CAP."""
     spreads = ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
-    
+
     assert isinstance(spreads, tuple)
     assert len(spreads) > 0
-    
+
     for item in spreads:
         assert isinstance(item, tuple)
         assert len(item) == 2
@@ -59,7 +60,7 @@ def test_spreads_small_mid_cap_structure():
 def test_spreads_small_mid_cap_sorted_descending():
     """Test SPREADS_SMALL_MID_CAP is sorted in descending order."""
     spreads = ValuationEngineDefaults.SPREADS_SMALL_MID_CAP
-    
+
     thresholds = [item[0] for item in spreads]
     assert thresholds == sorted(thresholds, reverse=True)
 

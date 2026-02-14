@@ -8,9 +8,12 @@ Coverage Target: >85% per file for all spoke pillar files.
 """
 
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
+from typing import Any
 
+import pytest
 
+from src.models.benchmarks import CompanyStats, MarketContext, SectorMultiples, SectorPerformance
 from src.models.company import Company
 from src.models.enums import ValuationMethodology
 from src.models.parameters.base_parameter import Parameters

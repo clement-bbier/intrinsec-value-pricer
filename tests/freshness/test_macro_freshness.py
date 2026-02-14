@@ -186,8 +186,8 @@ class TestDamodaranSpreadsFreshness:
     
     def test_small_mid_cap_wider_spreads_than_large_cap(self):
         """Small/mid cap should have higher (riskier) spreads than large cap for similar ICR."""
-        dict(ValuationEngineDefaults.SPREADS_LARGE_CAP)
-        dict(ValuationEngineDefaults.SPREADS_SMALL_MID_CAP)
+        large_cap = dict(ValuationEngineDefaults.SPREADS_LARGE_CAP)
+        small_mid = dict(ValuationEngineDefaults.SPREADS_SMALL_MID_CAP)
         
         # Find a common ICR range to compare (around 4.0-5.0)
         # For this test, we'll just check that small/mid cap has some higher spreads

@@ -10,6 +10,7 @@ Coverage Target: >85% for app/controllers/app_controller.py.
 import inspect
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 from app.controllers.app_controller import AppController
 

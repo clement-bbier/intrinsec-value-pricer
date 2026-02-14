@@ -7,9 +7,9 @@ Role: Verifies the end-to-end execution of the Orchestrator.
 Scope: Hydration -> Strategy -> Results.
 """
 
-from src.valuation.orchestrator import ValuationOrchestrator
-from src.models.valuation import ValuationResult
 from src.models.results.strategies import FCFFStandardResults
+from src.models.valuation import ValuationResult
+from src.valuation.orchestrator import ValuationOrchestrator
 
 
 class TestValuationPipeline:

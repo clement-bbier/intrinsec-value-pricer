@@ -9,6 +9,7 @@ and state flush behavior on critical input changes.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 from app.state.store import AppState
 

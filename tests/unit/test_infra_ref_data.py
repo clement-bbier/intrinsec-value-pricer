@@ -13,9 +13,11 @@ import pytest
 from infra.ref_data.country_matrix import (
     COUNTRY_CONTEXT,
     DEFAULT_COUNTRY,
-    get_country_context
+    get_country_context,
+    CountryData
 )
 from infra.ref_data.sector_fallback import get_sector_data
+from src.models.enums import CompanySector
 from src.config.sector_multiples import SECTORS
 
 

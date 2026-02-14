@@ -10,6 +10,7 @@ Coverage Target: >85% per file.
 
 import inspect
 
+import pytest
 
 from app.views.components.ui_kpis import (
     atom_benchmark_card,
