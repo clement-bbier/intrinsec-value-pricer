@@ -63,9 +63,9 @@ def test_guardrails_pass_with_valid_parameters(orchestrator, base_company, good_
     """Test that guardrails pass with economically sound parameters."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.025),  # g < WACC
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=2.5),  # 2.5% (g < WACC)
     )
 
     params = Parameters(structure=base_company, strategy=strategy)
@@ -87,9 +87,9 @@ def test_guardrails_block_when_terminal_growth_exceeds_wacc(orchestrator, base_c
     """Test that guardrails block valuation when g >= WACC."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.15),  # g > typical WACC
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=15.0),  # 15% (g > typical WACC)
     )
 
     params = Parameters(structure=base_company, strategy=strategy)
@@ -115,9 +115,9 @@ def test_guardrails_warn_with_invalid_capital_structure(orchestrator, good_snaps
 
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.025),
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=2.5),  # 2.5%
     )
 
     params = Parameters(
@@ -147,9 +147,9 @@ def test_guardrails_block_invalid_scenario_probabilities(orchestrator, base_comp
     """Test that guardrails block when scenario probabilities don't sum to 1.0."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.025),
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=2.5),  # 2.5%
     )
 
     params = Parameters(structure=base_company, strategy=strategy)
@@ -175,9 +175,9 @@ def test_guardrails_info_messages_attached_to_audit(orchestrator, base_company, 
     """Test that info-level guardrail messages are attached to audit report."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.02),  # Conservative
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=2.0),  # 2% (Conservative)
     )
 
     params = Parameters(structure=base_company, strategy=strategy)
@@ -202,9 +202,9 @@ def test_guardrails_warning_for_close_terminal_growth(orchestrator, base_company
     # Use a growth rate that's close to typical WACC but still below it
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.077),  # Close to but below WACC
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=7.7),  # 7.7% (Close to but below WACC)
     )
 
     params = Parameters(structure=base_company, strategy=strategy)
@@ -228,7 +228,7 @@ def test_guardrails_handle_missing_terminal_value_gracefully(orchestrator, base_
     """Test that guardrails handle missing terminal value parameters gracefully."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
+        growth_rate_p1=5.0,  # 5%
         fcf_anchor=8000.0,
         # No terminal_value set (defaults to None/empty)
     )
