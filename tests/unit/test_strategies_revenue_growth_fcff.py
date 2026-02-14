@@ -47,10 +47,10 @@ class TestRevenueGrowthFCFFStrategy:
     def basic_params(self):
         """Create basic Revenue Growth FCFF parameters."""
         strategy = FCFFGrowthParameters(
-            revenue_ttm=80000.0, revenue_growth_rate=0.20, target_fcf_margin=0.15, projection_years=5
+            revenue_ttm=80000.0, revenue_growth_rate=20.0, target_fcf_margin=15.0, projection_years=5
         )
         common = CommonParameters(
-            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.06, beta=1.5, tax_rate=0.21),
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
             capital=CapitalStructureParameters(
                 shares_outstanding=3000.0, total_debt=15000.0, cash_and_equivalents=5000.0
             ),
@@ -130,10 +130,10 @@ class TestRevenueGrowthFCFFStrategy:
 
         # Setup params without revenue_ttm
         strategy_params = FCFFGrowthParameters(
-            revenue_ttm=None, revenue_growth_rate=0.20, target_fcf_margin=0.15, projection_years=5
+            revenue_ttm=None, revenue_growth_rate=20.0, target_fcf_margin=15.0, projection_years=5
         )
         common = CommonParameters(
-            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.06, beta=1.5, tax_rate=0.21),
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
             capital=CapitalStructureParameters(
                 shares_outstanding=3000.0, total_debt=15000.0, cash_and_equivalents=5000.0
             ),
@@ -227,10 +227,10 @@ class TestRevenueGrowthFCFFStrategy:
 
         # Setup params without target margin
         strategy_params = FCFFGrowthParameters(
-            revenue_ttm=80000.0, revenue_growth_rate=0.20, target_fcf_margin=None, projection_years=5
+            revenue_ttm=80000.0, revenue_growth_rate=20.0, target_fcf_margin=None, projection_years=5
         )
         common = CommonParameters(
-            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.06, beta=1.5, tax_rate=0.21),
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
             capital=CapitalStructureParameters(shares_outstanding=3000.0),
         )
         params = Parameters(

@@ -50,9 +50,10 @@ class SensitivityRunner:
                     res = self.strategy.execute(financials, work_params)
                     row_values.append(res.results.common.intrinsic_value_per_share)
                 except (CalculationError, ValueError, ZeroDivisionError):
-                    # Note: Sensitivity analysis explores edge cases (g > WACC).
+                    # Note: Sensitivity analysis explores edge cases (g >= WACC).
                     # Guardrails validate the base case, but sensitivity needs to handle all scenarios.
-                    row_values.append(0.0)
+                    # Return NaN instead of 0.0 to clearly indicate invalid computation (not a $0 valuation).
+                    row_values.append(np.nan)
 
             matrix_values.append(row_values)
 
@@ -98,7 +99,7 @@ class SensitivityRunner:
 
     @staticmethod
     def _compute_volatility_score(matrix: list[list[float]]) -> float:
-        flat = [v for row in matrix for v in row if v > 0]
+        flat = [v for row in matrix for v in row if not np.isnan(v) and v > 0]
         if not flat:
             return 0.0
         return (max(flat) - min(flat)) / (sum(flat) / len(flat))

@@ -151,11 +151,10 @@ def _render_permanent_header(result: ValuationResult) -> None:
 
     with c3:
         # KPI 3: Upside (Decision)
-        # Note: 'normal' color means Green if positive, Red if negative
+        # Display upside percentage with appropriate color coding
         atom_kpi_metric(
             label=KPITexts.UPSIDE_LABEL,  # "Upside Potential"
             value=f"{upside:+.1%}",
-            delta=f"{upside:+.1%}",
             delta_color="normal",
         )
 

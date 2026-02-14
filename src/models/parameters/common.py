@@ -57,8 +57,9 @@ class BaseNormalizedModel(BaseModel):
             if not ui_meta:
                 continue
             if ui_meta.scale == "pct":
-                if abs(value) > 1.0:
-                    data[field_name] = value / 100.0
+                # Always convert percentage values (e.g., 0.8% → 0.008, 5.0% → 0.05)
+                # This ensures DRY and predictable behavior - no ambiguity
+                data[field_name] = value / 100.0
             elif ui_meta.scale == "million":
                 data[field_name] = value * 1_000_000.0
         return data

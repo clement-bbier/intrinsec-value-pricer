@@ -31,11 +31,11 @@ from src.valuation.guardrails import (
 # HYPOTHESIS STRATEGIES
 # ==============================================================================
 
-# Generate valid growth rates (typically -5% to 15%)
-growth_rate_strategy = st.floats(min_value=-0.05, max_value=0.15, allow_nan=False, allow_infinity=False)
+# Generate valid growth rates (typically -5% to 15%, but as whole numbers for percentage fields)
+growth_rate_strategy = st.floats(min_value=-5.0, max_value=15.0, allow_nan=False, allow_infinity=False)
 
-# Generate valid WACC (typically 5% to 25%)
-wacc_strategy = st.floats(min_value=0.05, max_value=0.25, allow_nan=False, allow_infinity=False)
+# Generate valid WACC (typically 5% to 25%, as whole numbers for percentage fields)
+wacc_strategy = st.floats(min_value=5.0, max_value=25.0, allow_nan=False, allow_infinity=False)
 
 # Generate valid probabilities (0 to 1)
 probability_strategy = st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False)
@@ -67,15 +67,20 @@ def test_property_terminal_growth_divergence_always_caught(g, wacc):
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(
         projection_years=5,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=g),
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=g),  # Will be scaled to g/100
     )
     params = Parameters(structure=company, strategy=strategy)
 
-    result = validate_terminal_growth(params, wacc=wacc)
+    # WACC is passed directly to the function, so we need to convert it to decimal
+    wacc_decimal = wacc / 100.0
+    result = validate_terminal_growth(params, wacc=wacc_decimal)
 
+    # After scaling, g becomes g/100, so we compare g/100 with wacc/100
+    g_decimal = g / 100.0
+    
     # INVARIANT: If g >= WACC, must be ERROR
-    if g >= wacc:
-        assert result.type == "error", f"Failed: g={g}, wacc={wacc} should be ERROR but got {result.type}"
+    if g_decimal >= wacc_decimal:
+        assert result.type == "error", f"Failed: g={g_decimal}, wacc={wacc_decimal} should be ERROR but got {result.type}"
         assert result.code == "GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC"
 
     # Additional check: result should always be valid
@@ -100,7 +105,7 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     - If WARNING at wacc1, should be WARNING/INFO at wacc2
     """
     assume(wacc1 < wacc2)  # Ensure ordered
-    assume(wacc2 - wacc1 > 0.01)  # Significant difference
+    assume(wacc2 - wacc1 > 1.0)  # Significant difference (1% as whole number)
 
     company = Company(ticker="TEST", name="Test", current_price=100.0)
     strategy = FCFFStandardParameters(
@@ -109,8 +114,12 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     )
     params = Parameters(structure=company, strategy=strategy)
 
-    result1 = validate_terminal_growth(params, wacc=wacc1)
-    result2 = validate_terminal_growth(params, wacc=wacc2)
+    # Convert WACC values to decimals
+    wacc1_decimal = wacc1 / 100.0
+    wacc2_decimal = wacc2 / 100.0
+    
+    result1 = validate_terminal_growth(params, wacc=wacc1_decimal)
+    result2 = validate_terminal_growth(params, wacc=wacc2_decimal)
 
     # Map severity to numeric values for comparison
     severity_map = {"error": 3, "warning": 2, "info": 1}
@@ -119,7 +128,7 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     sev2 = severity_map.get(result2.type, 0)
 
     # INVARIANT: Increasing WACC should not increase severity
-    assert sev2 <= sev1, f"Monotonicity violated: g={g}, wacc1={wacc1} ({result1.type}), wacc2={wacc2} ({result2.type})"
+    assert sev2 <= sev1, f"Monotonicity violated: g={g/100}, wacc1={wacc1_decimal} ({result1.type}), wacc2={wacc2_decimal} ({result2.type})"
 
 
 # ==============================================================================
@@ -207,13 +216,15 @@ def test_property_no_division_by_zero(total_debt, cash, shares, price, wacc, g):
 
     # All these should complete without exceptions (no division by zero)
     try:
-        result1 = validate_terminal_growth(params, wacc=wacc)
+        # Note: wacc needs to be converted to decimal since it's passed as raw float, not through Pydantic
+        wacc_decimal = wacc / 100.0
+        result1 = validate_terminal_growth(params, wacc=wacc_decimal)
         assert result1.type in ["error", "warning", "info"]
 
         result2 = validate_capital_structure(company, params)
         assert result2.type in ["error", "warning", "info"]
 
-        result3 = validate_roic_spread(company, params, wacc=wacc)
+        result3 = validate_roic_spread(company, params, wacc=wacc_decimal)
         assert result3.type in ["error", "warning", "info"]
 
     except ZeroDivisionError:
@@ -294,7 +305,7 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
         # Use object.__setattr__ to bypass frozen model
         object.__setattr__(company, "ebit_ttm", ebit)
 
-    strategy = FCFFStandardParameters(projection_years=5, growth_rate_p1=0.05)
+    strategy = FCFFStandardParameters(projection_years=5, growth_rate_p1=5.0)  # 5%
     params = Parameters(
         structure=company,
         strategy=strategy,
@@ -307,7 +318,9 @@ def test_property_roic_handles_missing_data(ebit, total_debt, cash, shares, pric
         ),
     )
 
-    result = validate_roic_spread(company, params, wacc=wacc)
+    # Convert wacc to decimal
+    wacc_decimal = wacc / 100.0
+    result = validate_roic_spread(company, params, wacc=wacc_decimal)
 
     # INVARIANT: Never crashes, always returns structured result
     assert result.type in ["error", "warning", "info"]
@@ -344,7 +357,9 @@ def test_property_extra_fields_json_serializable(g, wacc):
     )
     params = Parameters(structure=company, strategy=strategy)
 
-    result = validate_terminal_growth(params, wacc=wacc)
+    # Convert wacc to decimal
+    wacc_decimal = wacc / 100.0
+    result = validate_terminal_growth(params, wacc=wacc_decimal)
 
     # INVARIANT: Extra dict must be JSON-serializable
     try:
@@ -359,8 +374,8 @@ def test_property_extra_fields_json_serializable(g, wacc):
 
 
 @given(
-    base_wacc=st.floats(min_value=0.08, max_value=0.20, allow_nan=False, allow_infinity=False),
-    epsilon=st.floats(min_value=-0.001, max_value=0.001, allow_nan=False, allow_infinity=False),
+    base_wacc=st.floats(min_value=8.0, max_value=20.0, allow_nan=False, allow_infinity=False),
+    epsilon=st.floats(min_value=-0.1, max_value=0.1, allow_nan=False, allow_infinity=False),
 )
 @settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
@@ -370,7 +385,7 @@ def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
     Tests the boundary around WACC - 0.005 to ensure classification is correct.
     """
     # Set g to be just above or below the threshold
-    threshold = 0.005
+    threshold = 0.5  # 0.5% as a whole number for percentage field
     g = base_wacc - threshold + epsilon
 
     company = Company(ticker="TEST", name="Test", current_price=100.0)
@@ -380,16 +395,23 @@ def test_property_terminal_growth_threshold_boundary(base_wacc, epsilon):
     )
     params = Parameters(structure=company, strategy=strategy)
 
-    result = validate_terminal_growth(params, wacc=base_wacc)
+    # WACC needs to be converted to decimal since it's passed directly to the function
+    wacc_decimal = base_wacc / 100.0
+    result = validate_terminal_growth(params, wacc=wacc_decimal)
 
-    spread = base_wacc - g
+    # After scaling, the values will be divided by 100
+    # So g and base_wacc entered as whole numbers become decimals
+    # spread calculation needs to account for this
+    g_decimal = g / 100.0
+    spread = wacc_decimal - g_decimal
+    threshold_decimal = 0.005  # 0.5% as decimal
 
     # INVARIANT: Classification must be consistent with spread
-    if g >= base_wacc:
+    if g_decimal >= wacc_decimal:
         assert result.type == "error"
-    elif 0 <= spread < threshold:
+    elif 0 <= spread < threshold_decimal:
         assert result.type == "warning"
-    elif g > 0:
+    elif g_decimal > 0:
         assert result.type == "info"
         assert result.code == "GUARDRAIL_TERMINAL_GROWTH_OK"
     else:

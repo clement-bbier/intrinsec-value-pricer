@@ -252,9 +252,9 @@ def test_financial_rates_parameters_percentage_scaling():
 
 @pytest.mark.unit
 def test_financial_rates_parameters_already_scaled():
-    """Test that already-scaled values (< 1.0) are not re-scaled."""
+    """Test that percentage fields always divide by 100 for consistency."""
     params = FinancialRatesParameters(
-        risk_free_rate=0.05,  # Already in decimal form
+        risk_free_rate=5.0,  # 5.0% → 0.05
         beta=1.2,  # Raw scale, no change
     )
 
@@ -293,6 +293,16 @@ def test_capital_structure_parameters_dilution_rate_scaling():
     )
 
     assert params.annual_dilution_rate == pytest.approx(0.025)
+
+
+@pytest.mark.unit
+def test_capital_structure_parameters_dilution_rate_small_values():
+    """Test percentage scaling for small dilution rates (MSFT bug fix)."""
+    params = CapitalStructureParameters(
+        annual_dilution_rate=0.8  # 0.8% should become 0.008
+    )
+
+    assert params.annual_dilution_rate == pytest.approx(0.008)
 
 
 @pytest.mark.unit

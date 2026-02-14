@@ -12,6 +12,11 @@ import pytest
 from src.models.company import Company
 from src.models.enums import CompanySector
 from src.models.parameters.base_parameter import Parameters
+from src.models.parameters.common import (
+    CapitalStructureParameters,
+    CommonParameters,
+    FinancialRatesParameters,
+)
 from src.models.parameters.options import ScenarioParameters
 from src.models.parameters.strategies import (
     DDMParameters,
@@ -50,8 +55,8 @@ def base_parameters(base_company):
     """Creates basic parameters with standard strategy."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.05,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.03),
+        growth_rate_p1=5.0,
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0),
     )
     return Parameters(structure=base_company, strategy=strategy)
 
@@ -106,7 +111,8 @@ def test_validate_terminal_growth_not_set(base_parameters):
 
 def test_validate_terminal_growth_exceeds_wacc(base_parameters):
     """Test ERROR when g >= WACC."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.12
+    # Must reconstruct to trigger Pydantic scaling
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=12.0)
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -119,7 +125,7 @@ def test_validate_terminal_growth_exceeds_wacc(base_parameters):
 
 def test_validate_terminal_growth_equals_wacc(base_parameters):
     """Test ERROR when g == WACC."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.10
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=10.0)
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -129,7 +135,7 @@ def test_validate_terminal_growth_equals_wacc(base_parameters):
 
 def test_validate_terminal_growth_close_to_wacc(base_parameters):
     """Test WARNING when g is very close to WACC."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.096
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=9.6)
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -141,7 +147,7 @@ def test_validate_terminal_growth_close_to_wacc(base_parameters):
 
 def test_validate_terminal_growth_ok(base_parameters):
     """Test INFO when g is positive and reasonable."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.03
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=3.0)
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -163,7 +169,7 @@ def test_validate_terminal_growth_conservative(base_parameters):
 
 def test_validate_terminal_growth_negative(base_parameters):
     """Test INFO when g is negative."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = -0.02
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=-2.0)
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -217,11 +223,21 @@ def test_validate_roic_no_growth(base_company, base_parameters):
 def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
     """Test WARNING when ROIC < WACC with positive growth."""
     object.__setattr__(base_company, "ebit_ttm", 500.0)  # Low EBIT
-    base_parameters.common.capital.total_debt = 10000.0
-    base_parameters.common.capital.cash_and_equivalents = 1000.0
-    base_parameters.common.capital.shares_outstanding = 100.0
-    base_parameters.common.rates.tax_rate = 0.21
-    base_parameters.strategy.growth_rate_p1 = 0.05  # Positive growth
+    # Reconstruct parameters to trigger scaling
+    # Note: capital values use million scale (×1,000,000): 0.01 → 10,000, 0.001 → 1,000, 0.0001 → 100
+    base_parameters.common = CommonParameters(
+        rates=FinancialRatesParameters(tax_rate=21.0),
+        capital=CapitalStructureParameters(
+            total_debt=0.01,  # Input 0.01 × 1M = 10,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
+            shares_outstanding=0.0001  # Input 0.0001 × 1M = 100 shares
+        )
+    )
+    base_parameters.strategy = FCFFStandardParameters(
+        projection_years=5,
+        growth_rate_p1=5.0,
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+    )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
 
@@ -234,14 +250,24 @@ def test_validate_roic_neutral(base_company, base_parameters):
     """Test INFO when ROIC approximately equals WACC."""
     # Set up to get ROIC ≈ WACC
     object.__setattr__(base_company, "ebit_ttm", 1000.0)
-    base_parameters.common.capital.total_debt = 5000.0
-    base_parameters.common.capital.cash_and_equivalents = 1000.0
-    base_parameters.common.capital.shares_outstanding = 100.0  # Market equity = 10000
-    base_parameters.common.rates.tax_rate = 0.21
+    # Reconstruct parameters to trigger scaling
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
+    base_parameters.common = CommonParameters(
+        rates=FinancialRatesParameters(tax_rate=21.0),
+        capital=CapitalStructureParameters(
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
+            shares_outstanding=0.0001  # 100 shares -> Market equity = 10,000 (100 * 100)
+        )
+    )
     # NOPAT = 1000 * 0.79 = 790
     # Invested Capital = 5000 + 10000 - 1000 = 14000
     # ROIC = 790 / 14000 ≈ 0.056 (5.6%)
-    base_parameters.strategy.growth_rate_p1 = 0.05
+    base_parameters.strategy = FCFFStandardParameters(
+        projection_years=5,
+        growth_rate_p1=5.0,
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+    )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.056)
 
@@ -252,11 +278,21 @@ def test_validate_roic_neutral(base_company, base_parameters):
 def test_validate_roic_above_wacc(base_company, base_parameters):
     """Test INFO when ROIC > WACC (value creation)."""
     object.__setattr__(base_company, "ebit_ttm", 2000.0)  # High EBIT
-    base_parameters.common.capital.total_debt = 5000.0
-    base_parameters.common.capital.cash_and_equivalents = 1000.0
-    base_parameters.common.capital.shares_outstanding = 100.0
-    base_parameters.common.rates.tax_rate = 0.21
-    base_parameters.strategy.growth_rate_p1 = 0.05
+    # Reconstruct parameters to trigger scaling
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
+    base_parameters.common = CommonParameters(
+        rates=FinancialRatesParameters(tax_rate=21.0),
+        capital=CapitalStructureParameters(
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
+            shares_outstanding=0.0001  # 100 shares
+        )
+    )
+    base_parameters.strategy = FCFFStandardParameters(
+        projection_years=5,
+        growth_rate_p1=5.0,
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+    )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.08)
 
@@ -458,7 +494,7 @@ def test_extract_growth_rate_fcff_standard():
     """Test extraction from FCFFStandardParameters."""
     strategy = FCFFStandardParameters(
         projection_years=5,
-        growth_rate_p1=0.08,
+        growth_rate_p1=8.0,
     )
     assert _extract_growth_rate(strategy) == 0.08
 
@@ -467,7 +503,7 @@ def test_extract_growth_rate_fcff_normalized():
     """Test extraction from FCFFNormalizedParameters."""
     strategy = FCFFNormalizedParameters(
         projection_years=5,
-        cycle_growth_rate=0.06,
+        cycle_growth_rate=6.0,
     )
     assert _extract_growth_rate(strategy) == 0.06
 
@@ -476,7 +512,7 @@ def test_extract_growth_rate_fcff_growth():
     """Test extraction from FCFFGrowthParameters."""
     strategy = FCFFGrowthParameters(
         projection_years=5,
-        revenue_growth_rate=0.07,  # Correct field name
+        revenue_growth_rate=7.0,  # Correct field name
     )
     assert _extract_growth_rate(strategy) == 0.07
 
@@ -485,7 +521,7 @@ def test_extract_growth_rate_ddm():
     """Test extraction from DDMParameters."""
     strategy = DDMParameters(
         projection_years=5,
-        dividend_growth_rate=0.04,
+        dividend_growth_rate=4.0,
     )
     assert _extract_growth_rate(strategy) == 0.04
 
@@ -495,7 +531,7 @@ def test_extract_growth_rate_terminal_fallback():
     strategy = FCFFStandardParameters(
         projection_years=5,
         growth_rate_p1=None,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=0.03),
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0),
     )
     assert _extract_growth_rate(strategy) == 0.03
 
@@ -519,7 +555,7 @@ def test_extract_growth_rate_none():
 
 def test_validate_terminal_growth_very_small_spread(base_parameters):
     """Test boundary at exactly 0.5% spread."""
-    base_parameters.strategy.terminal_value.perpetual_growth_rate = 0.0955  # 9.55%, spread = 0.45%
+    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=9.55)  # 9.55%, spread = 0.45%
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -530,11 +566,21 @@ def test_validate_terminal_growth_very_small_spread(base_parameters):
 def test_validate_roic_with_zero_tax_rate(base_company, base_parameters):
     """Test ROIC calculation with zero tax rate."""
     object.__setattr__(base_company, "ebit_ttm", 1000.0)
-    base_parameters.common.capital.total_debt = 5000.0
-    base_parameters.common.capital.cash_and_equivalents = 1000.0
-    base_parameters.common.capital.shares_outstanding = 100.0
-    base_parameters.common.rates.tax_rate = 0.0  # No tax
-    base_parameters.strategy.growth_rate_p1 = 0.05
+    # Reconstruct parameters to trigger scaling
+    # Note: capital values use million scale (×1,000,000): 0.005 → 5,000, 0.001 → 1,000, 0.0001 → 100
+    base_parameters.common = CommonParameters(
+        rates=FinancialRatesParameters(tax_rate=0.0),  # No tax
+        capital=CapitalStructureParameters(
+            total_debt=0.005,  # Input 0.005 × 1M = 5,000
+            cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
+            shares_outstanding=0.0001  # 100 shares
+        )
+    )
+    base_parameters.strategy = FCFFStandardParameters(
+        projection_years=5,
+        growth_rate_p1=5.0,
+        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+    )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
 

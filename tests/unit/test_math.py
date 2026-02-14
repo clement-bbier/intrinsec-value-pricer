@@ -347,7 +347,7 @@ class TestCalculateCostOfEquity:
     def test_with_explicit_values(self):
         """Test with explicit parameter values."""
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04, market_risk_premium=0.06, beta=1.3, tax_rate=0.25, cost_of_debt=None
+            risk_free_rate=4.0, market_risk_premium=6.0, beta=1.3, tax_rate=25.0, cost_of_debt=None
         )
         common = CommonParameters(rates=rates, capital=CapitalStructureParameters())
 
@@ -362,7 +362,7 @@ class TestCalculateCostOfEquity:
     def test_with_none_fallbacks_to_defaults(self):
         """Test that None values fallback to MacroDefaults."""
         rates = FinancialRatesParameters(
-            risk_free_rate=None, market_risk_premium=None, beta=None, tax_rate=0.25, cost_of_debt=None
+            risk_free_rate=None, market_risk_premium=None, beta=None, tax_rate=25.0, cost_of_debt=None
         )
         common = CommonParameters(rates=rates, capital=CapitalStructureParameters())
 
@@ -449,7 +449,7 @@ class TestCalculateWACC:
 
         # Create Parameters
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.25, cost_of_debt=None
+            risk_free_rate=4.0, market_risk_premium=5.0, beta=1.2, tax_rate=25.0, cost_of_debt=None
         )
         capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
@@ -478,7 +478,7 @@ class TestCalculateWACC:
         company.interest_expense = 0.0
 
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04, market_risk_premium=0.05, beta=1.0, tax_rate=0.25, cost_of_debt=None
+            risk_free_rate=4.0, market_risk_premium=5.0, beta=1.0, tax_rate=25.0, cost_of_debt=None
         )
         capital = CapitalStructureParameters(total_debt=0.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
@@ -501,11 +501,11 @@ class TestCalculateWACC:
         company.interest_expense = 100.0
 
         rates = FinancialRatesParameters(
-            risk_free_rate=0.04,
-            market_risk_premium=0.05,
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
             beta=1.2,
-            tax_rate=0.25,
-            cost_of_debt=0.08,  # Manual override
+            tax_rate=25.0,
+            cost_of_debt=8.0,  # Manual override
         )
         capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
         common = CommonParameters(rates=rates, capital=capital)
