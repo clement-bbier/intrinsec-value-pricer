@@ -193,7 +193,12 @@ class InputFactory:
                         else:
                             # Normalize dictionary columns to ensure equal lengths
                             # Extract columns and pad with None to match max length
-                            max_len = max(len(v) if isinstance(v, list) else 1 for v in editor_data.values()) if editor_data else 0
+                            if editor_data:
+                                max_len = max(
+                                    len(v) if isinstance(v, list) else 1 for v in editor_data.values()
+                                )
+                            else:
+                                max_len = 0
                             normalized_data = {}
                             for key, value in editor_data.items():
                                 if isinstance(value, list):

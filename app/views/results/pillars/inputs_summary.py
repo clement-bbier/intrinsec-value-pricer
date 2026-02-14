@@ -84,7 +84,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
     """
     Safely formats a value handling None types.
-    
+
     Parameters
     ----------
     value : float | None
@@ -93,7 +93,7 @@ def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
         Python format specification (e.g., ".2%", ".2f").
     default : str, default="-"
         The default string to return if value is None.
-    
+
     Returns
     -------
     str
@@ -134,7 +134,10 @@ def _render_capital_structure_table(params) -> None:
         {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
         {"Item": KPITexts.MARKET_CAP_LABEL, "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
         {"Item": InputLabels.NET_DEBT, "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
-        {"Item": "Enterprise Value (Implied)", "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True)},
+        {
+            "Item": "Enterprise Value (Implied)",
+            "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
+        },
     ]
 
     df = pd.DataFrame(data)
