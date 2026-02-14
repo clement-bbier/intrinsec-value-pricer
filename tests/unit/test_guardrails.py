@@ -384,7 +384,7 @@ def test_validate_scenario_probabilities_invalid_sum(base_parameters):
 
     assert result.type == "error"
     assert result.code == "GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM"
-    assert result.extra["prob_sum"] == 0.9
+    assert result.extra["prob_sum"] == pytest.approx(0.9)
 
 
 def test_validate_scenario_probabilities_inexact(base_parameters):
