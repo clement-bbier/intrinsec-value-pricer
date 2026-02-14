@@ -272,7 +272,7 @@ def widget_sensitivity() -> None:
             UISharedTexts.LBL_SENS_RANGE,
             value=None,
             min_value=3,
-            max_value=5,
+            max_value=9,
             help=UISharedTexts.HELP_SENS_RANGE,
             key=UIKeys.SENS_RANGE,
         )
