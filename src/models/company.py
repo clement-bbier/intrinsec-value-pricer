@@ -100,6 +100,23 @@ class CompanySnapshot(BaseModel):
     beta: float | None = None
     capex_ttm: float | None = None
 
+    # Additional TTM metrics for Piotroski calculation
+    total_assets_ttm: float | None = None
+    current_assets_ttm: float | None = None
+    current_liabilities_ttm: float | None = None
+    gross_profit_ttm: float | None = None
+
+    # --- Previous Year Data (N-1) for Historical Comparisons ---
+    # Used for Piotroski F-Score and other year-over-year metrics
+    net_income_prev: float | None = None
+    total_assets_prev: float | None = None
+    long_term_debt_prev: float | None = None
+    current_assets_prev: float | None = None
+    current_liabilities_prev: float | None = None
+    gross_profit_prev: float | None = None
+    revenue_prev: float | None = None
+    shares_outstanding_prev: float | None = None
+
     # --- 3. Knowledge Base Fallbacks ---
     sector_pe_fallback: float | None = None
     sector_ev_ebitda_fallback: float | None = None

@@ -87,6 +87,21 @@ class InputLabels:
     UNKNOWN = "Inconnu"
     NO_OPERATIONAL_ASSUMPTIONS = "Aucune hypothèse opérationnelle spécifique à afficher pour ce modèle."
 
+    # Strategy input table labels
+    TABLE_COL_ASSUMPTION = "Hypothèse"
+    TABLE_COL_VALUE = "Valeur"
+    BASE_FLOW_LABEL = "Flux de Base (FCF/Div/EPS)"
+    PHASE_1_GROWTH_LABEL = "Croissance Phase 1"
+    PROJECTION_YEARS_LABEL = "Années de Projection"
+    TERMINAL_GROWTH_LABEL = "Croissance Terminale (g)"
+    TERMINAL_METHOD_LABEL = "Méthode Terminale"
+    ANCHOR_BOOK_VALUE = "Ancre (Valeur Comptable)"
+    PERSISTENCE_FACTOR = "Facteur de Persistance (ω)"
+    NORMALIZED_EPS = "BPA Normalisé"
+    CONSERVATIVE_GROWTH = "Croissance Conservatrice"
+    AAA_CORP_RATE = "Taux AAA Corp"
+
+
 
 class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""

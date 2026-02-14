@@ -177,15 +177,17 @@ class CompanyStats(BaseModel):
 
 def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
     """
-    Calculate Piotroski F-Score based on available snapshot data.
+    Calculate complete Piotroski F-Score using historical comparison (N vs N-1).
 
-    The F-Score is a 9-point scale measuring financial strength across
-    profitability, leverage/liquidity, and operating efficiency.
+    The F-Score is a 9-point scale measuring financial strength across three dimensions:
+    - Profitability (4 points)
+    - Leverage/Liquidity (3 points)
+    - Operating Efficiency (2 points)
 
     Parameters
     ----------
     snap : CompanySnapshot
-        Financial data snapshot.
+        Financial data snapshot containing both current (TTM) and previous year data.
 
     Returns
     -------
@@ -194,52 +196,125 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
 
     Notes
     -----
-    Full calculation requires historical comparison data (N vs N-1).
-    Current implementation uses available TTM data for profitability only.
-    Returns a partial score that should be interpreted as profitability
-    strength rather than overall financial health.
+    Full calculation requires both current year (TTM) and previous year (N-1) data.
+    Each of the 9 criteria awards 1 point if the condition is met.
+
+    References
+    ----------
+    Piotroski, J. D. (2000). "Value Investing: The Use of Historical Financial
+    Statement Information to Separate Winners from Losers". Journal of Accounting Research.
     """
     score = 0
     criteria_evaluated = 0
 
+    # =========================================================================
     # PROFITABILITY (4 criteria)
-    # 1. Positive Net Income
+    # =========================================================================
+
+    # 1. Positive Net Income (ROA proxy)
     if snap.net_income_ttm is not None:
         criteria_evaluated += 1
         if snap.net_income_ttm > 0:
             score += 1
 
-    # 2. Positive Operating Cash Flow (using FCF as proxy)
+    # 2. Positive Operating Cash Flow
     if snap.fcf_ttm is not None:
         criteria_evaluated += 1
         if snap.fcf_ttm > 0:
             score += 1
 
-    # 3. ROA (Return on Assets) - requires both net income and total assets
-    # Current snapshot doesn't have total assets, skip this criterion
+    # 3. Change in ROA (Return on Assets improved)
+    if (
+        snap.net_income_ttm is not None
+        and snap.net_income_prev is not None
+        and snap.total_assets_ttm is not None
+        and snap.total_assets_prev is not None
+        and snap.total_assets_ttm > 0
+        and snap.total_assets_prev > 0
+    ):
+        criteria_evaluated += 1
+        roa_current = snap.net_income_ttm / snap.total_assets_ttm
+        roa_prev = snap.net_income_prev / snap.total_assets_prev
+        if roa_current > roa_prev:
+            score += 1
 
-    # 4. Quality of Earnings (CFO > Net Income) - requires operating cash flow
-    # Using FCF as a proxy for CFO
+    # 4. Quality of Earnings (CFO > Net Income - Accruals)
     if snap.fcf_ttm is not None and snap.net_income_ttm is not None:
         criteria_evaluated += 1
         if snap.fcf_ttm > snap.net_income_ttm:
             score += 1
 
+    # =========================================================================
     # LEVERAGE/LIQUIDITY (3 criteria)
-    # 5. Decrease in Long-term Debt - requires historical data (N-1), unavailable
-    # 6. Increase in Current Ratio - requires historical data (N-1), unavailable
-    # 7. No new equity issued - requires historical data, unavailable
+    # =========================================================================
 
+    # 5. Decrease in Long-term Debt (Leverage decreased)
+    if snap.total_debt is not None and snap.long_term_debt_prev is not None:
+        criteria_evaluated += 1
+        if snap.total_debt < snap.long_term_debt_prev:
+            score += 1
+
+    # 6. Increase in Current Ratio (Liquidity improved)
+    if (
+        snap.current_assets_ttm is not None
+        and snap.current_liabilities_ttm is not None
+        and snap.current_assets_prev is not None
+        and snap.current_liabilities_prev is not None
+        and snap.current_liabilities_ttm > 0
+        and snap.current_liabilities_prev > 0
+    ):
+        criteria_evaluated += 1
+        current_ratio_ttm = snap.current_assets_ttm / snap.current_liabilities_ttm
+        current_ratio_prev = snap.current_assets_prev / snap.current_liabilities_prev
+        if current_ratio_ttm > current_ratio_prev:
+            score += 1
+
+    # 7. No new equity issued (No dilution)
+    if snap.shares_outstanding is not None and snap.shares_outstanding_prev is not None:
+        criteria_evaluated += 1
+        # Award point if shares did not increase (no dilution)
+        if snap.shares_outstanding <= snap.shares_outstanding_prev:
+            score += 1
+
+    # =========================================================================
     # OPERATING EFFICIENCY (2 criteria)
-    # 8. Increase in Gross Margin - requires historical data (N-1), unavailable
-    # 9. Increase in Asset Turnover - requires historical data (N-1), unavailable
+    # =========================================================================
+
+    # 8. Increase in Gross Margin (Operating efficiency improved)
+    if (
+        snap.gross_profit_ttm is not None
+        and snap.gross_profit_prev is not None
+        and snap.revenue_ttm is not None
+        and snap.revenue_prev is not None
+        and snap.revenue_ttm > 0
+        and snap.revenue_prev > 0
+    ):
+        criteria_evaluated += 1
+        gross_margin_ttm = snap.gross_profit_ttm / snap.revenue_ttm
+        gross_margin_prev = snap.gross_profit_prev / snap.revenue_prev
+        if gross_margin_ttm > gross_margin_prev:
+            score += 1
+
+    # 9. Increase in Asset Turnover (Asset utilization improved)
+    if (
+        snap.revenue_ttm is not None
+        and snap.revenue_prev is not None
+        and snap.total_assets_ttm is not None
+        and snap.total_assets_prev is not None
+        and snap.total_assets_ttm > 0
+        and snap.total_assets_prev > 0
+    ):
+        criteria_evaluated += 1
+        asset_turnover_ttm = snap.revenue_ttm / snap.total_assets_ttm
+        asset_turnover_prev = snap.revenue_prev / snap.total_assets_prev
+        if asset_turnover_ttm > asset_turnover_prev:
+            score += 1
 
     # If we couldn't evaluate enough criteria, return neutral score
     if criteria_evaluated < 2:
         return 5  # Neutral default when data is insufficient
 
-    # Return raw score without scaling to avoid misrepresenting financial health
-    # When historical data becomes available, this can be extended to full 9-point scale
+    # Return the actual score achieved (0-9)
     return min(9, max(0, score))
 
 
