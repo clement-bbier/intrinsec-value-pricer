@@ -7,10 +7,10 @@ Role: Global navigation and configuration hub.
 Responsibilities:
   - Ticker selection (updates State).
   - Methodology selection.
-  - Mode toggling (Auto/Expert).
+  - Mode toggling (Standard/Approfondie).
   - Triggering the Analysis via AppController.
 
-Style: Institutional Design.
+Style: Institutional Design (NumPy Docstrings).
 """
 
 import streamlit as st
@@ -27,9 +27,27 @@ from src.valuation.registry import get_display_names
 def render_sidebar():
     """
     Renders the main sidebar configuration panel.
-    Acts as the primary input for the Valuation Request.
+
+    This function acts as the primary input gateway for the valuation request.
+    It synchronizes the UI widgets with the global application state using
+    optimized callbacks to prevent redundant reruns.
+
+    Notes
+    -----
+    Uses high-contrast institutional design defined in the global CSS.
     """
     state = get_state()
+
+    # --- INTERNAL CALLBACKS ---
+
+    def _on_config_change():
+        """Reset valuation results in state whenever a core parameter changes."""
+        SessionManager.reset_valuation()
+
+    def _on_mode_change():
+        """Update expert mode flag based on the radio selection."""
+        state.is_expert_mode = (st.session_state.mode_selector == "Approfondie")
+        _on_config_change()
 
     with st.sidebar:
         # --- 1. HEADER ---
@@ -39,7 +57,7 @@ def render_sidebar():
         # --- 2. IDENTITY (TICKER) ---
         st.markdown(f"### {SidebarTexts.SEC_1_COMPANY}")
 
-        # Use st.form to prevent rerun on every keystroke (debounce)
+        # Forms do not support callbacks on every widget change (standard Streamlit behavior)
         with st.form("ticker_form", clear_on_submit=False):
             new_ticker = (
                 st.text_input(
@@ -51,12 +69,13 @@ def render_sidebar():
                 .strip()
             )
 
-            ticker_submitted = st.form_submit_button(SidebarTexts.BTN_TICKER_CONFIRM, width="stretch")
+            ticker_submitted = st.form_submit_button(
+                SidebarTexts.BTN_TICKER_CONFIRM, width="stretch"
+            )
 
-        # à revoir peut-être
         if ticker_submitted and new_ticker and new_ticker != state.ticker:
             state.ticker = new_ticker
-            SessionManager.reset_valuation()
+            _on_config_change()
             st.rerun()
 
         st.divider()
@@ -64,66 +83,51 @@ def render_sidebar():
         # --- 3. METHODOLOGY ---
         st.markdown(f"### {SidebarTexts.SEC_2_METHODOLOGY}")
 
-        # Use i18n display names from the Registry instead of raw enum values
         display_names = get_display_names()
         method_options = list(ValuationMethodology)
 
-        selected_method = st.selectbox(
+        # Synchronized via session_state key
+        st.selectbox(
             SidebarTexts.METHOD_LABEL,
             options=method_options,
             index=method_options.index(state.selected_methodology),
             format_func=lambda x: display_names.get(x, x.value),
+            key="selected_methodology",
+            on_change=_on_config_change,
         )
-
-        # à revoir peut-être
-        if selected_method != state.selected_methodology:
-            state.selected_methodology = selected_method
-            SessionManager.reset_valuation()
-            st.rerun()
 
         st.divider()
 
         # --- 4. PROJECTION HORIZON ---
+        # Only displayed for DCF-based models (hidden for Graham)
         if state.selected_methodology != ValuationMethodology.GRAHAM:
             st.markdown(f"### {SidebarTexts.SEC_4_HORIZON}")
 
-            new_years = st.slider(
+            st.slider(
                 SidebarTexts.YEARS_LABEL,
                 min_value=UIWidgetDefaults.MIN_PROJECTION_YEARS,
                 max_value=UIWidgetDefaults.MAX_PROJECTION_YEARS,
                 value=state.projection_years,
                 step=1,
+                key="projection_years",
+                on_change=_on_config_change,
             )
-
-            # à revoir peut-être
-            if new_years != state.projection_years:
-                state.projection_years = new_years
-                SessionManager.reset_valuation()
-                st.rerun()
-
             st.divider()
 
-        # --- 5. MODE SWITCH (Auto vs Expert) ---
+        # --- 5. MODE SWITCH (Standard vs Approfondie) ---
         st.markdown(f"### {SidebarTexts.SETTINGS}")
 
-        # Utilisation d'un radio horizontal pour un look "Terminal"
-        mode_label = "Niveau d'analyse"
-        options = ["Standard", "Approfondie"]
+        mode_options = ["Standard", "Approfondie"]
+        current_idx = 1 if state.is_expert_mode else 0
 
-        current_index = 1 if state.is_expert_mode else 0
-
-        selected_mode = st.radio(
-            mode_label,
-            options=options,
-            index=current_index,
+        st.radio(
+            "Niveau d'analyse",
+            options=mode_options,
+            index=current_idx,
             horizontal=False,
+            key="mode_selector",
+            on_change=_on_mode_change,
         )
-
-        new_expert_mode = (selected_mode == "Approfondie")
-
-        if new_expert_mode != state.is_expert_mode:
-            state.is_expert_mode = new_expert_mode
-            st.rerun()
 
         st.divider()
 
@@ -133,22 +137,25 @@ def render_sidebar():
 
         st.divider()
 
-        # --- LANGUAGE CHANGE ---
+        # --- LANGUAGE CHANGE (Placeholder for future i18n logic) ---
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown(f"## {SidebarTexts.LANGUAGE}")
         with col2:
-            lang = st.selectbox(
+            st.selectbox(
                 "Lang",
                 options=["FR", "EN"],
                 index=0,
-                label_visibility="collapsed"
+                key="app_language",
+                label_visibility="collapsed",
             )
 
         st.divider()
 
         # --- FOOTER ---
-        linkedin_url = "https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/?locale=en_US"
+        linkedin_url = (
+            "https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/?locale=en_US"
+        )
 
         st.markdown(
             f"""
@@ -163,5 +170,5 @@ def render_sidebar():
                 </a>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
