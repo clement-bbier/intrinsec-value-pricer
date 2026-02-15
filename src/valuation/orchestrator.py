@@ -274,10 +274,13 @@ class ValuationOrchestrator:
             )
 
             # --- PHASE 3.6: CONTEXT & STATS (Clean Architecture) ---
-            # 1. Build Market Context (Benchmark) from Snapshot
+            # 1. Attach Financial Snapshot (Source of Truth for UI Display)
+            valuation_output.financials = snapshot
+
+            # 2. Build Market Context (Benchmark) from Snapshot
             valuation_output.market_context = self._build_market_context(snapshot)
 
-            # 2. Compute Company Stats via Factory Method (The "Pro" way)
+            # 3. Compute Company Stats via Factory Method (The "Pro" way)
             # Delegates logic to the model itself
             valuation_output.company_stats = CompanyStats.compute(snapshot)
 

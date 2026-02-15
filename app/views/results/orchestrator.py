@@ -28,6 +28,7 @@ from app.views.results.pillars import (
     market_analysis,  # Pillar 5: Market Hub
     risk_engineering,  # Pillar 4: Risk Hub
 )
+from app.views.results.pillars.inputs_summary import _get_display_currency
 from src.core.formatting import CurrencyFormatter
 from src.i18n import KPITexts, PillarLabels, UIMessages
 
@@ -130,7 +131,10 @@ def _render_permanent_header(result: ValuationResult) -> None:
     # Using .common namespace as defined in src/models/results/common.py
     intrinsic_val = result.results.common.intrinsic_value_per_share
     current_price = result.request.parameters.structure.current_price
-    currency = result.request.parameters.structure.currency or "USD"
+    
+    # Use currency from financial snapshot (Yahoo source of truth)
+    currency = _get_display_currency(result)
+    
     upside = result.results.common.upside_pct
 
     # Use CurrencyFormatter for proper symbol placement (e.g., "€" suffix for EUR, "$" prefix for USD)

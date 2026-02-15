@@ -16,6 +16,28 @@ from src.i18n import InputLabels, KPITexts
 from src.models import ValuationMethodology, ValuationResult
 
 
+def _get_display_currency(result: ValuationResult) -> str:
+    """
+    Extracts the display currency from the valuation result.
+
+    Uses the financial snapshot currency (Yahoo source of truth) as the primary source,
+    with a fallback to USD if the snapshot is not available.
+
+    Parameters
+    ----------
+    result : ValuationResult
+        The valuation result containing the financial snapshot.
+
+    Returns
+    -------
+    str
+        The currency code to use for display (e.g., "EUR", "USD").
+    """
+    if result.financials and result.financials.currency:
+        return result.financials.currency
+    return "USD"
+
+
 def render_detailed_inputs(result: ValuationResult) -> None:
     """
     Renders Pillar 1: Configuration Fact Sheet.
@@ -33,7 +55,8 @@ def render_detailed_inputs(result: ValuationResult) -> None:
     params = result.request.parameters
 
     # --- HEADER: CONTEXT ---
-    currency = params.structure.currency if params.structure.currency else "USD"
+    # Use currency from financial snapshot (Yahoo source of truth)
+    currency = _get_display_currency(result)
     st.caption(f"{InputLabels.SECTION_STRUCTURE} • {result.request.mode.value} • {currency}")
 
     st.divider()
@@ -45,7 +68,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 
     with c1:
         st.markdown(f"#### {InputLabels.SECTION_STRUCTURE}")
-        _render_capital_structure_table(params)
+        _render_capital_structure_table(params, currency)
 
     with c2:
         st.markdown(f"#### {InputLabels.SECTION_WACC}")
@@ -105,9 +128,36 @@ def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
     return format(value, fmt)
 
 
-def _render_capital_structure_table(params) -> None:
+def _clean_label(label: str) -> str:
+    """
+    Removes leading '.' or '*' characters from label strings.
+
+    Parameters
+    ----------
+    label : str
+        The label to clean.
+
+    Returns
+    -------
+    str
+        The cleaned label with leading special characters removed.
+    """
+    # Iteratively strip leading dots and asterisks until none remain
+    while label and label[0] in ('.', '*'):
+        label = label[1:]
+    return label
+
+
+def _render_capital_structure_table(params, currency: str) -> None:
     """
     Displays a clean dataframe for capital structure with proper currency formatting.
+
+    Parameters
+    ----------
+    params : Parameters
+        The parameter bundle containing structure and capital data.
+    currency : str
+        The currency code to use for formatting (from financials snapshot).
     """
     # Safe data access (V2 Model Path)
     struct = params.structure
@@ -124,17 +174,18 @@ def _render_capital_structure_table(params) -> None:
     net_debt = debt - cash
 
     # Use CurrencyFormatter for proper symbol placement
-    currency = struct.currency if struct.currency else "USD"
+    # Note: 'currency' parameter is passed from Yahoo snapshot (source of truth)
+    # and takes precedence over struct.currency which may have been overridden during resolution
     formatter = CurrencyFormatter()
 
     # Use formatted strings for the table
     data = [
-        {"Item": InputLabels.CURRENT_PRICE, "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
-        {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
-        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
-        {"Item": InputLabels.NET_DEBT, "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
+        {"Item": _clean_label(InputLabels.CURRENT_PRICE), "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
+        {"Item": _clean_label(InputLabels.SHARES_OUT), "Value": f"{shares:,.0f}"},
+        {"Item": _clean_label(KPITexts.MARKET_CAP_LABEL), "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
+        {"Item": _clean_label(InputLabels.NET_DEBT), "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
         {
-            "Item": "Enterprise Value (Implied)",
+            "Item": _clean_label(InputLabels.IMPLIED_EV),
             "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
         },
     ]
@@ -165,20 +216,20 @@ def _render_rates_table(params, resolved_rates) -> None:
 
     data = [
         {
-            "Parameter": InputLabels.RISK_FREE_RATE,
+            "Parameter": _clean_label(InputLabels.RISK_FREE_RATE),
             "Value": fmt_rate(
                 p_rates.risk_free_rate,
                 resolved_rates.risk_free_rate if hasattr(resolved_rates, "risk_free_rate") else None,
             ),
         },
-        {"Parameter": InputLabels.BETA, "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
-        {"Parameter": InputLabels.ERP, "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {"Parameter": _clean_label(InputLabels.BETA), "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
+        {"Parameter": _clean_label(InputLabels.ERP), "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
         {
-            "Parameter": InputLabels.COST_OF_EQUITY,
+            "Parameter": _clean_label(InputLabels.COST_OF_EQUITY),
             "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity),
         },
-        {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX, "Value": kd_display},
-        {"Parameter": InputLabels.WACC_CALC, "Value": f"**{resolved_rates.wacc:.2%}**"},
+        {"Parameter": _clean_label(InputLabels.COST_OF_DEBT_PRE_TAX), "Value": kd_display},
+        {"Parameter": _clean_label(InputLabels.WACC_CALC), "Value": f"**{resolved_rates.wacc:.2%}**"},
     ]
 
     df = pd.DataFrame(data)
@@ -204,15 +255,15 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         growth_val = strat_params.growth_rate if hasattr(strat_params, "growth_rate") else None
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.ANCHOR_BOOK_VALUE,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.ANCHOR_BOOK_VALUE),
                 InputLabels.TABLE_COL_VALUE: bv_display,
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PERSISTENCE_FACTOR,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.PERSISTENCE_FACTOR),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.persistence_factor, ".2f"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(growth_val, ".2%"),
             },
         ]
@@ -228,15 +279,15 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.NORMALIZED_EPS,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.NORMALIZED_EPS),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.eps_normalized, ".2f"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.CONSERVATIVE_GROWTH,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.CONSERVATIVE_GROWTH),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.growth_estimate, ".2%"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.AAA_CORP_RATE,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.AAA_CORP_RATE),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(aaa_yield, ".2%"),
             },
         ]
@@ -276,39 +327,35 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.BASE_FLOW_LABEL,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.BASE_FLOW_LABEL),
                 InputLabels.TABLE_COL_VALUE: f"{anchor_val:,.2f} M",
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PHASE_1_GROWTH_LABEL,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.PHASE_1_GROWTH_LABEL),
                 InputLabels.TABLE_COL_VALUE: _safe_fmt(g_p1, ".2%"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PROJECTION_YEARS_LABEL,
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.PROJECTION_YEARS_LABEL),
                 InputLabels.TABLE_COL_VALUE: f"{strat_params.projection_years} ans",
             },
         ]
 
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
-            data.append(
-                {
-                    InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
-                    InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
-                }
-            )
+            data.append({
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
+                InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
+            })
 
         # Only add Terminal Method if it exists and is not None
         if terminal_method_val is not None:
             method_str = str(
                 terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
             )
-            data.append(
-                {
-                    InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_METHOD_LABEL,
-                    InputLabels.TABLE_COL_VALUE: method_str,
-                }
-            )
+            data.append({
+                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_METHOD_LABEL),
+                InputLabels.TABLE_COL_VALUE: method_str,
+            })
 
     if data:
         df = pd.DataFrame(data)

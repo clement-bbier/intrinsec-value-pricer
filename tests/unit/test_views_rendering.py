@@ -236,7 +236,7 @@ class TestInputsSummaryRendering:
         from app.views.results.pillars.inputs_summary import _render_capital_structure_table
 
         result = _make_base_result()
-        _render_capital_structure_table(result.request.parameters)
+        _render_capital_structure_table(result.request.parameters, "USD")
 
         mock_st.table.assert_called_once()
 
