@@ -16,7 +16,7 @@ from src.i18n import InputLabels, KPITexts
 from src.models import ValuationMethodology, ValuationResult
 
 
-def _get_display_currency(result: ValuationResult) -> str:
+def get_display_currency(result: ValuationResult) -> str:
     """
     Extracts the display currency from the valuation result.
 
@@ -56,7 +56,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 
     # --- HEADER: CONTEXT ---
     # Use currency from financial snapshot (Yahoo source of truth)
-    currency = _get_display_currency(result)
+    currency = get_display_currency(result)
     st.caption(f"{InputLabels.SECTION_STRUCTURE} • {result.request.mode.value} • {currency}")
 
     st.divider()

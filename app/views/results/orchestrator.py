@@ -28,7 +28,7 @@ from app.views.results.pillars import (
     market_analysis,  # Pillar 5: Market Hub
     risk_engineering,  # Pillar 4: Risk Hub
 )
-from app.views.results.pillars.inputs_summary import _get_display_currency
+from app.views.results.pillars.inputs_summary import get_display_currency
 from src.core.formatting import CurrencyFormatter
 from src.i18n import KPITexts, PillarLabels, UIMessages
 
@@ -133,7 +133,7 @@ def _render_permanent_header(result: ValuationResult) -> None:
     current_price = result.request.parameters.structure.current_price
 
     # Use currency from financial snapshot (Yahoo source of truth)
-    currency = _get_display_currency(result)
+    currency = get_display_currency(result)
 
     upside = result.results.common.upside_pct
 
