@@ -119,7 +119,10 @@ def _clean_label(label: str) -> str:
     str
         The cleaned label with leading special characters removed.
     """
-    return label.lstrip(".*")
+    # Iteratively strip leading dots and asterisks until none remain
+    while label and label[0] in ('.',  '*'):
+        label = label[1:]
+    return label
 
 
 def _render_capital_structure_table(params) -> None:
@@ -151,7 +154,7 @@ def _render_capital_structure_table(params) -> None:
         {"Item": _clean_label(KPITexts.MARKET_CAP_LABEL), "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
         {"Item": _clean_label(InputLabels.NET_DEBT), "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
         {
-            "Item": _clean_label("Enterprise Value (Implied)"),
+            "Item": _clean_label(InputLabels.IMPLIED_EV),
             "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
         },
     ]
