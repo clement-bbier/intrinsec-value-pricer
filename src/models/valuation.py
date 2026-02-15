@@ -108,6 +108,9 @@ class ValuationResult(BaseModel):
         Traceability of the initial query.
     results : Results
         The core calculated payload (Common, Strategy, Extensions).
+    financials : CompanySnapshot | None
+        The raw financial snapshot from the data provider (Yahoo Finance).
+        Contains the original currency and market data used for resolution.
     audit_report : AuditReport | None
         Validation and health checks report.
     upside_pct : float | None
@@ -125,6 +128,11 @@ class ValuationResult(BaseModel):
 
     # The Core Payload
     results: Results
+
+    # Financial Snapshot (Source of Truth for display)
+    financials: CompanySnapshot | None = Field(
+        default=None, description="Raw financial snapshot from data provider (Yahoo Finance)."
+    )
 
     # Metadata & Reporting (Optional / Computed)
     audit_report: AuditReport | None = None
