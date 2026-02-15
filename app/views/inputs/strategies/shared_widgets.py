@@ -413,7 +413,7 @@ def widget_sotp() -> None:
             key=UIKeys.SOTP_EDITOR,
             column_config={
                 "name": st.column_config.TextColumn(UISharedTexts.LBL_SEGMENT_NAME),
-                "value": st.column_config.NumberColumn(UISharedTexts.LBL_SEGMENT_VALUE, format="$%.2f"),
+                "value": st.column_config.NumberColumn(UISharedTexts.LBL_SEGMENT_VALUE, format="%.2f"),
                 "method": st.column_config.SelectboxColumn(
                     UISharedTexts.LBL_SEGMENT_METHOD,
                     options=["DCF", "Multiple", "Net Asset"],  # Technical keys can remain strings

@@ -132,7 +132,7 @@ class UISharedTexts:
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding / conglomérat**"
 
     LBL_SEGMENT_NAME = "Nom du Segment"
-    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV) (M$)"
+    LBL_SEGMENT_VALUE = "Valeur d'Entreprise (EV) (Millions)"
     LBL_SEGMENT_METHOD = "Méthode de Valorisation"
     LBL_DISCOUNT = "Décote de conglomérat (%)"
     LBL_COMPARATIVE = "multiples comparatifs"
