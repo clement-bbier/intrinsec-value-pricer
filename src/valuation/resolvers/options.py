@@ -141,7 +141,7 @@ class ExtensionResolver:
         # Log the segments to verify they are being received
         segment_count = len(params.segments) if params.segments else 0
         logger.info(f"[Resolver] SOTP enabled with {segment_count} segment(s)")
-        
+
         if segment_count > 0:
             for idx, seg in enumerate(params.segments):
                 logger.debug(f"[Resolver] SOTP Segment {idx + 1}: {seg.name} = {seg.value}")

@@ -131,10 +131,10 @@ def _render_permanent_header(result: ValuationResult) -> None:
     # Using .common namespace as defined in src/models/results/common.py
     intrinsic_val = result.results.common.intrinsic_value_per_share
     current_price = result.request.parameters.structure.current_price
-    
+
     # Use currency from financial snapshot (Yahoo source of truth)
     currency = _get_display_currency(result)
-    
+
     upside = result.results.common.upside_pct
 
     # Use CurrencyFormatter for proper symbol placement (e.g., "€" suffix for EUR, "$" prefix for USD)
