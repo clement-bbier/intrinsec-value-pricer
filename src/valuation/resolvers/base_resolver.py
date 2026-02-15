@@ -82,7 +82,7 @@ class Resolver:
             sector=identity.sector or snap.sector or "Unknown Sector",
             industry=identity.industry or snap.industry or "Unknown Industry",
             country=identity.country or snap.country or "Unknown",
-            currency=identity.currency or snap.currency or "USD",
+            currency=snap.currency or identity.currency or "USD",
             current_price=identity.current_price or snap.current_price,
         )
 

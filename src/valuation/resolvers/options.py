@@ -138,5 +138,15 @@ class ExtensionResolver:
         if not params.enabled:
             return
 
+        # Log the segments to verify they are being received
+        segment_count = len(params.segments) if params.segments else 0
+        logger.info(f"[Resolver] SOTP enabled with {segment_count} segment(s)")
+        
+        if segment_count > 0:
+            for idx, seg in enumerate(params.segments):
+                logger.debug(f"[Resolver] SOTP Segment {idx + 1}: {seg.name} = {seg.value}")
+        else:
+            logger.warning("[Resolver] SOTP enabled but no segments provided")
+
         if params.conglomerate_discount is None:
             params.conglomerate_discount = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT

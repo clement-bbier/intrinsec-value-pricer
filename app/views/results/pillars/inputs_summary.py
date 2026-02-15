@@ -105,6 +105,23 @@ def _safe_fmt(value: float | None, fmt: str, default: str = "-") -> str:
     return format(value, fmt)
 
 
+def _clean_label(label: str) -> str:
+    """
+    Removes leading '.' or '*' characters from label strings.
+
+    Parameters
+    ----------
+    label : str
+        The label to clean.
+
+    Returns
+    -------
+    str
+        The cleaned label with leading special characters removed.
+    """
+    return label.lstrip(".*")
+
+
 def _render_capital_structure_table(params) -> None:
     """
     Displays a clean dataframe for capital structure with proper currency formatting.
@@ -129,12 +146,12 @@ def _render_capital_structure_table(params) -> None:
 
     # Use formatted strings for the table
     data = [
-        {"Item": InputLabels.CURRENT_PRICE, "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
-        {"Item": InputLabels.SHARES_OUT, "Value": f"{shares:,.0f}"},
-        {"Item": KPITexts.MARKET_CAP_LABEL, "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
-        {"Item": InputLabels.NET_DEBT, "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
+        {"Item": _clean_label(InputLabels.CURRENT_PRICE), "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
+        {"Item": _clean_label(InputLabels.SHARES_OUT), "Value": f"{shares:,.0f}"},
+        {"Item": _clean_label(KPITexts.MARKET_CAP_LABEL), "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
+        {"Item": _clean_label(InputLabels.NET_DEBT), "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
         {
-            "Item": "Enterprise Value (Implied)",
+            "Item": _clean_label("Enterprise Value (Implied)"),
             "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
         },
     ]
@@ -165,20 +182,20 @@ def _render_rates_table(params, resolved_rates) -> None:
 
     data = [
         {
-            "Parameter": InputLabels.RISK_FREE_RATE,
+            "Parameter": _clean_label(InputLabels.RISK_FREE_RATE),
             "Value": fmt_rate(
                 p_rates.risk_free_rate,
                 resolved_rates.risk_free_rate if hasattr(resolved_rates, "risk_free_rate") else None,
             ),
         },
-        {"Parameter": InputLabels.BETA, "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
-        {"Parameter": InputLabels.ERP, "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {"Parameter": _clean_label(InputLabels.BETA), "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
+        {"Parameter": _clean_label(InputLabels.ERP), "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
         {
-            "Parameter": InputLabels.COST_OF_EQUITY,
+            "Parameter": _clean_label(InputLabels.COST_OF_EQUITY),
             "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity),
         },
-        {"Parameter": InputLabels.COST_OF_DEBT_PRE_TAX, "Value": kd_display},
-        {"Parameter": InputLabels.WACC_CALC, "Value": f"**{resolved_rates.wacc:.2%}**"},
+        {"Parameter": _clean_label(InputLabels.COST_OF_DEBT_PRE_TAX), "Value": kd_display},
+        {"Parameter": _clean_label(InputLabels.WACC_CALC), "Value": f"**{resolved_rates.wacc:.2%}**"},
     ]
 
     df = pd.DataFrame(data)
@@ -204,16 +221,16 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         growth_val = strat_params.growth_rate if hasattr(strat_params, "growth_rate") else None
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.ANCHOR_BOOK_VALUE,
-                InputLabels.TABLE_COL_VALUE: bv_display,
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.ANCHOR_BOOK_VALUE),
+                _clean_label(InputLabels.TABLE_COL_VALUE): bv_display,
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PERSISTENCE_FACTOR,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.persistence_factor, ".2f"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.PERSISTENCE_FACTOR),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(strat_params.persistence_factor, ".2f"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(growth_val, ".2%"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(growth_val, ".2%"),
             },
         ]
 
@@ -228,16 +245,16 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.NORMALIZED_EPS,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.eps_normalized, ".2f"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.NORMALIZED_EPS),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(strat_params.eps_normalized, ".2f"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.CONSERVATIVE_GROWTH,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(strat_params.growth_estimate, ".2%"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.CONSERVATIVE_GROWTH),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(strat_params.growth_estimate, ".2%"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.AAA_CORP_RATE,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(aaa_yield, ".2%"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.AAA_CORP_RATE),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(aaa_yield, ".2%"),
             },
         ]
 
@@ -276,24 +293,24 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         data = [
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.BASE_FLOW_LABEL,
-                InputLabels.TABLE_COL_VALUE: f"{anchor_val:,.2f} M",
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.BASE_FLOW_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): f"{anchor_val:,.2f} M",
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PHASE_1_GROWTH_LABEL,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(g_p1, ".2%"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.PHASE_1_GROWTH_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(g_p1, ".2%"),
             },
             {
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.PROJECTION_YEARS_LABEL,
-                InputLabels.TABLE_COL_VALUE: f"{strat_params.projection_years} ans",
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.PROJECTION_YEARS_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): f"{strat_params.projection_years} ans",
             },
         ]
 
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
             data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): _safe_fmt(terminal_growth, ".2%"),
             })
 
         # Only add Terminal Method if it exists and is not None
@@ -302,8 +319,8 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
                 terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
             )
             data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_METHOD_LABEL,
-                InputLabels.TABLE_COL_VALUE: method_str,
+                _clean_label(InputLabels.TABLE_COL_ASSUMPTION): _clean_label(InputLabels.TERMINAL_METHOD_LABEL),
+                _clean_label(InputLabels.TABLE_COL_VALUE): method_str,
             })
 
     if data:
