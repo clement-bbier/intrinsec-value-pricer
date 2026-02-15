@@ -120,7 +120,7 @@ def _clean_label(label: str) -> str:
         The cleaned label with leading special characters removed.
     """
     # Iteratively strip leading dots and asterisks until none remain
-    while label and label[0] in ('.',  '*'):
+    while label and label[0] in ('.', '*'):
         label = label[1:]
     return label
 
