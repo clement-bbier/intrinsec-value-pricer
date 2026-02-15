@@ -1,8 +1,8 @@
 [theme]
 # Institutional color palette
-primaryColor = "#1E40AF"  # Deep blue for primary actions
+primaryColor = "#DC2626"  # Deep blue for primary actions
 backgroundColor = "#F8FAFC"  # Soft white background
-secondaryBackgroundColor = "#FFFFFF"  # Pure white for cards
+secondaryBackgroundColor = "#002654"  # Pure white for cards
 textColor = "#0F172A"  # Deep slate for readability
 font = "sans serif"
 

@@ -6,16 +6,22 @@ Textes de la barre latérale.
 
 class SidebarTexts:
     """Labels et en-têtes de la barre latérale."""
+    LANGUAGE = "Langues"
+    TITLE = "Paramétrage de l'analyse"
 
-    SEC_1_COMPANY = "Choix de l'entreprise"
-    SEC_2_METHODOLOGY = "Choix de la méthodologie"
+    SEC_1_COMPANY = "Séléction de la cible"
+    SEC_2_METHODOLOGY = "Moteur de valorisation"
     SEC_3_SOURCE = "Source des données"
-    SEC_4_HORIZON = "Horizon"
+    SEC_4_HORIZON = "Paramètres temporels"
+
+    HELP_TICKER_LABEL = "Saisissez un code ticker Yahoo Finance valide (par exemple AAPL, MSFT, ^GSPC)"
+
+    BTN_TICKER_CONFIRM = "Confirmer le ticker"
 
     TICKER_LABEL = "Ticker (Yahoo Finance)"
-    METHOD_LABEL = "Méthode de Valorisation"
+    METHOD_LABEL = "Sélection du modèle"
     STRATEGY_LABEL = "Mode d'analyse"
-    YEARS_LABEL = "Années de projection"
+    YEARS_LABEL = "Période de projection (n)"
 
     SOURCE_AUTO = "Standard (via Yahoo Finance)"
     SOURCE_EXPERT = "Approfondi (Paramétrage Manuel)"

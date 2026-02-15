@@ -7,9 +7,9 @@ Labels et descriptions du registre Glass Box.
 class RegistryTexts:
     """Labels et descriptions pedagogiques du registre Glass Box."""
 
-    DDM_L = "Modèle d'Actualisation des Dividendes (DDM)"
-    RIM_IV_L = "Valeur Intrinsèque RIM (Ohlson)"  # Était RIM_IV_L dans l'appel
-    GRAHAM_IV_L = "Valeur Graham AAA"  # Était GRAHAM_IV_L dans l'appel
+    DDM_L = "Modèle DDM"
+    RIM_IV_L = "Modèle RIM"  # Était RIM_IV_L dans l'appel
+    GRAHAM_IV_L = "Formule de Graham"  # Était GRAHAM_IV_L dans l'appel
 
     # DCF (Approche Entite - FCFF)
     FCFE_EQUITY_VALUE = "Valeur Totale des Capitaux Propres"
@@ -20,10 +20,10 @@ class RegistryTexts:
     HISTORICAL_IV_L = "IV historique"
     DCF_EV_LA = "Valeur d'entreprise"
     DCF_IV_LA = "Valeur intrinsèque"
-    FCFF_STANDARD_L = "DCF Standard (FCFF)"
-    FCFF_GROWTH_L = "DCF Growth (Revenue-Driven)"
-    FCFF_NORM_L = "DCF Fondamental (Normalisé)"
-    FCFE_L = "DCF Equity (FCFE)"
+    FCFF_STANDARD_L = "DCF : Standard"
+    FCFF_GROWTH_L = "DCF : Croissance"
+    FCFF_NORM_L = "DCF : Fondamental"
+    FCFE_L = "DCF : FCFE"
 
     SBC_LABEL = "Ajustement Dilution (SBC)"
     DCF_FCF_BASE_L = "Ancrage du Flux d'Exploitation (FCF0)"
