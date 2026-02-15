@@ -16,6 +16,28 @@ from src.i18n import InputLabels, KPITexts
 from src.models import ValuationMethodology, ValuationResult
 
 
+def _get_display_currency(result: ValuationResult) -> str:
+    """
+    Extracts the display currency from the valuation result.
+
+    Uses the financial snapshot currency (Yahoo source of truth) as the primary source,
+    with a fallback to USD if the snapshot is not available.
+
+    Parameters
+    ----------
+    result : ValuationResult
+        The valuation result containing the financial snapshot.
+
+    Returns
+    -------
+    str
+        The currency code to use for display (e.g., "EUR", "USD").
+    """
+    if result.financials and result.financials.currency:
+        return result.financials.currency
+    return "USD"
+
+
 def render_detailed_inputs(result: ValuationResult) -> None:
     """
     Renders Pillar 1: Configuration Fact Sheet.
@@ -34,10 +56,7 @@ def render_detailed_inputs(result: ValuationResult) -> None:
 
     # --- HEADER: CONTEXT ---
     # Use currency from financial snapshot (Yahoo source of truth)
-    currency = "USD"  # Default fallback
-    if result.financials and result.financials.currency:
-        currency = result.financials.currency
-    
+    currency = _get_display_currency(result)
     st.caption(f"{InputLabels.SECTION_STRUCTURE} • {result.request.mode.value} • {currency}")
 
     st.divider()
@@ -155,6 +174,8 @@ def _render_capital_structure_table(params, currency: str) -> None:
     net_debt = debt - cash
 
     # Use CurrencyFormatter for proper symbol placement
+    # Note: 'currency' parameter is passed from Yahoo snapshot (source of truth)
+    # and takes precedence over struct.currency which may have been overridden during resolution
     formatter = CurrencyFormatter()
 
     # Use formatted strings for the table
