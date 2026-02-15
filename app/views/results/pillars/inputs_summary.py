@@ -291,20 +291,24 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
-            data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
-            })
+            data.append(
+                {
+                    InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_GROWTH_LABEL,
+                    InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
+                }
+            )
 
         # Only add Terminal Method if it exists and is not None
         if terminal_method_val is not None:
             method_str = str(
                 terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
             )
-            data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_METHOD_LABEL,
-                InputLabels.TABLE_COL_VALUE: method_str,
-            })
+            data.append(
+                {
+                    InputLabels.TABLE_COL_ASSUMPTION: InputLabels.TERMINAL_METHOD_LABEL,
+                    InputLabels.TABLE_COL_VALUE: method_str,
+                }
+            )
 
     if data:
         df = pd.DataFrame(data)

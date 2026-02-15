@@ -163,20 +163,14 @@ class TestExtractMostRecentValue:
 
     def test_extract_from_simple_dataframe(self):
         """Test extraction from a simple dataframe."""
-        df = pd.DataFrame(
-            {"2023": [100, 200, 300], "2022": [90, 180, 270]},
-            index=["Revenue", "Expenses", "Profit"]
-        )
+        df = pd.DataFrame({"2023": [100, 200, 300], "2022": [90, 180, 270]}, index=["Revenue", "Expenses", "Profit"])
 
         result = extract_most_recent_value(df, ["Revenue"])
         assert result == 100.0
 
     def test_extract_with_multiple_keys(self):
         """Test extraction with multiple possible keys."""
-        df = pd.DataFrame(
-            {"2023": [100, 200], "2022": [90, 180]},
-            index=["Operating Cash Flow", "Capital Expenditure"]
-        )
+        df = pd.DataFrame({"2023": [100, 200], "2022": [90, 180]}, index=["Operating Cash Flow", "Capital Expenditure"])
 
         result = extract_most_recent_value(df, OCF_KEYS)
         assert result == 100.0
@@ -224,10 +218,7 @@ class TestExtractMostRecentValue:
 
     def test_extract_capex_keys(self):
         """Test extraction with CAPEX keys."""
-        df = pd.DataFrame(
-            {"2023": [50, -25], "2022": [45, -20]},
-            index=["Operating Cash Flow", "Capital Expenditure"]
-        )
+        df = pd.DataFrame({"2023": [50, -25], "2022": [45, -20]}, index=["Operating Cash Flow", "Capital Expenditure"])
 
         result = extract_most_recent_value(df, CAPEX_KEYS)
         assert result == -25.0
@@ -235,8 +226,7 @@ class TestExtractMostRecentValue:
     def test_extract_da_keys(self):
         """Test extraction with D&A keys."""
         df = pd.DataFrame(
-            {"2023": [50, 10], "2022": [45, 9]},
-            index=["Operating Cash Flow", "Depreciation And Amortization"]
+            {"2023": [50, 10], "2022": [45, 9]}, index=["Operating Cash Flow", "Depreciation And Amortization"]
         )
 
         result = extract_most_recent_value(df, DA_KEYS)

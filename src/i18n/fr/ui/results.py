@@ -102,7 +102,6 @@ class InputLabels:
     AAA_CORP_RATE = "Taux AAA Corp"
 
 
-
 class KPITexts:
     """Labels et titres pour les indicateurs clés (Glass Box & Dashboard - Pilier 0)."""
 
