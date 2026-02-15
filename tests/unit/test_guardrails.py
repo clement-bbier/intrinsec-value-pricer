@@ -230,13 +230,11 @@ def test_validate_roic_below_wacc_with_growth(base_company, base_parameters):
         capital=CapitalStructureParameters(
             total_debt=0.01,  # Input 0.01 × 1M = 10,000
             cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
-            shares_outstanding=0.0001  # Input 0.0001 × 1M = 100 shares
-        )
+            shares_outstanding=0.0001,  # Input 0.0001 × 1M = 100 shares
+        ),
     )
     base_parameters.strategy = FCFFStandardParameters(
-        projection_years=5,
-        growth_rate_p1=5.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+        projection_years=5, growth_rate_p1=5.0, terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
     )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)
@@ -257,16 +255,14 @@ def test_validate_roic_neutral(base_company, base_parameters):
         capital=CapitalStructureParameters(
             total_debt=0.005,  # Input 0.005 × 1M = 5,000
             cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
-            shares_outstanding=0.0001  # 100 shares -> Market equity = 10,000 (100 * 100)
-        )
+            shares_outstanding=0.0001,  # 100 shares -> Market equity = 10,000 (100 * 100)
+        ),
     )
     # NOPAT = 1000 * 0.79 = 790
     # Invested Capital = 5000 + 10000 - 1000 = 14000
     # ROIC = 790 / 14000 ≈ 0.056 (5.6%)
     base_parameters.strategy = FCFFStandardParameters(
-        projection_years=5,
-        growth_rate_p1=5.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+        projection_years=5, growth_rate_p1=5.0, terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
     )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.056)
@@ -285,13 +281,11 @@ def test_validate_roic_above_wacc(base_company, base_parameters):
         capital=CapitalStructureParameters(
             total_debt=0.005,  # Input 0.005 × 1M = 5,000
             cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
-            shares_outstanding=0.0001  # 100 shares
-        )
+            shares_outstanding=0.0001,  # 100 shares
+        ),
     )
     base_parameters.strategy = FCFFStandardParameters(
-        projection_years=5,
-        growth_rate_p1=5.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+        projection_years=5, growth_rate_p1=5.0, terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
     )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.08)
@@ -555,7 +549,9 @@ def test_extract_growth_rate_none():
 
 def test_validate_terminal_growth_very_small_spread(base_parameters):
     """Test boundary at exactly 0.5% spread."""
-    base_parameters.strategy.terminal_value = TerminalValueParameters(perpetual_growth_rate=9.55)  # 9.55%, spread = 0.45%
+    base_parameters.strategy.terminal_value = TerminalValueParameters(
+        perpetual_growth_rate=9.55
+    )  # 9.55%, spread = 0.45%
 
     result = validate_terminal_growth(base_parameters, wacc=0.10)
 
@@ -573,13 +569,11 @@ def test_validate_roic_with_zero_tax_rate(base_company, base_parameters):
         capital=CapitalStructureParameters(
             total_debt=0.005,  # Input 0.005 × 1M = 5,000
             cash_and_equivalents=0.001,  # Input 0.001 × 1M = 1,000
-            shares_outstanding=0.0001  # 100 shares
-        )
+            shares_outstanding=0.0001,  # 100 shares
+        ),
     )
     base_parameters.strategy = FCFFStandardParameters(
-        projection_years=5,
-        growth_rate_p1=5.0,
-        terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
+        projection_years=5, growth_rate_p1=5.0, terminal_value=TerminalValueParameters(perpetual_growth_rate=3.0)
     )
 
     result = validate_roic_spread(base_company, base_parameters, wacc=0.10)

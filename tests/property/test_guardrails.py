@@ -77,10 +77,12 @@ def test_property_terminal_growth_divergence_always_caught(g, wacc):
 
     # After scaling, g becomes g/100, so we compare g/100 with wacc/100
     g_decimal = g / 100.0
-    
+
     # INVARIANT: If g >= WACC, must be ERROR
     if g_decimal >= wacc_decimal:
-        assert result.type == "error", f"Failed: g={g_decimal}, wacc={wacc_decimal} should be ERROR but got {result.type}"
+        assert result.type == "error", (
+            f"Failed: g={g_decimal}, wacc={wacc_decimal} should be ERROR but got {result.type}"
+        )
         assert result.code == "GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC"
 
     # Additional check: result should always be valid
@@ -117,7 +119,7 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     # Convert WACC values to decimals
     wacc1_decimal = wacc1 / 100.0
     wacc2_decimal = wacc2 / 100.0
-    
+
     result1 = validate_terminal_growth(params, wacc=wacc1_decimal)
     result2 = validate_terminal_growth(params, wacc=wacc2_decimal)
 
@@ -128,7 +130,9 @@ def test_property_terminal_growth_monotonicity(g, wacc1, wacc2):
     sev2 = severity_map.get(result2.type, 0)
 
     # INVARIANT: Increasing WACC should not increase severity
-    assert sev2 <= sev1, f"Monotonicity violated: g={g/100}, wacc1={wacc1_decimal} ({result1.type}), wacc2={wacc2_decimal} ({result2.type})"
+    assert sev2 <= sev1, (
+        f"Monotonicity violated: g={g / 100}, wacc1={wacc1_decimal} ({result1.type}), wacc2={wacc2_decimal} ({result2.type})"
+    )
 
 
 # ==============================================================================

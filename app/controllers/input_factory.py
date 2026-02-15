@@ -195,9 +195,7 @@ class InputFactory:
                             # Normalize dictionary columns to ensure equal lengths
                             # Extract columns and pad with None to match max length
                             if editor_data:
-                                max_len = max(
-                                    len(v) if isinstance(v, list) else 1 for v in editor_data.values()
-                                )
+                                max_len = max(len(v) if isinstance(v, list) else 1 for v in editor_data.values())
                             else:
                                 max_len = 0
                             normalized_data = {}
@@ -225,10 +223,9 @@ class InputFactory:
 
                     # Only include segments with non-empty name
                     if name and str(name).strip():
-                        segments.append(BusinessUnit(
-                            name=str(name).strip(),
-                            value=float(value) if value is not None else None
-                        ))
+                        segments.append(
+                            BusinessUnit(name=str(name).strip(), value=float(value) if value is not None else None)
+                        )
 
                 # Store the converted list in session state under the expected key
                 if segments:

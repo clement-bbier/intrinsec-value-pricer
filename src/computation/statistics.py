@@ -303,7 +303,7 @@ def generate_multivariate_samples(
     growth_adjustment = 0.0
     if apply_bias_correction and sigma_growth > 0:
         # Conservative correction: reduce mean growth by ~variance/2
-        growth_adjustment = -0.5 * (sigma_growth ** 2)
+        growth_adjustment = -0.5 * (sigma_growth**2)
 
     adjusted_growth_mean = mu_growth + growth_adjustment
 
