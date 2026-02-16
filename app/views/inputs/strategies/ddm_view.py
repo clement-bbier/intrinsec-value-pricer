@@ -3,8 +3,7 @@ import streamlit as st
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_growth_rate
 from src.config.constants import UIKeys
-from src.i18n import UISharedTexts
-from src.i18n.fr.ui.expert import DDMTexts as Texts
+from src.i18n.fr.ui.terminals import CommonTerminals, DDMTexts as Texts
 from src.models import ValuationMethodology
 
 
@@ -46,7 +45,7 @@ class DDMView(BaseStrategyView):
         )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
-        widget_growth_rate(label=UISharedTexts.INP_GROWTH_G, key_prefix=prefix)
+        widget_growth_rate(label=CommonTerminals.INP_GROWTH_G, key_prefix=prefix)
         if hasattr(Texts, "NOTE_DDM_SGR") and Texts.NOTE_DDM_SGR:
             st.caption(Texts.NOTE_DDM_SGR)
         st.divider()

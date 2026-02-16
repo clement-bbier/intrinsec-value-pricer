@@ -144,6 +144,13 @@ class CommonTerminals:
     FORMULA_TV_GORDON = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
     FORMULA_TV_EXIT = r"TV_n = FCF_{n} \cdot Multiple_{exit}"
     
+    # Valeur Terminale (Spécifique par Modèle)
+    FORMULA_TV_FCFF_STD = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFF_NORM = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFF_GROWTH = r"TV_n = \frac{Rev_n \times Margin_{target} \times (1+g_n)}{WACC - g_n}"
+    FORMULA_TV_FCFE = r"TV_n = \frac{FCFE_n(1+g_n)}{k_e - g_n}"
+    FORMULA_TV_DDM = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
+    
     # ==========================================================================
     # 6. EXTENSIONS OPTIONNELLES (Sections 6 à 11)
     # ==========================================================================
@@ -160,6 +167,11 @@ class CommonTerminals:
     LBL_VOL_OMEGA = f"Incertitude persistance ω {UNIT_PERCENT}"
     LBL_VOL_GN = f"Incertitude croissance perpétuelle gn {UNIT_PERCENT}"
     LBL_VOL_EXIT_M = "Volatilité du multiple terminal"
+    
+    # Volatilités spécifiques par modèle
+    MC_VOL_EPS = "Incertitude sur le BPA (EPS)"
+    MC_VOL_NI = "Incertitude sur le Résultat Net"
+    MC_VOL_DIV = "Incertitude sur le Dividende"
     
     HELP_MC_ENABLE = "Simulation stochastique pour évaluer l'intervalle de confiance du prix intrinsèque."
     HELP_MC_SIMS = "Nombre de tirages aléatoires. 5000 itérations offrent un ratio précision/vitesse optimal."

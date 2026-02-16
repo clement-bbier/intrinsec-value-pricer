@@ -2,7 +2,7 @@ import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
 from src.config.constants import UIKeys
-from src.i18n.fr.ui.expert import GrahamTexts as Texts
+from src.i18n.fr.ui.terminals import GrahamTexts as Texts
 from src.models import ValuationMethodology
 
 

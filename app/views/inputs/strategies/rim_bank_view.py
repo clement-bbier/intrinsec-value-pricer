@@ -2,8 +2,7 @@ import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
 from src.config.constants import UIKeys
-from src.i18n import UISharedTexts
-from src.i18n.fr.ui.expert import RIMTexts as Texts
+from src.i18n.fr.ui.terminals import CommonTerminals, RIMTexts as Texts
 from src.models import ValuationMethodology
 
 
@@ -51,10 +50,10 @@ class RIMBankView(BaseStrategyView):
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(
-            UISharedTexts.INP_GROWTH_G,
+            CommonTerminals.INP_GROWTH_G,
             value=None,
             format="%.2f",
-            help=UISharedTexts.HELP_GROWTH_RATE,
+            help=CommonTerminals.HELP_GROWTH_RATE,
             key=f"{prefix}_{UIKeys.GROWTH_RATE}",
         )
         st.divider()
