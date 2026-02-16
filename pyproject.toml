@@ -32,7 +32,7 @@ dev = [
 include = ["src*", "app*", "infra*"]
 
 [tool.ruff]
-line-length = 320
+line-length = 300
 target-version = "py310"
 
 [tool.ruff.lint]

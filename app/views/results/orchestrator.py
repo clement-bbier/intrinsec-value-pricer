@@ -30,7 +30,7 @@ from app.views.results.pillars import (
 )
 from app.views.results.pillars.inputs_summary import get_display_currency
 from src.core.formatting import CurrencyFormatter
-from src.i18n import CommonTexts, KPITexts, PillarLabels, UIMessages
+from src.i18n import CommonTexts, KPITexts, OnboardingTexts, PillarLabels, UIMessages
 
 # --- Data Models & i18n ---
 from src.models import ValuationResult
@@ -132,7 +132,7 @@ def _render_permanent_header(result: ValuationResult) -> None:
         f"""
                 <div style="margin-top: -15px; margin-bottom: 20px;">
                     <p style="font-size: 0.8rem; color: #64748b; font-style: italic; line-height: 1.4;">
-                        <strong>{CommonTexts.COMPLIANCE_TITLE}</strong> : {CommonTexts.COMPLIANCE_BODY}
+                        <strong>{OnboardingTexts.COMPLIANCE_TITLE}</strong> : {OnboardingTexts.COMPLIANCE_BODY}
                     </p>
                 </div>
                 """,
