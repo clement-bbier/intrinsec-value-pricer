@@ -43,7 +43,9 @@ class Parameters(BaseModel):
     structure: Company = Field(description="Static company identity and market witness price.")
 
     # --- Pillar 2: Shared Levers (Environment & Structure) ---
-    common: CommonParameters = Field(default_factory=CommonParameters, description="Universal inputs for WACC and Equity Bridge calculation.")
+    common: CommonParameters = Field(
+        default_factory=CommonParameters, description="Universal inputs for WACC and Equity Bridge calculation."
+    )
 
     # --- Pillar 3: Methodology (The Core Strategy) ---
     strategy: StrategyUnionParameters = Field(description="Specific inputs for the selected valuation model.")

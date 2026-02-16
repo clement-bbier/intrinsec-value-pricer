@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def _get_cached_snapshot(ticker: str, _fetcher: YahooRawFetcher, _mapper: YahooSnapshotMapper, _macro_provider: MacroDataProvider) -> CompanySnapshot | None:
+def _get_cached_snapshot(
+    ticker: str, _fetcher: YahooRawFetcher, _mapper: YahooSnapshotMapper, _macro_provider: MacroDataProvider
+) -> CompanySnapshot | None:
     """
     Module-level private function to handle Streamlit caching.
 

@@ -75,7 +75,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
-        wacc, step_wacc = CommonLibrary.resolve_discount_rate(financials=financials, params=params, use_cost_of_equity_only=False)
+        wacc, step_wacc = CommonLibrary.resolve_discount_rate(
+            financials=financials, params=params, use_cost_of_equity_only=False
+        )
         if self._glass_box:
             steps.append(step_wacc)
 
@@ -106,7 +108,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             )
 
         # --- STEP 3: Projection ---
-        flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params)
+        flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
+            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params
+        )
 
         if self._glass_box:
             steps.append(step_proj)
@@ -146,7 +150,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         res_capital = ResolvedCapital(
             market_cap=shares * (financials.current_price or 0.0),
             enterprise_value=ev,
-            net_debt_resolved=((params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)),
+            net_debt_resolved=(
+                (params.common.capital.total_debt or 0.0) - (params.common.capital.cash_and_equivalents or 0.0)
+            ),
             equity_value_total=equity_value,
         )
 
@@ -154,7 +160,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
-            upside_pct=(((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0),
+            upside_pct=(
+                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
+                if financials.current_price
+                else 0.0
+            ),
             bridge_trace=steps if self._glass_box else [],
         )
 

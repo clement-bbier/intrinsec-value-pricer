@@ -28,7 +28,10 @@ class SensitivityAnalysisTab:
     @staticmethod
     def is_visible(result: ValuationResult) -> bool:
         """Visible only if sensitivity data is computed and available."""
-        return result.request.parameters.extensions.sensitivity.enabled and result.results.extensions.sensitivity is not None
+        return (
+            result.request.parameters.extensions.sensitivity.enabled
+            and result.results.extensions.sensitivity is not None
+        )
 
     @staticmethod
     def render(result: ValuationResult, **_kwargs: Any) -> None:
@@ -139,7 +142,9 @@ class SensitivityAnalysisTab:
                 final_chart = (heatmap + text).properties(
                     height=350,
                     width="container",
-                    title=alt.TitleParams(text=QuantTexts.SENS_TITLE, subtitle=ChartTexts.CORREL_CAPTION, anchor="start", fontSize=14),
+                    title=alt.TitleParams(
+                        text=QuantTexts.SENS_TITLE, subtitle=ChartTexts.CORREL_CAPTION, anchor="start", fontSize=14
+                    ),
                 )
 
                 st.altair_chart(final_chart, width="stretch")

@@ -161,7 +161,9 @@ class QuantLogger:
         _logger.info(msg)
 
     @classmethod
-    def log_error(cls, ticker: str, error: str | Exception, domain: LogDomain = LogDomain.ENGINE, **context: Any) -> None:
+    def log_error(
+        cls, ticker: str, error: str | Exception, domain: LogDomain = LogDomain.ENGINE, **context: Any
+    ) -> None:
         """Logs a critical engine or data error."""
         error_msg = str(error)
         msg = cls._format_message(domain, LogLevel.ERROR, ticker, error=error_msg, **context)
@@ -246,7 +248,9 @@ class QuantLogger:
         **context
             Additional context key-value pairs.
         """
-        msg = cls._format_message(LogDomain.PIPELINE, LogLevel.ERROR, ticker, stage=stage, status="FAILED", error=str(error), **context)
+        msg = cls._format_message(
+            LogDomain.PIPELINE, LogLevel.ERROR, ticker, stage=stage, status="FAILED", error=str(error), **context
+        )
         _logger.error(msg)
 
     @classmethod
@@ -278,7 +282,9 @@ class QuantLogger:
         **resolved_fields
             Key resolved parameters and their values.
         """
-        msg = cls._format_message(LogDomain.RESOLVER, LogLevel.INFO, ticker, stage="PARAMETER_RESOLUTION", model=mode, **resolved_fields)
+        msg = cls._format_message(
+            LogDomain.RESOLVER, LogLevel.INFO, ticker, stage="PARAMETER_RESOLUTION", model=mode, **resolved_fields
+        )
         _logger.info(msg)
 
     @classmethod
@@ -295,7 +301,9 @@ class QuantLogger:
         **context
             Additional execution context.
         """
-        msg = cls._format_message(LogDomain.ENGINE, LogLevel.INFO, ticker, stage="STRATEGY_EXECUTION", strategy=strategy, **context)
+        msg = cls._format_message(
+            LogDomain.ENGINE, LogLevel.INFO, ticker, stage="STRATEGY_EXECUTION", strategy=strategy, **context
+        )
         _logger.info(msg)
 
     @classmethod
@@ -312,7 +320,9 @@ class QuantLogger:
         **context
             Additional context.
         """
-        msg = cls._format_message(LogDomain.EXTENSION, LogLevel.INFO, ticker, stage="EXTENSION_PROCESSING", extension=extension, **context)
+        msg = cls._format_message(
+            LogDomain.EXTENSION, LogLevel.INFO, ticker, stage="EXTENSION_PROCESSING", extension=extension, **context
+        )
         _logger.info(msg)
 
     @classmethod

@@ -180,10 +180,19 @@ def _render_capital_structure_table(params, currency: str) -> None:
 
     # Use formatted strings for the table
     data = [
-        {"Item": _clean_label(InputLabels.CURRENT_PRICE), "Value": formatter.format(price, currency, decimals=2, smart_scale=False)},
+        {
+            "Item": _clean_label(InputLabels.CURRENT_PRICE),
+            "Value": formatter.format(price, currency, decimals=2, smart_scale=False),
+        },
         {"Item": _clean_label(InputLabels.SHARES_OUT), "Value": f"{shares:,.0f}"},
-        {"Item": _clean_label(KPITexts.MARKET_CAP_LABEL), "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True)},
-        {"Item": _clean_label(InputLabels.NET_DEBT), "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True)},
+        {
+            "Item": _clean_label(KPITexts.MARKET_CAP_LABEL),
+            "Value": formatter.format(mkt_cap, currency, decimals=0, smart_scale=True),
+        },
+        {
+            "Item": _clean_label(InputLabels.NET_DEBT),
+            "Value": formatter.format(net_debt, currency, decimals=0, smart_scale=True),
+        },
         {
             "Item": _clean_label(InputLabels.IMPLIED_EV),
             "Value": formatter.format(mkt_cap + net_debt, currency, decimals=0, smart_scale=True),
@@ -223,7 +232,10 @@ def _render_rates_table(params, resolved_rates) -> None:
             ),
         },
         {"Parameter": _clean_label(InputLabels.BETA), "Value": _safe_fmt(p_rates.beta, ".2f", default="Auto")},
-        {"Parameter": _clean_label(InputLabels.ERP), "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto")},
+        {
+            "Parameter": _clean_label(InputLabels.ERP),
+            "Value": _safe_fmt(p_rates.market_risk_premium, ".2%", default="Auto"),
+        },
         {
             "Parameter": _clean_label(InputLabels.COST_OF_EQUITY),
             "Value": fmt_rate(p_rates.cost_of_equity, resolved_rates.cost_of_equity),
@@ -269,7 +281,11 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         ]
 
     elif mode == ValuationMethodology.GRAHAM:
-        aaa_yield = result.request.parameters.common.rates.corporate_aaa_yield if hasattr(result.request.parameters.common.rates, "corporate_aaa_yield") else None
+        aaa_yield = (
+            result.request.parameters.common.rates.corporate_aaa_yield
+            if hasattr(result.request.parameters.common.rates, "corporate_aaa_yield")
+            else None
+        )
         if aaa_yield is None and hasattr(result.results.common.rates, "corporate_aaa_yield"):
             aaa_yield = result.results.common.rates.corporate_aaa_yield
 
@@ -347,7 +363,9 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         # Only add Terminal Method if it exists and is not None
         if terminal_method_val is not None:
-            method_str = str(terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val)
+            method_str = str(
+                terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
+            )
             data.append(
                 {
                     InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_METHOD_LABEL),

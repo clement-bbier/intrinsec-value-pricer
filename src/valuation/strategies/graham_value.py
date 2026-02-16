@@ -136,7 +136,11 @@ class GrahamNumberStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,  # CORRECTIF 4: Pydantic recevra bien la valeur ici
-            upside_pct=(((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0),
+            upside_pct=(
+                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
+                if financials.current_price
+                else 0.0
+            ),
             bridge_trace=steps if self._glass_box else [],
         )
 

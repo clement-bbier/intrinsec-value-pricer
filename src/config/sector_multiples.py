@@ -44,10 +44,18 @@ SECTORS: dict[str, SectorBenchmarks] = {
     "semiconductors": SectorBenchmarks(pe_ratio=26.8, ev_ebitda=18.5, ev_revenue=6.8, source="Semi Index"),
     "consumer_electronics": SectorBenchmarks(pe_ratio=24.1, ev_ebitda=15.2, ev_revenue=3.8, source="Hardware"),
     # --- FINANCIAL SERVICES ---
-    "financial_services": SectorBenchmarks(pe_ratio=12.4, ev_ebitda=None, pb_ratio=1.2, ev_revenue=None, source="Finance Macro"),
-    "banks_diversified": SectorBenchmarks(pe_ratio=10.2, ev_ebitda=None, pb_ratio=1.1, ev_revenue=None, source="Global Banks"),
-    "banks_regional": SectorBenchmarks(pe_ratio=9.5, ev_ebitda=None, pb_ratio=0.9, ev_revenue=None, source="Regional Banks"),
-    "insurance_diversified": SectorBenchmarks(pe_ratio=11.8, ev_ebitda=None, pb_ratio=1.3, ev_revenue=None, source="Insurance"),
+    "financial_services": SectorBenchmarks(
+        pe_ratio=12.4, ev_ebitda=None, pb_ratio=1.2, ev_revenue=None, source="Finance Macro"
+    ),
+    "banks_diversified": SectorBenchmarks(
+        pe_ratio=10.2, ev_ebitda=None, pb_ratio=1.1, ev_revenue=None, source="Global Banks"
+    ),
+    "banks_regional": SectorBenchmarks(
+        pe_ratio=9.5, ev_ebitda=None, pb_ratio=0.9, ev_revenue=None, source="Regional Banks"
+    ),
+    "insurance_diversified": SectorBenchmarks(
+        pe_ratio=11.8, ev_ebitda=None, pb_ratio=1.3, ev_revenue=None, source="Insurance"
+    ),
     "asset_management": SectorBenchmarks(pe_ratio=14.5, ev_ebitda=10.2, ev_revenue=3.5, source="Asset Mgmt"),
     # --- HEALTHCARE ---
     "healthcare": SectorBenchmarks(pe_ratio=22.5, ev_ebitda=14.8, ev_revenue=4.1, source="Health Macro"),
@@ -69,7 +77,9 @@ SECTORS: dict[str, SectorBenchmarks] = {
     # --- INDUSTRIALS ---
     "industrials": SectorBenchmarks(pe_ratio=19.2, ev_ebitda=12.4, ev_revenue=1.4, source="Industrial Macro"),
     "aerospace_defense": SectorBenchmarks(pe_ratio=21.5, ev_ebitda=14.2, ev_revenue=1.8, source="Defense/Aero"),
-    "specialty_industrial_machinery": SectorBenchmarks(pe_ratio=18.4, ev_ebitda=11.5, ev_revenue=1.6, source="Machinery"),
+    "specialty_industrial_machinery": SectorBenchmarks(
+        pe_ratio=18.4, ev_ebitda=11.5, ev_revenue=1.6, source="Machinery"
+    ),
     "railroads": SectorBenchmarks(pe_ratio=19.1, ev_ebitda=12.8, ev_revenue=4.5, source="Logistics"),
     # --- ENERGY ---
     "energy": SectorBenchmarks(pe_ratio=10.2, ev_ebitda=5.6, ev_revenue=1.1, source="Energy Macro"),
@@ -78,7 +88,9 @@ SECTORS: dict[str, SectorBenchmarks] = {
     "renewable_energy": SectorBenchmarks(pe_ratio=35.4, ev_ebitda=20.2, ev_revenue=4.2, source="Clean Energy"),
     # --- COMMUNICATION SERVICES ---
     "communication_services": SectorBenchmarks(pe_ratio=20.8, ev_ebitda=10.5, ev_revenue=3.1, source="Comm Macro"),
-    "internet_content_information": SectorBenchmarks(pe_ratio=28.4, ev_ebitda=15.2, ev_revenue=5.4, source="AdTech/Social"),
+    "internet_content_information": SectorBenchmarks(
+        pe_ratio=28.4, ev_ebitda=15.2, ev_revenue=5.4, source="AdTech/Social"
+    ),
     "telecom_services": SectorBenchmarks(pe_ratio=13.2, ev_ebitda=6.8, ev_revenue=1.5, source="Telco"),
     "entertainment": SectorBenchmarks(pe_ratio=24.5, ev_ebitda=12.4, ev_revenue=3.2, source="Media/Streaming"),
     # --- UTILITIES ---

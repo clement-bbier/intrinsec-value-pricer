@@ -163,7 +163,9 @@ class DiagnosticRegistry:
                 parameter_name="Perpetual Growth Rate (g)",
                 current_value=g,
                 typical_range=(0.01, 0.03),
-                statistical_risk=(f"The Gordon model requires g < WACC. With g={g:.2%} and WACC={wacc:.2%}, the formula TV = FCF/(WACC-g) produces a negative or infinite value"),
+                statistical_risk=(
+                    f"The Gordon model requires g < WACC. With g={g:.2%} and WACC={wacc:.2%}, the formula TV = FCF/(WACC-g) produces a negative or infinite value"
+                ),
                 recommendation="Adjust 'g' to be at least 100bps lower than WACC.",
             ),
         )
@@ -181,7 +183,9 @@ class DiagnosticRegistry:
                 parameter_name="Valid Simulation Ratio",
                 current_value=valid_ratio,
                 typical_range=(0.90, 1.00),
-                statistical_risk=(f"Only {valid_ratio:.0%} of simulations converged. Results are not statistically significant."),
+                statistical_risk=(
+                    f"Only {valid_ratio:.0%} of simulations converged. Results are not statistically significant."
+                ),
                 recommendation="Check for aggressive growth assumptions interacting with high WACC volatility.",
             ),
         )
@@ -199,7 +203,9 @@ class DiagnosticRegistry:
                 parameter_name="Flow Growth Rate",
                 current_value=g,
                 typical_range=(0.02, 0.08),
-                statistical_risk=(f"A growth rate of {g:.1%} is rarely sustainable long-term. Only hyper-growth tech companies sustain >10% over 5 years."),
+                statistical_risk=(
+                    f"A growth rate of {g:.1%} is rarely sustainable long-term. Only hyper-growth tech companies sustain >10% over 5 years."
+                ),
                 recommendation="Consider smoothing the growth ramp-down.",
             ),
         )

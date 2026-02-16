@@ -103,7 +103,11 @@ class ScenariosRunner:
                 prob = case.probability or 0.0
 
                 # 4. Results Aggregation
-                outcomes.append(ScenarioOutcome(label=case.name, intrinsic_value=iv, upside_pct=(iv / market_price) - 1.0, probability=prob))
+                outcomes.append(
+                    ScenarioOutcome(
+                        label=case.name, intrinsic_value=iv, upside_pct=(iv / market_price) - 1.0, probability=prob
+                    )
+                )
 
                 weighted_sum += iv * prob
                 total_prob += prob

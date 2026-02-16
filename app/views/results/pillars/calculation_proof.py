@@ -51,7 +51,9 @@ def render_glass_box(result: ValuationResult) -> None:
         st.info(ResultsTexts.NO_FINANCIALS_PROVIDED)
         return
 
-    core_steps = [step for step in full_trace if not any(step.step_key.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)]
+    core_steps = [
+        step for step in full_trace if not any(step.step_key.startswith(prefix) for prefix in EXCLUDED_STEP_PREFIXES)
+    ]
 
     # 4. Empty State Management
     if not core_steps:

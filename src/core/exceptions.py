@@ -31,7 +31,9 @@ class ValuationError(Exception):
     def __init__(self, diagnostic: DiagnosticEvent):
         self.diagnostic = diagnostic
         super().__init__(diagnostic.message)
-        logger.error(f"[{diagnostic.code}] {diagnostic.message} (Severity: {diagnostic.severity.value}, Domain: {diagnostic.domain.value})")
+        logger.error(
+            f"[{diagnostic.code}] {diagnostic.message} (Severity: {diagnostic.severity.value}, Domain: {diagnostic.domain.value})"
+        )
 
 
 # ==============================================================================

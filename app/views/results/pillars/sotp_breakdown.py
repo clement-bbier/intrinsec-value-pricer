@@ -110,8 +110,12 @@ class SOTPBreakdownTab:
         # --- B. Table Configuration (Modern Streamlit UI) ---
         column_config = {
             MarketTexts.COL_SEGMENT: st.column_config.TextColumn(label=MarketTexts.COL_SEGMENT, width="medium"),
-            MarketTexts.COL_VALUE: st.column_config.NumberColumn(label=f"{MarketTexts.COL_VALUE} ({currency})", format=f"%.2f {currency}", width="medium"),
-            MarketTexts.COL_CONTRIBUTION: st.column_config.ProgressColumn(label=MarketTexts.COL_CONTRIBUTION, format="%.1%", min_value=0, max_value=1, width="medium"),
+            MarketTexts.COL_VALUE: st.column_config.NumberColumn(
+                label=f"{MarketTexts.COL_VALUE} ({currency})", format=f"%.2f {currency}", width="medium"
+            ),
+            MarketTexts.COL_CONTRIBUTION: st.column_config.ProgressColumn(
+                label=MarketTexts.COL_CONTRIBUTION, format="%.1%", min_value=0, max_value=1, width="medium"
+            ),
         }
 
         # --- C. Rendering ---

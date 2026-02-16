@@ -116,7 +116,9 @@ class IUIProgressHandler(ABC):
     def __enter__(self) -> IUIProgressHandler:
         return self
 
-    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None) -> None:
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None:
         """Context manager support for scoped status blocks."""
         pass
 

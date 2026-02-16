@@ -98,7 +98,9 @@ class CurrencyFormatter:
         """Initialize the currency formatter."""
         pass
 
-    def format(self, value: float | int | None, currency_code: str = "USD", decimals: int = 2, smart_scale: bool = True) -> str:
+    def format(
+        self, value: float | int | None, currency_code: str = "USD", decimals: int = 2, smart_scale: bool = True
+    ) -> str:
         """
         Format a monetary value with proper currency symbol and placement.
 
@@ -134,7 +136,9 @@ class CurrencyFormatter:
             return "-"
 
         # Get currency info
-        currency_info = self._CURRENCY_REGISTRY.get(currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX))
+        currency_info = self._CURRENCY_REGISTRY.get(
+            currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
+        )
 
         # Format the numeric value
         if smart_scale:
@@ -195,7 +199,9 @@ class CurrencyFormatter:
         str
             Currency symbol.
         """
-        currency_info = self._CURRENCY_REGISTRY.get(currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX))
+        currency_info = self._CURRENCY_REGISTRY.get(
+            currency_code.upper(), CurrencyInfo(currency_code, currency_code, CurrencyPlacement.SUFFIX)
+        )
         return currency_info.symbol
 
 

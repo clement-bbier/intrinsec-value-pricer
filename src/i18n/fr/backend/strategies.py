@@ -153,17 +153,29 @@ class SharedTexts:
     # ==========================================================================
     # 1. INPUTS GÉNÉRIQUES (WIDGETS PARTAGÉS)
     # ==========================================================================
-    HELP_MANUAL_PEERS = "Saisir les codes tickers (ex: AAPL, MSFT) séparés par des virgules pour la triangulation relative."
-    HELP_SOTP = "Valorisation par addition des segments opérationnels distincts (Business Units) moins la dette nette globale."
-    HELP_SCENARIO_ENABLE = "Permet de modéliser trois trajectoires (Pessimiste, Base, Optimiste) pondérées par probabilité."
+    HELP_MANUAL_PEERS = (
+        "Saisir les codes tickers (ex: AAPL, MSFT) séparés par des virgules pour la triangulation relative."
+    )
+    HELP_SOTP = (
+        "Valorisation par addition des segments opérationnels distincts (Business Units) moins la dette nette globale."
+    )
+    HELP_SCENARIO_ENABLE = (
+        "Permet de modéliser trois trajectoires (Pessimiste, Base, Optimiste) pondérées par probabilité."
+    )
     PLACEHOLDER_PEERS = "ex: AAPL, MSFT, GOOGL, LVMH"
-    HELP_PEER_TRIANGULATION = "Comparaison de la valeur intrinsèque calculée face aux multiples médians d'un panier de comparables."
-    HELP_BACKTEST_ENABLE = "Exécution rétrospective du modèle sur les exercices passés pour valider sa capacité prédictive."
+    HELP_PEER_TRIANGULATION = (
+        "Comparaison de la valeur intrinsèque calculée face aux multiples médians d'un panier de comparables."
+    )
+    HELP_BACKTEST_ENABLE = (
+        "Exécution rétrospective du modèle sur les exercices passés pour valider sa capacité prédictive."
+    )
     HELP_MC_VOL_GN = "Écart-type appliqué au taux de croissance perpétuelle dans la simulation."
     HELP_MC_VOL_BETA = "Incertitude statistique sur le risque systématique (Bêta) du titre."
     HELP_MC_VOL_G = "Volatilité du taux de croissance (CAGR) sur la période explicite."
     HELP_MC_VOL_FLOW = "Incertitude sur le flux de trésorerie initial (Année 0) ou normatif."
-    HELP_MC_ENABLE = "Simulation stochastique (Monte Carlo) pour définir un intervalle de confiance sur la valorisation."
+    HELP_MC_ENABLE = (
+        "Simulation stochastique (Monte Carlo) pour définir un intervalle de confiance sur la valorisation."
+    )
     HELP_CASH = "Trésorerie active, équivalents de trésorerie et placements financiers liquides."
     HELP_DEBT = "Dette financière brute (bancaire et obligataire), incluant la part courante et les baux (IFRS 16)."
     HELP_SHARES = "Nombre total d'actions diluées (incluant les options exercibles et RSUs)."
@@ -182,15 +194,21 @@ class SharedTexts:
     LBL_SENS_RANGE = "Portée (Range)"
     HELP_SENS_STEP = "Incrément de variation pour chaque pas (ex: 0.5%)."
     LBL_SENS_STEP = "Pas de variation (%)"
-    MSG_SENSITIVITY_DESC = "Analyse croisée de l'impact des variations du WACC et de la Croissance terminale (g) sur la valorisation."
+    MSG_SENSITIVITY_DESC = (
+        "Analyse croisée de l'impact des variations du WACC et de la Croissance terminale (g) sur la valorisation."
+    )
     LBL_SENSITIVITY_ENABLE = "Activer l'Analyse de Sensibilité"
     SEC_11_SENSITIVITY = "#### Extension : Analyse de Sensibilité"
-    HELP_SBC_DILUTION = "Taux de dilution annuel estimé lié aux plans de rémunération en actions (Stock-Based Compensation)."
+    HELP_SBC_DILUTION = (
+        "Taux de dilution annuel estimé lié aux plans de rémunération en actions (Stock-Based Compensation)."
+    )
     HELP_EXIT_MULT = "Multiple d'EBITDA ou de CA appliqué à la dernière année de projection pour la Valeur Terminale."
     HELP_PERP_G = "Taux de croissance à l'infini (doit être inférieur au PIB nominal pour la cohérence économique)."
 
     INP_PROJ_YEARS = "Années de projection (Horizon explicite)"
-    HELP_PROJ_YEARS = "Durée de la période de prévision explicite avant calcul de la Valeur Terminale (généralement 5 à 10 ans)."
+    HELP_PROJ_YEARS = (
+        "Durée de la période de prévision explicite avant calcul de la Valeur Terminale (généralement 5 à 10 ans)."
+    )
 
     INP_GROWTH_G = "Croissance perpétuelle (g)"
     HELP_GROWTH_RATE = "Taux de croissance à l'infini (borné par le taux sans risque pour cohérence économique)."
@@ -200,7 +218,9 @@ class SharedTexts:
     INP_SHARES = "Actions en circulation (Millions)"
 
     INP_OMEGA = "Facteur de Persistance (ω)"
-    HELP_OMEGA = "Détermine la vitesse à laquelle le rendement excédentaire (ROIC - WACC) converge vers zéro (Modèle Ohlson)."
+    HELP_OMEGA = (
+        "Détermine la vitesse à laquelle le rendement excédentaire (ROIC - WACC) converge vers zéro (Modèle Ohlson)."
+    )
 
     # ==========================================================================
     # 2. SECTION ACTUALISATION (DISCOUNT RATES)

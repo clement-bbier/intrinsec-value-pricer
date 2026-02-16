@@ -175,4 +175,12 @@ class GrahamResults(BaseModel):
 
 # --- The Orchestrator ---
 
-StrategyUnionResults = FCFFStandardResults | FCFFNormalizedResults | FCFFGrowthResults | FCFEResults | DDMResults | RIMResults | GrahamResults
+StrategyUnionResults = (
+    FCFFStandardResults
+    | FCFFNormalizedResults
+    | FCFFGrowthResults
+    | FCFEResults
+    | DDMResults
+    | RIMResults
+    | GrahamResults
+)

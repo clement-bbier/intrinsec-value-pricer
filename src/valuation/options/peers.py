@@ -74,7 +74,9 @@ class PeersRunner:
 
         # Signal A: P/E (Equity-based)
         if m.median_pe and m.median_pe > 0:
-            signals["P/E"] = calculate_price_from_pe_multiple(net_income=f.net_income_ttm or 0.0, median_pe=m.median_pe, shares=shares)
+            signals["P/E"] = calculate_price_from_pe_multiple(
+                net_income=f.net_income_ttm or 0.0, median_pe=m.median_pe, shares=shares
+            )
 
         # Signal B: EV/EBITDA (Enterprise-based)
         if m.median_ev_ebitda and m.median_ev_ebitda > 0:

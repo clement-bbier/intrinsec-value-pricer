@@ -110,7 +110,9 @@ class MonteCarloRunner:
             sim_values_array = self.strategy.execute_stochastic(financials, params, vectors)
         else:
             # Fallback for strategies not yet optimized (Legacy Loop)
-            logger.warning(f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop.")
+            logger.warning(
+                f"Strategy {type(self.strategy).__name__} does not support vectorization. Falling back to slow loop."
+            )
             sim_values_array = self._run_legacy_loop(financials, params, vectors, num_simulations)
 
         # 5. Filtering & Result Packaging
@@ -133,7 +135,9 @@ class MonteCarloRunner:
         )
 
     @staticmethod
-    def _generate_vectors(params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float) -> dict[str, np.ndarray]:
+    def _generate_vectors(
+        params: Parameters, n_sims: int, seed: int, base_beta: float, base_wacc: float
+    ) -> dict[str, np.ndarray]:
         """Generates all random vectors in one go using NumPy Generator."""
         rng = np.random.default_rng(seed)
         shocks = params.extensions.monte_carlo.shocks

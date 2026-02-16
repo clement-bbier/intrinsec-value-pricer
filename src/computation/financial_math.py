@@ -415,7 +415,9 @@ def calculate_cost_of_equity(params: Parameters) -> float:
     return calculate_cost_of_equity_capm(rf, beta, mrp)
 
 
-def calculate_synthetic_cost_of_debt(rf: float, ebit: float | None, interest_expense: float | None, market_cap: float) -> float:
+def calculate_synthetic_cost_of_debt(
+    rf: float, ebit: float | None, interest_expense: float | None, market_cap: float
+) -> float:
     r"""
     Estimates pre-tax cost of debt using the Interest Coverage Ratio (ICR).
 
@@ -663,7 +665,9 @@ def calculate_graham_1974_value(eps: float, growth_rate: float, aaa_yield: float
     return (eps * (8.5 + 2.0 * (growth_rate * 100)) * 4.4) / (y * 100)
 
 
-def calculate_rim_vectors(current_bv: float, ke: float, earnings: list[float], payout: float) -> tuple[list[float], list[float]]:
+def calculate_rim_vectors(
+    current_bv: float, ke: float, earnings: list[float], payout: float
+) -> tuple[list[float], list[float]]:
     r"""
     Generates Residual Income (RI) and Book Value (BV) time series.
 

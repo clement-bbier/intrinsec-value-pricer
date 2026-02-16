@@ -32,7 +32,9 @@ class CommonLibrary:
     """
 
     @staticmethod
-    def resolve_discount_rate(financials: Company, params: Parameters, use_cost_of_equity_only: bool = False) -> tuple[float, CalculationStep]:
+    def resolve_discount_rate(
+        financials: Company, params: Parameters, use_cost_of_equity_only: bool = False
+    ) -> tuple[float, CalculationStep]:
         """
         Computes the appropriate discount rate (WACC or Ke) with full provenance.
         """
@@ -95,7 +97,9 @@ class CommonLibrary:
             # Synthetic logic via financial_math
             # We assume ebit_ttm/interest are not available in params directly but implicit via resolver
             # For strict math, we use fallback 0.0 if not passed (handled by atomic function)
-            kd_pre_tax = calculate_synthetic_cost_of_debt(rf, 0.0, 0.0, financials.current_price * (cap.shares_outstanding or 1.0))
+            kd_pre_tax = calculate_synthetic_cost_of_debt(
+                rf, 0.0, 0.0, financials.current_price * (cap.shares_outstanding or 1.0)
+            )
             kd_source = VariableSource.CALCULATED
 
         tax_rate = r.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
@@ -120,7 +124,9 @@ class CommonLibrary:
         # 2.4 Trace Building
         wacc_vars = {
             "Ke": VariableInfo(symbol="Ke", value=ke, source=VariableSource.CALCULATED, description="Cost of Equity"),
-            "Kd_net": VariableInfo(symbol="Kd(1-t)", value=kd_net, source=kd_source, description="Cost of Debt (After Tax)"),
+            "Kd_net": VariableInfo(
+                symbol="Kd(1-t)", value=kd_net, source=kd_source, description="Cost of Debt (After Tax)"
+            ),
             "We": VariableInfo(symbol="We", value=we, source=VariableSource.CALCULATED, description="Equity Weight"),
             "Wd": VariableInfo(symbol="Wd", value=wd, source=VariableSource.CALCULATED, description="Debt Weight"),
         }
@@ -159,15 +165,21 @@ class CommonLibrary:
                 source=VariableSource.CALCULATED,
                 description=RegistryTexts.DCF_EV_L,
             ),
-            "Debt": VariableInfo(symbol="Debt", value=debt, source=VariableSource.SYSTEM, description=KPITexts.LABEL_DEBT),
-            "Cash": VariableInfo(symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH),
+            "Debt": VariableInfo(
+                symbol="Debt", value=debt, source=VariableSource.SYSTEM, description=KPITexts.LABEL_DEBT
+            ),
+            "Cash": VariableInfo(
+                symbol="Cash", value=cash, source=VariableSource.SYSTEM, description=KPITexts.LABEL_CASH
+            ),
         }
 
         step = CalculationStep(
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
-            actual_calculation=(f"{format_smart_number(enterprise_value)} - {format_smart_number(debt)} + {format_smart_number(cash)}..."),
+            actual_calculation=(
+                f"{format_smart_number(enterprise_value)} - {format_smart_number(debt)} + {format_smart_number(cash)}..."
+            ),
             result=equity_value,
             unit="currency",
             interpretation=StrategyInterpretations.BRIDGE,

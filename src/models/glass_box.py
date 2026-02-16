@@ -38,7 +38,9 @@ class VariableInfo(BaseModel):
         if not self.formatted_value:
             # Symbols known to represent percentage values
             pct_symbols = {"r", "g", "Ke", "Kd", "Kd(1-t)", "WACC", "g_perp", "tax", "MRP", "Rf"}
-            self.formatted_value = format_smart_number(self.value, is_pct=(abs(self.value) < 1 and self.symbol in pct_symbols))
+            self.formatted_value = format_smart_number(
+                self.value, is_pct=(abs(self.value) < 1 and self.symbol in pct_symbols)
+            )
 
 
 class TraceHypothesis(BaseModel):

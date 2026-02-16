@@ -224,7 +224,14 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
             score += 1
 
     # 3. Change in ROA (Return on Assets improved)
-    if snap.net_income_ttm is not None and snap.net_income_prev is not None and snap.total_assets_ttm is not None and snap.total_assets_prev is not None and snap.total_assets_ttm > 0 and snap.total_assets_prev > 0:
+    if (
+        snap.net_income_ttm is not None
+        and snap.net_income_prev is not None
+        and snap.total_assets_ttm is not None
+        and snap.total_assets_prev is not None
+        and snap.total_assets_ttm > 0
+        and snap.total_assets_prev > 0
+    ):
         criteria_evaluated += 1
         roa_current = snap.net_income_ttm / snap.total_assets_ttm
         roa_prev = snap.net_income_prev / snap.total_assets_prev
@@ -248,7 +255,14 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
             score += 1
 
     # 6. Increase in Current Ratio (Liquidity improved)
-    if snap.current_assets_ttm is not None and snap.current_liabilities_ttm is not None and snap.current_assets_prev is not None and snap.current_liabilities_prev is not None and snap.current_liabilities_ttm > 0 and snap.current_liabilities_prev > 0:
+    if (
+        snap.current_assets_ttm is not None
+        and snap.current_liabilities_ttm is not None
+        and snap.current_assets_prev is not None
+        and snap.current_liabilities_prev is not None
+        and snap.current_liabilities_ttm > 0
+        and snap.current_liabilities_prev > 0
+    ):
         criteria_evaluated += 1
         current_ratio_ttm = snap.current_assets_ttm / snap.current_liabilities_ttm
         current_ratio_prev = snap.current_assets_prev / snap.current_liabilities_prev
@@ -267,7 +281,14 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
     # =========================================================================
 
     # 8. Increase in Gross Margin (Operating efficiency improved)
-    if snap.gross_profit_ttm is not None and snap.gross_profit_prev is not None and snap.revenue_ttm is not None and snap.revenue_prev is not None and snap.revenue_ttm > 0 and snap.revenue_prev > 0:
+    if (
+        snap.gross_profit_ttm is not None
+        and snap.gross_profit_prev is not None
+        and snap.revenue_ttm is not None
+        and snap.revenue_prev is not None
+        and snap.revenue_ttm > 0
+        and snap.revenue_prev > 0
+    ):
         criteria_evaluated += 1
         gross_margin_ttm = snap.gross_profit_ttm / snap.revenue_ttm
         gross_margin_prev = snap.gross_profit_prev / snap.revenue_prev
@@ -275,7 +296,14 @@ def _calculate_piotroski_score(snap: CompanySnapshot) -> int:
             score += 1
 
     # 9. Increase in Asset Turnover (Asset utilization improved)
-    if snap.revenue_ttm is not None and snap.revenue_prev is not None and snap.total_assets_ttm is not None and snap.total_assets_prev is not None and snap.total_assets_ttm > 0 and snap.total_assets_prev > 0:
+    if (
+        snap.revenue_ttm is not None
+        and snap.revenue_prev is not None
+        and snap.total_assets_ttm is not None
+        and snap.total_assets_prev is not None
+        and snap.total_assets_ttm > 0
+        and snap.total_assets_prev > 0
+    ):
         criteria_evaluated += 1
         asset_turnover_ttm = snap.revenue_ttm / snap.total_assets_ttm
         asset_turnover_prev = snap.revenue_prev / snap.total_assets_prev
@@ -326,4 +354,6 @@ class MarketContext(BaseModel):
     equity_risk_premium: float
 
     # --- Statistical Distribution (Optional) ---
-    percentiles: dict[str, dict[str, float]] = Field(default_factory=dict, description="Percentile thresholds for key metrics.")
+    percentiles: dict[str, dict[str, float]] = Field(
+        default_factory=dict, description="Percentile thresholds for key metrics."
+    )
