@@ -75,7 +75,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
 
         # --- STEP 2: Normalized Anchor Selection ---
         user_norm_fcf = strategy_params.fcf_norm
-        fcf_anchor = user_norm_fcf or 0.0
+        fcf_anchor = user_norm_fcf if user_norm_fcf is not None else (getattr(financials, "fcf_ttm", None) or 0.0)
 
         # Trace the Anchor Selection
         if self._glass_box:

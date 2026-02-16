@@ -27,17 +27,27 @@ class RIMBankView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
-        """Renders Step 1 (book value anchor) and Step 2 (growth rate) inputs."""
+        """Renders Step 1 (book value anchor + EPS anchor) and Step 2 (growth rate) inputs."""
         prefix = self.MODE.name
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
-        st.number_input(
-            Texts.INP_BV_BASE,
-            value=None,
-            format="%.0f",
-            help=Texts.HELP_BV_BASE,
-            key=f"{prefix}_{UIKeys.BV_ANCHOR}",
-        )
+        c1, c2 = st.columns(2)
+        with c1:
+            st.number_input(
+                Texts.INP_BV_BASE,
+                value=None,
+                format="%.0f",
+                help=Texts.HELP_BV_BASE,
+                key=f"{prefix}_{UIKeys.BV_ANCHOR}",
+            )
+        with c2:
+            st.number_input(
+                "EPS (Bénéfice par action)",
+                value=None,
+                format="%.2f",
+                help="Bénéfice par action normalisé ou TTM.",
+                key=f"{prefix}_{UIKeys.EPS_ANCHOR}",
+            )
         st.divider()
         self._render_step_header(Texts.STEP_2_TITLE, Texts.STEP_2_DESC)
         st.number_input(

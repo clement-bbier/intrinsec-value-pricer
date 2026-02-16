@@ -55,8 +55,12 @@ class GrahamLibrary:
         # Fix: Access growth_estimate from strategy, not params.growth
         g_decimal = getattr(s, "growth_estimate", None) or ModelDefaults.DEFAULT_GROWTH_RATE
 
-        # Bond Yield (Y)
-        aaa_yield = params.common.rates.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
+        # Bond Yield (Y) — Priority: Strategy Input > Common Rates > Default
+        strategy_yield = getattr(s, "yield_aaa", None)
+        if isinstance(strategy_yield, (int, float)) and strategy_yield:
+            aaa_yield = strategy_yield
+        else:
+            aaa_yield = params.common.rates.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD
 
         # 2. Calculation
         iv = calculate_graham_1974_value(eps, g_decimal, aaa_yield)

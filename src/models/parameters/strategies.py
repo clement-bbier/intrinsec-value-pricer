@@ -87,13 +87,13 @@ class FCFFNormalizedParameters(BaseProjectedParameters):
         Fixed to FCFF_NORMALIZED.
     fcf_norm : float | None
         The normalized (mid-cycle) Free Cash Flow.
-    cycle_growth_rate : float | None
+    growth_rate : float | None
         The growth rate applied to the normalized base.
     """
 
     mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
     fcf_norm: Annotated[float | None, UIKey(UIKeys.FCF_NORM, scale="million")] = None
-    cycle_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
+    growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
 
 
 class FCFFGrowthParameters(BaseProjectedParameters):
@@ -130,11 +130,14 @@ class FCFEParameters(BaseProjectedParameters):
         Base year Free Cash Flow to Equity.
     growth_rate : float | None
         Growth rate of equity cash flows.
+    net_borrowing_delta : float | None
+        Net change in borrowings (ΔDebt) for the projection period.
     """
 
     mode: Literal[ValuationMethodology.FCFE] = ValuationMethodology.FCFE
     fcfe_anchor: Annotated[float | None, UIKey(UIKeys.FCFE_ANCHOR, scale="million")] = None
     growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
+    net_borrowing_delta: Annotated[float | None, UIKey(UIKeys.NET_BORROWING_DELTA, scale="million")] = None
 
 
 class DDMParameters(BaseProjectedParameters):
@@ -147,13 +150,13 @@ class DDMParameters(BaseProjectedParameters):
         Fixed to DDM.
     dividend_per_share : float | None
         Base year Dividend Per Share (DPS).
-    dividend_growth_rate : float | None
+    growth_rate : float | None
         Expected annual growth of dividends.
     """
 
     mode: Literal[ValuationMethodology.DDM] = ValuationMethodology.DDM
     dividend_per_share: Annotated[float | None, UIKey(UIKeys.DIV_BASE, scale="raw")] = None
-    dividend_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
+    growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
 
 
 class RIMParameters(BaseProjectedParameters):
@@ -168,11 +171,17 @@ class RIMParameters(BaseProjectedParameters):
         Current Book Value of Equity.
     persistence_factor : float | None
         The 'Omega' factor (0-1) determining how long excess returns persist.
+    growth_rate : float | None
+        Expected earnings growth rate.
+    eps_anchor : float | None
+        Normalized or adjusted Earnings Per Share.
     """
 
     mode: Literal[ValuationMethodology.RIM] = ValuationMethodology.RIM
     book_value_anchor: Annotated[float | None, UIKey(UIKeys.BV_ANCHOR, scale="million")] = None
     persistence_factor: Annotated[float | None, UIKey(UIKeys.OMEGA, scale="raw")] = None
+    growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
+    eps_anchor: Annotated[float | None, UIKey(UIKeys.EPS_ANCHOR, scale="raw")] = None
 
 
 class GrahamParameters(BaseNormalizedModel):
@@ -187,11 +196,17 @@ class GrahamParameters(BaseNormalizedModel):
         Normalized Earnings Per Share.
     growth_estimate : float | None
         Conservative growth estimate (7-10 years).
+    yield_aaa : float | None
+        Corporate AAA Bond Yield override.
+    tax_rate : float | None
+        Effective tax rate override.
     """
 
     mode: Literal[ValuationMethodology.GRAHAM] = ValuationMethodology.GRAHAM
     eps_normalized: Annotated[float | None, UIKey(UIKeys.EPS_NORMALIZED, scale="raw")] = None
     growth_estimate: Annotated[float | None, UIKey(UIKeys.GROWTH_ESTIMATE, scale="pct")] = None
+    yield_aaa: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
+    tax_rate: Annotated[float | None, UIKey(UIKeys.TAX, scale="pct")] = None
 
 
 StrategyUnionParameters = (

@@ -89,20 +89,24 @@ class MonteCarloRunner:
         kd_post_tax = kd_pre_tax * (1 - tax_rate)
         # -----------------------------------------------------------
 
+        # Determine if the strategy is a Direct Equity model (DDM, FCFE, RIM)
+        is_direct_equity = hasattr(params.strategy, "mode") and hasattr(params.strategy.mode, "is_direct_equity") and params.strategy.mode.is_direct_equity
+
         # 2. Generate Stochastic Vectors (NumPy)
         # --------------------------------------
         vectors = self._generate_vectors(params, num_simulations, seed, base_beta=beta_base, base_wacc=base_wacc)
 
-        # 3. Vectorized WACC Calculation
-        # ------------------------------
-        # Ke_vec = Rf + Beta_vec * MRP
+        # 3. Vectorized WACC & Ke Calculation
+        # -----------------------------------
+        # Ke_vec = Rf + Beta_vec * MRP (Pure Cost of Equity)
         ke_vec = rf + vectors["beta"] * mrp
 
-        # WACC_vec = Ke_vec * We + Kd * Wd
+        # WACC_vec = Ke_vec * We + Kd * Wd (Weighted Average)
         wacc_vec = ke_vec * weight_e + kd_post_tax * weight_d
 
-        # Add WACC to vectors bundle for strategy use
-        vectors["wacc"] = wacc_vec
+        # Provide both vectors: Direct Equity models use Ke, FCFF models use WACC
+        vectors["ke"] = ke_vec
+        vectors["wacc"] = wacc_vec if not is_direct_equity else ke_vec
 
         # 4. Fast-Path Execution
         # ----------------------
@@ -150,9 +154,15 @@ class MonteCarloRunner:
         # 1. Beta Vector (Normal)
         betas = rng.normal(base_beta, base_beta * sig_beta, n_sims)
 
-        # 2. Growth Vector (Normal)
+        # 2. Growth Vector (Normal) — Polymorphic Resolution
         st = params.strategy
-        base_g = getattr(st, "growth_rate_p1", 0.05) or 0.05
+        base_g = (
+            getattr(st, "growth_rate_p1", None)
+            or getattr(st, "growth_rate", None)
+            or getattr(st, "revenue_growth_rate", None)
+            or getattr(st, "growth_estimate", None)
+            or 0.05
+        )
         growths = rng.normal(base_g, sig_growth, n_sims)
 
         # 3. Terminal Growth Vector (Normal, Clipped)
@@ -166,7 +176,27 @@ class MonteCarloRunner:
 
         # 4. Base Flow Shock Vector (Normal centered on 1.0)
         base_flow_mults = rng.normal(1.0, sig_flow, n_sims)
-        anchor_val = getattr(st, "fcf_anchor", None) or getattr(st, "revenue_ttm", 0.0) or 100.0
+
+        # Dynamic anchor resolution per model type
+        anchor_val = (
+            getattr(st, "fcf_anchor", None)
+            or getattr(st, "fcf_norm", None)
+            or getattr(st, "fcfe_anchor", None)
+            or getattr(st, "revenue_ttm", None)
+        )
+        # DDM: anchor is dividend_per_share × shares (total dividend mass)
+        if anchor_val is None:
+            dps = getattr(st, "dividend_per_share", None)
+            if dps:
+                shares = params.common.capital.shares_outstanding or 1.0
+                anchor_val = dps * shares
+        # RIM / Graham: anchor is EPS
+        if anchor_val is None:
+            anchor_val = (
+                getattr(st, "eps_anchor", None)
+                or getattr(st, "eps_normalized", None)
+                or 100.0
+            )
         base_flows = anchor_val * base_flow_mults
 
         return {"beta": betas, "growth": growths, "terminal_growth": term_growths, "base_flow": base_flows}

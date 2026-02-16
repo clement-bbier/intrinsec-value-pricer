@@ -67,6 +67,7 @@ class UIKeys:
     BV_ANCHOR: str = "bv_anchor"
     OMEGA: str = "omega"
     EPS_NORMALIZED: str = "eps_normalized"
+    EPS_ANCHOR: str = "eps_anchor"
     GROWTH_ESTIMATE: str = "growth_estimate"
 
     # ── Monte Carlo (global, no prefix) ──────────────────────────────

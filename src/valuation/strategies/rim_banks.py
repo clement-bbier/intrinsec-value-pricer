@@ -83,14 +83,9 @@ class RIMBankingStrategy(IValuationRunner):
         bv_anchor = user_bv if user_bv is not None else (getattr(financials, "book_value_ps", None) or 0.0)
 
         # B. Earnings Per Share (E0)
-        # Note: RIMParameters might not have eps_anchor explicit field (inherits from BaseProjectedParameters),
-        # but we can check if it exists or fallback to TTM.
-        # Ideally, we should add 'eps_anchor' to RIMParameters.
-        # Fallback logic: check 'eps_normalized' if Graham params shared, else TTM.
-        eps_ttm = getattr(financials, "eps_ttm", None) or 0.0
-        # If user overrides net income or EPS via a specific field (to be defined in Model), we use it.
-        # Here we use TTM as primary or assume Resolver handled overrides into `eps_ttm` equivalent.
-        eps_anchor = eps_ttm
+        # Priority: Strategy Input (eps_anchor) > TTM (Snapshot)
+        user_eps = strategy_params.eps_anchor
+        eps_anchor = user_eps if user_eps is not None else (getattr(financials, "eps_ttm", None) or 0.0)
 
         if self._glass_box:
             steps.append(
