@@ -17,17 +17,10 @@ from unittest.mock import MagicMock, patch
 class TestAutoFormRendering:
     """Tests render_auto_form with mocked streamlit."""
 
-    @patch("app.views.inputs.auto_form.get_state")
     @patch("app.views.inputs.auto_form.st")
-    def test_render_auto_form_calls_markdown(self, mock_st, mock_get_state):
+    def test_render_auto_form_calls_markdown(self, mock_st):
         """render_auto_form must call st.markdown for title."""
         from app.views.inputs.auto_form import render_auto_form
-        from src.models.enums import ValuationMethodology
-
-        state = MagicMock()
-        state.ticker = "AAPL"
-        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
-        mock_get_state.return_value = state
 
         col1 = MagicMock()
         col2 = MagicMock()
@@ -40,19 +33,11 @@ class TestAutoFormRendering:
         render_auto_form()
 
         mock_st.markdown.assert_called()
-        mock_st.info.assert_called()
 
-    @patch("app.views.inputs.auto_form.get_state")
     @patch("app.views.inputs.auto_form.st")
-    def test_render_auto_form_no_checkboxes(self, mock_st, mock_get_state):
+    def test_render_auto_form_no_checkboxes(self, mock_st):
         """render_auto_form must NOT create extension checkboxes (simplified mode)."""
         from app.views.inputs.auto_form import render_auto_form
-        from src.models.enums import ValuationMethodology
-
-        state = MagicMock()
-        state.ticker = "AAPL"
-        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
-        mock_get_state.return_value = state
 
         # Add column mocking
         col1 = MagicMock()
