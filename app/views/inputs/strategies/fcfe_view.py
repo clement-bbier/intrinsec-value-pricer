@@ -40,7 +40,7 @@ class FCFEView(BaseStrategyView):
             st.number_input(
                 Texts.INP_BASE,
                 value=None,
-                format="%.0f",
+                format="%.2f",
                 help=Texts.HELP_FCFE_BASE,
                 key=f"{prefix}_{UIKeys.FCFE_ANCHOR}",
             )
@@ -48,7 +48,7 @@ class FCFEView(BaseStrategyView):
             st.number_input(
                 Texts.INP_NET_BORROWING,
                 value=None,
-                format="%.0f",
+                format="%.2f",
                 help=Texts.HELP_NET_BORROWING,
                 key=f"{prefix}_{UIKeys.NET_BORROWING_DELTA}",
             )

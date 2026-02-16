@@ -115,6 +115,8 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             help=CommonTerminals.HELP_TAX,
             key=f"{prefix}_{UIKeys.TAX}",
         )
+    
+    st.divider()
 
 
 # ==============================================================================
@@ -137,8 +139,8 @@ def get_terminal_value_narrative(mode: ValuationMethodology) -> str:
 @st.fragment
 def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> None:
     """Renders Terminal Value selection (Gordon vs Multiples)."""
-    st.markdown(CommonTerminals.SEC_4_TERMINAL)
-    st.info(CommonTerminals.SEC_4_DESC)
+    st.markdown(CommonTerminals.STEP_4_TITLE)
+    st.info(CommonTerminals.STEP_4_DESC)
 
     method = st.radio(
         CommonTerminals.RADIO_TV_METHOD,
@@ -168,11 +170,12 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             help=CommonTerminals.HELP_EXIT_MULT,
             key=f"{key_prefix}_{UIKeys.EXIT_MULT}",
         )
-
+    st.divider()
 
 def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
     """Renders RIM specific terminal value (Persistence)."""
-    st.markdown(CommonTerminals.SEC_4_TERMINAL)
+    st.markdown(CommonTerminals.STEP_4_TITLE)
+    st.info(CommonTerminals.STEP_4_DESC)
     st.latex(formula_latex)
     st.number_input(
         CommonTerminals.INP_OMEGA,
@@ -182,7 +185,7 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
         help=CommonTerminals.HELP_OMEGA,
         key=f"{key_prefix}_{UIKeys.OMEGA}",
     )
-
+    st.divider()
 
 # ==============================================================================
 # 4. EQUITY BRIDGE (Section 5)
@@ -192,15 +195,15 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
 def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None:
     """Renders balance sheet adjustments section."""
     prefix = f"bridge_{mode.name}"
-    st.markdown(CommonTerminals.SEC_5_BRIDGE)
-    st.info(CommonTerminals.SEC_5_DESC)
+    st.markdown(CommonTerminals.STEP_5_TITLE)
+    st.info(CommonTerminals.STEP_5_DESC)
     st.latex(formula_latex)
 
     if mode.is_direct_equity:
         st.number_input(
             CommonTerminals.INP_SHARES,
             value=None,
-            format="%.0f",
+            format="%.2f",
             help=CommonTerminals.HELP_SHARES,
             key=f"{prefix}_{UIKeys.SHARES}",
         )
@@ -209,25 +212,25 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
         c1.number_input(
             CommonTerminals.INP_DEBT,
             value=None,
-            format="%.0f",
+            format="%.2f",
             help=CommonTerminals.HELP_DEBT,
             key=f"{prefix}_{UIKeys.DEBT}",
         )
         c2.number_input(
             CommonTerminals.INP_CASH,
             value=None,
-            format="%.0f",
+            format="%.2f",
             help=CommonTerminals.HELP_CASH,
             key=f"{prefix}_{UIKeys.CASH}",
         )
 
         c3, c4, c5 = st.columns(3)
-        c3.number_input(CommonTerminals.INP_MINORITIES, value=None, format="%.0f", key=f"{prefix}_{UIKeys.MINORITIES}")
-        c4.number_input(CommonTerminals.INP_PENSIONS, value=None, format="%.0f", key=f"{prefix}_{UIKeys.PENSIONS}")
+        c3.number_input(CommonTerminals.INP_MINORITIES, value=None, format="%.2f", key=f"{prefix}_{UIKeys.MINORITIES}")
+        c4.number_input(CommonTerminals.INP_PENSIONS, value=None, format="%.2f", key=f"{prefix}_{UIKeys.PENSIONS}")
         c5.number_input(
             CommonTerminals.INP_SHARES,
             value=None,
-            format="%.0f",
+            format="%.2f",
             help=CommonTerminals.HELP_SHARES,
             key=f"{prefix}_{UIKeys.SHARES}",
         )

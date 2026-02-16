@@ -35,7 +35,7 @@ class RIMBankView(BaseStrategyView):
             st.number_input(
                 Texts.INP_BV_BASE,
                 value=None,
-                format="%.0f",
+                format="%.2f",
                 help=Texts.HELP_BV_BASE,
                 key=f"{prefix}_{UIKeys.BV_ANCHOR}",
             )
