@@ -57,7 +57,7 @@ class GrahamLibrary:
 
         # Bond Yield (Y) — Priority: Strategy Input > Common Rates > Default
         strategy_yield = getattr(s, "yield_aaa", None)
-        if isinstance(strategy_yield, (int, float)) and strategy_yield:
+        if isinstance(strategy_yield, (int, float)):
             aaa_yield = strategy_yield
         else:
             aaa_yield = params.common.rates.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD

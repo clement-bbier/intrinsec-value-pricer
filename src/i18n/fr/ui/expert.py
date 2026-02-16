@@ -354,6 +354,9 @@ class RIMTexts(UISharedTexts):
     INP_NI_TTM = "Résultat Net Normatif (M$)"
     HELP_NI_TTM = "Bénéfice net récurrent (Net Income) servant à déterminer le profit résiduel initial."
 
+    INP_EPS_ANCHOR = "EPS (Bénéfice par action)"
+    HELP_EPS_ANCHOR = "Bénéfice par action normalisé ou TTM. Sert d'ancrage pour la projection des profits résiduels."
+
     # --- ÉTAPE 2 : DYNAMIQUE & PERSISTANCE ---
     STEP_2_TITLE = "#### Étape 2 : Persistance des Profits Anormaux"
     STEP_2_DESC = (

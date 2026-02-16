@@ -42,10 +42,10 @@ class RIMBankView(BaseStrategyView):
             )
         with c2:
             st.number_input(
-                "EPS (Bénéfice par action)",
+                Texts.INP_EPS_ANCHOR,
                 value=None,
                 format="%.2f",
-                help="Bénéfice par action normalisé ou TTM.",
+                help=Texts.HELP_EPS_ANCHOR,
                 key=f"{prefix}_{UIKeys.EPS_ANCHOR}",
             )
         st.divider()
