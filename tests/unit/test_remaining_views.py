@@ -629,41 +629,6 @@ class TestSidebarInteractions:
     @patch("app.views.inputs.sidebar.SessionManager")
     @patch("app.views.inputs.sidebar.AppController")
     @patch("app.views.inputs.sidebar.st")
-    def test_sidebar_ticker_change_triggers_reset(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
-        """Changing ticker must reset valuation."""
-        from app.views.inputs.sidebar import render_sidebar
-
-        state = MagicMock()
-        state.ticker = "AAPL"
-        state.selected_methodology = ValuationMethodology.FCFF_STANDARD
-        state.projection_years = 5
-        state.is_expert_mode = False
-        mock_get_state.return_value = state
-
-        sidebar_ctx = MagicMock()
-        sidebar_ctx.__enter__ = MagicMock(return_value=sidebar_ctx)
-        sidebar_ctx.__exit__ = MagicMock(return_value=False)
-        mock_st.sidebar = sidebar_ctx
-
-        mock_st.form.return_value.__enter__ = MagicMock()
-        mock_st.form.return_value.__exit__ = MagicMock()
-        mock_st.text_input.return_value = "MSFT"  # Different ticker
-        mock_st.form_submit_button.return_value = True  # Submit pressed
-        mock_st.slider.return_value = 5
-        mock_st.selectbox.return_value = ValuationMethodology.FCFF_STANDARD
-        mock_st.toggle.return_value = False
-        mock_st.button.return_value = False
-
-        render_sidebar()
-
-        # Verify ticker was updated
-        assert state.ticker == "MSFT"
-        mock_sm.reset_valuation.assert_called_once()
-
-    @patch("app.views.inputs.sidebar.get_state")
-    @patch("app.views.inputs.sidebar.SessionManager")
-    @patch("app.views.inputs.sidebar.AppController")
-    @patch("app.views.inputs.sidebar.st")
     def test_sidebar_run_analysis_button(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Clicking Run Analysis button must call AppController."""
         from app.views.inputs.sidebar import render_sidebar

@@ -13,7 +13,6 @@ Responsibilities:
 
 import streamlit as st
 
-from app.state.store import get_state
 from src.i18n import OnboardingTexts
 
 
@@ -21,7 +20,6 @@ def render_auto_form():
     """
     Renders the comprehensive onboarding.
     """
-    state = get_state()
 
     st.markdown(f"# {OnboardingTexts.APP_TITLE}")
     st.markdown(
@@ -67,8 +65,3 @@ def render_auto_form():
 
         with st.expander(OnboardingTexts.PILLAR_5_TITLE, expanded=False):
             st.markdown(OnboardingTexts.PILLAR_5_DESC)
-
-    # Show current configuration if ticker is set
-    if state.ticker:
-        st.divider()
-        st.info(f"Current configuration: {state.ticker}")
