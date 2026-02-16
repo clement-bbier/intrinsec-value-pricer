@@ -497,7 +497,7 @@ def test_extract_growth_rate_fcff_normalized():
     """Test extraction from FCFFNormalizedParameters."""
     strategy = FCFFNormalizedParameters(
         projection_years=5,
-        cycle_growth_rate=6.0,
+        growth_rate=6.0,
     )
     assert _extract_growth_rate(strategy) == 0.06
 
@@ -515,7 +515,7 @@ def test_extract_growth_rate_ddm():
     """Test extraction from DDMParameters."""
     strategy = DDMParameters(
         projection_years=5,
-        dividend_growth_rate=4.0,
+        growth_rate=4.0,
     )
     assert _extract_growth_rate(strategy) == 0.04
 

@@ -73,7 +73,7 @@ class StandardFCFFStrategy(IValuationRunner):
             steps.append(step_wacc)
 
         # --- STEP 2: FCF Projection ---
-        fcf_base = strategy_params.fcf_anchor or ModelDefaults.DEFAULT_FCF_TTM
+        fcf_base = strategy_params.fcf_anchor or getattr(financials, "fcf_ttm", None) or ModelDefaults.DEFAULT_FCF_TTM
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
         if manual_vector and len(manual_vector) > 0:

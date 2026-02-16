@@ -445,23 +445,19 @@ def _extract_growth_rate(strategy: Any) -> float | None:
     -----
     - Attempts to extract growth from multiple possible fields:
       - growth_rate_p1 (FCFFStandardParameters)
-      - cycle_growth_rate (FCFFNormalizedParameters)
+      - growth_rate (FCFFNormalizedParameters, FCFEParameters, DDMParameters, RIMParameters)
       - revenue_growth_rate (FCFFGrowthParameters)
-      - dividend_growth_rate (DDMParameters)
       - Terminal growth rate as fallback
     """
     # Try standard growth rate fields
     if hasattr(strategy, "growth_rate_p1") and strategy.growth_rate_p1 is not None:
         return strategy.growth_rate_p1
 
-    if hasattr(strategy, "cycle_growth_rate") and strategy.cycle_growth_rate is not None:
-        return strategy.cycle_growth_rate
+    if hasattr(strategy, "growth_rate") and strategy.growth_rate is not None:
+        return strategy.growth_rate
 
     if hasattr(strategy, "revenue_growth_rate") and strategy.revenue_growth_rate is not None:
         return strategy.revenue_growth_rate
-
-    if hasattr(strategy, "dividend_growth_rate") and strategy.dividend_growth_rate is not None:
-        return strategy.dividend_growth_rate
 
     # Fallback: terminal growth rate
     if hasattr(strategy, "terminal_value") and strategy.terminal_value:

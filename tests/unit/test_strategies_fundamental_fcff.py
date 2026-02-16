@@ -46,7 +46,7 @@ class TestFundamentalFCFFStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Fundamental FCFF parameters."""
-        strategy = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, cycle_growth_rate=0.04)
+        strategy = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, growth_rate=0.04)
         common = CommonParameters(
             rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
             capital=CapitalStructureParameters(
