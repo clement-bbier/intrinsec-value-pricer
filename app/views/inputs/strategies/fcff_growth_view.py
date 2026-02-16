@@ -2,7 +2,7 @@ import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
 from src.config.constants import UIKeys
-from src.i18n.fr.ui.expert import FCFFGrowthTexts as Texts
+from src.i18n.fr.ui.terminals import FCFFGrowthTexts as Texts
 from src.models import ValuationMethodology
 
 
@@ -33,7 +33,7 @@ class FCFFGrowthView(BaseStrategyView):
         st.number_input(
             Texts.INP_BASE,
             value=None,
-            format="%.0f",
+            format="%.2f",
             help=Texts.HELP_REV_TTM,
             key=f"{prefix}_{UIKeys.REVENUE_TTM}",
         )

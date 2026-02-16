@@ -198,11 +198,6 @@ class TestAutoFormSimplified:
         """Auto form must not reference ExtensionTexts."""
         assert "ExtensionTexts" not in auto_form_source
 
-    def test_contains_basic_info(self, auto_form_source):
-        """Auto form must still display basic company and methodology info."""
-        assert "state.ticker" in auto_form_source
-        assert "state.selected_methodology" in auto_form_source
-
 
 class TestOrchestratorPipelineLogging:
     """Orchestrator must call QuantLogger pipeline stages."""

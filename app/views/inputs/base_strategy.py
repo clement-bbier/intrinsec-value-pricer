@@ -30,7 +30,7 @@ from app.views.inputs.strategies.shared_widgets import (
     widget_terminal_value_rim,
 )
 from src.config.constants import UIKeys
-from src.i18n import UISharedTexts
+from src.i18n.fr.ui.terminals import CommonTerminals
 from src.models import ValuationMethodology
 
 logger = logging.getLogger(__name__)
@@ -91,13 +91,17 @@ class BaseStrategyView(ABC):
 
         # Step 3: Risk & Capital (Shared widget)
         if self.SHOW_DISCOUNT_SECTION:
-            self._render_step_header(UISharedTexts.SEC_3_CAPITAL, UISharedTexts.SEC_3_DESC)
+            # Titrage Dynamique : Firm (WACC) vs Equity (Ke)
+            step_3_title = (
+                CommonTerminals.STEP_3_TITLE_WACC if not self.MODE.is_direct_equity else CommonTerminals.STEP_3_TITLE_KE
+            )
+            self._render_step_header(step_3_title, CommonTerminals.STEP_3_DESC)
             widget_cost_of_capital(self.MODE)
 
         # Step 4: Exit Value (Terminal Value logic)
         if self.SHOW_TERMINAL_SECTION:
             if self.MODE == ValuationMethodology.RIM:
-                widget_terminal_value_rim(formula_latex=UISharedTexts.FORMULA_TV_RIM, key_prefix=self.MODE.name)
+                widget_terminal_value_rim(formula_latex=CommonTerminals.FORMULA_TV_RIM, key_prefix=self.MODE.name)
             else:
                 widget_terminal_value_dcf(mode=self.MODE, key_prefix=self.MODE.name)
 
@@ -128,7 +132,7 @@ class BaseStrategyView(ABC):
 
     def _render_equity_bridge(self) -> None:
         """Renders the Equity Bridge section with context-aware formulas."""
-        formula = UISharedTexts.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else UISharedTexts.FORMULA_BRIDGE
+        formula = CommonTerminals.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else CommonTerminals.FORMULA_BRIDGE
         widget_equity_bridge(formula, self.MODE)
         st.divider()
 
@@ -176,9 +180,9 @@ class BaseStrategyView(ABC):
         Maps Methodology to specific UI labels for Monte Carlo volatilities.
         """
         mapping = {
-            ValuationMethodology.GRAHAM: {"base_flow_volatility": UISharedTexts.MC_VOL_EPS},
-            ValuationMethodology.RIM: {"base_flow_volatility": UISharedTexts.MC_VOL_NI},
-            ValuationMethodology.DDM: {"base_flow_volatility": UISharedTexts.MC_VOL_DIV},
+            ValuationMethodology.GRAHAM: {"base_flow_volatility": CommonTerminals.MC_VOL_EPS},
+            ValuationMethodology.RIM: {"base_flow_volatility": CommonTerminals.MC_VOL_NI},
+            ValuationMethodology.DDM: {"base_flow_volatility": CommonTerminals.MC_VOL_DIV},
         }
         return mapping.get(self.MODE)
 

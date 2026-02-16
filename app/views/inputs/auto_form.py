@@ -20,6 +20,7 @@ def render_auto_form():
     """
     Renders the comprehensive onboarding.
     """
+
     st.markdown(f"# {OnboardingTexts.APP_TITLE}")
     st.markdown(
         f"""
