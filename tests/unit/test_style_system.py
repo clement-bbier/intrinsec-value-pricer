@@ -148,15 +148,6 @@ class TestRenderHeader:
         assert CommonTexts.APP_TITLE in header_html
 
     @patch("app.assets.style_system.st")
-    def test_render_header_contains_project_badge(self, mock_st):
-        """render_terminal_header HTML must reference the project badge."""
-        from src.i18n import CommonTexts
-
-        render_terminal_header()
-        header_html = mock_st.markdown.call_args_list[0][0][0]
-        assert CommonTexts.PROJECT_BADGE in header_html
-
-    @patch("app.assets.style_system.st")
     def test_render_header_contains_compliance(self, mock_st):
         """render_terminal_header must include compliance text."""
         from src.i18n import LegalTexts

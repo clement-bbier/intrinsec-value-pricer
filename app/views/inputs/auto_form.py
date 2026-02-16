@@ -1,33 +1,66 @@
 """
 app/views/inputs/auto_form.py
-AUTO MODE LANDING VIEW
+
+STANDARD MODE — ONBOARDING & LANDING VIEW
+=========================================
+Role: Educational landing page for the Standard Mode.
+Responsibilities:
+  - Explain the application's purpose.
+  - Detail methodologies and analysis levels.
+  - Preview expected results.
+  - Provide a reactive summary of the current configuration.
 """
 
 import streamlit as st
 
-from app.state.store import get_state
-from src.i18n import CommonTexts, SidebarTexts
-from src.i18n.fr.ui.common import OnboardingTexts
+from src.i18n import OnboardingTexts
 
 
 def render_auto_form():
     """
-    Renders the minimalist 'Auto Mode' welcome screen.
-
-    Auto mode displays only the basic company and methodology information.
-    Extensions are exclusive to Expert mode; checking an extension option
-    in Expert triggers Pillars 4 and 5 in the results view.
+    Renders the comprehensive onboarding.
     """
-    state = get_state()
+    st.markdown(f"# {OnboardingTexts.APP_TITLE}")
+    st.markdown(
+        f"""
+            <div style="margin-top: -15px; margin-bottom: 20px;">
+                <p style="font-size: 0.8rem; color: #64748b; font-style: italic; line-height: 1.4;">
+                    <strong>{OnboardingTexts.COMPLIANCE_TITLE}</strong> : {OnboardingTexts.COMPLIANCE_BODY}
+                </p>
+            </div>
+            """,
+        unsafe_allow_html=True
+    )
+    st.divider()
 
-    st.markdown(f"# {CommonTexts.APP_TITLE}")
-    st.markdown(f"### {SidebarTexts.SOURCE_AUTO}")
+    # INTRO
+    st.subheader(OnboardingTexts.TITLE_INTRO)
+    st.markdown(OnboardingTexts.INTRO_ONBOARDING)
+    st.divider()
 
-    st.info(f"""
-        **{SidebarTexts.SEC_1_COMPANY}:** {state.ticker}
-        **{SidebarTexts.METHOD_LABEL}:** {state.selected_methodology.value}
+    # MODELS DESCRIPTION
+    st.subheader(OnboardingTexts.MODEL_SECTION_TITLE)
+    st.markdown(OnboardingTexts.MODELS_EXPLORER)
+    st.divider()
 
-        {OnboardingTexts.STRATEGY_ACQUISITION_DESC}
+    # RESULTS DESCRIPTION
+    st.subheader(OnboardingTexts.RESULTS_SECTION_TITLE)
 
-        **{CommonTexts.RUN_BUTTON}**
-        """)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        with st.expander(OnboardingTexts.PILLAR_1_TITLE, expanded=True):
+            st.markdown(OnboardingTexts.PILLAR_1_DESC)
+
+        with st.expander(OnboardingTexts.PILLAR_2_TITLE, expanded=True):
+            st.markdown(OnboardingTexts.PILLAR_2_DESC)
+
+    with col2:
+        with st.expander(OnboardingTexts.PILLAR_3_TITLE, expanded=True):
+            st.markdown(OnboardingTexts.PILLAR_3_DESC)
+
+        with st.expander(OnboardingTexts.PILLAR_4_TITLE, expanded=False):
+            st.markdown(OnboardingTexts.PILLAR_4_DESC)
+
+        with st.expander(OnboardingTexts.PILLAR_5_TITLE, expanded=False):
+            st.markdown(OnboardingTexts.PILLAR_5_DESC)

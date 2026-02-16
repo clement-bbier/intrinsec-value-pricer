@@ -171,7 +171,6 @@ def render_terminal_header():
         f"""
         <div style="display: flex; align-items: center; margin-bottom: 6px;">
             <h1 style="margin: 0; font-weight: 700; color: #1e293b;">{CommonTexts.APP_TITLE}</h1>
-            <span class="project-badge">{CommonTexts.PROJECT_BADGE}</span>
         </div>
         """,
         unsafe_allow_html=True,

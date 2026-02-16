@@ -11,8 +11,7 @@ class CommonTexts:
     """Référentiel des textes génériques et statuts institutionnels."""
 
     # --- Métadonnées Application ---
-    PROJECT_BADGE = "QUANT ENGINE V1.0"
-    APP_TITLE = "Terminal de Valorisation Intrinsèque"
+    APP_TITLE = "Intrinsic Value Engine"
     APP_SUBTITLE = "Ingénierie Financière & Analyse de Risque"
     AUTHOR_NAME = "Clément Barbier"
     DEVELOPED_BY = "Developpé par"
@@ -54,91 +53,77 @@ class CommonTexts:
 
 class OnboardingTexts:
     """Contenu structurel de la page d'accueil et des piliers."""
+    APP_TITLE = "Intrinsic Value Engine"
 
-    INTRO_INFO = (
-        "Solution d'analyse fondamentale quantitative pour l'estimation de la valeur intrinsèque des capitaux propres."
-    )
+    COMPLIANCE_TITLE = "Avertissement Légal"
     COMPLIANCE_BODY = (
-        "Les modélisations produites reposent sur des algorithmes de flux"
-        " actualisés (DCF) et de profits résiduels (RIM). "
-        "Ces résultats constituent des outils d'aide à la décision"
-        " et non des recommandations d'investissement."
+        "Ce moteur de valorisation est un outil d'analyse quantitative fourni à titre purement informatif. "
+        "Il ne constitue pas un conseil en investissement. L'utilisateur assume l'entière responsabilité "
+        "des décisions financières découlant de l'utilisation de cet outil."
     )
+    TITLE_INTRO = "Introduction"
+    INTRO_ONBOARDING = """
+        Cette plateforme déploie un moteur d'orchestration financière capable de structurer des chaînes de calcul basées sur des modèles de valorisation académiques de référence.
 
-    # Section : Méthodes
-    TITLE_METHODS = "Méthodologies de Valorisation"
-    DESC_METHODS = "Architecture multi-modèles pour une triangulation de la valeur :"
+        L'architecture propose deux parcours distincts : le mode **Standard**, qui automatise la récupération des données pour une restitution en 3 onglets, et le mode **Approfondi**, offre la liberté de modifier manuellement chaque variable d'entrée et permet d'enrichir l'analyse jusqu'à 5 onglets thématiques selon les extensions sélectionnées.
 
-    MODEL_DCF_TITLE = "Approche Entité (FCFF)"
-    MODEL_DCF_DESC = (
-        "Valeur de l'actif économique. Flux opérationnels actualisés au coût moyen pondéré du capital (WACC)."
-    )
+        La fiabilité de l'évaluation repose sur un flux de données hybride, associant Yahoo Finance à un module d'extraction propriétaire pour les métriques non standardisées (RTFM pour changer de provider). L'intégrité du moteur est garantie par des mécanismes de validation automatique et de substitution, sécurisant le calcul même en cas de données sources incomplètes ou incohérentes.
 
-    MODEL_EQUITY_TITLE = "Approche Actionnaire (FCFE/DDM)"
-    MODEL_EQUITY_DESC = (
-        "Valeur directe des fonds propres. Actualisation des flux nets de dette au coût des fonds propres (Ke)."
-    )
+        Les six extensions analytiques disponibles incluent : la simulation de Monte Carlo, l'analyse de sensibilité, l'étude de scénarios, le backtest historique, la comparaison par multiples de pairs et la segmentation SOTP (Sum of the Parts).
+        """
+    MODEL_SECTION_TITLE = "Modèles Implémentés"
+    MODELS_EXPLORER = """
+    #### 1. Moteurs de Flux de Trésorerie
+    * **DCF : Standard (FCFF)** : L'approche par l'entité. Le moteur calcule la Valeur d'Entreprise en actualisant les flux de trésorerie disponibles (FCFF) au **WACC**, avec une valeur terminale basée sur le taux de croissance perpétuelle ($g$).
+    * **DCF : Croissance (Revenue-Driven)** : Une variante dynamique qui reconstruit l'**EBIT** et les flux futurs en corrélant la croissance du chiffre d'affaires à l'évolution des marges opérationnelles cibles.
+    * **DCF : Fondamental (Normalisé)** : Logique Damodaran. Ce modèle projette la capacité bénéficiaire structurelle en utilisant le couple **ROIC** (Retour sur Capitaux Investis) et **Taux de Réinvestissement**.
+    * **DCF : FCFE (Equity Value)** : Contrairement à l'approche entité, ce moteur calcule directement la valeur des capitaux propres en actualisant les flux de trésorerie résiduels après service de la dette au coût des fonds propres (**Ke**).
 
-    MODEL_RIM_TITLE = "Revenu Résiduel (Residual Income)"
-    MODEL_RIM_DESC = (
-        "Méthode comptable avancée. Valorisation basée sur la création de valeur"
-        " excédentaire par rapport au coût du capital."
-    )
+    #### 2. Moteurs par les Revenus
+    * **Modèle DDM (Dividend Discount)** : Approche par le rendement pur. Il évalue la cible en actualisant uniquement les dividendes futurs attendus au coût des fonds propres (**Ke**).
+    * **Modèle RIM (Residual Income)** : Dédié au secteur financier. Il valorise l'entreprise comme la somme de sa Valeur Comptable et de la valeur actuelle de ses bénéfices excédentaires (**Net Income - (Ke * BV)**).
 
-    MODEL_GRAHAM_TITLE = "Formule de Benjamin Graham"
-    MODEL_GRAHAM_DESC = (
-        "Approche sécuritaire reliant la capacité bénéficiaire normalisée aux taux obligataires sans risque."
-    )
+    #### 3. Moteur Statique
+    * **Formule de Graham** : Implémentation révisée de la logique "Intrinsèque". Elle calcule une valeur pivot basée sur l'**EPS** et la croissance attendue, ajustée par le rendement actuel des obligations AAA.
+    """
+    RESULTS_SECTION_TITLE = "Organisation des résultats"
 
-    # Section : Intelligence de Données
-    TITLE_PROCESS = "Acquisition des données"
-    STRATEGY_ACQUISITION_TITLE = "Extraction Automatisée"
-    STRATEGY_ACQUISITION_DESC = (
-        "Récupération des états financiers et données macro via fournisseurs de données institutionnels."
-    )
+    # PILLIER 1 (Permanent) : inputs_summary.py
+    PILLAR_1_TITLE = "1. Synthèse des Hypothèses (Permanent)"
+    PILLAR_1_DESC = """
+        - **Audit des Données** : Récapitulatif exhaustif des variables extraites (Consensus, Risk-Free Rate, Bêta).
+        - **Configuration** : Rappel des paramètres de session et des hypothèses de croissance court terme.
+        """
 
-    STRATEGY_MANUAL_TITLE = "Mode Ingénierie (Manual Override)"
-    STRATEGY_MANUAL_DESC = (
-        "Permet l'ajustement granulaire des hypothèses de croissance, de marge et de structure du capital."
-    )
+    # PILLIER 2 (Permanent) : calculation_proof.py
+    PILLAR_2_TITLE = "2. Preuve de Calcul (Permanent)"
+    PILLAR_2_DESC = """
+        - **Moteur Glass Box** : Accès transparent à la mécanique de calcul intermédiaire.
+        - **Bridge de Flux** : Décomposition du passage de l'EBIT aux Flux de Trésorerie Disponibles (FCFF/FCFE) et à la Valeur d'Entreprise.
+        """
 
-    STRATEGY_FALLBACK_TITLE = "Données de Substitution"
-    STRATEGY_FALLBACK_DESC = (
-        "Recours aux benchmarks sectoriels par défaut en cas de données"
-        " historiques incomplètes ou aberrantes. (Fallback)"
-    )
+    # PILLIER 3 (Permanent) : market_analysis.py / peer_multiples.py
+    PILLAR_3_TITLE = "3. Analyse Comparative Sectorielle (Permanent)"
+    PILLAR_3_DESC = """
+        - **Multiples de Marché** : Positionnement de la cible face aux moyennes sectorielles (P/E, EV/EBITDA, P/B).
+        - **Évaluation Relative** : Score de surévaluation ou sous-évaluation par rapport aux comparables théoriques.
+        """
 
-    # Section : Architecture des 5 Piliers
-    TITLE_RESULTS = "Organisation des Résultats"
-    DESC_RESULTS = "Les résultats sont segmentés par domaines d'analyse financière :"
-    # Pilier 1 - Configuration
-    TAB_1_TITLE = "Configuration & Macro"
-    TAB_1_DESC = "Audit des variables d'entrée et synchronisation du contexte macroéconomique."
-    # Pilier 2 - Glass Box
-    TAB_2_TITLE = "Logique de Calcul"
-    TAB_2_DESC = "Décomposition des étapes mathématiques et affichage des formules LaTeX."
-    # Pilier 3 - Audit
-    TAB_3_TITLE = "Audit des Données & Cohérence"
-    TAB_3_DESC = "Évaluation de la fiabilité du modèle et détection d'anomalies."
-    # Pilier 4 - Risque
-    TAB_4_TITLE = "Ingénierie des Risques & Sensibilité"
-    TAB_4_DESC = (
-        "Analyse stochastique (Monte Carlo), matrices de sensibilité et backtesting"
-        " historique pour valider la précision du modèle."
-    )
-    # Pilier 5 - Marché
-    TAB_5_TITLE = "Triangulation de Marché & SOTP"
-    TAB_5_DESC = (
-        "Étude comparative des multiples boursiers sectoriels et décomposition"
-        " segmentée (SOTP) pour une validation extrinsèque."
-    )
+    # PILLIER 4 (Optionnel) : monte_carlo, sensitivity, scenarios, backtest
+    PILLAR_4_TITLE = "4. Ingénierie du Risque (Extensions)"
+    PILLAR_4_DESC = """
+        - **Simulation de Monte Carlo** : Analyse stochastique sur 5 000 itérations pour modéliser la distribution de probabilité du prix.
+        - **Matrice de Sensibilité** : Impact combiné des variations du WACC et du taux de croissance ($g$).
+        - **Scénarios Discrets** : Simulation de trajectoires spécifiques (Bull / Bear Cases).
+        - **Backtesting 10 ans** : Vérification de la fiabilité historique des prédictions du modèle sur la dernière décennie.
+        """
 
-    # Section : Diagnostics
-    DIAGNOSTIC_HEADER = "Système de diagnostics"
-    DIAGNOSTIC_BLOQUANT = "ERREUR : Données financières incomplètes ou incohérentes."
-    DIAGNOSTIC_WARN = "AVERTISSEMENT : Hypothèses en dehors des normes historiques."
-    DIAGNOSTIC_INFO = "INFORMATION : Moteurs de calcul opérationnels."
-
+    # PILLIER 5 (Optionnel) : peers, sotp
+    PILLAR_5_TITLE = "5. Analyses Spécifiques (Extensions)"
+    PILLAR_5_DESC = """
+        - **Analyse par Comparables (Peers)** : Comparaison granulaire avec un panel personnalisé de concurrents directs.
+        - **Somme des Parties (SOTP)** : Valorisation désagrégée par segment d'activité (Segmented Valuation).
+        """
 
 class FeedbackMessages:
     """Messages système et alertes de validation."""
