@@ -27,12 +27,13 @@ html, body, [class*="css"], .stMarkdown {
 }
 .stApp { background-color: #f8fafc; }
 
-/* --- SIDEBAR : DEEP NAVY (HIGH CONTRAST) --- */
+/* --- SIDEBAR : DEEP NAVY (FORCE OVERRIDE) --- */
+/* Since config.toml uses white for widgets, we force navy back on the sidebar only */
 section[data-testid="stSidebar"] {
     background-color: #002654 !important;
 }
 
-/* Sidebar text contrast (Pure White on Dark Navy) */
+/* Sidebar text contrast (Force Pure White on forced Navy background) */
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] label,
@@ -78,17 +79,17 @@ section[data-testid="stSidebar"] [data-testid="stTickBarMax"] {
 }
 
 /* --- RADIO BUTTONS (INSTITUTIONAL RED) --- */
-/* Cercle extérieur */
+/* Outer circle */
 section[data-testid="stSidebar"] div[data-baseweb="radio"] input:checked + div {
     border-color: #dc2626 !important;
 }
 
-/* Point intérieur */
+/* Inner dot */
 section[data-testid="stSidebar"] div[data-baseweb="radio"] input:checked + div::before {
     background-color: #dc2626 !important;
 }
 
-/* Forcer suppression du bleu par défaut */
+/* Force default blue removal */
 section[data-testid="stSidebar"] div[data-baseweb="radio"] input:checked + div {
     box-shadow: 0 0 0 2px #dc2626 !important;
 }

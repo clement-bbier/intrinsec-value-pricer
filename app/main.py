@@ -23,7 +23,7 @@ from app.assets.style_system import inject_institutional_design  # noqa: E402
 # MVC Imports
 from app.state.session_manager import SessionManager  # noqa: E402
 from app.state.store import get_state  # noqa: E402
-from app.views.common.sidebar import render_sidebar  # noqa: E402
+from app.views.inputs.sidebar import render_sidebar  # noqa: E402
 from app.views.inputs.auto_form import render_auto_form  # noqa: E402
 from app.views.inputs.expert_form import render_expert_form  # noqa: E402
 

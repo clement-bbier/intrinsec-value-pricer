@@ -63,7 +63,6 @@ def render_sidebar():
                 st.text_input(
                     SidebarTexts.TICKER_LABEL,
                     value=state.ticker,
-                    help=SidebarTexts.HELP_TICKER_LABEL,
                 )
                 .upper()
                 .strip()

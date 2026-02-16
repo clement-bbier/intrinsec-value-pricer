@@ -220,7 +220,7 @@ class TestSidebarRendering:
 
     def test_render_sidebar_callable(self):
         """render_sidebar must be callable."""
-        from app.views.common.sidebar import render_sidebar
+        from app.views.inputs.sidebar import render_sidebar
 
         assert callable(render_sidebar)
 
@@ -229,7 +229,7 @@ class TestSidebarRendering:
     @patch("app.views.common.sidebar.st")
     def test_render_sidebar_uses_sidebar(self, mock_st, mock_ctrl, mock_get_state):
         """render_sidebar must use st.sidebar context manager."""
-        from app.views.common.sidebar import render_sidebar
+        from app.views.inputs.sidebar import render_sidebar
         from src.models.enums import ValuationMethodology
 
         state = MagicMock()

@@ -622,7 +622,7 @@ class TestSidebarInteractions:
     @patch("app.views.common.sidebar.st")
     def test_sidebar_ticker_change_triggers_reset(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Changing ticker must reset valuation."""
-        from app.views.common.sidebar import render_sidebar
+        from app.views.inputs.sidebar import render_sidebar
 
         state = MagicMock()
         state.ticker = "AAPL"
@@ -657,7 +657,7 @@ class TestSidebarInteractions:
     @patch("app.views.common.sidebar.st")
     def test_sidebar_run_analysis_button(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Clicking Run Analysis button must call AppController."""
-        from app.views.common.sidebar import render_sidebar
+        from app.views.inputs.sidebar import render_sidebar
 
         state = MagicMock()
         state.ticker = "AAPL"

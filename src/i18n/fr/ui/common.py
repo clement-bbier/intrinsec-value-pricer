@@ -75,8 +75,8 @@ class OnboardingTexts:
     MODELS_EXPLORER = """
     #### 1. Moteurs de Flux de Trésorerie
     * **DCF : Standard (FCFF)** : L'approche par l'entité. Le moteur calcule la Valeur d'Entreprise en actualisant les flux de trésorerie disponibles (FCFF) au **WACC**, avec une valeur terminale basée sur le taux de croissance perpétuelle ($g$).
-    * **DCF : Croissance (Revenue-Driven)** : Une variante dynamique qui reconstruit l'**EBIT** et les flux futurs en corrélant la croissance du chiffre d'affaires à l'évolution des marges opérationnelles cibles.
     * **DCF : Fondamental (Normalisé)** : Logique Damodaran. Ce modèle projette la capacité bénéficiaire structurelle en utilisant le couple **ROIC** (Retour sur Capitaux Investis) et **Taux de Réinvestissement**.
+    * **DCF : Croissance (Revenue-Driven)** : Une variante dynamique qui reconstruit l'**EBIT** et les flux futurs en corrélant la croissance du chiffre d'affaires à l'évolution des marges opérationnelles cibles.
     * **DCF : FCFE (Equity Value)** : Contrairement à l'approche entité, ce moteur calcule directement la valeur des capitaux propres en actualisant les flux de trésorerie résiduels après service de la dette au coût des fonds propres (**Ke**).
 
     #### 2. Moteurs par les Revenus
