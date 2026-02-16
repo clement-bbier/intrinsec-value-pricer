@@ -2,7 +2,8 @@ import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
 from src.config.constants import UIKeys
-from src.i18n.fr.ui.terminals import CommonTerminals, FCFETexts as Texts
+from src.i18n.fr.ui.terminals import CommonTerminals
+from src.i18n.fr.ui.terminals import FCFETexts as Texts
 from src.models import ValuationMethodology
 
 

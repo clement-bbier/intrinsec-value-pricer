@@ -3,7 +3,8 @@ import streamlit as st
 from app.views.inputs.base_strategy import BaseStrategyView
 from app.views.inputs.strategies.shared_widgets import widget_growth_rate
 from src.config.constants import UIKeys
-from src.i18n.fr.ui.terminals import CommonTerminals, DDMTexts as Texts
+from src.i18n.fr.ui.terminals import CommonTerminals
+from src.i18n.fr.ui.terminals import DDMTexts as Texts
 from src.models import ValuationMethodology
 
 

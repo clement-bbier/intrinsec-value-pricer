@@ -115,7 +115,7 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             help=CommonTerminals.HELP_TAX,
             key=f"{prefix}_{UIKeys.TAX}",
         )
-    
+
     st.divider()
 
 
