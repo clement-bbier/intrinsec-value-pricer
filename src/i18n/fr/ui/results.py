@@ -302,10 +302,7 @@ class QuantTexts:
     # --- Analyse de Sensibilité (Heatmap) ---
     SENS_TITLE = "Matrice de Sensibilité"
     LBL_SENS_SCORE = "Score de Stabilité"
-    HELP_SENS_SCORE = (
-        "Indicateur de robustesse (0-100). Mesure l'impact des variations "
-        "d'inputs sur la valorisation. < 15 : Stable | > 30 : Critique."
-    )
+    HELP_SENS_SCORE = "Indicateur de robustesse (0-100). Mesure l'impact des variations d'inputs sur la valorisation. < 15 : Stable | > 30 : Critique."
 
     # Statuts du score
     SENS_STABLE = "Modèle Robuste"
@@ -360,10 +357,7 @@ class BacktestTexts:
 
     # Titres & Descriptions
     TITLE = "Validation Historique (Backtest)"
-    HELP_BACKTEST = (
-        "Simulation rétrospective du modèle sur les exercices passés pour vérifier sa capacité prédictive. "
-        "Compare la valeur intrinsèque théorique calculée (IV) face au prix réel du marché à cette date."
-    )
+    HELP_BACKTEST = "Simulation rétrospective du modèle sur les exercices passés pour vérifier sa capacité prédictive. Compare la valeur intrinsèque théorique calculée (IV) face au prix réel du marché à cette date."
 
     # Messages
     NO_BACKTEST_FOUND = "Données historiques insuffisantes pour générer un audit de performance."
@@ -444,14 +438,8 @@ class MarketTexts:
 class SOTPTexts:
     """Textes spécifiques à la méthode Somme des Parties (SOTP) - Pillar 5."""
 
-    HELP_SOTP = (
-        "Cette méthodologie valorise chaque division indépendamment pour capturer "
-        "la réalité économique des conglomérats, souvent masquée par une approche consolidée."
-    )
-    NO_SOTP_FOUND = (
-        "Aucune segmentation détectée. Veuillez configurer les segments (Business Units) "
-        "dans les paramètres pour activer la valorisation SOTP."
-    )
+    HELP_SOTP = "Cette méthodologie valorise chaque division indépendamment pour capturer la réalité économique des conglomérats, souvent masquée par une approche consolidée."
+    NO_SOTP_FOUND = "Aucune segmentation détectée. Veuillez configurer les segments (Business Units) dans les paramètres pour activer la valorisation SOTP."
     TITLE = "Analyse Somme des Parties (SOTP)"
 
     # Waterfall Chart

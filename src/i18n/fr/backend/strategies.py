@@ -92,24 +92,14 @@ class StrategyInterpretations:
     """
 
     RIM_BV_D = "Valeur des capitaux propres par action au début de la projection."
-    GRAHAM_INT = (
-        "Formule révisée de Benjamin Graham (1974) intégrant le taux sans risque corporate"
-        " (AAA Yield) comme coût d'opportunité."
-    )
-    RIM_FINAL = (
-        "Agrégation de la Valeur Comptable Initiale, de la Somme des Surplus actualisés"
-        " et de la Valeur Terminale de persistance."
-    )
+    GRAHAM_INT = "Formule révisée de Benjamin Graham (1974) intégrant le taux sans risque corporate (AAA Yield) comme coût d'opportunité."
+    RIM_FINAL = "Agrégation de la Valeur Comptable Initiale, de la Somme des Surplus actualisés et de la Valeur Terminale de persistance."
     RIM_PERSISTENCE = (
         r"Modélisation de la décroissance des surprofits anormaux avec un facteur"
         r" de persistance Oméga de {val:.2f}."
     )
     RIM_PROJ = r"Projection des Revenus Résiduels (RI) sur {years} ans basée sur la relation Clean Surplus."
-    KE_CONTEXT = (
-        "Le coût des capitaux propres (Ke) représente le rendement minimum exigé par les"
-        " actionnaires pour compenser le risque systématique (Bêta) de l'entreprise."
-        " Il sert de base au taux d'actualisation des flux futurs."
-    )
+    KE_CONTEXT = "Le coût des capitaux propres (Ke) représente le rendement minimum exigé par les actionnaires pour compenser le risque systématique (Bêta) de l'entreprise. Il sert de base au taux d'actualisation des flux futurs."
     EV_CONTEXT = "Représente la valeur intrinsèque de l'outil de production."
     WACC_CONTEXT = "Coût moyen pondéré des sources de financement."
     WACC = r"Taux d'actualisation cible (WACC) de {wacc:.2%}, basé sur la structure de capital actuelle."
@@ -119,10 +109,7 @@ class StrategyInterpretations:
     BRIDGE = "Ajustement de la structure financière."
     IV = r"Estimation de la valeur réelle d'une action pour {ticker}."
     HAMADA_ADJUSTMENT_L = "Ajustement du Bêta (Formule de Hamada)"
-    HAMADA_ADJUSTMENT_D = (
-        "Le risque systématique (Bêta) a été recalculé pour refléter la structure"
-        " de capital cible (D/E) choisie pour la valorisation."
-    )
+    HAMADA_ADJUSTMENT_D = "Le risque systématique (Bêta) a été recalculé pour refléter la structure de capital cible (D/E) choisie pour la valorisation."
     RIM_TV = "Estimation de la persistance des surprofits."
     GROWTH_REV = "Point de départ du modèle basé sur le chiffre d'affaires TTM."
     GROWTH_MARGIN = "Modélisation de l'amélioration opérationnelle vers une marge FCF normative."
@@ -166,29 +153,17 @@ class SharedTexts:
     # ==========================================================================
     # 1. INPUTS GÉNÉRIQUES (WIDGETS PARTAGÉS)
     # ==========================================================================
-    HELP_MANUAL_PEERS = (
-        "Saisir les codes tickers (ex: AAPL, MSFT) séparés par des virgules pour la triangulation relative."
-    )
-    HELP_SOTP = (
-        "Valorisation par addition des segments opérationnels distincts (Business Units) moins la dette nette globale."
-    )
-    HELP_SCENARIO_ENABLE = (
-        "Permet de modéliser trois trajectoires (Pessimiste, Base, Optimiste) pondérées par probabilité."
-    )
+    HELP_MANUAL_PEERS = "Saisir les codes tickers (ex: AAPL, MSFT) séparés par des virgules pour la triangulation relative."
+    HELP_SOTP = "Valorisation par addition des segments opérationnels distincts (Business Units) moins la dette nette globale."
+    HELP_SCENARIO_ENABLE = "Permet de modéliser trois trajectoires (Pessimiste, Base, Optimiste) pondérées par probabilité."
     PLACEHOLDER_PEERS = "ex: AAPL, MSFT, GOOGL, LVMH"
-    HELP_PEER_TRIANGULATION = (
-        "Comparaison de la valeur intrinsèque calculée face aux multiples médians d'un panier de comparables."
-    )
-    HELP_BACKTEST_ENABLE = (
-        "Exécution rétrospective du modèle sur les exercices passés pour valider sa capacité prédictive."
-    )
+    HELP_PEER_TRIANGULATION = "Comparaison de la valeur intrinsèque calculée face aux multiples médians d'un panier de comparables."
+    HELP_BACKTEST_ENABLE = "Exécution rétrospective du modèle sur les exercices passés pour valider sa capacité prédictive."
     HELP_MC_VOL_GN = "Écart-type appliqué au taux de croissance perpétuelle dans la simulation."
     HELP_MC_VOL_BETA = "Incertitude statistique sur le risque systématique (Bêta) du titre."
     HELP_MC_VOL_G = "Volatilité du taux de croissance (CAGR) sur la période explicite."
     HELP_MC_VOL_FLOW = "Incertitude sur le flux de trésorerie initial (Année 0) ou normatif."
-    HELP_MC_ENABLE = (
-        "Simulation stochastique (Monte Carlo) pour définir un intervalle de confiance sur la valorisation."
-    )
+    HELP_MC_ENABLE = "Simulation stochastique (Monte Carlo) pour définir un intervalle de confiance sur la valorisation."
     HELP_CASH = "Trésorerie active, équivalents de trésorerie et placements financiers liquides."
     HELP_DEBT = "Dette financière brute (bancaire et obligataire), incluant la part courante et les baux (IFRS 16)."
     HELP_SHARES = "Nombre total d'actions diluées (incluant les options exercibles et RSUs)."
@@ -207,21 +182,15 @@ class SharedTexts:
     LBL_SENS_RANGE = "Portée (Range)"
     HELP_SENS_STEP = "Incrément de variation pour chaque pas (ex: 0.5%)."
     LBL_SENS_STEP = "Pas de variation (%)"
-    MSG_SENSITIVITY_DESC = (
-        "Analyse croisée de l'impact des variations du WACC et de la Croissance terminale (g) sur la valorisation."
-    )
+    MSG_SENSITIVITY_DESC = "Analyse croisée de l'impact des variations du WACC et de la Croissance terminale (g) sur la valorisation."
     LBL_SENSITIVITY_ENABLE = "Activer l'Analyse de Sensibilité"
     SEC_11_SENSITIVITY = "#### Extension : Analyse de Sensibilité"
-    HELP_SBC_DILUTION = (
-        "Taux de dilution annuel estimé lié aux plans de rémunération en actions (Stock-Based Compensation)."
-    )
+    HELP_SBC_DILUTION = "Taux de dilution annuel estimé lié aux plans de rémunération en actions (Stock-Based Compensation)."
     HELP_EXIT_MULT = "Multiple d'EBITDA ou de CA appliqué à la dernière année de projection pour la Valeur Terminale."
     HELP_PERP_G = "Taux de croissance à l'infini (doit être inférieur au PIB nominal pour la cohérence économique)."
 
     INP_PROJ_YEARS = "Années de projection (Horizon explicite)"
-    HELP_PROJ_YEARS = (
-        "Durée de la période de prévision explicite avant calcul de la Valeur Terminale (généralement 5 à 10 ans)."
-    )
+    HELP_PROJ_YEARS = "Durée de la période de prévision explicite avant calcul de la Valeur Terminale (généralement 5 à 10 ans)."
 
     INP_GROWTH_G = "Croissance perpétuelle (g)"
     HELP_GROWTH_RATE = "Taux de croissance à l'infini (borné par le taux sans risque pour cohérence économique)."
@@ -231,9 +200,7 @@ class SharedTexts:
     INP_SHARES = "Actions en circulation (Millions)"
 
     INP_OMEGA = "Facteur de Persistance (ω)"
-    HELP_OMEGA = (
-        "Détermine la vitesse à laquelle le rendement excédentaire (ROIC - WACC) converge vers zéro (Modèle Ohlson)."
-    )
+    HELP_OMEGA = "Détermine la vitesse à laquelle le rendement excédentaire (ROIC - WACC) converge vers zéro (Modèle Ohlson)."
 
     # ==========================================================================
     # 2. SECTION ACTUALISATION (DISCOUNT RATES)
@@ -353,7 +320,4 @@ class SharedTexts:
     LBL_SENS_X = "Coût du Capital (WACC/Ke)"
     LBL_SENS_Y = "Croissance Terminale (g)"
     LBL_SENS_SCORE = "Score de Volatilité"
-    HELP_SENS_SCORE = (
-        "Mesure de la dispersion des valorisations autour du cas central."
-        " Un score élevé indique une forte instabilité du modèle."
-    )
+    HELP_SENS_SCORE = "Mesure de la dispersion des valorisations autour du cas central. Un score élevé indique une forte instabilité du modèle."

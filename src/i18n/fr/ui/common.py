@@ -53,14 +53,11 @@ class CommonTexts:
 
 class OnboardingTexts:
     """Contenu structurel de la page d'accueil et des piliers."""
+
     APP_TITLE = "Intrinsic Value Engine"
 
     COMPLIANCE_TITLE = "Avertissement Légal"
-    COMPLIANCE_BODY = (
-        "Ce moteur de valorisation est un outil d'analyse quantitative fourni à titre purement informatif. "
-        "Il ne constitue pas un conseil en investissement. L'utilisateur assume l'entière responsabilité "
-        "des décisions financières découlant de l'utilisation de cet outil."
-    )
+    COMPLIANCE_BODY = "Ce moteur de valorisation est un outil d'analyse quantitative fourni à titre purement informatif. Il ne constitue pas un conseil en investissement. L'utilisateur assume l'entière responsabilité des décisions financières découlant de l'utilisation de cet outil."
     TITLE_INTRO = "Introduction"
     INTRO_ONBOARDING = """
         Cette plateforme déploie un moteur d'orchestration financière capable de structurer des chaînes de calcul basées sur des modèles de valorisation académiques de référence.
@@ -126,6 +123,7 @@ class OnboardingTexts:
         - **Analyse par Comparables (Peers)** : Comparaison granulaire avec un panel personnalisé de concurrents directs.
         - **Somme des Parties (SOTP)** : Valorisation désagrégée par segment d'activité (Segmented Valuation).
         """
+
 
 class FeedbackMessages:
     """Messages système et alertes de validation."""

@@ -23,10 +23,7 @@ class UISharedTexts:
     # 1. SÉQUENÇAGE DES ÉTAPES (3 à 9)
     # ==========================================================================
     # Titres de sections et descriptions pédagogiques
-    ERR_CRITICAL = (
-        "Une erreur critique est survenue lors de l'assemblage de la valorisation."
-        " Veuillez vérifier vos saisies ou contacter le support."
-    )
+    ERR_CRITICAL = "Une erreur critique est survenue lors de l'assemblage de la valorisation. Veuillez vérifier vos saisies ou contacter le support."
     LBL_LOOKBACK = "Recul historique (années)"
     FORMULA_TV_FCFF_STD = r"TV_n = \frac{FCF_n(1+g_n)}{WACC - g_n}"
     FORMULA_TV_FCFF_NORM = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
@@ -55,17 +52,13 @@ class UISharedTexts:
 
     # Extensions optionnelles (Index 6 à 9)
     SEC_6_MC = "#### Option : Simulation Probabiliste (Incertitude)"
-    SEC_6_DESC_MC = (
-        "Analyse de sensibilité par simulation stochastique de Monte Carlo pour quantifier la dispersion de la valeur."
-    )
+    SEC_6_DESC_MC = "Analyse de sensibilité par simulation stochastique de Monte Carlo pour quantifier la dispersion de la valeur."
 
     SEC_7_PEERS = "#### Option : Cohorte de Comparables (Triangulation)"
     SEC_7_DESC_PEERS = "Validation de la valeur intrinsèque par comparaison aux multiples boursiers du secteur."
 
     SEC_8_SCENARIOS = "#### Option : Analyse de Scénarios (Convictions)"
-    SEC_8_DESC_SCENARIOS = (
-        "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
-    )
+    SEC_8_DESC_SCENARIOS = "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
 
     SEC_9_SOTP = "#### Option : Somme des Parties (Segmentation SOTP)"
     SEC_9_DESC = "Décomposition de la valeur d'entreprise par segments métier ou actifs distincts."
@@ -123,10 +116,7 @@ class UISharedTexts:
     # ==========================================================================
     LBL_SOTP_ENABLE = "Activer la décomposition SOTP"
     HELP_SOTP_ENABLE = "Permet de ventiler la valeur d'entreprise globale entre différentes Business Units."
-    WARN_SOTP_RELEVANCE = (
-        "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise"
-        " mono-segment, utilisez-la uniquement pour decomposer la valeur calculée."
-    )
+    WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la uniquement pour decomposer la valeur calculée."
 
     SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (M$)**"
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding / conglomérat**"
@@ -172,9 +162,7 @@ class UISharedTexts:
     HELP_MC_ENABLE = "Simulation stochastique pour évaluer l'intervalle de confiance du prix intrinsèque."
     HELP_MC_SIMS = "Nombre de tirages aléatoires. 5000 itérations offrent un ratio précision/vitesse optimal."
     HELP_SCENARIO_ENABLE = "Permet de tester des variantes Bull/Bear pour valider la robustesse opérationnelle."
-    HELP_PEER_TRIANGULATION = (
-        "Compare la valeur intrinsèque calculée aux multiples de valorisation de sociétés comparables."
-    )
+    HELP_PEER_TRIANGULATION = "Compare la valeur intrinsèque calculée aux multiples de valorisation de sociétés comparables."
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
     HELP_DEBT = "Somme des dettes financières à court et long terme (Dette brute)."
     HELP_CASH = "Trésorerie disponible, équivalents de trésorerie et placements financiers."
@@ -234,33 +222,22 @@ class UISharedTexts:
 
     # Extensions optionnelles (Index 6 à 10)
     SEC_10_BACKTEST = "#### Option : Validation Historique (Backtest)"
-    SEC_10_DESC_BACKTEST = (
-        "Analyse rétrospective comparant la valeur intrinsèque (IV) aux cours de clôture"
-        " historiques pour tester la fiabilité du modèle."
-    )
+    SEC_10_DESC_BACKTEST = "Analyse rétrospective comparant la valeur intrinsèque (IV) aux cours de clôture historiques pour tester la fiabilité du modèle."
     LBL_BACKTEST_ENABLE = "Activer le Backtesting temporel"
-    HELP_BACKTEST_ENABLE = (
-        "Recalcule le modèle sur les 3 dernières années pour vérifier si le prix"
-        " intrinsèque a historiquement anticipé les mouvements de marché."
-    )
+    HELP_BACKTEST_ENABLE = "Recalcule le modèle sur les 3 dernières années pour vérifier si le prix intrinsèque a historiquement anticipé les mouvements de marché."
 
     # ==========================================================================
     # 10. MODULE : ÉTAPE 11 - SENSIBILITÉ (WACC vs g)
     # ==========================================================================
     SEC_11_SENSITIVITY = "#### Option : Analyse de Sensibilité (Stress Test)"
     LBL_SENSITIVITY_ENABLE = "Activer la matrice de sensibilité"
-    MSG_SENSITIVITY_DESC = (
-        "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations"
-        " du WACC et de la croissance (g) sur la valorisation finale."
-    )
+    MSG_SENSITIVITY_DESC = "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations du WACC et de la croissance (g) sur la valorisation finale."
 
     LBL_SENS_STEP = "Pas de variation (%)"
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
     HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
-    HELP_SENS_RANGE = (
-        "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
-    )
+    HELP_SENS_RANGE = "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
 
 
 # ==============================================================================
@@ -270,9 +247,7 @@ class UISharedTexts:
 
 class FCFFStandardTexts(UISharedTexts):
     TITLE = "FCFF Standard (Modèle à deux étapes)"
-    DESCRIPTION = (
-        "Valorisation fondamentale de l'entreprise par l'actualisation des flux de trésorerie disponibles (FCFF)."
-    )
+    DESCRIPTION = "Valorisation fondamentale de l'entreprise par l'actualisation des flux de trésorerie disponibles (FCFF)."
     STEP_1_TITLE = "#### Étape 1 : Ancrage du Flux Opérationnel"
     STEP_1_DESC = "Définition du flux de trésorerie disponible pour la firme (FCFF) de référence pour l'année 0."
     STEP_1_FORMULA = r"FCFF = EBIT \times (1 - \tau) + DA - \Delta WCR - CapEx"
@@ -330,9 +305,7 @@ class RIMTexts(UISharedTexts):
     """
 
     TITLE = "Revenu Résiduel (RIM)"
-    DESCRIPTION = (
-        "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance de la création de valeur (ROE > Ke)."
-    )
+    DESCRIPTION = "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance de la création de valeur (ROE > Ke)."
 
     # --- ÉTAPE 1 : ANCRAGE BILANCIEL ---
     STEP_1_TITLE = "#### Étape 1 : Ancrage Bilanciel (Book Value)"
@@ -343,9 +316,7 @@ class RIMTexts(UISharedTexts):
 
     # Inputs Principaux (Utilisés par rim_bank_view.py)
     INP_BV_BASE = "Valeur Comptable (Book Value) (M$)"
-    HELP_BV_BASE = (
-        "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
-    )
+    HELP_BV_BASE = "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
 
     # Inputs Secondaires (Pour d'éventuelles variantes ou affichages détaillés)
     INP_BV_INITIAL = "Valeur Comptable Initiale (BV₀)"
@@ -356,10 +327,7 @@ class RIMTexts(UISharedTexts):
 
     # --- ÉTAPE 2 : DYNAMIQUE & PERSISTANCE ---
     STEP_2_TITLE = "#### Étape 2 : Persistance des Profits Anormaux"
-    STEP_2_DESC = (
-        "Estimation de la durée pendant laquelle l'entreprise génère un rendement"
-        " supérieur à son coût du capital (Facteur Omega)."
-    )
+    STEP_2_DESC = "Estimation de la durée pendant laquelle l'entreprise génère un rendement supérieur à son coût du capital (Facteur Omega)."
 
     HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
 
@@ -390,10 +358,7 @@ class GrahamTexts(UISharedTexts):
 
     # Inputs EPS
     INP_EPS = "BPA (EPS) Normalisé ($)"
-    HELP_EPS = (
-        "Bénéfice par action lissé (moyenne 3-5 ans) ou TTM ajusté des éléments"
-        " exceptionnels pour refléter la capacité bénéficiaire réelle."
-    )
+    HELP_EPS = "Bénéfice par action lissé (moyenne 3-5 ans) ou TTM ajusté des éléments exceptionnels pour refléter la capacité bénéficiaire réelle."
 
     # Alias pour compatibilité interne (si utilisé ailleurs)
     INP_EPS_NORM = "BPA (EPS) normalisé ($/action)"
@@ -402,9 +367,7 @@ class GrahamTexts(UISharedTexts):
     # Inputs Croissance
     INP_GROWTH = "Croissance Attendue (g) (%)"
     INP_GROWTH_G = "Croissance attendue g (%)"
-    HELP_GROWTH_LT = (
-        "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
-    )
+    HELP_GROWTH_LT = "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
 
     # --- ÉTAPE 2 : CONDITIONS DE MARCHÉ ---
     STEP_2_TITLE = "#### Étape 2 : Conditions de Marché"
@@ -416,10 +379,7 @@ class GrahamTexts(UISharedTexts):
     INP_TAX = "Taux d'imposition Effectif (%)"
     HELP_TAX = "Taux effectif moyen d'imposition attendu pour la société."
 
-    NOTE_GRAHAM = (
-        "Note : Le facteur 8.5 correspond au P/E d'une entreprise à croissance nulle."
-        " Le facteur 4.4 représente le rendement AAA historique de référence."
-    )
+    NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au P/E d'une entreprise à croissance nulle. Le facteur 4.4 représente le rendement AAA historique de référence."
 
 
 class FCFETexts(UISharedTexts):
@@ -429,9 +389,7 @@ class FCFETexts(UISharedTexts):
     STEP_1_DESC = "Définition du flux FCFE disponible pour l'actionnaire et de la politique d'endettement."
     STEP_1_FORMULA = r"FCFE = OCF - Capex + \Delta \text{Net Borrowing}"
     INP_BASE = "Flux FCFE d'ancrage (M$)"
-    HELP_FCFE_BASE = (
-        "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
-    )
+    HELP_FCFE_BASE = "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
     INP_NET_BORROWING = "Variation de l'endettement (M$)"
     HELP_NET_BORROWING = "Montant net des nouvelles émissions de dette moins les remboursements de principal."
     STEP_2_TITLE = "#### Étape 2 : Horizon de Projection"

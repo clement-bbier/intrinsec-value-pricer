@@ -66,9 +66,7 @@ class StandardFCFFStrategy(IValuationRunner):
         steps: list[CalculationStep] = []
 
         # --- STEP 1: WACC & Rates ---
-        wacc, step_wacc = CommonLibrary.resolve_discount_rate(
-            financials=financials, params=params, use_cost_of_equity_only=False
-        )
+        wacc, step_wacc = CommonLibrary.resolve_discount_rate(financials=financials, params=params, use_cost_of_equity_only=False)
         if self._glass_box:
             steps.append(step_wacc)
 
@@ -111,11 +109,7 @@ class StandardFCFFStrategy(IValuationRunner):
         trace_kd = step_wacc.get_variable("Kd(1-t)")
 
         val_ke = trace_ke.value if (self._glass_box and trace_ke) else (r.cost_of_equity or 0.0)
-        val_kd = (
-            trace_kd.value
-            if (self._glass_box and trace_kd)
-            else (ModelDefaults.DEFAULT_COST_OF_DEBT * (1 - (r.tax_rate or 0.25)))
-        )
+        val_kd = trace_kd.value if (self._glass_box and trace_kd) else (ModelDefaults.DEFAULT_COST_OF_DEBT * (1 - (r.tax_rate or 0.25)))
 
         res_rates = ResolvedRates(cost_of_equity=val_ke, cost_of_debt_after_tax=val_kd, wacc=wacc)
 

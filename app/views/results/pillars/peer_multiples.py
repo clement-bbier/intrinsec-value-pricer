@@ -73,9 +73,7 @@ class PeerMultiples:
 
         # Source & Count Context (Fully i18n)
         peer_count = len(peers_res.peer_valuations)
-        caption_txt = MarketTexts.CAPTION_PEERS_COUNT.format(
-            count=peer_count, label=MarketTexts.COL_PEER + "s", source=MarketTexts.SOURCE_DEFAULT
-        )
+        caption_txt = MarketTexts.CAPTION_PEERS_COUNT.format(count=peer_count, label=MarketTexts.COL_PEER + "s", source=MarketTexts.SOURCE_DEFAULT)
         st.caption(caption_txt)
 
         # 1. VISUAL TRIANGULATION (Football Field)
@@ -92,9 +90,7 @@ class PeerMultiples:
             # EV/EBITDA Implied Value
             val_ebitda = peers_res.implied_prices.get("EV/EBITDA", 0.0)
             median_ebitda = medians.get("EV/EBITDA", 0.0)
-            help_ebitda = (
-                MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x") if median_ebitda else ""
-            )
+            help_ebitda = MarketTexts.HELP_IMPLIED_METHOD.format(multiple=f"{median_ebitda:.1f}x") if median_ebitda else ""
 
             with c1:
                 atom_kpi_metric(
@@ -133,12 +129,8 @@ class PeerMultiples:
 
             column_config = {
                 "Name": st.column_config.TextColumn(label=MarketTexts.COL_PEER, width="medium"),
-                KPITexts.LABEL_FOOTBALL_FIELD_PE: st.column_config.NumberColumn(
-                    label=KPITexts.LABEL_FOOTBALL_FIELD_PE, format=f"%.2f {currency}", width="small"
-                ),
-                QuantTexts.COL_UPSIDE: st.column_config.NumberColumn(
-                    label=QuantTexts.COL_UPSIDE, format="%.1%", width="small"
-                ),
+                KPITexts.LABEL_FOOTBALL_FIELD_PE: st.column_config.NumberColumn(label=KPITexts.LABEL_FOOTBALL_FIELD_PE, format=f"%.2f {currency}", width="small"),
+                QuantTexts.COL_UPSIDE: st.column_config.NumberColumn(label=QuantTexts.COL_UPSIDE, format="%.1%", width="small"),
             }
 
             with st.container(border=True):

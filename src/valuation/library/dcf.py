@@ -52,9 +52,7 @@ class DCFLibrary:
 
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
         # We look for 'growth_rate_p1' (Standard DCF) or 'growth_rate' (FCFE/DDM)
-        g_start = (
-            getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None)) or ModelDefaults.DEFAULT_GROWTH_RATE
-        )
+        g_start = getattr(strat, "growth_rate_p1", getattr(strat, "growth_rate", None)) or ModelDefaults.DEFAULT_GROWTH_RATE
 
         # Access Terminal Value params
         tv_params = strat.terminal_value
@@ -79,9 +77,7 @@ class DCFLibrary:
 
         # 3. Trace Building
         variables = {
-            "FCF_0": VariableInfo(
-                symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"
-            ),
+            "FCF_0": VariableInfo(symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"),
             "g_start": VariableInfo(
                 symbol="g_start",
                 value=g_start,
@@ -162,9 +158,7 @@ class DCFLibrary:
         return flows, step
 
     @staticmethod
-    def project_flows_revenue_model(
-        base_revenue: float, current_margin: float, target_margin: float, params: Parameters
-    ) -> tuple[list[float], list[float], list[float], CalculationStep]:
+    def project_flows_revenue_model(base_revenue: float, current_margin: float, target_margin: float, params: Parameters) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
         """
@@ -245,9 +239,7 @@ class DCFLibrary:
         return fcfs, revenues, margins, step
 
     @staticmethod
-    def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters
-    ) -> tuple[float, CalculationStep]:
+    def compute_terminal_value(final_flow: float, discount_rate: float, params: Parameters) -> tuple[float, CalculationStep]:
         """Calculates Terminal Value based on Strategy selection."""
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
@@ -260,9 +252,7 @@ class DCFLibrary:
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                ),
+                actual_calculation=(f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"),
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
@@ -308,9 +298,7 @@ class DCFLibrary:
             return tv, step
 
     @staticmethod
-    def compute_discounting(
-        flows: list[float], terminal_value: float, discount_rate: float
-    ) -> tuple[float, CalculationStep]:
+    def compute_discounting(flows: list[float], terminal_value: float, discount_rate: float) -> tuple[float, CalculationStep]:
         """Calculates the Enterprise Value (NPV of Flows + PV of TV)."""
         years_count = len(flows)
         factors = calculate_discount_factors(discount_rate, years_count)

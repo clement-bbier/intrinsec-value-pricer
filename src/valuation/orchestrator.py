@@ -269,9 +269,7 @@ class ValuationOrchestrator:
                 valuation_output.audit_report = AuditReport()
 
             valuation_output.audit_report.events.extend(guardrail_events)
-            valuation_output.audit_report.critical_warnings += sum(
-                1 for event in guardrail_events if event.severity == SeverityLevel.WARNING
-            )
+            valuation_output.audit_report.critical_warnings += sum(1 for event in guardrail_events if event.severity == SeverityLevel.WARNING)
 
             # --- PHASE 3.6: CONTEXT & STATS (Clean Architecture) ---
             # 1. Attach Financial Snapshot (Source of Truth for UI Display)

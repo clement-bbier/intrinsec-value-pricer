@@ -70,9 +70,7 @@ class RIMBankingStrategy(IValuationRunner):
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # RIM is a Direct Equity method -> Discount at Cost of Equity
-        ke, step_ke = CommonLibrary.resolve_discount_rate(
-            financials=financials, params=params, use_cost_of_equity_only=True
-        )
+        ke, step_ke = CommonLibrary.resolve_discount_rate(financials=financials, params=params, use_cost_of_equity_only=True)
         if self._glass_box:
             steps.append(step_ke)
 
@@ -111,9 +109,7 @@ class RIMBankingStrategy(IValuationRunner):
 
         # --- STEP 3: Projection (Clean Surplus) ---
         # Projects RI, BV, and EPS
-        ri_flows, bv_flows, eps_flows, step_proj = RIMLibrary.project_residual_income(
-            current_book_value=bv_anchor, base_earnings=eps_anchor, cost_of_equity=ke, params=params
-        )
+        ri_flows, bv_flows, eps_flows, step_proj = RIMLibrary.project_residual_income(current_book_value=bv_anchor, base_earnings=eps_anchor, cost_of_equity=ke, params=params)
         if self._glass_box:
             steps.append(step_proj)
 
@@ -125,9 +121,7 @@ class RIMBankingStrategy(IValuationRunner):
 
         # --- STEP 5: Aggregation (Total Value) ---
         # Note: The result is directly Value Per Share because inputs were Per Share
-        iv_raw, step_agg = RIMLibrary.compute_equity_value(
-            current_book_value=bv_anchor, residual_incomes=ri_flows, terminal_value=tv, cost_of_equity=ke
-        )
+        iv_raw, step_agg = RIMLibrary.compute_equity_value(current_book_value=bv_anchor, residual_incomes=ri_flows, terminal_value=tv, cost_of_equity=ke)
         if self._glass_box:
             steps.append(step_agg)
 

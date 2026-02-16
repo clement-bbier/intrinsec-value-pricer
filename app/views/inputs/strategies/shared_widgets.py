@@ -143,9 +143,7 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
     method = st.radio(
         UISharedTexts.RADIO_TV_METHOD,
         options=[TerminalValueMethod.GORDON_GROWTH, TerminalValueMethod.EXIT_MULTIPLE],
-        format_func=lambda x: (
-            UISharedTexts.TV_GORDON if x == TerminalValueMethod.GORDON_GROWTH else UISharedTexts.TV_EXIT
-        ),
+        format_func=lambda x: UISharedTexts.TV_GORDON if x == TerminalValueMethod.GORDON_GROWTH else UISharedTexts.TV_EXIT,
         horizontal=True,
         key=f"{key_prefix}_{UIKeys.TV_METHOD}",
     )
@@ -278,9 +276,7 @@ def widget_sensitivity() -> None:
         )
 
 
-def widget_monte_carlo(
-    mode: ValuationMethodology, terminal_method: TerminalValueMethod | None, custom_vols: dict[str, str] | None = None
-) -> None:
+def widget_monte_carlo(mode: ValuationMethodology, terminal_method: TerminalValueMethod | None, custom_vols: dict[str, str] | None = None) -> None:
     """Renders Monte Carlo simulation parameters."""
     st.markdown(UISharedTexts.SEC_6_MC)
 
@@ -304,11 +300,7 @@ def widget_monte_carlo(
 
     col1, col2 = st.columns(2)
     # Dynamic Labels from BaseTerminal
-    label_flow = (
-        custom_vols.get("base_flow_volatility", UISharedTexts.MC_VOL_BASE_FLOW)
-        if custom_vols
-        else UISharedTexts.MC_VOL_BASE_FLOW
-    )
+    label_flow = custom_vols.get("base_flow_volatility", UISharedTexts.MC_VOL_BASE_FLOW) if custom_vols else UISharedTexts.MC_VOL_BASE_FLOW
 
     col1.number_input(
         label_flow,

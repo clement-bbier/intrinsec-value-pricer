@@ -62,9 +62,7 @@ def _render_piotroski_section(company_stats) -> None:
     c1, c2 = st.columns([0.2, 0.8])
 
     with c1:
-        st.metric(
-            label=BenchmarkTexts.PIOTROSKI_LBL_SCORE, value=f"{f_score}/9", delta=interpretation, delta_color="normal"
-        )
+        st.metric(label=BenchmarkTexts.PIOTROSKI_LBL_SCORE, value=f"{f_score}/9", delta=interpretation, delta_color="normal")
 
     with c2:
         st.write(f"**{BenchmarkTexts.PIOTROSKI_LBL_STATUS}: {interpretation}**")

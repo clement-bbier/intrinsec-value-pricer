@@ -29,7 +29,7 @@ def render_auto_form():
                 </p>
             </div>
             """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.divider()
 

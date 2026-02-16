@@ -6,6 +6,7 @@ Textes de la barre latérale.
 
 class SidebarTexts:
     """Labels et en-têtes de la barre latérale."""
+
     LANGUAGE = "Langues"
     TITLE = "Paramétrage de l'analyse"
 

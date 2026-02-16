@@ -70,9 +70,7 @@ class DividendDiscountStrategy(IValuationRunner):
 
         # --- STEP 1: Rate Resolution (Ke ONLY) ---
         # DDM uses Cost of Equity as the discount rate.
-        ke, step_ke = CommonLibrary.resolve_discount_rate(
-            financials=financials, params=params, use_cost_of_equity_only=True
-        )
+        ke, step_ke = CommonLibrary.resolve_discount_rate(financials=financials, params=params, use_cost_of_equity_only=True)
         if self._glass_box:
             steps.append(step_ke)
 
@@ -172,11 +170,7 @@ class DividendDiscountStrategy(IValuationRunner):
             rates=res_rates,
             capital=res_capital,
             intrinsic_value_per_share=iv_per_share,
-            upside_pct=(
-                ((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0))
-                if financials.current_price
-                else 0.0
-            ),
+            upside_pct=(((iv_per_share - (financials.current_price or 0.0)) / (financials.current_price or 1.0)) if financials.current_price else 0.0),
             bridge_trace=steps if self._glass_box else [],
         )
 

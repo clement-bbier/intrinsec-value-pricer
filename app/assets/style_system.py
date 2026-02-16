@@ -156,12 +156,14 @@ section[data-testid="stSidebar"] .stFormSubmitButton button:hover {
 </style>
 """
 
+
 def inject_institutional_design():
     """
     Injects the institutional CSS design system into the Streamlit application.
     Must be called at the start of the main application entrypoint.
     """
     st.markdown(INSTITUTIONAL_CSS, unsafe_allow_html=True)
+
 
 def render_terminal_header():
     """

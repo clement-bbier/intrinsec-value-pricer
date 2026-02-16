@@ -100,11 +100,7 @@ class FlowProjector(ABC):
     ) -> VariableInfo:
         """Helper to build provenance-aware variables within the projector."""
         is_overridden = manual_value is not None
-        source = (
-            VariableSource.MANUAL_OVERRIDE
-            if is_overridden
-            else (VariableSource.YAHOO_FINANCE if provider_value is not None else VariableSource.DEFAULT)
-        )
+        source = VariableSource.MANUAL_OVERRIDE if is_overridden else (VariableSource.YAHOO_FINANCE if provider_value is not None else VariableSource.DEFAULT)
 
         formatted = f"{value:.2%}" if is_pct else format_smart_number(value)
 
@@ -160,9 +156,7 @@ class SimpleFlowProjector(FlowProjector):
         variables = {
             "g": self._build_trace_variable("g", g_start, g_start, None, SharedTexts.INP_GROWTH_G, True),
             "g_n": self._build_trace_variable("g_n", g_term, g_term, None, SharedTexts.INP_PERP_G, True),
-            "n": VariableInfo(
-                symbol="n", value=float(years), source=VariableSource.CALCULATED, description=SharedTexts.INP_PROJ_YEARS
-            ),
+            "n": VariableInfo(symbol="n", value=float(years), source=VariableSource.CALCULATED, description=SharedTexts.INP_PROJ_YEARS),
         }
 
         return ProjectionOutput(
@@ -218,9 +212,7 @@ class MarginConvergenceProjector(FlowProjector):
 
         # 4. Traceability
         variables = {
-            "m_target": self._build_trace_variable(
-                "m_target", target_margin, target_margin, None, "Target FCF Margin (Normative)", True
-            ),
+            "m_target": self._build_trace_variable("m_target", target_margin, target_margin, None, "Target FCF Margin (Normative)", True),
             "g_rev": self._build_trace_variable("g_rev", rev_growth, rev_growth, None, "Revenue Growth Rate", True),
         }
 
@@ -239,9 +231,7 @@ class MarginConvergenceProjector(FlowProjector):
 # ==============================================================================
 
 
-def project_flows(
-    base_flow: float, years: int, g_start: float, g_term: float, high_growth_years: int | None = 0
-) -> list[float]:
+def project_flows(base_flow: float, years: int, g_start: float, g_term: float, high_growth_years: int | None = 0) -> list[float]:
     """
     Atomic engine for financial flow projection.
     Supports a 'High Growth' plateau followed by a linear 'Fade-Down'.

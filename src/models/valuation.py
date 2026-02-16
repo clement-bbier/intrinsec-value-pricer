@@ -38,9 +38,7 @@ class ValuationRequest(BaseModel):
     """
 
     mode: ValuationMethodology = Field(..., description="Selected valuation model.")
-    parameters: Parameters = Field(
-        ..., description="The complete bundle containing Identity, Common, Strategy, and Extensions."
-    )
+    parameters: Parameters = Field(..., description="The complete bundle containing Identity, Common, Strategy, and Extensions.")
 
 
 class ValuationRunMetadata(BaseModel):
@@ -131,9 +129,7 @@ class ValuationResult(BaseModel):
     results: Results
 
     # Financial Snapshot (Source of Truth for display)
-    financials: CompanySnapshot | None = Field(
-        default=None, description="Raw financial snapshot from data provider (Yahoo Finance)."
-    )
+    financials: CompanySnapshot | None = Field(default=None, description="Raw financial snapshot from data provider (Yahoo Finance).")
 
     # Metadata & Reporting (Optional / Computed)
     audit_report: AuditReport | None = None
@@ -141,12 +137,8 @@ class ValuationResult(BaseModel):
     metadata: ValuationRunMetadata | None = None
 
     # --- Contextual Data (Pillar 3) ---
-    market_context: MarketContext | None = Field(
-        default=None, description="Sectoral benchmark data used for relative comparison."
-    )
-    company_stats: CompanyStats | None = Field(
-        default=None, description="Computed ratios for the target company based on TTM data."
-    )
+    market_context: MarketContext | None = Field(default=None, description="Sectoral benchmark data used for relative comparison.")
+    company_stats: CompanyStats | None = Field(default=None, description="Computed ratios for the target company based on TTM data.")
 
     def compute_upside(self) -> None:
         """Calculates the potential upside/downside vs market price."""

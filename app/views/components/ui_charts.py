@@ -187,11 +187,7 @@ def display_football_field(result: ValuationResult) -> None:
 
     # Current Price Marker
     current_price = result.request.parameters.structure.current_price
-    price_line = (
-        alt.Chart(pd.DataFrame({"x": [current_price]}))
-        .mark_rule(color="#ef4444", strokeWidth=2, strokeDash=[4, 4])
-        .encode(x="x:Q")
-    )
+    price_line = alt.Chart(pd.DataFrame({"x": [current_price]})).mark_rule(color="#ef4444", strokeWidth=2, strokeDash=[4, 4]).encode(x="x:Q")
 
     st.altair_chart((bars + ticks + price_line).properties(height=250), width="stretch")
 
@@ -379,9 +375,7 @@ def display_backtest_convergence_chart(backtest_report: BacktestResults | None, 
 
 
 @st.fragment
-def display_sector_comparison_chart(
-    company_name: str, sector_name: str, metrics: dict[str, dict[str, float]], suffix: str = "x"
-) -> None:
+def display_sector_comparison_chart(company_name: str, sector_name: str, metrics: dict[str, dict[str, float]], suffix: str = "x") -> None:
     """
     Renders a side-by-side comparison bar chart (Company vs Sector).
     Uses i18n for legends and types.

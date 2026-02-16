@@ -136,7 +136,7 @@ def _render_permanent_header(result: ValuationResult) -> None:
                     </p>
                 </div>
                 """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.divider()
     # Safe Data Access via V2 Model Structure

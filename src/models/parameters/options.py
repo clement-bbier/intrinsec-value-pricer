@@ -101,9 +101,7 @@ class SensitivityParameters(BaseNormalizedModel):
     """
 
     enabled: Annotated[bool, UIKey(UIKeys.SENS_ENABLE, scale="raw")] = False
-    steps: Annotated[int, UIKey(UIKeys.SENS_RANGE, scale="raw")] = Field(
-        default=SensitivityDefaults.DEFAULT_STEPS, ge=3, le=9
-    )
+    steps: Annotated[int, UIKey(UIKeys.SENS_RANGE, scale="raw")] = Field(default=SensitivityDefaults.DEFAULT_STEPS, ge=3, le=9)
     wacc_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = SensitivityDefaults.DEFAULT_WACC_SPAN
     growth_span: Annotated[float | None, UIKey(UIKeys.SENS_STEP, scale="pct")] = SensitivityDefaults.DEFAULT_GROWTH_SPAN
 
@@ -146,9 +144,7 @@ class BacktestParameters(BaseNormalizedModel):
     """Configuration for historical accuracy testing."""
 
     enabled: Annotated[bool, UIKey(UIKeys.BT_ENABLE, scale="raw")] = False
-    lookback_years: Annotated[int, UIKey(UIKeys.BT_LOOKBACK, scale="raw")] = Field(
-        default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS, ge=1, le=10
-    )
+    lookback_years: Annotated[int, UIKey(UIKeys.BT_LOOKBACK, scale="raw")] = Field(default=BacktestDefaults.DEFAULT_LOOKBACK_YEARS, ge=1, le=10)
 
 
 class PeersParameters(BaseNormalizedModel):
@@ -180,9 +176,7 @@ class SOTPParameters(BaseNormalizedModel):
     """
 
     enabled: Annotated[bool, UIKey(UIKeys.SOTP_ENABLE, scale="raw")] = False
-    conglomerate_discount: Annotated[float, UIKey(UIKeys.SOTP_DISCOUNT, scale="pct")] = (
-        SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
-    )
+    conglomerate_discount: Annotated[float, UIKey(UIKeys.SOTP_DISCOUNT, scale="pct")] = SOTPDefaults.DEFAULT_CONGLOMERATE_DISCOUNT
     segments: Annotated[list[BusinessUnit], UIKey(UIKeys.SOTP_SEGS)] = Field(default_factory=list)
 
 

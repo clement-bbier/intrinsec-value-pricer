@@ -36,6 +36,7 @@ from src.i18n import UIMessages  # noqa: E402
 # Configuration of the page must be the first Streamlit command
 st.set_page_config(page_title=UIMessages.PAGE_TITLE, page_icon="IVP", layout="wide", initial_sidebar_state="expanded")
 
+
 def main() -> None:
     """
     Main application entry point coordinating the session lifecycle
@@ -70,6 +71,7 @@ def main() -> None:
     # Priority 4: Onboarding
     else:
         render_auto_form()
+
 
 if __name__ == "__main__":
     main()

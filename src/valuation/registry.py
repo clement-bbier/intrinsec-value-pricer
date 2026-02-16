@@ -111,9 +111,7 @@ class StrategyRegistry:
         return {mode: meta.display_name for mode, meta in cls._strategies.items() if meta.display_name}
 
 
-def register_strategy(
-    mode: ValuationMethodology, ui_renderer: str | None = None, display_name: str | None = None
-) -> Callable[[type[IValuationRunner]], type[IValuationRunner]]:
+def register_strategy(mode: ValuationMethodology, ui_renderer: str | None = None, display_name: str | None = None) -> Callable[[type[IValuationRunner]], type[IValuationRunner]]:
     """
     Decorator for automated registration of valuation strategies.
     """

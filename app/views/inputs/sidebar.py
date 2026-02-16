@@ -46,7 +46,7 @@ def render_sidebar():
 
     def _on_mode_change():
         """Update expert mode flag based on the radio selection."""
-        state.is_expert_mode = (st.session_state.mode_selector == "Approfondie")
+        state.is_expert_mode = st.session_state.mode_selector == "Approfondie"
         _on_config_change()
 
     with st.sidebar:
@@ -68,9 +68,7 @@ def render_sidebar():
                 .strip()
             )
 
-            ticker_submitted = st.form_submit_button(
-                SidebarTexts.BTN_TICKER_CONFIRM, width="stretch"
-            )
+            ticker_submitted = st.form_submit_button(SidebarTexts.BTN_TICKER_CONFIRM, width="stretch")
 
         if ticker_submitted and new_ticker and new_ticker != state.ticker:
             state.ticker = new_ticker
@@ -152,9 +150,7 @@ def render_sidebar():
         st.divider()
 
         # --- FOOTER ---
-        linkedin_url = (
-            "https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/?locale=en_US"
-        )
+        linkedin_url = "https://www.linkedin.com/in/cl%C3%A9ment-barbier-409a341b6/?locale=en_US"
 
         st.markdown(
             f"""

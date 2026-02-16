@@ -84,9 +84,7 @@ class InputFactory:
         extension_params = InputFactory._pull_model(ExtensionBundleParameters, prefix=None)
 
         # 5. Assembly
-        full_params = Parameters(
-            structure=structure, common=common_params, strategy=strategy_params, extensions=extension_params
-        )
+        full_params = Parameters(structure=structure, common=common_params, strategy=strategy_params, extensions=extension_params)
 
         return ValuationRequest(mode=state.selected_methodology, parameters=full_params)
 
@@ -223,9 +221,7 @@ class InputFactory:
 
                     # Only include segments with non-empty name
                     if name and str(name).strip():
-                        segments.append(
-                            BusinessUnit(name=str(name).strip(), value=float(value) if value is not None else None)
-                        )
+                        segments.append(BusinessUnit(name=str(name).strip(), value=float(value) if value is not None else None))
 
                 # Store the converted list in session state under the expected key
                 if segments:

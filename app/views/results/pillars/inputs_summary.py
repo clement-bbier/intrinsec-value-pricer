@@ -143,7 +143,7 @@ def _clean_label(label: str) -> str:
         The cleaned label with leading special characters removed.
     """
     # Iteratively strip leading dots and asterisks until none remain
-    while label and label[0] in ('.', '*'):
+    while label and label[0] in (".", "*"):
         label = label[1:]
     return label
 
@@ -269,11 +269,7 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
         ]
 
     elif mode == ValuationMethodology.GRAHAM:
-        aaa_yield = (
-            result.request.parameters.common.rates.corporate_aaa_yield
-            if hasattr(result.request.parameters.common.rates, "corporate_aaa_yield")
-            else None
-        )
+        aaa_yield = result.request.parameters.common.rates.corporate_aaa_yield if hasattr(result.request.parameters.common.rates, "corporate_aaa_yield") else None
         if aaa_yield is None and hasattr(result.results.common.rates, "corporate_aaa_yield"):
             aaa_yield = result.results.common.rates.corporate_aaa_yield
 
@@ -342,20 +338,22 @@ def _render_strategy_inputs_table(result: ValuationResult) -> None:
 
         # Only add Terminal Growth if it exists and is not None
         if terminal_growth is not None:
-            data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
-                InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
-            })
+            data.append(
+                {
+                    InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_GROWTH_LABEL),
+                    InputLabels.TABLE_COL_VALUE: _safe_fmt(terminal_growth, ".2%"),
+                }
+            )
 
         # Only add Terminal Method if it exists and is not None
         if terminal_method_val is not None:
-            method_str = str(
-                terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val
+            method_str = str(terminal_method_val.value if hasattr(terminal_method_val, "value") else terminal_method_val)
+            data.append(
+                {
+                    InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_METHOD_LABEL),
+                    InputLabels.TABLE_COL_VALUE: method_str,
+                }
             )
-            data.append({
-                InputLabels.TABLE_COL_ASSUMPTION: _clean_label(InputLabels.TERMINAL_METHOD_LABEL),
-                InputLabels.TABLE_COL_VALUE: method_str,
-            })
 
     if data:
         df = pd.DataFrame(data)

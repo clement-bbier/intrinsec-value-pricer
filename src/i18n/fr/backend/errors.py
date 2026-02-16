@@ -8,10 +8,7 @@ class DiagnosticTexts:
     """Messages du registre de diagnostic et des exceptions."""
 
     # Divergence Gordon
-    RISK_SBC_RECOMMENDATION = (
-        "Appliquer le CAGR historique des actions en circulation sur les 3-5 dernières "
-        "années ou utiliser une estimation normative sectorielle (typiquement 1% à 3%)."
-    )
+    RISK_SBC_RECOMMENDATION = "Appliquer le CAGR historique des actions en circulation sur les 3-5 dernières années ou utiliser une estimation normative sectorielle (typiquement 1% à 3%)."
     RISK_SBC_STAT_RISK = (
         "L'omission de la croissance structurelle du nombre d'actions dans le secteur "
         r"{sector} (SBC) ignore la dilution future des actionnaires actuels. Cela conduit "
@@ -73,10 +70,7 @@ class DiagnosticTexts:
     # SBC / Dilution Diagnostics
     RISK_MISSING_SBC_MSG = "Absence de dilution SBC pour le secteur {sector}."
     RISK_MISSING_SBC_HINT = "Les entreprises Tech rémunèrent massivement en actions. Envisagez un taux de 1.5% à 3%."
-    RISK_MISSING_SBC_RISK = (
-        "Ignorer la dilution SBC surévalue artificiellement le prix par action cible "
-        "en ignorant l'augmentation future du nombre de parts (Share Count)."
-    )
+    RISK_MISSING_SBC_RISK = "Ignorer la dilution SBC surévalue artificiellement le prix par action cible en ignorant l'augmentation future du nombre de parts (Share Count)."
     RISK_MISSING_SBC_RECO = "Appliquer le taux historique ou la moyenne sectorielle pour {sector}."
 
     # Paramètre labels pour le FinancialContext
@@ -104,10 +98,6 @@ class CalculationErrors:
     NEGATIVE_FCFE = "Le flux FCFE est négatif. Le modèle est inapplicable."
     MISSING_NET_BORROWING = "Donnee de variation de dette (Net Borrowing) manquante."
     INVALID_DIVIDEND = "Dividende de base nul ou invalide pour le modèle DDM."
-    NEGATIVE_FLUX_AUTO = (
-        "Impossible de valoriser via {model} en mode Auto : le flux de base est"
-        " négatif ou nul ({val:.2f}). Veuillez utiliser un modèle alternatif"
-        " (RIM, Multiples) ou saisir un flux normatif en mode Expert."
-    )
+    NEGATIVE_FLUX_AUTO = "Impossible de valoriser via {model} en mode Auto : le flux de base est négatif ou nul ({val:.2f}). Veuillez utiliser un modèle alternatif (RIM, Multiples) ou saisir un flux normatif en mode Expert."
     RIM_NEGATIVE_BV = "Le modèle RIM necessite une valeur comptable positive pour calculer le revenu residuel."
     NEGATIVE_PE_RATIO = "Le multiple P/E doit être strictement positif."

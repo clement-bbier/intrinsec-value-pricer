@@ -94,8 +94,7 @@ def validate_terminal_growth(params: Parameters, wacc: float) -> GuardrailCheckR
     if g >= wacc:
         return GuardrailCheckResult(
             type="error",
-            message=f"Terminal growth rate ({g:.2%}) must be strictly less than WACC ({wacc:.2%}). "
-            f"The Gordon Growth Model cannot converge when g ≥ WACC.",
+            message=f"Terminal growth rate ({g:.2%}) must be strictly less than WACC ({wacc:.2%}). The Gordon Growth Model cannot converge when g ≥ WACC.",
             code="GUARDRAIL_TERMINAL_GROWTH_EXCEEDS_WACC",
             extra={"g": g, "wacc": wacc, "spread": g - wacc},
         )
@@ -105,8 +104,7 @@ def validate_terminal_growth(params: Parameters, wacc: float) -> GuardrailCheckR
     if wacc - g < threshold:
         return GuardrailCheckResult(
             type="warning",
-            message=f"Terminal growth rate ({g:.2%}) is dangerously close to WACC ({wacc:.2%}). "
-            f"This produces extreme terminal value sensitivity. Consider reducing g.",
+            message=f"Terminal growth rate ({g:.2%}) is dangerously close to WACC ({wacc:.2%}). This produces extreme terminal value sensitivity. Consider reducing g.",
             code="GUARDRAIL_TERMINAL_GROWTH_CLOSE_TO_WACC",
             extra={"g": g, "wacc": wacc, "spread": wacc - g, "threshold": threshold},
         )
@@ -214,8 +212,7 @@ def validate_roic_spread(financials: Company, params: Parameters, wacc: float) -
     if roic < wacc:
         return GuardrailCheckResult(
             type="warning",
-            message=f"ROIC ({roic:.2%}) is below WACC ({wacc:.2%}) while assuming positive growth ({g:.2%}). "
-            f"This implies value destruction. Consider revising growth or margin assumptions.",
+            message=f"ROIC ({roic:.2%}) is below WACC ({wacc:.2%}) while assuming positive growth ({g:.2%}). This implies value destruction. Consider revising growth or margin assumptions.",
             code="GUARDRAIL_ROIC_BELOW_WACC_WITH_GROWTH",
             extra={"roic": roic, "wacc": wacc, "spread": roic - wacc, "growth": g},
         )
@@ -308,8 +305,7 @@ def validate_capital_structure(financials: Company, params: Parameters) -> Guard
         if debt_equity_ratio > 10.0:
             return GuardrailCheckResult(
                 type="warning",
-                message=f"Debt/Equity ratio ({debt_equity_ratio:.2f}x) is extremely high. "
-                f"This may indicate financial distress or special situation.",
+                message=f"Debt/Equity ratio ({debt_equity_ratio:.2f}x) is extremely high. This may indicate financial distress or special situation.",
                 code="GUARDRAIL_CAPITAL_EXTREME_DEBT_EQUITY",
                 extra={
                     "debt_equity_ratio": debt_equity_ratio,
@@ -322,8 +318,7 @@ def validate_capital_structure(financials: Company, params: Parameters) -> Guard
     if total_debt > 0 and cash / total_debt > 5.0:
         return GuardrailCheckResult(
             type="warning",
-            message=f"Cash ({cash:.2f}M) is {cash / total_debt:.2f}x total debt ({total_debt:.2f}M). "
-            f"This may indicate a holding company or unusual balance sheet.",
+            message=f"Cash ({cash:.2f}M) is {cash / total_debt:.2f}x total debt ({total_debt:.2f}M). This may indicate a holding company or unusual balance sheet.",
             code="GUARDRAIL_CAPITAL_EXCESSIVE_CASH",
             extra={"cash": cash, "total_debt": total_debt, "ratio": cash / total_debt},
         )
@@ -395,8 +390,7 @@ def validate_scenario_probabilities(params: Parameters) -> GuardrailCheckResult:
     if prob_sum < lower_bound or prob_sum > upper_bound:
         return GuardrailCheckResult(
             type="error",
-            message=f"Scenario probabilities sum to {prob_sum:.4f}, which is outside the acceptable range "
-            f"[{lower_bound:.2f}, {upper_bound:.2f}]. They must sum to 1.0 (100%).",
+            message=f"Scenario probabilities sum to {prob_sum:.4f}, which is outside the acceptable range [{lower_bound:.2f}, {upper_bound:.2f}]. They must sum to 1.0 (100%).",
             code="GUARDRAIL_SCENARIOS_PROBABILITIES_INVALID_SUM",
             extra={
                 "prob_sum": prob_sum,
@@ -410,8 +404,7 @@ def validate_scenario_probabilities(params: Parameters) -> GuardrailCheckResult:
     if prob_sum != 1.0:
         return GuardrailCheckResult(
             type="warning",
-            message=f"Scenario probabilities sum to {prob_sum:.4f}, which is close to 1.0 but not exact. "
-            f"Consider adjusting for precision.",
+            message=f"Scenario probabilities sum to {prob_sum:.4f}, which is close to 1.0 but not exact. Consider adjusting for precision.",
             code="GUARDRAIL_SCENARIOS_PROBABILITIES_INEXACT",
             extra={
                 "prob_sum": prob_sum,

@@ -31,11 +31,7 @@ class Results(BaseModel):
     common: CommonResults = Field(description="Resolved financial environment and calculated Equity Bridge outputs.")
 
     # --- Pillar 3: Strategy Results (Projections) ---
-    strategy: StrategyUnionResults = Field(
-        description="Model-specific projection arrays and intermediate strategy outputs."
-    )
+    strategy: StrategyUnionResults = Field(description="Model-specific projection arrays and intermediate strategy outputs.")
 
     # --- Pillars 4 & 5: Extension Results (Optional Modules) ---
-    extensions: ExtensionBundleResults = Field(
-        description="Calculated outputs for Monte Carlo, Scenarios, Backtest, and Peers."
-    )
+    extensions: ExtensionBundleResults = Field(description="Calculated outputs for Monte Carlo, Scenarios, Backtest, and Peers.")
