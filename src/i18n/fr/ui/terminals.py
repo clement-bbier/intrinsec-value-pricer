@@ -133,7 +133,7 @@ class CommonTerminals:
     # 5. FORMULES FINANCIÈRES (LaTeX)
     # ==========================================================================
     # Capital
-    FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times (ERP)"
+    FORMULA_CAPITAL_KE = r"k_e = R_f + \beta \times (E R P)"
     FORMULA_CAPITAL_WACC = r"WACC = \frac{E}{D+E} \times K_e + \frac{D}{D+E} \times K_d \times (1 - T)"
     
     # Equity Bridge
