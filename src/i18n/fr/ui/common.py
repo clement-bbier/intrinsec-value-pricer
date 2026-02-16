@@ -65,9 +65,11 @@ class OnboardingTexts:
     INTRO_ONBOARDING = """
         Cette plateforme déploie un moteur d'orchestration financière capable de structurer des chaînes de calcul basées sur des modèles de valorisation académiques de référence.
 
-        L'architecture propose deux parcours distincts : le mode **Standard**, qui automatise la récupération des données pour une restitution en 3 onglets, et le mode **Approfondi**, offre la liberté de modifier manuellement chaque variable d'entrée et permet d'enrichir l'analyse jusqu'à 5 onglets thématiques selon les extensions sélectionnées.
+        L'architecture propose deux parcours distincts :
+        le mode **Standard**, qui automatise la récupération des données pour une restitution en 3 onglets, et le mode **Approfondi**, offre la liberté de modifier manuellement chaque variable d'entrée et permet d'enrichir l'analyse jusqu'à 5 onglets thématiques selon les extensions sélectionnées.
 
-        La fiabilité de l'évaluation repose sur un flux de données hybride, associant Yahoo Finance à un module d'extraction propriétaire pour les métriques non standardisées (RTFM pour changer de provider). L'intégrité du moteur est garantie par des mécanismes de validation automatique et de substitution, sécurisant le calcul même en cas de données sources incomplètes ou incohérentes.
+        La fiabilité de l'évaluation repose sur un flux de données hybride, associant Yahoo Finance à un module d'extraction propriétaire pour les métriques non standardisées (RTFM pour changer de provider).
+        L'intégrité du moteur est garantie par des mécanismes de validation automatique et de substitution, sécurisant le calcul même en cas de données sources incomplètes ou incohérentes.
 
         Les six extensions analytiques disponibles incluent : la simulation de Monte Carlo, l'analyse de sensibilité, l'étude de scénarios, le backtest historique, la comparaison par multiples de pairs et la segmentation SOTP (Sum of the Parts).
         """

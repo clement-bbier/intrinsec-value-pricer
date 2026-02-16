@@ -159,10 +159,10 @@ def render_sidebar():
         st.markdown(
             f"""
             <div style="text-align: center; margin-top: 10px; color: #ffffff; font-size: 0.8rem; opacity: 0.8;">
-                {CommonTexts.DEVELOPED_BY} 
+                {CommonTexts.DEVELOPED_BY}
                 <a href="{linkedin_url}" target="_blank" style="
-                    color: #dc2626; 
-                    text-decoration: none; 
+                    color: #dc2626;
+                    text-decoration: none;
                     font-weight: 600;
                 ">
                     {CommonTexts.AUTHOR_NAME}

@@ -30,7 +30,7 @@ from app.views.results.pillars import (
 )
 from app.views.results.pillars.inputs_summary import get_display_currency
 from src.core.formatting import CurrencyFormatter
-from src.i18n import KPITexts, PillarLabels, UIMessages, CommonTexts
+from src.i18n import CommonTexts, KPITexts, PillarLabels, UIMessages
 
 # --- Data Models & i18n ---
 from src.models import ValuationResult
