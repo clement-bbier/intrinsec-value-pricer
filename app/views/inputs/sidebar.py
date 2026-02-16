@@ -135,17 +135,14 @@ def render_sidebar():
         st.divider()
 
         # --- LANGUAGE CHANGE (Placeholder for future i18n logic) ---
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown(f"## {SidebarTexts.LANGUAGE}")
-        with col2:
-            st.selectbox(
-                "Lang",
-                options=["FR", "EN"],
-                index=0,
-                key="app_language",
-                label_visibility="collapsed",
-            )
+        st.markdown(f"### {SidebarTexts.LANGUAGE}")
+        st.selectbox(
+            "Lang",
+            options=["FR", "EN"],
+            index=0,
+            key="app_language",
+            label_visibility="collapsed",
+        )
 
         st.divider()
 
