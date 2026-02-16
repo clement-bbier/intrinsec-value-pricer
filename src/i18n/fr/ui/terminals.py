@@ -342,6 +342,7 @@ class FCFFNormalizedTexts(CommonTerminals):
     STEP_2_TITLE = "#### Étape 2 : Croissance de Cycle"
     STEP_2_DESC = "Projection de la croissance moyenne stable attendue sur le cycle à venir."
     HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
+    LBL_GROWTH_G = f"Taux de croissance (g) {CommonTerminals.UNIT_PERCENT}"
 
     # Formule TV
     FORMULA_TV = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"

@@ -30,7 +30,7 @@ html, body, [class*="css"], .stMarkdown {
 /* --- SIDEBAR : DEEP NAVY (FORCE OVERRIDE) --- */
 /* Since config.toml uses white for widgets, we force navy back on the sidebar only */
 section[data-testid="stSidebar"] {
-    background-color: #002654 !important;
+    background-color: #0f172a !important;
 }
 
 /* Sidebar text contrast (Force Pure White on forced Navy background) */
@@ -48,7 +48,7 @@ section[data-testid="stSidebar"] p {
 /* Sidebar captions */
 section[data-testid="stSidebar"] .stCaption,
 section[data-testid="stSidebar"] small {
-    color: #dc2626 !important;
+    color: #cbd5e1 !important;
 }
 
 /* Sidebar dividers */
@@ -110,8 +110,8 @@ section[data-testid="stSidebar"] button[kind="primary"] {
 }
 
 section[data-testid="stSidebar"] button[kind="primary"]:hover {
-    background-color: #dc2626 !important;
-    border-color: #dc2626 !important;
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
 }
 
 /* --- SIDEBAR COLLAPSE BUTTON --- */
