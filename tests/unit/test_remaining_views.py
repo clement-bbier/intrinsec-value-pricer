@@ -255,6 +255,15 @@ class TestStrategyViews:
         view = RIMBankView(ticker="AAPL")
         mock_st.number_input.return_value = 500000.0
 
+        # Add column mocking
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
+
         view.render_model_inputs()
 
         mock_st.number_input.assert_called()
@@ -616,10 +625,10 @@ class TestMainFullFlow:
 class TestSidebarInteractions:
     """Tests sidebar interaction branches."""
 
-    @patch("app.views.common.sidebar.get_state")
-    @patch("app.views.common.sidebar.SessionManager")
-    @patch("app.views.common.sidebar.AppController")
-    @patch("app.views.common.sidebar.st")
+    @patch("app.views.inputs.sidebar.get_state")
+    @patch("app.views.inputs.sidebar.SessionManager")
+    @patch("app.views.inputs.sidebar.AppController")
+    @patch("app.views.inputs.sidebar.st")
     def test_sidebar_ticker_change_triggers_reset(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Changing ticker must reset valuation."""
         from app.views.inputs.sidebar import render_sidebar
@@ -651,10 +660,10 @@ class TestSidebarInteractions:
         assert state.ticker == "MSFT"
         mock_sm.reset_valuation.assert_called_once()
 
-    @patch("app.views.common.sidebar.get_state")
-    @patch("app.views.common.sidebar.SessionManager")
-    @patch("app.views.common.sidebar.AppController")
-    @patch("app.views.common.sidebar.st")
+    @patch("app.views.inputs.sidebar.get_state")
+    @patch("app.views.inputs.sidebar.SessionManager")
+    @patch("app.views.inputs.sidebar.AppController")
+    @patch("app.views.inputs.sidebar.st")
     def test_sidebar_run_analysis_button(self, mock_st, mock_ctrl, mock_sm, mock_get_state):
         """Clicking Run Analysis button must call AppController."""
         from app.views.inputs.sidebar import render_sidebar

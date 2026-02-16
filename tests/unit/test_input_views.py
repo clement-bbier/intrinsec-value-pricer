@@ -54,6 +54,15 @@ class TestAutoFormRendering:
         state.selected_methodology = ValuationMethodology.FCFF_STANDARD
         mock_get_state.return_value = state
 
+        # Add column mocking
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
+
         render_auto_form()
 
         mock_st.checkbox.assert_not_called()
@@ -69,6 +78,15 @@ class TestAutoFormRendering:
         state.ticker = "AAPL"
         state.selected_methodology = ValuationMethodology.FCFF_STANDARD
         mock_get_state.return_value = state
+
+        # Add column mocking
+        col1 = MagicMock()
+        col2 = MagicMock()
+        col1.__enter__ = MagicMock(return_value=col1)
+        col1.__exit__ = MagicMock(return_value=False)
+        col2.__enter__ = MagicMock(return_value=col2)
+        col2.__exit__ = MagicMock(return_value=False)
+        mock_st.columns.return_value = [col1, col2]
 
         render_auto_form()
 
@@ -224,9 +242,9 @@ class TestSidebarRendering:
 
         assert callable(render_sidebar)
 
-    @patch("app.views.common.sidebar.get_state")
-    @patch("app.views.common.sidebar.AppController")
-    @patch("app.views.common.sidebar.st")
+    @patch("app.views.inputs.sidebar.get_state")
+    @patch("app.views.inputs.sidebar.AppController")
+    @patch("app.views.inputs.sidebar.st")
     def test_render_sidebar_uses_sidebar(self, mock_st, mock_ctrl, mock_get_state):
         """render_sidebar must use st.sidebar context manager."""
         from app.views.inputs.sidebar import render_sidebar
