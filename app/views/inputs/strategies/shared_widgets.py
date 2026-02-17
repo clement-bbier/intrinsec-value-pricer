@@ -72,6 +72,13 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             help=CommonTerminals.HELP_PRICE_WEIGHTS,
             key=f"{prefix}_{UIKeys.PRICE}",
         )
+        st.number_input(
+            CommonTerminals.INP_TARGET_DEBT_RATIO,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_TARGET_DEBT_RATIO,
+            key=f"{prefix}_{UIKeys.TARGET_DEBT_TO_CAPITAL}",
+        )
 
     col_a, col_b = st.columns(2)
     # Risk-free rate & Beta

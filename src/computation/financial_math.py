@@ -481,6 +481,10 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     If params.common.rates.wacc is provided (manual override), it bypasses
     the CAPM calculation and uses the override value directly. This is used
     in sensitivity analysis to test valuation response to discount rate changes.
+    
+    If params.common.rates.target_debt_to_capital is provided, uses the target
+    capital structure ratio instead of market-based weights to avoid circularity
+    with the intrinsic price calculation.
     """
     r = params.common.rates
     c = params.common.capital
@@ -508,13 +512,19 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
 
         kd_net = kd_gross * (1.0 - tax)
 
-        # Calculate weights for display
-        debt = c.total_debt if c.total_debt is not None else 0.0
-        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
-        market_equity = financials.current_price * shares
+        # Calculate weights for display (use target if provided, else market-based)
+        if r.target_debt_to_capital is not None:
+            # Use target capital structure
+            wd = r.target_debt_to_capital
+            we = 1.0 - wd
+        else:
+            # Use market-based weights
+            debt = c.total_debt if c.total_debt is not None else 0.0
+            shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+            market_equity = financials.current_price * shares
 
-        total_cap = market_equity + debt
-        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+            total_cap = market_equity + debt
+            we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
 
         return WACCBreakdown(
             cost_of_equity=ke,
@@ -552,12 +562,20 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     kd_net = kd_gross * (1.0 - tax)
 
     # 3. Capital Structure Weights
-    debt = c.total_debt if c.total_debt is not None else 0.0
-    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
-    market_equity = financials.current_price * shares
+    if r.target_debt_to_capital is not None:
+        # Use target capital structure to avoid circularity
+        wd = r.target_debt_to_capital
+        we = 1.0 - wd
+        method = StrategySources.WACC_TARGET
+    else:
+        # Use market-based weights
+        debt = c.total_debt if c.total_debt is not None else 0.0
+        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+        market_equity = financials.current_price * shares
 
-    total_cap = market_equity + debt
-    we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        total_cap = market_equity + debt
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        method = StrategySources.WACC_MARKET
 
     wacc_raw = (we * ke) + (wd * kd_net)
 
@@ -568,7 +586,7 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         weight_equity=we,
         weight_debt=wd,
         wacc=wacc_raw,
-        method=StrategySources.WACC_MARKET,
+        method=method,
         beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
         beta_adjusted=False,
     )

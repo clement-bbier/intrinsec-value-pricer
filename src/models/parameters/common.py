@@ -88,6 +88,10 @@ class FinancialRatesParameters(BaseNormalizedModel):
         Used in sensitivity analysis to test valuation response to discount rate changes.
     cost_of_equity : float | None
         Manual Cost of Equity override. When provided, bypasses CAPM calculation.
+    target_debt_to_capital : float | None
+        Target debt-to-capital ratio (D/(D+E)) for WACC calculation. When provided,
+        uses this normative capital structure instead of market-based weights to avoid
+        circularity with the intrinsic price calculation.
     """
 
     risk_free_rate: Annotated[float | None, UIKey(UIKeys.RF, scale="pct")] = None
@@ -98,6 +102,7 @@ class FinancialRatesParameters(BaseNormalizedModel):
     corporate_aaa_yield: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
     wacc: Annotated[float | None, UIKey(UIKeys.WACC_OVERRIDE, scale="pct")] = None
     cost_of_equity: Annotated[float | None, UIKey(UIKeys.KE_OVERRIDE, scale="pct")] = None
+    target_debt_to_capital: Annotated[float | None, UIKey(UIKeys.TARGET_DEBT_TO_CAPITAL, scale="pct")] = None
 
 
 class CapitalStructureParameters(BaseNormalizedModel):

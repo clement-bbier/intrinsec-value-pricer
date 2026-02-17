@@ -520,6 +520,79 @@ class TestCalculateWACC:
         assert breakdown.cost_of_debt_pre_tax == pytest.approx(0.08)
         assert breakdown.cost_of_debt_after_tax == pytest.approx(0.08 * 0.75)
 
+    def test_target_debt_to_capital_ratio(self):
+        """Test WACC with target debt-to-capital ratio."""
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 100.0
+
+        # Set target debt-to-capital ratio of 30%
+        rates = FinancialRatesParameters(
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=6.0,
+            target_debt_to_capital=30.0,  # 30% debt, 70% equity
+        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        common = CommonParameters(rates=rates, capital=capital)
+
+        params = Mock(spec=Parameters)
+        params.common = common
+
+        breakdown = calculate_wacc(company, params)
+
+        # Verify target weights were used (not market-based)
+        assert breakdown.weight_debt == pytest.approx(0.30)
+        assert breakdown.weight_equity == pytest.approx(0.70)
+        
+        # Verify Ke = Rf + Beta * MRP = 0.04 + 1.2 * 0.05 = 0.10
+        expected_ke = 0.04 + 1.2 * 0.05
+        assert breakdown.cost_of_equity == pytest.approx(expected_ke)
+        
+        # Verify Kd_net = Kd * (1 - T) = 0.06 * 0.75 = 0.045
+        assert breakdown.cost_of_debt_after_tax == pytest.approx(0.06 * 0.75)
+        
+        # Verify WACC = we * ke + wd * kd_net = 0.7 * 0.10 + 0.3 * 0.045
+        expected_wacc = 0.70 * expected_ke + 0.30 * (0.06 * 0.75)
+        assert breakdown.wacc == pytest.approx(expected_wacc)
+        
+        # Verify method indicates target structure
+        assert breakdown.method == "Structure Cible"
+
+    def test_target_debt_to_capital_with_wacc_override(self):
+        """Test that target ratio is used for display even with WACC override."""
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 100.0
+
+        rates = FinancialRatesParameters(
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=6.0,
+            target_debt_to_capital=40.0,  # 40% debt
+            wacc=9.0,  # Manual WACC override
+        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        common = CommonParameters(rates=rates, capital=capital)
+
+        params = Mock(spec=Parameters)
+        params.common = common
+
+        breakdown = calculate_wacc(company, params)
+
+        # Verify WACC override was used
+        assert breakdown.wacc == pytest.approx(0.09)
+        
+        # Verify target weights were used for display
+        assert breakdown.weight_debt == pytest.approx(0.40)
+        assert breakdown.weight_equity == pytest.approx(0.60)
+
 
 # ==============================================================================
 # 4. SHAREHOLDER MODELS (FCFE & DDM)

@@ -42,6 +42,7 @@ class UIKeys:
     WACC_OVERRIDE: str = "wacc_override"
     KE_OVERRIDE: str = "ke_override"
     PRICE: str = "price"
+    TARGET_DEBT_TO_CAPITAL: str = "target_debt_to_capital"
 
     # ── Capital Structure (prefix: bridge_{mode}) ────────────────────
     DEBT: str = "debt"
