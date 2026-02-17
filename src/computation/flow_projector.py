@@ -197,7 +197,7 @@ class SimpleFlowProjector(FlowProjector):
                 value=sbc_annual_amount,
                 formatted_value=format_smart_number(sbc_annual_amount),
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Annual SBC Expense (deducted from flows)",
+                description=StrategyInterpretations.SBC_EXPENSE_DESC,
             )
 
         return ProjectionOutput(
@@ -290,7 +290,7 @@ class MarginConvergenceProjector(FlowProjector):
                 value=sbc_annual_amount,
                 formatted_value=format_smart_number(sbc_annual_amount),
                 source=VariableSource.MANUAL_OVERRIDE,
-                description="Annual SBC Expense (deducted from flows)",
+                description=StrategyInterpretations.SBC_EXPENSE_DESC,
             )
 
         return ProjectionOutput(

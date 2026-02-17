@@ -141,6 +141,9 @@ class StrategyInterpretations:
         r"La dilution annuelle (SBC) réduit la part des actionnaires existants"
         r" de {pct} sur l'horizon de projection."
     )
+    SBC_EXPENSE_NO_DILUTION = "Valeur intrinsèque finale par action (SBC traité en dépense, pas d'ajustement de dilution)."
+    IV_PER_SHARE_FINAL = "Valeur intrinsèque finale par action."
+    SBC_EXPENSE_DESC = "Dépense annuelle SBC (déduite des flux)"
 
 
 class SharedTexts:

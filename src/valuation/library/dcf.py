@@ -392,7 +392,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=base_iv,
-                interpretation="Final Intrinsic Value per share (SBC treated as expense, no dilution adjustment).",
+                interpretation=StrategyInterpretations.SBC_EXPENSE_NO_DILUTION,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",
@@ -445,7 +445,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=final_iv,
-                interpretation="Final Intrinsic Value per share.",
+                interpretation=StrategyInterpretations.IV_PER_SHARE_FINAL,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",
