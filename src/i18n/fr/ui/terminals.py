@@ -161,7 +161,7 @@ class CommonTerminals:
     MC_CALIBRATION = "Activer la simulation stochastique"
     MC_ITERATIONS = "Nombre d'itérations"
     MC_VOL_INCERTITUDE = "**Calibration des volatilités (Écarts-types σ)**"
-    MC_VOL_BASE_FLOW = f"Volatilité du flux (Année 0) (σ)"
+    MC_VOL_BASE_FLOW = f"Volatilité du flux de l'année 0"
     MC_VOL_BETA = "Incertitude coefficient Bêta (σ)"
     MC_VOL_G = f"Incertitude croissance g {UNIT_PERCENT}"
     LBL_VOL_OMEGA = f"Incertitude persistance ω {UNIT_PERCENT}"
@@ -245,7 +245,7 @@ class CommonTerminals:
     LBL_SENSITIVITY_ENABLE = "Activer la matrice de sensibilité"
     MSG_SENSITIVITY_DESC = "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations du WACC et de la croissance (g) sur la valorisation finale."
 
-    LBL_SENS_STEP = f"Amplitude du pas de variation (±) {UNIT_PERCENT}"
+    LBL_SENS_STEP = f"Amplitude du pas de variation (incréments +/-) {UNIT_PERCENT}"
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
     HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
@@ -305,6 +305,8 @@ class FCFFStandardTexts(CommonTerminals):
     # Étape 1 : Ancrage spécifique
     STEP_1_TITLE = "#### Étape 1 : Ancrage du Flux Opérationnel"
     STEP_1_DESC = "Définition du flux de trésorerie disponible pour la firme (FCFF) de référence pour l'année 0."
+    # DA = Depreciation & Amortization (Dotations aux Amortissements)
+    # BFR = Besoin en Fonds de Roulement (Working Capital Requirement)
     STEP_1_FORMULA = r"FCFF_0 = EBIT \times (1 - \tau) + DA - \Delta BFR - CapEx"
 
     INP_BASE = f"FCFF de référence (Année 0) {CommonTerminals.UNIT_MILLIONS}"
@@ -490,7 +492,7 @@ class FCFETexts(CommonTerminals):
     # Étape 1 : Ancrage Actionnaire
     STEP_1_TITLE = "#### Étape 1 : Ancrage Actionnaire"
     STEP_1_DESC = "Définition du flux FCFE disponible pour l'actionnaire et de la politique d'endettement."
-    STEP_1_FORMULA = r"FCFE = \text{Résultat Net} + DA - \Delta BFR - CapEx + \Delta \text{Endettement Nét}"
+    STEP_1_FORMULA = r"FCFE = \text{Résultat Net} + DA - \Delta BFR - CapEx + \Delta \text{Endettement Net}"
 
     INP_BASE = f"Flux FCFE d'ancrage {CommonTerminals.UNIT_MILLIONS}"
     HELP_FCFE_BASE = "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
