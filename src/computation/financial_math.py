@@ -14,6 +14,7 @@ import logging
 from dataclasses import dataclass
 
 from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
+from src.core.diagnostics import DiagnosticRegistry
 from src.core.exceptions import CalculationError
 
 # DT-001/002: Internal i18n imports for UI-facing error messages
@@ -56,6 +57,8 @@ class WACCBreakdown:
         The specific Beta coefficient applied to the Ke calculation.
     beta_adjusted : bool, default False
         Indicates if Hamada re-levering was applied to the Beta.
+    diagnostics : list, default empty
+        Diagnostic events related to WACC calculation (e.g., beta adjustment skipped).
     """
 
     cost_of_equity: float
@@ -67,6 +70,12 @@ class WACCBreakdown:
     method: str
     beta_used: float = 1.0
     beta_adjusted: bool = False
+    diagnostics: list = None  # Will be list[DiagnosticEvent] but avoiding circular import
+    
+    def __post_init__(self):
+        """Initialize diagnostics list if None."""
+        if self.diagnostics is None:
+            self.diagnostics = []
 
 
 # ==============================================================================
@@ -168,8 +177,9 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
 def calculate_fcf_tax_adjustment_factor(
     effective_tax_rate: float, 
     marginal_tax_rate: float, 
-    financials: Company | None = None
-) -> float:
+    financials: Company | None = None,
+    return_diagnostics: bool = False
+) -> float | tuple[float, list]:
     r"""
     Calculates the adjustment factor to convert FCF from effective to marginal tax rate.
     
@@ -185,11 +195,17 @@ def calculate_fcf_tax_adjustment_factor(
         Company financials to extract real operating margin.
         If provided, uses EBIT_TTM / Revenue_TTM for precise calculation.
         If None or data unavailable, falls back to conservative 15% estimate.
+    return_diagnostics : bool, default False
+        If True, returns tuple (factor, diagnostics_list).
+        If False, returns just the factor for backward compatibility.
     
     Returns
     -------
-    float
-        Tax adjustment factor to apply to terminal cash flow.
+    float or tuple[float, list]
+        If return_diagnostics is False: Tax adjustment factor.
+        If return_diagnostics is True: (factor, list of DiagnosticEvent objects).
+        
+        Factor interpretation:
         - Factor = 1.0 when rates are equal (no adjustment needed)
         - Factor < 1.0 when marginal > effective (tax goes up, FCF goes down)
         - Factor > 1.0 when marginal < effective (tax goes down, FCF goes up)
@@ -205,6 +221,9 @@ def calculate_fcf_tax_adjustment_factor(
     1. Real margin from financials: EBIT_TTM / Revenue_TTM
     2. Fallback: 15% (conservative estimate for mature companies)
     
+    A diagnostic warning is generated when fallback is used, indicating that
+    real company data was unavailable from the data provider.
+    
     Example:
     - Effective rate: 15% (with temporary credits)
     - Marginal rate: 25% (legal rate)
@@ -216,14 +235,56 @@ def calculate_fcf_tax_adjustment_factor(
     FCF that already reflects the marginal tax rate for maximum precision.
     """
     if effective_tax_rate == marginal_tax_rate:
+        if return_diagnostics:
+            return 1.0, []
         return 1.0
     
     # Calculate real operating margin from financials if available
     operating_margin = 0.15  # Default fallback: conservative 15%
+    diagnostics_list = []
+    used_fallback = False
+    ebit_available = False
+    revenue_available = False
     
     if financials is not None:
         ebit_ttm = getattr(financials, "ebit_ttm", None)
         revenue_ttm = getattr(financials, "revenue_ttm", None)
+        
+        ebit_available = ebit_ttm is not None and ebit_ttm != 0
+        revenue_available = revenue_ttm is not None and revenue_ttm != 0
+        
+        if ebit_available and revenue_available and revenue_ttm > 0:
+            # Use real operating margin
+            operating_margin = ebit_ttm / revenue_ttm
+            # Clamp to reasonable bounds (0-50%)
+            operating_margin = max(0.0, min(0.50, operating_margin))
+        else:
+            # Missing data - use fallback and create diagnostic
+            used_fallback = True
+    else:
+        # No financials provided - use fallback
+        used_fallback = True
+    
+    # Create diagnostic if fallback was used
+    if used_fallback:
+        diagnostics_list.append(
+            DiagnosticRegistry.operating_margin_fallback_used(
+                fallback_margin=operating_margin,
+                ebit_available=ebit_available,
+                revenue_available=revenue_available,
+            )
+        )
+    
+    # Calculate adjustment factor
+    tax_delta = effective_tax_rate - marginal_tax_rate
+    adjustment = 1.0 + (operating_margin * tax_delta)
+    
+    # Clamp to reasonable bounds (±50% adjustment maximum)
+    final_factor = max(0.5, min(1.5, adjustment))
+    
+    if return_diagnostics:
+        return final_factor, diagnostics_list
+    return final_factor
         
         if ebit_ttm is not None and revenue_ttm is not None and revenue_ttm > 0:
             # Use real operating margin
@@ -757,6 +818,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
     beta_input = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
     beta_adjusted_flag = False
     beta_used = beta_input
+    diagnostics_list = []
     
     target_de_ratio = c.target_debt_equity_ratio if c.target_debt_equity_ratio is not None else None
     
@@ -778,6 +840,15 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
             # Relever to target structure using tax rate (marginal for TV, effective for explicit)
             beta_used = relever_beta(beta_unlevered, tax, target_de_ratio)
             beta_adjusted_flag = True
+        else:
+            # Threshold not met - create diagnostic to inform user
+            diagnostics_list.append(
+                DiagnosticRegistry.beta_adjustment_skipped_threshold(
+                    current_de=current_de_ratio,
+                    target_de=target_de_ratio,
+                    threshold=threshold
+                )
+            )
 
     # 3. Calculate Ke with (possibly adjusted) beta
     rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
@@ -816,9 +887,6 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         total_cap = market_equity + debt
         we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
         method = StrategySources.WACC_MARKET
-        total_cap = market_equity + debt
-        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
-        method = StrategySources.WACC_MARKET
 
     wacc_raw = (we * ke) + (wd * kd_net)
 
@@ -832,6 +900,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         method=method,
         beta_used=beta_used,
         beta_adjusted=beta_adjusted_flag,
+        diagnostics=diagnostics_list,
     )
 
 

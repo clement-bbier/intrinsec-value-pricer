@@ -245,3 +245,113 @@ class DiagnosticRegistry:
                 recommendation="Apply a dilution rate of 2-3% for this sector.",
             ),
         )
+
+    @staticmethod
+    def beta_adjustment_skipped_threshold(
+        current_de: float, target_de: float, threshold: float = 0.05
+    ) -> DiagnosticEvent:
+        """
+        Generates an informational event when Hamada beta adjustment is skipped
+        because the target D/E ratio differs by less than the noise threshold.
+        
+        Parameters
+        ----------
+        current_de : float
+            Current market D/E ratio.
+        target_de : float
+            Target D/E ratio specified by user.
+        threshold : float, default 0.05
+            The minimum difference required to trigger adjustment.
+        """
+        difference = abs(target_de - current_de)
+        return DiagnosticEvent(
+            code="BETA_ADJUSTMENT_SKIPPED_THRESHOLD",
+            severity=SeverityLevel.INFO,
+            domain=DiagnosticDomain.MODEL,
+            message=(
+                f"Beta adjustment skipped: Target D/E ({target_de:.3f}) differs from "
+                f"current D/E ({current_de:.3f}) by {difference:.3f}, which is below "
+                f"the {threshold:.1%} noise threshold."
+            ),
+            remediation_hint=(
+                "If you intended to adjust beta for target capital structure, increase "
+                "the difference between target and current D/E ratios to exceed 5%. "
+                "The threshold prevents spurious adjustments from minor differences."
+            ),
+            financial_context=FinancialContext(
+                parameter_name="D/E Ratio Difference",
+                current_value=difference,
+                typical_range=(threshold, 1.0),
+                statistical_risk=(
+                    "Beta adjustments for differences below 5% may amplify measurement "
+                    "noise rather than reflect true leverage changes."
+                ),
+                recommendation=(
+                    "Consider whether your target capital structure meaningfully differs "
+                    "from the current one. Small adjustments (<5%) are filtered to maintain "
+                    "model stability."
+                ),
+            ),
+        )
+
+    @staticmethod
+    def operating_margin_fallback_used(
+        fallback_margin: float = 0.15,
+        ebit_available: bool = False,
+        revenue_available: bool = False,
+    ) -> DiagnosticEvent:
+        """
+        Generates a warning when FCF tax adjustment uses fallback operating margin
+        instead of real company data due to missing EBIT or Revenue.
+        
+        Parameters
+        ----------
+        fallback_margin : float, default 0.15
+            The fallback operating margin percentage used (default 15%).
+        ebit_available : bool
+            Whether EBIT_TTM was available from data provider.
+        revenue_available : bool
+            Whether Revenue_TTM was available from data provider.
+        """
+        missing_fields = []
+        if not ebit_available:
+            missing_fields.append("EBIT_TTM")
+        if not revenue_available:
+            missing_fields.append("Revenue_TTM")
+        
+        missing_str = " and ".join(missing_fields) if missing_fields else "financial data"
+        
+        return DiagnosticEvent(
+            code="OPERATING_MARGIN_FALLBACK_USED",
+            severity=SeverityLevel.WARNING,
+            domain=DiagnosticDomain.DATA,
+            message=(
+                f"Using fallback operating margin ({fallback_margin:.1%}) for FCF tax adjustment. "
+                f"Missing data: {missing_str}."
+            ),
+            technical_detail=(
+                "The tax adjustment factor calculation requires operating margin "
+                "(EBIT/Revenue) to estimate how tax rate changes affect FCF. Without "
+                "real data, a conservative 15% fallback is used."
+            ),
+            remediation_hint=(
+                "Verify that the data provider (Yahoo Finance) has complete financial "
+                "statements for this company. If data is consistently missing, consider "
+                "manually entering normalized operating margin based on industry comparables."
+            ),
+            financial_context=FinancialContext(
+                parameter_name="Operating Margin (Fallback)",
+                current_value=fallback_margin,
+                typical_range=(0.05, 0.30),
+                statistical_risk=(
+                    "Using fallback margin may not reflect company-specific profitability, "
+                    "leading to imprecise FCF tax adjustments. The 15% fallback is conservative "
+                    "for mature companies but may differ significantly from actual margins."
+                ),
+                recommendation=(
+                    "Check if quarterly financials are available. If the company is newly listed "
+                    "or has limited history, consider using industry average operating margins "
+                    "for more accurate modeling."
+                ),
+            ),
+        )
