@@ -34,7 +34,6 @@ class FCFFNormalizedView(BaseStrategyView):
             Texts.INP_BASE,
             value=None,
             format="%.2f",
-            help=Texts.HELP_BASE,
             key=f"{prefix}_{UIKeys.FCF_NORM}",
         )
         st.divider()

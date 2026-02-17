@@ -54,18 +54,18 @@ class CommonTerminals:
     STEP_2_TITLE = "#### Étape 2 : Trajectoire de Croissance"
     STEP_2_DESC = "Définition de la dynamique de croissance et de l'horizon temporel."
 
-    # Étape 3 : Profil de Risque & Actualisation
+    # Étape 3 : Taux d'Actualisation
     # Note: Le titre est dynamique selon le type de modèle (Firm vs Equity)
-    STEP_3_TITLE_WACC = "#### Étape 3 : Profil de Risque & Actualisation (WACC)"
-    STEP_3_TITLE_KE = "#### Étape 3 : Profil de Risque & Actualisation (Ke)"
+    STEP_3_TITLE_WACC = "#### Étape 3 : Taux d'Actualisation (WACC)"
+    STEP_3_TITLE_KE = "#### Étape 3 : Coût des Fonds Propres (Ke)"
     STEP_3_DESC = "Détermination du taux requis pour rémunérer le risque opérationnel et financier."
 
     # Étape 4 : Valeur de Continuation
     STEP_4_TITLE = "#### Étape 4 : Valeur de Continuation (Sortie)"
     STEP_4_DESC = "Estimation de la valeur de l'entreprise au-delà de l'horizon de projection explicite."
 
-    # Étape 5 : Ajustements de Structure
-    STEP_5_TITLE = "#### Étape 5 : Ajustements de Structure (Equity Bridge)"
+    # Étape 5 : Bridge de Valeur
+    STEP_5_TITLE = "#### Étape 5 : Bridge de Valeur (Actif → Actionnaire)"
     STEP_5_DESC = "Passage de la valeur de l'actif économique (EV) à la valeur revenant aux actionnaires (Equity)."
 
     # ==========================================================================
@@ -84,7 +84,7 @@ class CommonTerminals:
 
     # Croissance et Sortie
     INP_GROWTH_G = f"Taux de croissance moyen (g) {UNIT_PERCENT}"
-    INP_PERP_G = f"Croissance Perpétuelle (gn) {UNIT_PERCENT}"
+    INP_PERP_G = f"Croissance à l'Infini (g_n) {UNIT_PERCENT}"
     INP_EXIT_MULT = f"Multiple de Sortie (Terminal) {UNIT_MULTIPLE}"
 
     # Structure du Capital
@@ -161,7 +161,7 @@ class CommonTerminals:
     MC_CALIBRATION = "Activer la simulation stochastique"
     MC_ITERATIONS = "Nombre d'itérations"
     MC_VOL_INCERTITUDE = "**Calibration des volatilités (Écarts-types σ)**"
-    MC_VOL_BASE_FLOW = f"Incertitude flux d'ancrage {UNIT_PERCENT}"
+    MC_VOL_BASE_FLOW = f"Volatilité du flux de l'année 0"
     MC_VOL_BETA = "Incertitude coefficient Bêta (σ)"
     MC_VOL_G = f"Incertitude croissance g {UNIT_PERCENT}"
     LBL_VOL_OMEGA = f"Incertitude persistance ω {UNIT_PERCENT}"
@@ -223,7 +223,7 @@ class CommonTerminals:
     HELP_SOTP = "Applique une décote de holding sur la somme des parties."
     WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la uniquement pour décomposer la valeur calculée."
 
-    SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (M$)**"
+    SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (Millions)**"
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding / conglomérat**"
 
     LBL_SEGMENT_NAME = "Nom du Segment"
@@ -245,7 +245,7 @@ class CommonTerminals:
     LBL_SENSITIVITY_ENABLE = "Activer la matrice de sensibilité"
     MSG_SENSITIVITY_DESC = "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations du WACC et de la croissance (g) sur la valorisation finale."
 
-    LBL_SENS_STEP = f"Pas de variation {UNIT_PERCENT}"
+    LBL_SENS_STEP = f"Amplitude du pas de variation (±) {UNIT_PERCENT}"
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
     HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
@@ -296,19 +296,20 @@ class FCFFStandardTexts(CommonTerminals):
     Valorisation fondamentale par actualisation des flux de trésorerie disponibles.
     """
 
-    TITLE = "FCFF Standard (Modèle à deux étapes)"
-    DESCRIPTION = "Valorisation fondamentale de l'entreprise par l'actualisation des flux de trésorerie disponibles (FCFF)."
+    TITLE = "DCF : Standard"
+    DESCRIPTION = "L'approche par l'entité. Le moteur calcule la Valeur d'Entreprise en actualisant les flux de trésorerie disponibles (FCFF) au WACC."
 
     # Formule globale du modèle
-    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{FCF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
+    FORMULA_GLOBAL = r"EV = \sum_{t=1}^{n} \frac{FCFF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
 
     # Étape 1 : Ancrage spécifique
     STEP_1_TITLE = "#### Étape 1 : Ancrage du Flux Opérationnel"
     STEP_1_DESC = "Définition du flux de trésorerie disponible pour la firme (FCFF) de référence pour l'année 0."
-    STEP_1_FORMULA = r"FCFF = EBIT \times (1 - \tau) + DA - \Delta WCR - CapEx"
+    # DA = Depreciation & Amortization (Dotations aux Amortissements)
+    # BFR = Besoin en Fonds de Roulement (Working Capital Requirement)
+    STEP_1_FORMULA = r"FCFF_0 = EBIT \times (1 - \tau) + DA - \Delta BFR - CapEx"
 
-    INP_BASE = f"Flux FCFF d'ancrage {CommonTerminals.UNIT_MILLIONS}"
-    HELP_BASE = "Flux de trésorerie opérationnel net, disponible pour tous les apporteurs de capitaux (Dette + Equity)."
+    INP_BASE = f"FCFF de référence (Année 0) {CommonTerminals.UNIT_MILLIONS}"
 
     # Étape 2 : Croissance spécifique
     STEP_2_TITLE = "#### Étape 2 : Trajectoire de Croissance"
@@ -324,19 +325,21 @@ class FCFFNormalizedTexts(CommonTerminals):
     DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme.
     """
 
-    TITLE = "Approche Entité (FCFF Normalisé)"
-    DESCRIPTION = "DCF utilisant un flux lissé sur le cycle pour neutraliser la volatilité court terme."
+    TITLE = "DCF : Fondamental"
+    DESCRIPTION = (
+        "Logique Damodaran pour entreprises cycliques : utilise un flux FCF lissé (Normalisé) pour neutraliser la "
+        "volatilité court terme."
+    )
 
     # Formule globale
-    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{FCF_{norm}(1+g)^t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
+    FORMULA_GLOBAL = r"EV = \sum_{t=1}^{n} \frac{FCFF_{norm} \times (1+g)^t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
 
     # Étape 1 : Flux Normatif
     STEP_1_TITLE = "#### Étape 1 : Flux Normatif (FCF norm)"
     STEP_1_DESC = "Estimation d'un flux de croisière moyen sur 3 à 5 ans pour stabiliser la valorisation."
-    STEP_1_FORMULA = r"FCF_{norm} = \text{Moyenne des FCF sur 3-5 ans}"
+    STEP_1_FORMULA = r"FCFF_{norm} = \text{EBIT}_{norm} \times (1 - \tau) - \text{Réinvestissement Net}"
 
-    INP_BASE = f"Flux normatif de cycle {CommonTerminals.UNIT_MILLIONS}"
-    HELP_BASE = "Flux moyen lissé pour éviter de valoriser l'entreprise sur un pic ou un creux cyclique."
+    INP_BASE = f"Flux FCFF Normalisé {CommonTerminals.UNIT_MILLIONS}"
 
     # Étape 2 : Croissance de Cycle
     STEP_2_TITLE = "#### Étape 2 : Croissance de Cycle"
@@ -354,28 +357,30 @@ class FCFFGrowthTexts(CommonTerminals):
     Valorisation par projection du chiffre d'affaires et convergence vers une marge cible.
     """
 
-    TITLE = "FCFF : Modèle de Croissance & Marges"
-    DESCRIPTION = "Valorisation par projection du chiffre d'affaires et convergence vers une marge cible."
+    TITLE = "DCF : Croissance"
+    DESCRIPTION = (
+        "Variante dynamique projetant les revenus avec une convergence linéaire vers une marge opérationnelle cible."
+    )
 
     # Formule globale
-    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{Revenue_t \times Marge_{cible}}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
+    FORMULA_GLOBAL = r"FCFF_t = (Revenue_{t-1} \times (1+g_{rev})) \times \text{Marge}_t"
 
     # Étape 1 : Assiette de Revenus
     STEP_1_TITLE = "#### Étape 1 : Assiette de Revenus"
     STEP_1_DESC = "Saisie du Chiffre d'Affaires TTM (Derniers 12 mois) servant de base à la projection."
-    STEP_1_FORMULA = r"FCF_t = Revenue_0 \times (1+g)^t \times Marge_{cible}"
+    STEP_1_FORMULA = r"Revenue_t = Revenue_{t-1} \times (1 + g_{sales})"
 
     INP_BASE = f"Chiffre d'Affaires TTM {CommonTerminals.UNIT_MILLIONS}"
     HELP_REV_TTM = "Total des revenus générés au cours des 12 derniers mois."
 
     # Étape 2 : Convergence des Marges
     STEP_2_TITLE = "#### Étape 2 : Convergence des Marges"
-    STEP_2_DESC = "Hypothèses de croissance top-line et de marge FCF cible à terme."
+    STEP_2_DESC = "Convergence linéaire de la marge opérationnelle vers la cible normative."
 
     INP_REV_GROWTH = f"Croissance annuelle du CA {CommonTerminals.UNIT_PERCENT}"
     HELP_REV_GROWTH = "Taux de croissance annuel projeté pour les ventes."
 
-    INP_MARGIN_TARGET = f"Marge FCF cible {CommonTerminals.UNIT_PERCENT}"
+    INP_MARGIN_TARGET = f"Marge FCF Normative (Cible) {CommonTerminals.UNIT_PERCENT}"
     HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée à la fin de l'horizon de projection."
 
     # Disclaimer
@@ -398,16 +403,19 @@ class RIMTexts(CommonTerminals):
     Idéal pour les financières (Banques, Assurances) où la Book Value est centrale.
     """
 
-    TITLE = "Revenu Résiduel (RIM)"
-    DESCRIPTION = "Modèle d'Ohlson : Valorisation par la Valeur Comptable et la persistance de la création de valeur (ROE > Ke)."
+    TITLE = "Modèle RIM"
+    DESCRIPTION = (
+        "Dédié au secteur financier. Somme de la Valeur Comptable actuelle et de la valeur actuelle des bénéfices "
+        "excédentaires (Profit - K_e)."
+    )
 
     # Formule globale (canonique RIM)
-    FORMULA_GLOBAL = r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+k_e)^t} + TV_{RI}"
+    FORMULA_GLOBAL = r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+K_e)^t} + \frac{TV_{RI}}{(1+K_e)^n}"
 
     # Étape 1 : Ancrage Bilanciel
     STEP_1_TITLE = "#### Étape 1 : Ancrage Bilanciel (Book Value)"
     STEP_1_DESC = "Définition du socle de capitaux propres et de la capacité bénéficiaire actuelle."
-    STEP_1_FORMULA = r"RI_t = NI_t - (k_e \times BV_{t-1})"
+    STEP_1_FORMULA = r"RI_t = NetIncome_t - (BV_{t-1} \times K_e)"
 
     INP_BASE = f"Valeur Comptable d'Ancrage (Book Value) {CommonTerminals.UNIT_MILLIONS}"
     INP_BV_BASE = f"Valeur Comptable (Book Value) {CommonTerminals.UNIT_MILLIONS}"
@@ -422,6 +430,7 @@ class RIMTexts(CommonTerminals):
     # Étape 2 : Persistance
     STEP_2_TITLE = "#### Étape 2 : Persistance des Profits Anormaux"
     STEP_2_DESC = "Estimation de la durée pendant laquelle l'entreprise génère un rendement supérieur à son coût du capital (Facteur Omega)."
+    STEP_2_FORMULA = r"BV_t = BV_{t-1} + NetIncome_t - Dividendes_t"
 
     HELP_GROWTH = "Taux de croissance des fonds propres (via mise en réserve) avant l'atténuation par le facteur Omega."
 
@@ -446,16 +455,19 @@ class GrahamTexts(CommonTerminals):
     Formule de Benjamin Graham révisée (1974).
     """
 
-    TITLE = "Nombre de Graham (Screening)"
-    DESCRIPTION = "Formule de Benjamin Graham révisée (1974) pour l'évaluation sécuritaire des bénéfices."
+    TITLE = "Formule de Graham"
+    DESCRIPTION = (
+        "Implémentation révisée (1974). Valeur pivot basée sur l'EPS et la croissance, ajustée par le rendement "
+        "obligataire AAA."
+    )
 
     # Formule globale
-    FORMULA_GLOBAL = r"V = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}"
+    FORMULA_GLOBAL = r"V = \frac{EPS \times (8.5 + 2 \times g) \times 4.4}{Y_{AAA}}"
 
     # Étape 1 : Capacité Bénéficiaire
     STEP_1_TITLE = "#### Étape 1 : Capacité Bénéficiaire & Croissance"
     STEP_1_DESC = "Saisie du bénéfice par action normalisé et de la croissance prévisionnelle conservatrice."
-    STEP_1_FORMULA = r"V = \frac{EPS \times (8.5 + 2g) \times 4.4}{Y}"
+    STEP_1_FORMULA = r"Multiplier = 8.5 + 2 \times (g \times 100)"
 
     INP_EPS = f"BPA (EPS) Normalisé {CommonTerminals.UNIT_CURRENCY}"
     INP_EPS_NORM = f"BPA (EPS) normalisé {CommonTerminals.UNIT_CURRENCY}"
@@ -470,7 +482,7 @@ class GrahamTexts(CommonTerminals):
     STEP_2_TITLE = "#### Étape 2 : Conditions de Marché"
     STEP_2_DESC = "Paramètres du rendement obligataire corporate et de la fiscalité."
 
-    INP_YIELD_AAA = f"Rendement Obligataire AAA (Y) {CommonTerminals.UNIT_PERCENT}"
+    INP_YIELD_AAA = f"Rendement Corporate AAA (Y) {CommonTerminals.UNIT_PERCENT}"
     HELP_YIELD_AAA = "Rendement actuel des obligations d'entreprises de haute qualité (référence vs 4.4% historique)."
 
     NOTE_GRAHAM = "Note : Le facteur 8.5 correspond au P/E d'une entreprise à croissance nulle. Le facteur 4.4 représente le rendement AAA historique de référence."
@@ -482,21 +494,24 @@ class FCFETexts(CommonTerminals):
     Valorisation directe des fonds propres via les flux résiduels après service de la dette.
     """
 
-    TITLE = "Flux de Trésorerie Actionnaires (FCFE)"
-    DESCRIPTION = "Valorisation directe des fonds propres via les flux résiduels après service de la dette."
+    TITLE = "DCF : FCFE"
+    DESCRIPTION = (
+        "Calcul direct de la valeur des capitaux propres en actualisant les flux résiduels (post-dette) au coût des "
+        "fonds propres (K_e)."
+    )
 
     # Formule globale
-    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{FCFE_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}"
+    FORMULA_GLOBAL = r"EquityValue = \sum_{t=1}^{n} \frac{FCFE_t}{(1+K_e)^t} + \frac{TV_n}{(1+K_e)^n}"
 
     # Étape 1 : Ancrage Actionnaire
     STEP_1_TITLE = "#### Étape 1 : Ancrage Actionnaire"
     STEP_1_DESC = "Définition du flux FCFE disponible pour l'actionnaire et de la politique d'endettement."
-    STEP_1_FORMULA = r"FCFE = OCF - CapEx + \Delta \text{Net Borrowing}"
+    STEP_1_FORMULA = r"FCFE = \text{Résultat Net} + DA - \Delta BFR - CapEx + \Delta \text{Endettement Net}"
 
     INP_BASE = f"Flux FCFE d'ancrage {CommonTerminals.UNIT_MILLIONS}"
     HELP_FCFE_BASE = "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
 
-    INP_NET_BORROWING = f"Variation de l'endettement {CommonTerminals.UNIT_MILLIONS}"
+    INP_NET_BORROWING = f"Variation Nette de la Dette {CommonTerminals.UNIT_MILLIONS}"
     HELP_NET_BORROWING = "Montant net des nouvelles émissions de dette moins les remboursements de principal."
 
     # Étape 2 : Horizon de Projection
@@ -513,11 +528,11 @@ class DDMTexts(CommonTerminals):
     Valorisation basée sur la distribution future de dividendes aux actionnaires.
     """
 
-    TITLE = "Modèle d'Actualisation des Dividendes (DDM)"
-    DESCRIPTION = "Valorisation basée sur la distribution future de dividendes aux actionnaires."
+    TITLE = "Modèle DDM"
+    DESCRIPTION = "Approche par le rendement pur. Il évalue l'action en actualisant uniquement les dividendes futurs attendus au coût des fonds propres (K_e)."
 
     # Formule globale
-    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{D_t}{(1+k_e)^t} + \frac{TV_n}{(1+k_e)^n}"
+    FORMULA_GLOBAL = r"V_0 = \sum_{t=1}^{n} \frac{D_t}{(1+K_e)^t} + \frac{TV_n}{(1+K_e)^n}"
 
     # Étape 1 : Flux de Dividendes
     STEP_1_TITLE = "#### Étape 1 : Flux de Dividendes"
