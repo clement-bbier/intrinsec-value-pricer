@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 
+from src.computation.financial_math import calculate_comprehensive_net_debt
 from src.core.formatting import format_smart_number
 
 # Centralized i18n imports
@@ -110,9 +111,16 @@ class SOTPRunner:
         cash = cap.cash_and_equivalents or 0.0
         minorities = cap.minority_interests or 0.0
         pensions = cap.pension_provisions or 0.0
+        lease_liabilities = cap.lease_liabilities or 0.0
+        pension_liabilities = cap.pension_liabilities or 0.0
         shares = cap.shares_outstanding or 1.0
 
-        equity_value = consolidated_ev - debt + cash - minorities - pensions
+        # Use comprehensive net debt calculation (IFRS 16 compliant)
+        comprehensive_net_debt = calculate_comprehensive_net_debt(
+            total_debt=debt, cash=cash, lease_liabilities=lease_liabilities, pension_liabilities=pension_liabilities
+        )
+
+        equity_value = consolidated_ev - comprehensive_net_debt - minorities - pensions
         per_share_value = equity_value / shares if shares > 0 else 0.0
 
         # Note: For source tracking, we use SYSTEM (Resolver result).
@@ -162,7 +170,8 @@ class SOTPRunner:
                 label=RegistryTexts.DCF_BRIDGE_L,
                 theoretical_formula=SOTPTexts.FORMULA_BRIDGE,
                 actual_calculation=(
-                    f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + {format_smart_number(cash)} ..."
+                    f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
+                    f"{format_smart_number(cash)} ..."
                 ),
                 result=equity_value,
                 unit="currency",
