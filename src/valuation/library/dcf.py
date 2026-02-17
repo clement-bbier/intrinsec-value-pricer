@@ -163,10 +163,30 @@ class DCFLibrary:
 
     @staticmethod
     def project_flows_revenue_model(
-        base_revenue: float, current_margin: float, target_margin: float, params: Parameters
+        base_revenue: float, current_margin: float, target_margin: float, params: Parameters, wcr_ratio: float | None = None
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
+
+        Parameters
+        ----------
+        base_revenue : float
+            Starting revenue (TTM or Year 0).
+        current_margin : float
+            Current FCF margin (FCF_0 / Revenue_0).
+        target_margin : float
+            Target FCF margin to converge towards.
+        params : Parameters
+            Full parameter set containing strategy and common parameters.
+        wcr_ratio : float | None, optional
+            Working Capital Requirement to Revenue ratio. If provided, used to
+            calculate working capital consumption: ΔBFR = ΔRevenue × wcr_ratio.
+            This amount is subtracted from projected FCF each year.
+
+        Returns
+        -------
+        tuple[list[float], list[float], list[float], CalculationStep]
+            (projected_fcfs, projected_revenues, projected_margins, calculation_step)
         """
         # Access Strategy Parameters (Specifically FCFFGrowthParameters)
         strat = params.strategy
@@ -181,8 +201,10 @@ class DCFLibrary:
         revenues = []
         margins = []
         fcfs = []
+        wcr_adjustments = []
 
         current_rev = base_revenue
+        prev_rev = base_revenue
 
         for t in range(1, years + 1):
             # A. Revenue Growth Logic
@@ -206,7 +228,24 @@ class DCFLibrary:
                 current_m = target_margin
 
             margins.append(current_m)
-            fcfs.append(current_rev * current_m)
+            
+            # C. Base FCF Calculation
+            base_fcf = current_rev * current_m
+            
+            # D. Working Capital Adjustment
+            # ΔBFR = ΔRevenue × wcr_ratio
+            # This represents the cash consumed by working capital needs as revenue grows
+            if wcr_ratio is not None:
+                delta_revenue = current_rev - prev_rev
+                wcr_adjustment = delta_revenue * wcr_ratio
+                wcr_adjustments.append(wcr_adjustment)
+                final_fcf = base_fcf - wcr_adjustment
+            else:
+                wcr_adjustments.append(0.0)
+                final_fcf = base_fcf
+            
+            fcfs.append(final_fcf)
+            prev_rev = current_rev
 
         variables = {
             "Rev_0": VariableInfo(
@@ -231,11 +270,26 @@ class DCFLibrary:
             ),
         }
 
+        # Add WCR ratio to variables if used
+        if wcr_ratio is not None:
+            variables["WCR_ratio"] = VariableInfo(
+                symbol="WCR/Rev",
+                value=wcr_ratio,
+                formatted_value=f"{wcr_ratio:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Working Capital to Revenue Ratio",
+            )
+
+        # Update actual calculation to reflect WCR if used
+        calc_desc = f"Revenue Growth & Margin Convergence ({current_margin:.1%} -> {target_margin:.1%})"
+        if wcr_ratio is not None:
+            calc_desc += f" - WCR Adjustment ({wcr_ratio:.1%})"
+
         step = CalculationStep(
             step_key="REV_MARGIN_CONV",
             label=RegistryTexts.GROWTH_MARGIN_L,
             theoretical_formula=StrategyFormulas.GROWTH_MARGIN_CONV,
-            actual_calculation=f"Revenue Growth & Margin Convergence ({current_margin:.1%} -> {target_margin:.1%})",
+            actual_calculation=calc_desc,
             result=sum(fcfs),
             interpretation=StrategyInterpretations.GROWTH_MARGIN,
             source=StrategySources.CALCULATED,

@@ -69,6 +69,7 @@ class UIKeys:
     EPS_NORMALIZED: str = "eps_normalized"
     EPS_ANCHOR: str = "eps_anchor"
     GROWTH_ESTIMATE: str = "growth_estimate"
+    WCR_TO_REVENUE_RATIO: str = "wcr_to_revenue_ratio"
 
     # ── Monte Carlo (global, no prefix) ──────────────────────────────
     MC_ENABLE: str = "mc_enable"

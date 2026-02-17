@@ -90,6 +90,12 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         current_margin = (fcf_ttm / rev_anchor) if rev_anchor > 0 else 0.0
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
+        # Extract WCR ratio from parameters (if provided by user)
+        wcr_ratio = strategy_params.wcr_to_revenue_ratio
+        
+        # TODO: Implement fallback to historical WCR/Revenue ratio from company data
+        # For now, if wcr_ratio is None, no WCR adjustment will be applied
+
         if self._glass_box:
             steps.append(
                 CalculationStep(
@@ -109,7 +115,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
-            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params
+            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params, wcr_ratio=wcr_ratio
         )
 
         if self._glass_box:
@@ -218,6 +224,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         current_margin = fcf_ttm / base_rev_static
 
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
+        
+        # Extract WCR ratio for working capital adjustments
+        wcr_ratio = strategy_params.wcr_to_revenue_ratio or 0.0
 
         # Create Margin Vector [Years] via linear interpolation
         # shape: (Years,) e.g. [0.12, 0.14, 0.16, 0.18, 0.20]
@@ -233,6 +242,19 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         # 4. Derive FCF [N_SIMS, YEARS]
         # Broadcasting: [N, Y] * [Y] -> [N, Y]
         projected_flows = projected_revenue * margin_curve
+        
+        # 4b. Apply WCR Adjustments if wcr_ratio is provided
+        # ΔBFR = ΔRevenue × wcr_ratio for each year
+        if wcr_ratio != 0.0:
+            # Calculate revenue deltas: [N_SIMS, YEARS]
+            # For year 1: delta = Rev_1 - Rev_0
+            # For year t: delta = Rev_t - Rev_{t-1}
+            prev_revenue = np.concatenate([rev_0[:, np.newaxis], projected_revenue[:, :-1]], axis=1)
+            revenue_deltas = projected_revenue - prev_revenue
+            
+            # WCR adjustment reduces FCF: FCF_adjusted = FCF_base - (ΔRev × wcr_ratio)
+            wcr_adjustments = revenue_deltas * wcr_ratio
+            projected_flows = projected_flows - wcr_adjustments
 
         # 5. Discounting
         discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)

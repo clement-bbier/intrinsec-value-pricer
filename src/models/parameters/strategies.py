@@ -110,12 +110,17 @@ class FCFFGrowthParameters(BaseProjectedParameters):
         Expected annual revenue growth.
     target_fcf_margin : float | None
         The expected FCF margin (FCF / Revenue) at maturity.
+    wcr_to_revenue_ratio : float | None
+        Working Capital Requirement to Revenue ratio. Used to calculate
+        working capital needs based on revenue changes (ΔBFR = ΔRevenue × ratio).
+        If None, uses historical average from company data.
     """
 
     mode: Literal[ValuationMethodology.FCFF_GROWTH] = ValuationMethodology.FCFF_GROWTH
     revenue_ttm: Annotated[float | None, UIKey(UIKeys.REVENUE_TTM, scale="million")] = None
     revenue_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
     target_fcf_margin: Annotated[float | None, UIKey(UIKeys.FCF_MARGIN, scale="pct")] = None
+    wcr_to_revenue_ratio: Annotated[float | None, UIKey(UIKeys.WCR_TO_REVENUE_RATIO, scale="pct")] = None
 
 
 class FCFEParameters(BaseProjectedParameters):
