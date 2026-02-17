@@ -51,6 +51,7 @@ class UIKeys:
     PENSIONS: str = "pen"
     SHARES: str = "shares"
     SBC_RATE: str = "sbc_rate"
+    TARGET_DE_RATIO: str = "target_de_ratio"
 
     # ── Strategy Params (prefix: strategy mode) ──────────────────────
     GROWTH_RATE: str = "growth_rate"

@@ -648,6 +648,7 @@ def test_terminal_value_with_marginal_tax_applies_adjustment():
     capital = Mock()
     capital.total_debt = 100.0
     capital.shares_outstanding = 100.0
+    capital.target_debt_equity_ratio = None  # No target structure for this test
     
     common.rates = rates
     common.capital = capital

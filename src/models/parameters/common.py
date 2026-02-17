@@ -122,6 +122,9 @@ class CapitalStructureParameters(BaseNormalizedModel):
         Total number of shares used to calculate per-share intrinsic value.
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
+    target_debt_equity_ratio : float | None
+        Target Debt-to-Equity ratio for Hamada beta adjustment and optimal capital structure.
+        When provided, the WACC calculation will adjust beta to reflect the target leverage.
     """
 
     total_debt: Annotated[float | None, UIKey(UIKeys.DEBT, scale="million")] = None
@@ -130,6 +133,7 @@ class CapitalStructureParameters(BaseNormalizedModel):
     pension_provisions: Annotated[float | None, UIKey(UIKeys.PENSIONS, scale="million")] = None
     shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
     annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
+    target_debt_equity_ratio: Annotated[float | None, UIKey(UIKeys.TARGET_DE_RATIO, scale="raw")] = None
 
 
 class CommonParameters(BaseModel):

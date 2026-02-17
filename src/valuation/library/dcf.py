@@ -294,12 +294,13 @@ class DCFLibrary:
                 
                 # Calculate tax adjustment factor for FCF
                 # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                # Pass financials to use real operating margin
                 effective_tax_rate = params.common.rates.tax_rate or ModelDefaults.DEFAULT_TAX_RATE
                 if effective_tax_rate != marginal_tax_rate:
                     tax_adjustment_factor = calculate_fcf_tax_adjustment_factor(
                         effective_tax_rate=effective_tax_rate,
                         marginal_tax_rate=marginal_tax_rate,
-                        operating_margin_estimate=0.20  # Conservative 20% for mature companies
+                        financials=financials  # Pass financials for real margin calculation
                     )
             
             tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
