@@ -139,7 +139,7 @@ def get_terminal_value_narrative(mode: ValuationMethodology) -> str:
 def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> None:
     """
     Renders Terminal Value selection (Gordon vs Multiples).
-    
+
     Note: @st.fragment decorator was removed to ensure reactivity when switching
     between valuation methodologies in the sidebar. The mode parameter needs to
     trigger a full re-render to display the correct terminal value formula.
