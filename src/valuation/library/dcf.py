@@ -352,16 +352,64 @@ class DCFLibrary:
 
     @staticmethod
     def compute_value_per_share(equity_value: float, params: Parameters) -> tuple[float, CalculationStep]:
-        """Calculates final price per share, applying SBC dilution adjustment."""
+        """
+        Calculates final price per share, applying SBC dilution adjustment if needed.
+
+        Parameters
+        ----------
+        equity_value : float
+            Total equity value before per-share calculation.
+        params : Parameters
+            User-defined or automated projection parameters.
+
+        Returns
+        -------
+        tuple[float, CalculationStep]
+            Final intrinsic value per share and calculation trace.
+
+        Notes
+        -----
+        When SBC treatment is EXPENSE, dilution adjustment is skipped to avoid
+        double counting (SBC already deducted from cash flows).
+        """
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         base_iv = equity_value / shares
 
         # Fix: Dilution rate is stored in common.capital (from Model Batch)
         dilution_rate = params.common.capital.annual_dilution_rate or 0.0
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+
         # Fix: Years come from strategy
         years = getattr(params.strategy, "projection_years", ModelDefaults.DEFAULT_PROJECTION_YEARS)
 
+        # Skip dilution adjustment if SBC treatment is EXPENSE (avoid double counting)
+        from src.models.enums import SBCTreatment
+        if sbc_treatment == SBCTreatment.EXPENSE.value:
+            step = CalculationStep(
+                step_key="VALUE_PER_SHARE",
+                label=RegistryTexts.DCF_IV_L,
+                theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
+                actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
+                result=base_iv,
+                interpretation=StrategyInterpretations.SBC_EXPENSE_NO_DILUTION,
+                variables_map={
+                    "Equity": VariableInfo(
+                        symbol="Eq",
+                        value=equity_value,
+                        source=VariableSource.CALCULATED,
+                    ),
+                    "Shares": VariableInfo(
+                        symbol="Shares",
+                        value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                    ),
+                },
+            )
+            return base_iv, step
+
+        # Apply dilution adjustment (original behavior when treatment is DILUTION or not specified)
         dilution_factor = calculate_dilution_factor(dilution_rate, years)
         final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
 
@@ -397,7 +445,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=final_iv,
-                interpretation="Final Intrinsic Value per share.",
+                interpretation=StrategyInterpretations.IV_PER_SHARE_FINAL,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",

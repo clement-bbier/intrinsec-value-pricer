@@ -122,6 +122,13 @@ class CapitalStructureParameters(BaseNormalizedModel):
         Total number of shares used to calculate per-share intrinsic value.
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
+        Only used when sbc_treatment is DILUTION.
+    sbc_treatment : str | None
+        Method to handle Stock-Based Compensation: "DILUTION" or "EXPENSE".
+        Defaults to "DILUTION" (current behavior).
+    sbc_annual_amount : float | None
+        Estimated annual SBC expense in millions.
+        Only used when sbc_treatment is "EXPENSE".
     """
 
     total_debt: Annotated[float | None, UIKey(UIKeys.DEBT, scale="million")] = None
@@ -132,6 +139,8 @@ class CapitalStructureParameters(BaseNormalizedModel):
     pension_liabilities: Annotated[float | None, UIKey(UIKeys.PENSION_LIABILITIES, scale="million")] = None
     shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
     annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
+    sbc_treatment: Annotated[str | None, UIKey(UIKeys.SBC_TREATMENT, scale="raw")] = None
+    sbc_annual_amount: Annotated[float | None, UIKey(UIKeys.SBC_ANNUAL_AMOUNT, scale="million")] = None
 
 
 class CommonParameters(BaseModel):
