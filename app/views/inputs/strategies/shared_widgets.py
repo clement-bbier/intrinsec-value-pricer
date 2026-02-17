@@ -50,6 +50,34 @@ def widget_growth_rate(label: str, key_prefix: str) -> None:
     )
 
 
+def widget_high_growth_years(key_prefix: str, projection_years: int) -> None:
+    """
+    Renders a slider for maturity years (high growth period).
+
+    Parameters
+    ----------
+    key_prefix : str
+        The strategy-specific key prefix.
+    projection_years : int
+        The total projection years to set as max value.
+
+    Notes
+    -----
+    This widget controls the fade transition between strong growth
+    and perpetual growth. If set to equal projection_years, there
+    is no fade (growth remains constant until terminal value).
+    """
+    st.slider(
+        CommonTerminals.INP_HIGH_GROWTH_YEARS,
+        min_value=0,
+        max_value=projection_years,
+        value=projection_years,  # Default: no fade
+        step=1,
+        help=CommonTerminals.HELP_HIGH_GROWTH_YEARS,
+        key=f"{key_prefix}_{UIKeys.HIGH_GROWTH_YEARS}",
+    )
+
+
 # ==============================================================================
 # 2. COST OF CAPITAL (Section 3)
 # ==============================================================================

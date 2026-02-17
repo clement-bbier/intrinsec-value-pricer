@@ -1,7 +1,8 @@
 import streamlit as st
 
+from app.state.store import get_state
 from app.views.inputs.base_strategy import BaseStrategyView
-from app.views.inputs.strategies.shared_widgets import widget_growth_rate
+from app.views.inputs.strategies.shared_widgets import widget_growth_rate, widget_high_growth_years
 from src.config.constants import UIKeys
 from src.i18n.fr.ui.terminals import CommonTerminals
 from src.i18n.fr.ui.terminals import DDMTexts as Texts
@@ -36,6 +37,8 @@ class DDMView(BaseStrategyView):
     def render_model_inputs(self) -> None:
         """Renders Step 1 (dividend base) and Step 2 (growth rate) inputs."""
         prefix = self.MODE.name
+        state = get_state()
+        
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(
@@ -50,4 +53,6 @@ class DDMView(BaseStrategyView):
         widget_growth_rate(label=CommonTerminals.INP_GROWTH_G, key_prefix=prefix)
         if hasattr(Texts, "NOTE_DDM_SGR") and Texts.NOTE_DDM_SGR:
             st.caption(Texts.NOTE_DDM_SGR)
+        # Add maturity years slider for fade transition
+        widget_high_growth_years(prefix, state.projection_years)
         st.divider()

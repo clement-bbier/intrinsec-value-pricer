@@ -47,6 +47,9 @@ class BaseProjectedParameters(BaseNormalizedModel):
     ----------
     projection_years : int | None
         Number of years in the explicit forecast period (Standard: 5-10).
+    high_growth_period : int | None
+        Number of years of high growth before linear fade to terminal rate.
+        If None, defaults to projection_years (no fade transition).
     manual_growth_vector : List[float] | None
         Optional year-by-year growth overrides provided by the user.
     terminal_value : TerminalValueParameters
@@ -54,6 +57,9 @@ class BaseProjectedParameters(BaseNormalizedModel):
     """
 
     projection_years: Annotated[int | None, UIKey(UIKeys.YEARS, scale="raw")] = Field(None, ge=1, le=50)
+    high_growth_period: Annotated[int | None, UIKey(UIKeys.HIGH_GROWTH_YEARS, scale="raw")] = Field(
+        None, ge=0, le=50
+    )
     manual_growth_vector: Annotated[list[float] | None, UIKey(UIKeys.GROWTH_VECTOR, scale="pct")] = None
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
 

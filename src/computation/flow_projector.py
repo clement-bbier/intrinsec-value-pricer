@@ -146,14 +146,18 @@ class SimpleFlowProjector(FlowProjector):
 
         years = getattr(strat, "projection_years", 5) or 5
 
+        # High Growth Period: If not set, default to full projection period (no fade)
+        high_growth_years = getattr(strat, "high_growth_period", None)
+        if high_growth_years is None:
+            high_growth_years = years
+
         # 2. Computation
         flows = project_flows(
             base_flow=base_value,
             years=years,
             g_start=g_start,
             g_term=g_term,
-            # Note: High growth plateau logic can be extended here if params support it later
-            high_growth_years=years,
+            high_growth_years=high_growth_years,
         )
 
         # 3. Glass Box Traceability
@@ -243,8 +247,43 @@ def project_flows(
     base_flow: float, years: int, g_start: float, g_term: float, high_growth_years: int | None = 0
 ) -> list[float]:
     """
-    Atomic engine for financial flow projection.
-    Supports a 'High Growth' plateau followed by a linear 'Fade-Down'.
+    Atomic engine for financial flow projection with fade transition.
+
+    Supports a 'High Growth' plateau followed by a linear 'Fade-Down' to terminal growth.
+    This eliminates the brutal shock between strong growth and perpetual growth rates.
+
+    Parameters
+    ----------
+    base_flow : float
+        The starting cash flow value (FCF0, Revenue0, etc.).
+    years : int
+        Total number of projection years.
+    g_start : float
+        High growth rate during the plateau phase.
+    g_term : float
+        Terminal perpetual growth rate.
+    high_growth_years : int | None, optional
+        Number of years to maintain high growth before fading.
+        If None, defaults to full projection period (no fade).
+        If 0, fade begins immediately from year 1.
+
+    Returns
+    -------
+    list[float]
+        Projected cash flows for each year.
+
+    Notes
+    -----
+    The fade phase uses linear interpolation:
+    - Year t in fade phase: g(t) = g_start * (1 - α) + g_term * α
+    - Where α = (t - high_growth_years) / (years - high_growth_years)
+    
+    Examples
+    --------
+    >>> # 5 years projection, 3 years high growth at 10%, then fade to 2%
+    >>> flows = project_flows(1000, 5, 0.10, 0.02, 3)
+    >>> # Years 1-3: 10% growth
+    >>> # Years 4-5: Linear fade from 10% to 2%
     """
     if years <= 0:
         return []
