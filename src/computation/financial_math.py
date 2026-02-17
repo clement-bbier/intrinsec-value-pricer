@@ -405,6 +405,74 @@ def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
 # ==============================================================================
 
 
+def convert_de_to_dcap(debt_equity_ratio: float) -> tuple[float, float]:
+    r"""
+    Converts Debt-to-Equity ratio (D/E) to capital structure weights.
+    
+    $$w_e = \frac{1}{1 + D/E}, \quad w_d = \frac{D/E}{1 + D/E}$$
+    
+    Parameters
+    ----------
+    debt_equity_ratio : float
+        Debt-to-Equity ratio (D/E). Must be non-negative.
+        
+    Returns
+    -------
+    tuple[float, float]
+        (weight_equity, weight_debt) where weights sum to 1.0
+        
+    Examples
+    --------
+    >>> convert_de_to_dcap(0.5)  # 50% debt / 100% equity
+    (0.6667, 0.3333)  # 66.7% equity, 33.3% debt in capital
+    
+    >>> convert_de_to_dcap(1.0)  # 100% debt / 100% equity
+    (0.5, 0.5)  # 50% equity, 50% debt in capital
+    
+    >>> convert_de_to_dcap(0.25)  # 25% debt / 100% equity
+    (0.8, 0.2)  # 80% equity, 20% debt in capital
+    """
+    if debt_equity_ratio < 0:
+        raise ValueError(f"D/E ratio must be non-negative, got {debt_equity_ratio}")
+    
+    we = 1.0 / (1.0 + debt_equity_ratio)
+    wd = debt_equity_ratio / (1.0 + debt_equity_ratio)
+    return we, wd
+
+
+def convert_dcap_to_de(weight_debt: float) -> float:
+    r"""
+    Converts capital structure weight (D/Cap) to Debt-to-Equity ratio (D/E).
+    
+    $$D/E = \frac{w_d}{1 - w_d}$$
+    
+    Parameters
+    ----------
+    weight_debt : float
+        Proportion of debt in capital structure. Must be in [0, 1).
+        
+    Returns
+    -------
+    float
+        Debt-to-Equity ratio (D/E)
+        
+    Examples
+    --------
+    >>> convert_dcap_to_de(0.3333)  # 33.3% debt in capital
+    0.5  # D/E = 0.5 (50% debt / 100% equity)
+    
+    >>> convert_dcap_to_de(0.5)  # 50% debt in capital
+    1.0  # D/E = 1.0 (100% debt / 100% equity)
+    
+    >>> convert_dcap_to_de(0.2)  # 20% debt in capital
+    0.25  # D/E = 0.25 (25% debt / 100% equity)
+    """
+    if weight_debt < 0 or weight_debt >= 1.0:
+        raise ValueError(f"Debt weight must be in [0, 1), got {weight_debt}")
+    
+    return weight_debt / (1.0 - weight_debt)
+
+
 def calculate_cost_of_equity_capm(rf: float, beta: float, mrp: float) -> float:
     r"""
     Calculates Cost of Equity using the Capital Asset Pricing Model (CAPM).
@@ -701,8 +769,10 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         # Current D/E ratio
         current_de_ratio = (debt / market_equity) if market_equity > 0 else 0.0
         
-        # Only adjust if target differs meaningfully from current (>5% difference)
-        if abs(target_de_ratio - current_de_ratio) > 0.05:
+        # Only adjust if target differs meaningfully from current
+        # Threshold prevents noise from minor differences (e.g., 0.249 vs 0.251)
+        threshold = ModelDefaults.BETA_ADJUSTMENT_THRESHOLD  # 5% difference
+        if abs(target_de_ratio - current_de_ratio) > threshold:
             # Unlever to asset beta using current structure and tax rate
             beta_unlevered = unlever_beta(beta_input, tax, current_de_ratio)
             # Relever to target structure using tax rate (marginal for TV, effective for explicit)
@@ -737,12 +807,15 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
 
     if target_de_ratio is not None and target_de_ratio > 0:
         # Use target structure for weights
-        # If D/E = target, then we = E/(D+E) = 1/(1+D/E)
-        we = 1.0 / (1.0 + target_de_ratio)
-        wd = target_de_ratio / (1.0 + target_de_ratio)
+        # Convert D/E ratio to capital structure weights
+        # Example: D/E = 0.5 → we = 1/(1+0.5) = 0.667, wd = 0.5/(1+0.5) = 0.333
+        we, wd = convert_de_to_dcap(target_de_ratio)
         method = StrategySources.WACC_TARGET
     else:
-        # Use market structure
+        # Use market structure (actual observed D and E)
+        total_cap = market_equity + debt
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        method = StrategySources.WACC_MARKET
         total_cap = market_equity + debt
         we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
         method = StrategySources.WACC_MARKET

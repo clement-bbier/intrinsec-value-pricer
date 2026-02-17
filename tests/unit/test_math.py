@@ -1019,3 +1019,170 @@ class TestWACCTerminalValueWithHamadaAndMarginalTax:
         assert tv_wacc.method == StrategySources.WACC_TARGET
         # Marginal tax should still be applied
         assert tv_wacc.cost_of_debt_after_tax == pytest.approx(0.05 * 0.75, rel=1e-6)
+
+
+class TestRatioConversionHelpers:
+    """Test D/E to D/Cap conversion helper functions."""
+
+    def test_convert_de_to_dcap_basic(self):
+        """Test basic D/E to D/Cap conversion."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0.5 → 33.3% debt in capital
+        we, wd = convert_de_to_dcap(0.5)
+        assert we == pytest.approx(0.6667, abs=1e-4)
+        assert wd == pytest.approx(0.3333, abs=1e-4)
+        assert we + wd == pytest.approx(1.0)
+        
+    def test_convert_de_to_dcap_equal_leverage(self):
+        """Test D/E = 1.0 (equal debt and equity)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 1.0 → 50% debt in capital
+        we, wd = convert_de_to_dcap(1.0)
+        assert we == pytest.approx(0.5)
+        assert wd == pytest.approx(0.5)
+        
+    def test_convert_de_to_dcap_low_leverage(self):
+        """Test D/E = 0.25 (low leverage)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0.25 → 20% debt in capital
+        we, wd = convert_de_to_dcap(0.25)
+        assert we == pytest.approx(0.8)
+        assert wd == pytest.approx(0.2)
+        
+    def test_convert_de_to_dcap_zero_debt(self):
+        """Test D/E = 0 (no debt)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0 → 0% debt in capital
+        we, wd = convert_de_to_dcap(0.0)
+        assert we == pytest.approx(1.0)
+        assert wd == pytest.approx(0.0)
+        
+    def test_convert_dcap_to_de_basic(self):
+        """Test D/Cap to D/E conversion."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 33.3% debt in capital → D/E = 0.5
+        de = convert_dcap_to_de(0.3333)
+        assert de == pytest.approx(0.5, abs=1e-3)
+        
+    def test_convert_dcap_to_de_half_debt(self):
+        """Test 50% debt in capital."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 50% debt in capital → D/E = 1.0
+        de = convert_dcap_to_de(0.5)
+        assert de == pytest.approx(1.0)
+        
+    def test_convert_dcap_to_de_low_debt(self):
+        """Test 20% debt in capital."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 20% debt in capital → D/E = 0.25
+        de = convert_dcap_to_de(0.2)
+        assert de == pytest.approx(0.25)
+        
+    def test_roundtrip_conversion(self):
+        """Test roundtrip: D/E → D/Cap → D/E."""
+        from src.computation.financial_math import convert_de_to_dcap, convert_dcap_to_de
+        
+        original_de = 0.75
+        we, wd = convert_de_to_dcap(original_de)
+        recovered_de = convert_dcap_to_de(wd)
+        
+        assert recovered_de == pytest.approx(original_de, rel=1e-6)
+
+
+class TestBetaAdjustmentThreshold:
+    """Test the 5% threshold for Hamada beta adjustment."""
+    
+    def test_no_adjustment_when_difference_below_threshold(self):
+        """Beta should not adjust when target differs by less than 5%."""
+        from src.computation.financial_math import calculate_wacc
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Current D/E = 25000/100000 = 0.25
+        # Target D/E = 0.28 (difference = 0.03 < 0.05)
+        current_market_equity = 100.0 * 1000.0
+        current_debt = 25000.0
+        
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.28,  # Within 5% threshold
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        wacc = calculate_wacc(company, params)
+        
+        # Beta should NOT be adjusted (within threshold)
+        assert wacc.beta_adjusted is False
+        assert wacc.beta_used == 1.2
+        
+    def test_adjustment_when_difference_exceeds_threshold(self):
+        """Beta should adjust when target differs by more than 5%."""
+        from src.computation.financial_math import calculate_wacc
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Current D/E = 25000/100000 = 0.25
+        # Target D/E = 0.35 (difference = 0.10 > 0.05)
+        current_market_equity = 100.0 * 1000.0
+        current_debt = 25000.0
+        
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.35,  # Exceeds 5% threshold
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        wacc = calculate_wacc(company, params)
+        
+        # Beta SHOULD be adjusted (exceeds threshold)
+        assert wacc.beta_adjusted is True
+        assert wacc.beta_used != 1.2  # Beta changed

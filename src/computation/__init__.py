@@ -30,6 +30,8 @@ from src.computation.financial_math import (
     calculate_triangulated_price,
     calculate_wacc,
     compute_diluted_shares,
+    convert_dcap_to_de,
+    convert_de_to_dcap,
 )
 from src.computation.flow_projector import (
     FlowProjector,
@@ -67,6 +69,8 @@ __all__ = [
     "calculate_price_from_pe_multiple",
     "calculate_price_from_ev_multiple",
     "calculate_triangulated_price",
+    "convert_de_to_dcap",
+    "convert_dcap_to_de",
     # Flow Projections (Strategy)
     "FlowProjector",
     "SimpleFlowProjector",
