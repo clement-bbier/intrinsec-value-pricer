@@ -168,7 +168,7 @@ class CommonTerminals:
     MC_CALIBRATION = "Activer la simulation stochastique"
     MC_ITERATIONS = "Nombre d'itérations"
     MC_VOL_INCERTITUDE = "**Calibration des volatilités (Écarts-types σ)**"
-    MC_VOL_BASE_FLOW = f"Volatilité du flux de l'année 0"
+    MC_VOL_BASE_FLOW = "Volatilité du flux de l'année 0"
     MC_VOL_BETA = "Incertitude coefficient Bêta (σ)"
     MC_VOL_G = f"Incertitude croissance g {UNIT_PERCENT}"
     LBL_VOL_OMEGA = f"Incertitude persistance ω {UNIT_PERCENT}"

@@ -14,7 +14,6 @@ import pytest
 
 from src.computation.flow_projector import SimpleFlowProjector, project_flows
 
-
 # ============================================================================
 # TEST project_flows with fade transition
 # ============================================================================
@@ -59,7 +58,7 @@ def test_fade_transition_linear_interpolation():
 def test_fade_transition_no_fade_when_high_growth_equals_years():
     """
     Test that no fade occurs when high_growth_years equals projection years.
-    
+
     This is the default behavior for backward compatibility.
     """
     base_flow = 1_000_000
@@ -98,7 +97,7 @@ def test_fade_transition_immediate_fade_from_year_one():
     # Year 5: α = 5/5 = 1.0 → g = 0.20 * 0.0 + 0.02 * 1.0 = 0.020
 
     expected_growth_rates = [0.164, 0.128, 0.092, 0.056, 0.020]
-    
+
     current_flow = base_flow
     for i, expected_g in enumerate(expected_growth_rates):
         current_flow *= (1 + expected_g)
@@ -130,7 +129,7 @@ def test_fade_transition_single_year_fade():
 def test_fade_maintains_cash_flow_continuity():
     """
     Test that cash flows are continuous (no jumps) during fade transition.
-    
+
     Each year's flow should be strictly greater than previous (for positive growth).
     """
     base_flow = 1_000_000
@@ -148,7 +147,7 @@ def test_fade_maintains_cash_flow_continuity():
     # No sudden jumps at transition point
     growth_before_transition = (flows[4] / flows[3]) - 1
     growth_at_transition = (flows[5] / flows[4]) - 1
-    
+
     # Growth at transition should be less than before but not drastically
     assert growth_at_transition < growth_before_transition
     assert growth_at_transition > 0  # Still positive
@@ -178,7 +177,7 @@ def test_fade_with_negative_terminal_growth():
 def test_fade_mathematical_correctness():
     """
     Test that the fade formula is mathematically correct for all years.
-    
+
     Verifies the linear interpolation formula:
     g(t) = g_start * (1 - α) + g_term * α
     where α = (t - high_growth_years) / (years - high_growth_years)
@@ -194,7 +193,7 @@ def test_fade_mathematical_correctness():
     # Manually calculate expected flows
     expected_flows = []
     current = base_flow
-    
+
     for t in range(1, years + 1):
         if t <= high_growth_years:
             g = g_start
@@ -203,7 +202,7 @@ def test_fade_mathematical_correctness():
             step_in_fade = t - high_growth_years
             alpha = step_in_fade / years_remaining
             g = g_start * (1 - alpha) + g_term * alpha
-        
+
         current *= (1 + g)
         expected_flows.append(current)
 
@@ -224,32 +223,32 @@ def test_simple_projector_with_fade_parameter():
     projector = SimpleFlowProjector()
     company = Mock()
     params = Mock()
-    
+
     strategy = Mock()
     strategy.growth_rate_p1 = 0.10
     strategy.projection_years = 10
     strategy.high_growth_period = 7  # 7 years high growth, 3 years fade
-    
+
     terminal_value = Mock()
     terminal_value.perpetual_growth_rate = 0.02
     strategy.terminal_value = terminal_value
-    
+
     params.strategy = strategy
 
     output = projector.project(1_000_000, company, params)
 
     assert len(output.flows) == 10
-    
+
     # Verify first 7 years have consistent high growth
     for i in range(1, 7):
         g = (output.flows[i] / output.flows[i - 1]) - 1
         assert g == pytest.approx(0.10, rel=1e-6)
-    
+
     # Verify last 3 years have declining growth (fade)
     growth_8 = (output.flows[7] / output.flows[6]) - 1
     growth_9 = (output.flows[8] / output.flows[7]) - 1
     growth_10 = (output.flows[9] / output.flows[8]) - 1
-    
+
     assert growth_8 < 0.10
     assert growth_9 < growth_8
     assert growth_10 < growth_9
@@ -259,23 +258,23 @@ def test_simple_projector_with_fade_parameter():
 def test_simple_projector_backward_compatibility():
     """
     Test that projector works without high_growth_period (backward compatible).
-    
+
     When high_growth_period is not set, should default to projection_years
     (no fade transition).
     """
     projector = SimpleFlowProjector()
     company = Mock()
     params = Mock()
-    
+
     strategy = Mock()
     strategy.growth_rate_p1 = 0.08
     strategy.projection_years = 5
     # high_growth_period not set
-    
+
     terminal_value = Mock()
     terminal_value.perpetual_growth_rate = 0.02
     strategy.terminal_value = terminal_value
-    
+
     params.strategy = strategy
 
     output = projector.project(1_000_000, company, params)
@@ -293,16 +292,16 @@ def test_simple_projector_with_zero_high_growth():
     projector = SimpleFlowProjector()
     company = Mock()
     params = Mock()
-    
+
     strategy = Mock()
     strategy.growth_rate_p1 = 0.15
     strategy.projection_years = 5
     strategy.high_growth_period = 0  # Immediate fade
-    
+
     terminal_value = Mock()
     terminal_value.perpetual_growth_rate = 0.03
     strategy.terminal_value = terminal_value
-    
+
     params.strategy = strategy
 
     output = projector.project(1_000_000, company, params)
@@ -319,7 +318,7 @@ def test_simple_projector_with_zero_high_growth():
     # Growth should be strictly decreasing
     for i in range(1, len(growth_rates)):
         assert growth_rates[i] < growth_rates[i - 1]
-    
+
     # Last growth should equal terminal
     assert growth_rates[-1] == pytest.approx(0.03, abs=1e-9)
 
@@ -327,7 +326,7 @@ def test_simple_projector_with_zero_high_growth():
 def test_fade_preserves_present_value_calculation():
     """
     Test that NPV calculation remains mathematically correct with fade.
-    
+
     This ensures that the fade doesn't introduce numerical errors
     that would affect valuation.
     """
@@ -346,7 +345,7 @@ def test_fade_preserves_present_value_calculation():
     # NPV should be positive and reasonable
     assert npv > 0
     assert npv > base_flow  # Should be worth more than initial flow
-    
+
     # Flows should sum to a reasonable total
     total_undiscounted = sum(flows)
     assert total_undiscounted > base_flow * years

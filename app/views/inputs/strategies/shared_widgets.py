@@ -50,7 +50,7 @@ def widget_growth_rate(label: str, key_prefix: str) -> None:
     )
 
 
-def widget_high_growth_years(key_prefix: str, projection_years: int) -> None:
+def widget_high_growth_years(key_prefix: str) -> None:
     """
     Renders a slider for maturity years (high growth period).
 
@@ -58,15 +58,18 @@ def widget_high_growth_years(key_prefix: str, projection_years: int) -> None:
     ----------
     key_prefix : str
         The strategy-specific key prefix.
-    projection_years : int
-        The total projection years to set as max value.
 
     Notes
     -----
     This widget controls the fade transition between strong growth
     and perpetual growth. If set to equal projection_years, there
     is no fade (growth remains constant until terminal value).
+    The projection_years value is read from session_state where it's
+    managed by the sidebar.
     """
+    # Get projection_years from session_state (managed by sidebar)
+    projection_years = st.session_state.get("projection_years", 5)
+    
     st.slider(
         CommonTerminals.INP_HIGH_GROWTH_YEARS,
         min_value=0,

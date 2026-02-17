@@ -153,7 +153,7 @@ class SimpleFlowProjector(FlowProjector):
             # Ensure it's actually an integer (not a Mock or None)
             if isinstance(hgy, int):
                 high_growth_years = hgy
-        
+
         if high_growth_years is None:
             high_growth_years = years
 
@@ -283,7 +283,7 @@ def project_flows(
     The fade phase uses linear interpolation:
     - Year t in fade phase: g(t) = g_start * (1 - α) + g_term * α
     - Where α = (t - high_growth_years) / (years - high_growth_years)
-    
+
     Examples
     --------
     >>> # 5 years projection, 3 years high growth at 10%, then fade to 2%
