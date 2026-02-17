@@ -25,6 +25,8 @@ from app.state.session_manager import SessionManager  # noqa: E402
 from app.state.store import get_state  # noqa: E402
 from app.views.inputs.auto_form import render_auto_form  # noqa: E402
 from app.views.inputs.expert_form import render_expert_form  # noqa: E402
+
+# CORRECTED IMPORT: Using common sidebar path to ensure consistency with view logic
 from app.views.inputs.sidebar import render_sidebar  # noqa: E402
 
 # Views Imports
@@ -60,15 +62,19 @@ def main() -> None:
             st.rerun()
 
     # Priority 2: Results Dashboard (Pillars 0 to 5)
+    # This block is only entered if state.last_result is not None.
+    # Sidebar callbacks call SessionManager.reset_valuation() to clear this and return to forms.
     elif state.last_result:
         # Functional orchestrator renders the multi-pillar tabbed interface
         render_valuation_results(state.last_result)
 
-    # Priority 3: Empty State / Input Forms
+    # Priority 3: Expert Mode Form
+    # If mode is 'Approfondie', we render the specific methodology view
     elif state.is_expert_mode:
         render_expert_form()
 
-    # Priority 4: Onboarding
+    # Priority 4: Standard Mode / Onboarding
+    # Default landing page when no result and not in expert mode
     else:
         render_auto_form()
 

@@ -41,12 +41,24 @@ def render_sidebar():
     # --- INTERNAL CALLBACKS ---
 
     def _on_config_change():
-        """Reset valuation results in state whenever a core parameter changes."""
+        """
+        Synchronize local session state with global state object
+        and reset results to force form visibility.
+        """
+        # Explicit synchronization of widget keys to the state object
+        if "selected_methodology" in st.session_state:
+            state.selected_methodology = st.session_state.selected_methodology
+
+        if "projection_years" in st.session_state:
+            state.projection_years = st.session_state.projection_years
+
+        # Reset results to ensure the router in main.py switches back to input forms
         SessionManager.reset_valuation()
 
     def _on_mode_change():
         """Update expert mode flag based on the radio selection."""
-        state.is_expert_mode = st.session_state.mode_selector == "Approfondie"
+        # Comparison with the i18n constant to ensure robustness
+        state.is_expert_mode = st.session_state.mode_selector == SidebarTexts.SOURCE_EXPERT
         _on_config_change()
 
     with st.sidebar:
@@ -83,7 +95,7 @@ def render_sidebar():
         display_names = get_display_names()
         method_options = list(ValuationMethodology)
 
-        # Synchronized via session_state key
+        # Synchronized via session_state key and manual push in callback
         st.selectbox(
             SidebarTexts.METHOD_LABEL,
             options=method_options,
