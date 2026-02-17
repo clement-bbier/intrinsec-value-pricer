@@ -4,7 +4,7 @@ Point d'entrée des traductions de l'interface utilisateur.
 """
 
 from .common import CommonTexts, FeedbackMessages, LegalTexts, OnboardingTexts, TooltipsTexts, UIMessages
-from .expert import ExpertTexts, UISharedTexts
+from .expert import UISharedTexts
 from .extensions import ExtensionTexts, PeersTexts
 from .results import (
     BacktestTexts,
@@ -38,7 +38,6 @@ __all__ = [
     "InputLabels",
     "SOTPTexts",
     "MarketTexts",
-    "ExpertTexts",
     "ExtensionTexts",
     "PeersTexts",
     "SidebarTexts",

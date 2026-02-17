@@ -7,6 +7,7 @@ Textes de la barre latérale.
 class SidebarTexts:
     """Labels et en-têtes de la barre latérale."""
 
+    ANALYSIS = "Niveau d'analyse"
     LANGUAGE = "Langues"
     TITLE = "Paramétrage de l'analyse"
 
@@ -28,5 +29,5 @@ class SidebarTexts:
     SOURCE_EXPERT = "Approfondi (Paramétrage Manuel)"
     SOURCE_OPTIONS = [SOURCE_AUTO, SOURCE_EXPERT]
 
-    SETTINGS = "Paramètres"
+    SETTINGS = "Mode"
     DATA_SOURCE = "Source de données"

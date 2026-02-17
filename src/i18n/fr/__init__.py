@@ -18,7 +18,6 @@ from src.i18n.fr.ui import (
     BenchmarkTexts,
     ChartTexts,
     CommonTexts,
-    ExpertTexts,
     ExtensionTexts,
     FeedbackMessages,
     InputLabels,
@@ -52,7 +51,6 @@ __all__ = [
     "WorkflowTexts",
     # UI (presentation layer)
     "CommonTexts",
-    "ExpertTexts",
     "ExtensionTexts",
     "FeedbackMessages",
     "LegalTexts",

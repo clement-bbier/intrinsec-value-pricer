@@ -114,11 +114,11 @@ def render_sidebar():
         # --- 5. MODE SWITCH (Standard vs Approfondie) ---
         st.markdown(f"### {SidebarTexts.SETTINGS}")
 
-        mode_options = ["Standard", "Approfondie"]
+        mode_options = [SidebarTexts.SOURCE_AUTO, SidebarTexts.SOURCE_EXPERT]
         current_idx = 1 if state.is_expert_mode else 0
 
         st.radio(
-            "Niveau d'analyse",
+            SidebarTexts.ANALYSIS,
             options=mode_options,
             index=current_idx,
             horizontal=False,
