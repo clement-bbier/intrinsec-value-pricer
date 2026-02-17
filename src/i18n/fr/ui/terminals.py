@@ -65,7 +65,7 @@ class CommonTerminals:
     STEP_4_DESC = "Estimation de la valeur de l'entreprise au-delà de l'horizon de projection explicite."
 
     # Étape 5 : Bridge de Valeur
-    STEP_5_TITLE = "#### Étape 5 : Bridge de Valeur (Actif → Actionnaire)"
+    STEP_5_TITLE = "#### Étape 5 : Bridge de Valeur"
     STEP_5_DESC = "Passage de la valeur de l'actif économique (EV) à la valeur revenant aux actionnaires (Equity)."
 
     # ==========================================================================
