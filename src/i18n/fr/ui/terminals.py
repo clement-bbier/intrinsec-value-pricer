@@ -536,12 +536,3 @@ class DDMTexts(CommonTerminals):
 
     # Formule TV
     FORMULA_TV = r"TV_n = \frac{D_n(1+g_n)}{k_e - g_n}"
-
-
-class ExpertTexts:
-    """
-    Textes génériques pour le mode Expert.
-    """
-
-    TITLE = "Mode Expert"
-    SUBTITLE = "Configuration avancée des paramètres"

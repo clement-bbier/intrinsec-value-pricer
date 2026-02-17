@@ -15,7 +15,6 @@ This file provides aliases for backward compatibility with existing code.
 from src.i18n.fr.ui.terminals import (
     CommonTerminals,
     DDMTexts,
-    ExpertTexts,
     FCFETexts,
     FCFFGrowthTexts,
     FCFFNormalizedTexts,
@@ -38,5 +37,4 @@ __all__ = [
     "GrahamTexts",
     "FCFETexts",
     "DDMTexts",
-    "ExpertTexts",
 ]
