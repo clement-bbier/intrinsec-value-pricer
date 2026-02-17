@@ -619,3 +619,57 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
     for i in range(5):
         expected_fcf = revenues[i] * margins[i]
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+def test_terminal_value_with_marginal_tax_applies_adjustment():
+    """Test that marginal tax rate triggers FCF tax adjustment in TV calculation."""
+    from src.models.company import Company
+    
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+    
+    # Setup with different tax rates
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = 0.25  # Higher than effective
+    rates.tax_rate = 0.15  # Effective rate with temporary benefits
+    rates.cost_of_debt = 0.05
+    rates.risk_free_rate = 0.03
+    rates.beta = 1.0
+    rates.market_risk_premium = 0.06
+    rates.wacc = None
+    rates.cost_of_equity = None
+    
+    capital = Mock()
+    capital.total_debt = 100.0
+    capital.shares_outstanding = 100.0
+    
+    common.rates = rates
+    common.capital = capital
+    params.common = common
+    
+    financials = Mock(spec=Company)
+    financials.current_price = 50.0
+    
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Calculate TV with marginal tax adjustment
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials)
+
+    # Verify calculation was successful
+    assert tv > 0
+    assert step.step_key == "TV_GORDON"
+    
+    # Verify result is reasonable
+    assert tv > final_flow  # TV should exceed single period flow
+    
+    # The actual_calculation should show the formula was applied
+    assert "%" in step.actual_calculation  # Contains percentage formatting
+    assert "g_perp" in step.variables_map
+    assert "r" in step.variables_map

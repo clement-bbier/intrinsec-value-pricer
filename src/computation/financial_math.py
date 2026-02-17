@@ -124,11 +124,11 @@ def calculate_npv(flows: list[float], rate: float) -> float:
     return sum(f * d for f, d in zip(flows, factors))
 
 
-def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float) -> float:
+def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float, tax_adjustment_factor: float = 1.0) -> float:
     r"""
     Estimates Terminal Value using the Gordon Growth Model (Perpetuity).
 
-    $$TV = \frac{CF_n \times (1 + g)}{r - g}$$
+    $$TV = \frac{CF_n \times (1 + g) \times \text{tax\_adj}}{r - g}$$
 
     Parameters
     ----------
@@ -138,6 +138,10 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
         The discount rate (r), usually WACC or Ke.
     g_perp : float
         The perpetual growth rate (g).
+    tax_adjustment_factor : float, default 1.0
+        Adjustment factor to account for tax rate changes between explicit period and perpetuity.
+        When marginal tax rate differs from effective tax rate, this adjusts the operating 
+        profit component of FCF. Factor > 1 when marginal rate < effective rate (tax increase).
 
     Returns
     -------
@@ -148,10 +152,76 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
     ------
     CalculationError
         If the rate is $\leq$ growth rate, preventing model convergence.
+        
+    Notes
+    -----
+    The tax adjustment factor corrects for the fact that FCF_n was calculated using the
+    effective tax rate during the explicit period, but the terminal value should reflect
+    the marginal tax rate. This ensures rigorous consistency between the discount rate
+    and the cash flow assumptions in perpetuity.
     """
     if rate <= g_perp:
         raise CalculationError(CalculationErrors.CONVERGENCE_IMPOSSIBLE.format(rate=rate, g=g_perp))
-    return (final_flow * (1.0 + g_perp)) / (rate - g_perp)
+    return (final_flow * (1.0 + g_perp) * tax_adjustment_factor) / (rate - g_perp)
+
+
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float, 
+    marginal_tax_rate: float, 
+    operating_margin_estimate: float = 0.20
+) -> float:
+    r"""
+    Calculates the adjustment factor to convert FCF from effective to marginal tax rate.
+    
+    $$\text{factor} = \frac{1 - \tau_{marg}}{1 - \tau_{eff}} \times (1 - OM) + \frac{1 - \tau_{marg}}{1 - \tau_{eff}} \times OM$$
+    
+    Simplified for typical cases:
+    $$\text{factor} \approx 1 + OM \times (\tau_{eff} - \tau_{marg})$$
+    
+    Parameters
+    ----------
+    effective_tax_rate : float
+        The effective tax rate used during the explicit projection period (decimal).
+    marginal_tax_rate : float
+        The marginal legal tax rate for perpetuity (decimal).
+    operating_margin_estimate : float, default 0.20
+        Estimated EBIT/Revenue or NOPAT/FCF ratio. Used to estimate the taxable 
+        portion of FCF. Default 20% is conservative for mature companies.
+    
+    Returns
+    -------
+    float
+        Tax adjustment factor to apply to terminal cash flow.
+        - Factor = 1.0 when rates are equal (no adjustment needed)
+        - Factor < 1.0 when marginal > effective (tax goes up, FCF goes down)
+        - Factor > 1.0 when marginal < effective (tax goes down, FCF goes up)
+    
+    Notes
+    -----
+    FCF = NOPAT + DA - CapEx - ΔNWC where NOPAT = EBIT × (1 - τ).
+    
+    When tax rate changes, only NOPAT is affected, not non-cash items.
+    The operating_margin_estimate approximates what portion of FCF is tax-sensitive.
+    
+    Example:
+    - Effective rate: 15% (with temporary credits)
+    - Marginal rate: 25% (legal rate)
+    - Operating margin: 20%
+    - Factor ≈ 1 + 0.20 × (0.15 - 0.25) = 1 - 0.02 = 0.98 (2% reduction)
+    
+    This is a conservative approximation. For precise calculations, the user should
+    input a normalized FCF that already reflects the marginal tax rate.
+    """
+    if effective_tax_rate == marginal_tax_rate:
+        return 1.0
+    
+    # Simplified formula: approximate the impact on the taxable component
+    # FCF_adjusted ≈ FCF × [1 + OM × (τ_eff - τ_marg)]
+    tax_delta = effective_tax_rate - marginal_tax_rate
+    adjustment = 1.0 + (operating_margin_estimate * tax_delta)
+    
+    # Clamp to reasonable bounds (±50% adjustment maximum)
+    return max(0.5, min(1.5, adjustment))
 
 
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:

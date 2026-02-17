@@ -24,6 +24,7 @@ from src.computation.financial_math import (
     apply_dilution_adjustment,
     calculate_dilution_factor,
     calculate_discount_factors,
+    calculate_fcf_tax_adjustment_factor,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
     calculate_wacc_for_terminal_value,
@@ -283,23 +284,37 @@ class DCFLibrary:
             
             # Use marginal tax rate for terminal value WACC if available
             tv_discount_rate = discount_rate
+            tax_adjustment_factor = 1.0
             marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
             
             if marginal_tax_rate is not None and financials is not None:
                 # Recalculate WACC using marginal tax rate for terminal value
                 wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
                 tv_discount_rate = wacc_tv_breakdown.wacc
+                
+                # Calculate tax adjustment factor for FCF
+                # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                effective_tax_rate = params.common.rates.tax_rate or ModelDefaults.DEFAULT_TAX_RATE
+                if effective_tax_rate != marginal_tax_rate:
+                    tax_adjustment_factor = calculate_fcf_tax_adjustment_factor(
+                        effective_tax_rate=effective_tax_rate,
+                        marginal_tax_rate=marginal_tax_rate,
+                        operating_margin_estimate=0.20  # Conservative 20% for mature companies
+                    )
             
-            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp)
+            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
 
             # Build calculation step with appropriate discount rate
+            calculation_note = f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
+            calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
+            
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({tv_discount_rate:.1%} - {g_perp:.1%})"
-                ),
+                actual_calculation=calculation_note,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={

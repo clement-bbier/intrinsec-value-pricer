@@ -768,3 +768,68 @@ class TestCalculateTriangulatedPrice:
         # Should fallback to simple average since no active weights
         expected = (100.0 + 120.0) / 2.0
         assert price == pytest.approx(expected)
+
+
+class TestCalculateFCFTaxAdjustmentFactor:
+    """Tests for FCF tax adjustment factor calculation."""
+
+    def test_no_adjustment_when_rates_equal(self):
+        """Tax adjustment factor should be 1.0 when rates are equal."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        factor = calculate_fcf_tax_adjustment_factor(0.25, 0.25, 0.20)
+        assert factor == 1.0
+
+    def test_adjustment_when_marginal_higher(self):
+        """Factor < 1.0 when marginal rate > effective rate (tax increase, FCF decrease)."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 15%, Marginal 25%, Operating margin 20%
+        # Factor ≈ 1 + 0.20 × (0.15 - 0.25) = 1 - 0.02 = 0.98
+        factor = calculate_fcf_tax_adjustment_factor(0.15, 0.25, 0.20)
+        assert factor < 1.0
+        assert factor == pytest.approx(0.98, rel=1e-6)
+
+    def test_adjustment_when_marginal_lower(self):
+        """Factor > 1.0 when marginal rate < effective rate (tax decrease, FCF increase)."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 30%, Marginal 20%, Operating margin 20%
+        # Factor ≈ 1 + 0.20 × (0.30 - 0.20) = 1 + 0.02 = 1.02
+        factor = calculate_fcf_tax_adjustment_factor(0.30, 0.20, 0.20)
+        assert factor > 1.0
+        assert factor == pytest.approx(1.02, rel=1e-6)
+
+    def test_france_example(self):
+        """Test with France example: effective 36.1% -> marginal 25%."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 36.1%, Marginal 25%, Operating margin 20%
+        # Factor ≈ 1 + 0.20 × (0.361 - 0.25) = 1 + 0.0222 = 1.0222
+        factor = calculate_fcf_tax_adjustment_factor(0.361, 0.25, 0.20)
+        assert factor > 1.0
+        assert factor == pytest.approx(1.0222, rel=1e-3)
+
+    def test_higher_operating_margin(self):
+        """Higher operating margin means more sensitivity to tax changes."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # With 40% operating margin, impact should be double that of 20%
+        factor_20 = calculate_fcf_tax_adjustment_factor(0.15, 0.25, 0.20)
+        factor_40 = calculate_fcf_tax_adjustment_factor(0.15, 0.25, 0.40)
+        
+        assert factor_40 < factor_20  # More impact
+        # Both should be below 1.0 (tax increase)
+        assert factor_20 < 1.0
+        assert factor_40 < 1.0
+
+    def test_clamping_bounds(self):
+        """Extreme tax changes should be clamped to reasonable bounds."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Extreme case: effective 0%, marginal 90%
+        # Without clamping: 1 + 0.20 × (0 - 0.90) = 1 - 0.18 = 0.82
+        # But should be clamped to max ±50%
+        factor = calculate_fcf_tax_adjustment_factor(0.0, 0.90, 0.20)
+        assert factor >= 0.5  # Minimum bound
+        assert factor <= 1.5  # Maximum bound
