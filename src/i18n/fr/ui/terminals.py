@@ -267,13 +267,13 @@ class CommonTerminals:
     # ==========================================================================
     LABEL_DILUTION_SBC = "Impact Dilutif (SBC)"
     WARN_SBC_TECH = "Pour les sociétés Tech, prévoyez un taux de 1% à 3% pour refléter la dilution future."
-    
+
     # SBC Treatment Options
     LBL_SBC_TREATMENT = "Traitement de la rémunération en actions (SBC)"
     RADIO_SBC_DILUTION = "Dilution (Ajustement du nombre d'actions)"
     RADIO_SBC_EXPENSE = "Dépense Cash-flow (Charge réelle)"
     INP_SBC_ANNUAL_AMOUNT = f"Montant annuel estimé de la SBC {UNIT_MILLIONS}"
-    
+
     HELP_SBC_TREATMENT = (
         "Choisissez comment traiter la rémunération en actions :\n"
         "• DILUTION : Reflète la dilution future via une réduction de la valeur par action (méthode actuelle).\n"
