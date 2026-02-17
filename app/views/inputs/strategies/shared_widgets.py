@@ -240,6 +240,23 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
             key=f"{prefix}_{UIKeys.SHARES}",
         )
 
+        # IFRS 16 Off-balance-sheet liabilities
+        c6, c7 = st.columns(2)
+        c6.number_input(
+            CommonTerminals.INP_LEASE_LIABILITIES,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_LEASE_LIABILITIES,
+            key=f"{prefix}_{UIKeys.LEASE_LIABILITIES}",
+        )
+        c7.number_input(
+            CommonTerminals.INP_PENSION_LIABILITIES,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_PENSION_LIABILITIES,
+            key=f"{prefix}_{UIKeys.PENSION_LIABILITIES}",
+        )
+
     st.number_input(
         CommonTerminals.INP_SBC_DILUTION,
         value=None,

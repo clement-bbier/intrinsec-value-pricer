@@ -48,6 +48,8 @@ class UIKeys:
     CASH: str = "cash"
     MINORITIES: str = "min"
     PENSIONS: str = "pen"
+    LEASE_LIABILITIES: str = "lease_liab"
+    PENSION_LIABILITIES: str = "pension_liab"
     SHARES: str = "shares"
     SBC_RATE: str = "sbc_rate"
 
