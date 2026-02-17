@@ -146,8 +146,14 @@ class SimpleFlowProjector(FlowProjector):
 
         years = getattr(strat, "projection_years", 5) or 5
 
-        # High Growth Period: If not set, default to full projection period (no fade)
-        high_growth_years = getattr(strat, "high_growth_period", None)
+        # High Growth Period: If not set or not an integer, default to full projection period (no fade)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            # Ensure it's actually an integer (not a Mock or None)
+            if isinstance(hgy, int):
+                high_growth_years = hgy
+        
         if high_growth_years is None:
             high_growth_years = years
 
