@@ -81,18 +81,27 @@ class FCFFNormalizedParameters(BaseProjectedParameters):
     """
     DCF based on normalized flows to smooth out cyclicality.
 
+    Implements Damodaran value creation drivers: g = ROIC × Reinvestment Rate.
+
     Attributes
     ----------
     mode : ValuationMethodology
         Fixed to FCFF_NORMALIZED.
     fcf_norm : float | None
         The normalized (mid-cycle) Free Cash Flow.
+    roic : float | None
+        Return on Invested Capital (ROIC), used to compute growth.
+    reinvestment_rate : float | None
+        Proportion of earnings reinvested, used to compute growth.
     growth_rate : float | None
-        The growth rate applied to the normalized base.
+        Optional manual override for growth rate (g). If provided, used for
+        consistency validation against ROIC × Reinvestment Rate.
     """
 
     mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
     fcf_norm: Annotated[float | None, UIKey(UIKeys.FCF_NORM, scale="million")] = None
+    roic: Annotated[float | None, UIKey(UIKeys.ROIC, scale="pct")] = None
+    reinvestment_rate: Annotated[float | None, UIKey(UIKeys.REINVESTMENT_RATE, scale="pct")] = None
     growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
 
 
