@@ -41,12 +41,17 @@ def mock_params_fcff():
 
     params.strategy = strategy
 
-    # Mock common params for capital structure
+    # Mock common params for capital structure and rates
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
+    
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    
     common = Mock()
     common.capital = capital
+    common.rates = rates
     params.common = common
 
     return params
@@ -351,6 +356,13 @@ def test_compute_terminal_value_edge_case_small_spread():
     tv_params.perpetual_growth_rate = 0.095  # Very close to discount rate
     strategy.terminal_value = tv_params
     params.strategy = strategy
+    
+    # Add common.rates mock to prevent AttributeError
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    common.rates = rates
+    params.common = common
 
     final_flow = 1_000_000
     discount_rate = 0.10
@@ -360,6 +372,43 @@ def test_compute_terminal_value_edge_case_small_spread():
     # Should still calculate without error
     assert tv > 0
     assert tv > final_flow * 10  # Should be large with small spread
+
+
+def test_compute_terminal_value_with_marginal_tax_rate():
+    """Test that terminal value calculation works when marginal_tax_rate is provided."""
+    # This test verifies that having marginal_tax_rate doesn't break TV calculation
+    # Full WACC recalculation testing is covered in integration tests
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+    
+    # Mock common with marginal tax rate set
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = 0.25  # Marginal tax rate is set
+    common.rates = rates
+    params.common = common
+    
+    # Don't pass financials - should use standard discount rate
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Call without financials - should work normally despite marginal_tax_rate being set
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials=None)
+
+    # Verify TV was calculated correctly with standard Gordon model
+    # TV = FCF_n * (1+g) / (r - g) = 1,000,000 * 1.03 / (0.10 - 0.03)
+    expected_tv = 1_000_000 * 1.03 / 0.07
+    assert tv == pytest.approx(expected_tv, rel=1e-6)
+    assert step.step_key == "TV_GORDON"
+    
+    # Verify discount rate used is the one passed in (since no financials provided)
+    assert "r" in step.variables_map
+    assert step.variables_map["r"].value == discount_rate
 
 
 # ============================================================================
