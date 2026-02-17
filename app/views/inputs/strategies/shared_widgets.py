@@ -69,7 +69,7 @@ def widget_high_growth_years(key_prefix: str) -> None:
     """
     # Get projection_years from session_state (managed by sidebar)
     projection_years = st.session_state.get("projection_years", 5)
-    
+
     st.slider(
         CommonTerminals.INP_HIGH_GROWTH_YEARS,
         min_value=0,
