@@ -86,7 +86,7 @@ class StandardFCFFStrategy(IValuationRunner):
 
         # --- STEP 3: Terminal Value ---
         final_flow = flows[-1] if flows else fcf_base
-        tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params)
+        tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params, financials)
         if self._glass_box:
             steps.append(step_tv)
 

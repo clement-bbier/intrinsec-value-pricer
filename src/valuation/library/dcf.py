@@ -26,6 +26,7 @@ from src.computation.financial_math import (
     calculate_discount_factors,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    calculate_wacc_for_terminal_value,
 )
 
 # Configuration & i18n
@@ -246,22 +247,58 @@ class DCFLibrary:
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters
+        final_flow: float, discount_rate: float, params: Parameters, financials=None
     ) -> tuple[float, CalculationStep]:
-        """Calculates Terminal Value based on Strategy selection."""
+        """
+        Calculates Terminal Value based on Strategy selection.
+        
+        Parameters
+        ----------
+        final_flow : float
+            The last projected cash flow from the explicit period.
+        discount_rate : float
+            The discount rate for the explicit period (WACC or Ke).
+        params : Parameters
+            User-defined or automated parameters.
+        financials : Company, optional
+            Financial snapshots. Required to recalculate WACC with marginal tax rate for TV.
+        
+        Returns
+        -------
+        tuple[float, CalculationStep]
+            Terminal value and calculation step for audit trail.
+        
+        Notes
+        -----
+        If marginal_tax_rate is provided in params and financials is available,
+        the terminal value will be calculated using a WACC that applies the
+        marginal tax rate instead of the effective tax rate. This reflects that
+        temporary tax benefits are not perpetual.
+        """
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            tv = calculate_terminal_value_gordon(final_flow, discount_rate, g_perp)
+            
+            # Use marginal tax rate for terminal value WACC if available
+            tv_discount_rate = discount_rate
+            marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
+            
+            if marginal_tax_rate is not None and financials is not None:
+                # Recalculate WACC using marginal tax rate for terminal value
+                wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
+                tv_discount_rate = wacc_tv_breakdown.wacc
+            
+            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp)
 
+            # Build calculation step with appropriate discount rate
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
                 actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
+                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({tv_discount_rate:.1%} - {g_perp:.1%})"
                 ),
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
@@ -275,10 +312,10 @@ class DCFLibrary:
                     ),
                     "r": VariableInfo(
                         symbol="r",
-                        value=discount_rate,
-                        formatted_value=f"{discount_rate:.2%}",
+                        value=tv_discount_rate,
+                        formatted_value=f"{tv_discount_rate:.2%}",
                         source=VariableSource.CALCULATED,
-                        description="Discount Rate",
+                        description="Discount Rate (TV)" if marginal_tax_rate is not None else "Discount Rate",
                     ),
                 },
             )

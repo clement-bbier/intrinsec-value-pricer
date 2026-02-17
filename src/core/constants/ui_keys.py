@@ -38,6 +38,7 @@ class UIKeys:
     BETA: str = "beta"
     KD: str = "kd"
     TAX: str = "tax"
+    MARGINAL_TAX: str = "marginal_tax"
     YIELD_AAA: str = "yield_aaa"
     WACC_OVERRIDE: str = "wacc_override"
     KE_OVERRIDE: str = "ke_override"

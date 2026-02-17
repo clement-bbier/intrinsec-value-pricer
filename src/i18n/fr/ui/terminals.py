@@ -81,6 +81,7 @@ class CommonTerminals:
     INP_MRP = f"Prime de Risque Marché (MRP) {UNIT_PERCENT}"
     INP_KD = f"Coût de la Dette Brut (kd) {UNIT_PERCENT}"
     INP_TAX = f"Taux d'Imposition Effectif (τ) {UNIT_PERCENT}"
+    INP_MARGINAL_TAX = f"Taux d'Imposition Long-Terme (τ_LT) {UNIT_PERCENT}"
 
     # Croissance et Sortie
     INP_GROWTH_G = f"Taux de croissance moyen (g) {UNIT_PERCENT}"
@@ -114,6 +115,7 @@ class CommonTerminals:
     HELP_MRP = "Surprime historique exigée pour détenir des actions (Equity Risk Premium)."
     HELP_KD = "Coût moyen pondéré de la dette brute avant impact fiscal."
     HELP_TAX = "Taux réel d'imposition moyen attendu sur l'horizon de projection."
+    HELP_MARGINAL_TAX = "Taux d'imposition marginal légal appliqué à la Valeur Terminale. Les avantages fiscaux temporaires (crédits d'impôt, niches) ne sont pas perpétuels et ne doivent pas être extrapolés à l'infini."
 
     # Sortie (Concepts techniques)
     HELP_PERP_G = "Taux de croissance à l'infini (gn). Doit être ≤ croissance du PIB nominal."

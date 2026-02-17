@@ -80,7 +80,10 @@ class FinancialRatesParameters(BaseNormalizedModel):
     cost_of_debt : float | None
         The effective rate that a company pays on its debt (Pre-tax).
     tax_rate : float | None
-        The marginal corporate tax rate used to calculate the tax shield.
+        The effective corporate tax rate used to calculate the tax shield during the explicit period.
+    marginal_tax_rate : float | None
+        The long-term marginal legal tax rate applied to terminal value calculations.
+        Temporary tax benefits are not perpetual, so this rate reflects the normalized long-term rate.
     corporate_aaa_yield : float | None
         The benchmark yield for high-grade corporate bonds (used in Graham formulas).
     wacc : float | None
@@ -95,6 +98,7 @@ class FinancialRatesParameters(BaseNormalizedModel):
     beta: Annotated[float | None, UIKey(UIKeys.BETA, scale="raw")] = None
     cost_of_debt: Annotated[float | None, UIKey(UIKeys.KD, scale="pct")] = None
     tax_rate: Annotated[float | None, UIKey(UIKeys.TAX, scale="pct")] = None
+    marginal_tax_rate: Annotated[float | None, UIKey(UIKeys.MARGINAL_TAX, scale="pct")] = None
     corporate_aaa_yield: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
     wacc: Annotated[float | None, UIKey(UIKeys.WACC_OVERRIDE, scale="pct")] = None
     cost_of_equity: Annotated[float | None, UIKey(UIKeys.KE_OVERRIDE, scale="pct")] = None

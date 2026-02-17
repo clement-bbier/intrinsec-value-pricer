@@ -482,6 +482,53 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     the CAPM calculation and uses the override value directly. This is used
     in sensitivity analysis to test valuation response to discount rate changes.
     """
+    return _calculate_wacc_internal(financials, params, use_marginal_tax=False)
+
+
+def calculate_wacc_for_terminal_value(financials: Company, params: Parameters) -> WACCBreakdown:
+    r"""
+    Computes the WACC for Terminal Value calculation using marginal tax rate.
+
+    Parameters
+    ----------
+    financials : Company
+        Financial snapshots.
+    params : Parameters
+        Projection parameters.
+
+    Returns
+    -------
+    WACCBreakdown
+        Full technical decomposition using marginal tax rate for TV calculations.
+
+    Notes
+    -----
+    Temporary tax benefits are not perpetual. This function ensures the terminal
+    value uses the long-term marginal legal tax rate instead of the effective rate
+    from the growth period.
+    """
+    return _calculate_wacc_internal(financials, params, use_marginal_tax=True)
+
+
+def _calculate_wacc_internal(financials: Company, params: Parameters, use_marginal_tax: bool = False) -> WACCBreakdown:
+    r"""
+    Internal implementation for WACC calculation.
+
+    Parameters
+    ----------
+    financials : Company
+        Financial snapshots.
+    params : Parameters
+        Projection parameters.
+    use_marginal_tax : bool, default False
+        If True, uses marginal_tax_rate for terminal value calculation.
+        If False, uses standard tax_rate for explicit period.
+
+    Returns
+    -------
+    WACCBreakdown
+        Full technical decomposition for audit and rendering.
+    """
     r = params.common.rates
     c = params.common.capital
 
@@ -495,7 +542,11 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
 
         # Calculate Kd for display purposes
-        tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+        if use_marginal_tax and r.marginal_tax_rate is not None:
+            tax = r.marginal_tax_rate
+        else:
+            tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+        
         rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
 
         if r.cost_of_debt is not None:
@@ -531,8 +582,12 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     # 1. Calculate Ke
     ke = calculate_cost_of_equity(params)
 
-    # 2. Calculate Kd
-    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    # 2. Calculate Kd - Use marginal tax rate for TV if specified
+    if use_marginal_tax and r.marginal_tax_rate is not None:
+        tax = r.marginal_tax_rate
+    else:
+        tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    
     rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
 
     # Check for manual cost of debt override, else synthetic
