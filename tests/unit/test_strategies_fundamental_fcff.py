@@ -515,7 +515,7 @@ class TestFundamentalFCFFStrategy:
         assert result.results.common.intrinsic_value_per_share == 89.375
         
         # Verify that growth_rate was dynamically set based on ROIC × RR
-        # This happens internally before project_flows_simple is called
+        # This is the key test: the strategy modifies params.strategy.growth_rate internally
         assert params.strategy.growth_rate == pytest.approx(0.045, rel=0.01)
 
     @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")

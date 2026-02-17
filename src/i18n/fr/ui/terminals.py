@@ -350,7 +350,7 @@ class FCFFNormalizedTexts(CommonTerminals):
     HELP_ROIC = "Return on Invested Capital : rendement généré sur chaque euro réinvesti dans l'exploitation."
     
     INP_REINVESTMENT_RATE = f"Taux de Réinvestissement {CommonTerminals.UNIT_PERCENT}"
-    HELP_REINVESTMENT_RATE = "Proportion des flux réinvestis dans la croissance (CapEx + ΔBFRˡ - DA) / NOPAT."
+    HELP_REINVESTMENT_RATE = "Proportion des flux réinvestis dans la croissance (CapEx + ΔBFR - DA) / NOPAT."
     
     LBL_GROWTH_G = f"Taux de croissance (g) {CommonTerminals.UNIT_PERCENT}"
     HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
