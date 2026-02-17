@@ -15,6 +15,7 @@ import pytest
 from src.computation.financial_math import (
     WACCBreakdown,
     apply_dilution_adjustment,
+    calculate_comprehensive_net_debt,
     calculate_cost_of_equity,
     # Cost of capital
     calculate_cost_of_equity_capm,
@@ -210,6 +211,54 @@ class TestCalculateHistoricalShareGrowth:
         """Test that zero or negative shares return 0."""
         cagr = calculate_historical_share_growth([100.0, 0.0])
         assert cagr == 0.0
+
+
+@pytest.mark.unit
+class TestCalculateComprehensiveNetDebt:
+    """Test comprehensive net debt calculation (IFRS 16 compliance)."""
+
+    def test_all_components_present(self):
+        """Test with all debt components present."""
+        net_debt = calculate_comprehensive_net_debt(
+            total_debt=1000.0, cash=200.0, lease_liabilities=50.0, pension_liabilities=30.0
+        )
+        expected = 1000.0 + 50.0 + 30.0 - 200.0
+        assert net_debt == pytest.approx(expected)
+
+    def test_only_total_debt(self):
+        """Test with only total debt (no off-balance-sheet liabilities)."""
+        net_debt = calculate_comprehensive_net_debt(total_debt=1000.0, cash=200.0)
+        expected = 1000.0 - 200.0
+        assert net_debt == pytest.approx(expected)
+
+    def test_all_none_values(self):
+        """Test with all None values (returns 0)."""
+        net_debt = calculate_comprehensive_net_debt()
+        assert net_debt == 0.0
+
+    def test_only_leases(self):
+        """Test with only lease liabilities."""
+        net_debt = calculate_comprehensive_net_debt(lease_liabilities=50.0)
+        assert net_debt == pytest.approx(50.0)
+
+    def test_only_pensions(self):
+        """Test with only pension liabilities."""
+        net_debt = calculate_comprehensive_net_debt(pension_liabilities=30.0)
+        assert net_debt == pytest.approx(30.0)
+
+    def test_cash_exceeds_debt(self):
+        """Test when cash exceeds all debt (negative net debt)."""
+        net_debt = calculate_comprehensive_net_debt(total_debt=100.0, cash=500.0)
+        assert net_debt == pytest.approx(-400.0)
+
+    def test_comprehensive_scenario(self):
+        """Test realistic comprehensive scenario."""
+        net_debt = calculate_comprehensive_net_debt(
+            total_debt=5000.0, cash=1000.0, lease_liabilities=300.0, pension_liabilities=200.0
+        )
+        expected = 5000.0 + 300.0 + 200.0 - 1000.0
+        assert net_debt == pytest.approx(4500.0)
+        assert net_debt == pytest.approx(expected)
 
 
 @pytest.mark.unit

@@ -114,6 +114,10 @@ class CapitalStructureParameters(BaseNormalizedModel):
         Value of the portion of subsidiaries not owned by the parent company.
     pension_provisions : float | None
         Unfunded pension obligations treated as debt-equivalents.
+    lease_liabilities : float | None
+        Long-term lease obligations under IFRS 16 (Off-balance-sheet debt).
+    pension_liabilities : float | None
+        Pension and other post-retirement benefit plans (Off-balance-sheet debt).
     shares_outstanding : float | None
         Total number of shares used to calculate per-share intrinsic value.
     annual_dilution_rate : float | None
@@ -124,6 +128,8 @@ class CapitalStructureParameters(BaseNormalizedModel):
     cash_and_equivalents: Annotated[float | None, UIKey(UIKeys.CASH, scale="million")] = None
     minority_interests: Annotated[float | None, UIKey(UIKeys.MINORITIES, scale="million")] = None
     pension_provisions: Annotated[float | None, UIKey(UIKeys.PENSIONS, scale="million")] = None
+    lease_liabilities: Annotated[float | None, UIKey(UIKeys.LEASE_LIABILITIES, scale="million")] = None
+    pension_liabilities: Annotated[float | None, UIKey(UIKeys.PENSION_LIABILITIES, scale="million")] = None
     shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
     annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
 

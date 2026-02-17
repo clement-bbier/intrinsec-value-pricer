@@ -93,6 +93,8 @@ class CommonTerminals:
     INP_SHARES = f"Actions en circulation {UNIT_MILLIONS}"
     INP_MINORITIES = f"Intérêts Minoritaires {UNIT_MILLIONS}"
     INP_PENSIONS = f"Provisions / Engagements Sociaux {UNIT_MILLIONS}"
+    INP_LEASE_LIABILITIES = f"Engagements de Location (IFRS 16) {UNIT_MILLIONS}"
+    INP_PENSION_LIABILITIES = f"Engagements de Retraite (IFRS 16) {UNIT_MILLIONS}"
 
     # Dilution et Prix
     INP_PRICE_WEIGHTS = f"Cours de l'action {UNIT_CURRENCY}"
@@ -123,6 +125,8 @@ class CommonTerminals:
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
     HELP_DEBT = "Somme des dettes financières à court et long terme (Dette brute)."
     HELP_CASH = "Trésorerie disponible, équivalents de trésorerie et placements financiers."
+    HELP_LEASE_LIABILITIES = "Engagements locatifs long-terme selon IFRS 16 (Loyers capitalisés hors-bilan)."
+    HELP_PENSION_LIABILITIES = "Engagements au titre des retraites et avantages postérieurs à l'emploi (IFRS 16)."
     HELP_SBC_DILUTION = "Dilution annuelle moyenne liée à la rémunération en actions (Stock-Based Compensation)."
     HELP_PRICE_WEIGHTS = "Cours boursier de référence pour déterminer la pondération Equity/Dette dans le WACC."
 

@@ -206,4 +206,6 @@ class TestSidebarRendering:
 # =============================================================================
 # MAIN APP RENDERING
 # =============================================================================
-# Note: render_footer tests removed as the function does not exist in main.py
+
+# Note: render_footer tests removed as the function no longer exists in app.main
+

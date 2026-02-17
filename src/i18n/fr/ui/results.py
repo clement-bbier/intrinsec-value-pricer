@@ -138,6 +138,9 @@ class KPITexts:
     LABEL_MINORITIES = "Intérêts Minoritaires"
     LABEL_PENSIONS = "Engagements de Retraite"
     LABEL_EQUITY = "Valeur des Capitaux Propres"
+    LABEL_COMPREHENSIVE_NET_DEBT = "Dette Nette Consolidée (IFRS 16)"
+    LABEL_LEASE_LIABILITIES = "Engagements de Location (IFRS 16)"
+    LABEL_PENSION_LIABILITIES = "Engagements de Retraite (IFRS 16)"
 
     # --- Formules de substitution (Templates LaTeX) ---
     SUB_DILUTION = "{iv:.2f} / (1 + {rate:.2%})^{t}"

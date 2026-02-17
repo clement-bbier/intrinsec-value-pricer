@@ -215,6 +215,49 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
 # ==============================================================================
 
 
+def calculate_comprehensive_net_debt(
+    total_debt: float | None = None,
+    cash: float | None = None,
+    lease_liabilities: float | None = None,
+    pension_liabilities: float | None = None,
+) -> float:
+    r"""
+    Calculates comprehensive net debt including IFRS 16 off-balance-sheet liabilities.
+
+    Implements the IFRS 16 standard by including lease and pension obligations
+    as debt-equivalents in the equity bridge calculation.
+
+    $$NetDebt_{comprehensive} = Debt + Leases + Pensions - Cash$$
+
+    Parameters
+    ----------
+    total_debt : float, optional
+        Total interest-bearing debt.
+    cash : float, optional
+        Cash and cash equivalents.
+    lease_liabilities : float, optional
+        Long-term lease liabilities (IFRS 16).
+    pension_liabilities : float, optional
+        Pension and post-retirement benefit obligations.
+
+    Returns
+    -------
+    float
+        Comprehensive net debt including all off-balance-sheet liabilities.
+
+    Notes
+    -----
+    This function ensures IFRS 16 compliance by treating lease and pension
+    liabilities as debt-equivalents when calculating the equity bridge.
+    """
+    debt = total_debt or 0.0
+    cash_val = cash or 0.0
+    leases = lease_liabilities or 0.0
+    pensions = pension_liabilities or 0.0
+
+    return debt + leases + pensions - cash_val
+
+
 def calculate_historical_share_growth(shares_series: list[float]) -> float:
     r"""
     Calculates the historical CAGR of shares outstanding to estimate dilution.
@@ -762,11 +805,13 @@ def calculate_price_from_ev_multiple(
     shares: float,
     minorities: float = 0.0,
     pensions: float = 0.0,
+    lease_liabilities: float = 0.0,
+    pension_liabilities: float = 0.0,
 ) -> float:
     r"""
     Derives Price per Share from an Enterprise Value multiple (Equity Bridge).
 
-    $$Price = \frac{EV - NetDebt - Minorities - Pensions}{Shares}$$
+    $$Price = \frac{EV - NetDebt - Minorities - Pensions - Leases - PensionLiab}{Shares}$$
 
     Parameters
     ----------
@@ -782,6 +827,10 @@ def calculate_price_from_ev_multiple(
         Non-controlling interests.
     pensions : float, default 0.0
         Pension liability provisions.
+    lease_liabilities : float, default 0.0
+        Long-term lease liabilities (IFRS 16).
+    pension_liabilities : float, default 0.0
+        Pension and post-retirement benefit obligations (IFRS 16).
 
     Returns
     -------
@@ -792,7 +841,7 @@ def calculate_price_from_ev_multiple(
         return 0.0
 
     enterprise_value = metric_value * median_ev_multiple
-    equity_value = enterprise_value - net_debt - minorities - pensions
+    equity_value = enterprise_value - net_debt - minorities - pensions - lease_liabilities - pension_liabilities
     return max(0.0, equity_value / shares)
 
 
