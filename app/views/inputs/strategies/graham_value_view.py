@@ -17,6 +17,7 @@ class GrahamValueView(BaseStrategyView):
     MODE = ValuationMethodology.GRAHAM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
+    FORMULA_GLOBAL = Texts.FORMULA_GLOBAL
 
     # --- UI Pipeline Configuration (Standard Sections) ---
     SHOW_DISCOUNT_SECTION = False  # No WACC/Ke in the formula

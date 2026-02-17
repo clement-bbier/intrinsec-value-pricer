@@ -30,7 +30,7 @@ from app.views.inputs.strategies.shared_widgets import (
     widget_terminal_value_rim,
 )
 from src.config.constants import UIKeys
-from src.i18n.fr.ui.terminals import CommonTerminals
+from src.i18n.fr.ui.terminals import CommonTerminals, RIMTexts
 from src.models import ValuationMethodology
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,7 @@ class BaseStrategyView(ABC):
     MODE: ValuationMethodology = None
     DISPLAY_NAME: str = "Expert View"
     DESCRIPTION: str = ""
+    FORMULA_GLOBAL: str = ""
     ICON: str = ""
 
     # Rendering Options (Sections principales)
@@ -101,7 +102,7 @@ class BaseStrategyView(ABC):
         # Step 4: Exit Value (Terminal Value logic)
         if self.SHOW_TERMINAL_SECTION:
             if self.MODE == ValuationMethodology.RIM:
-                widget_terminal_value_rim(formula_latex=CommonTerminals.FORMULA_TV_RIM, key_prefix=self.MODE.name)
+                widget_terminal_value_rim(formula_latex=RIMTexts.FORMULA_TV_RIM, key_prefix=self.MODE.name)
             else:
                 widget_terminal_value_dcf(mode=self.MODE, key_prefix=self.MODE.name)
 
@@ -120,8 +121,11 @@ class BaseStrategyView(ABC):
         """Displays the model identity header."""
         title = f"{self.ICON} {self.DISPLAY_NAME}" if self.ICON else self.DISPLAY_NAME
         st.subheader(title)
+        if self.FORMULA_GLOBAL:
+            st.latex(self.FORMULA_GLOBAL)
         if self.DESCRIPTION:
             st.caption(self.DESCRIPTION)
+
         st.divider()
 
     @staticmethod

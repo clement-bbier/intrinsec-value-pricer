@@ -18,6 +18,7 @@ class DDMView(BaseStrategyView):
     MODE = ValuationMethodology.DDM
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
+    FORMULA_GLOBAL = Texts.FORMULA_GLOBAL
 
     # --- UI Pipeline Configuration (Sections Standards) ---
     SHOW_DISCOUNT_SECTION = True  # DDM uses Ke (Cost of Equity), not WACC

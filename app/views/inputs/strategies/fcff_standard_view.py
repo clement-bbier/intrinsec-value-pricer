@@ -16,6 +16,7 @@ class FCFFStandardView(BaseStrategyView):
     MODE = ValuationMethodology.FCFF_STANDARD
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
+    FORMULA_GLOBAL = Texts.FORMULA_GLOBAL
 
     # --- UI Pipeline Configuration ---
     SHOW_MONTE_CARLO = True

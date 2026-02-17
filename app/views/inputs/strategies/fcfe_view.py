@@ -17,6 +17,7 @@ class FCFEView(BaseStrategyView):
     MODE = ValuationMethodology.FCFE
     DISPLAY_NAME = Texts.TITLE
     DESCRIPTION = Texts.DESCRIPTION
+    FORMULA_GLOBAL = Texts.FORMULA_GLOBAL
 
     # --- UI Pipeline Configuration (Sections Standards) ---
     SHOW_DISCOUNT_SECTION = True  # FCFE uses Ke (Cost of Equity), not WACC

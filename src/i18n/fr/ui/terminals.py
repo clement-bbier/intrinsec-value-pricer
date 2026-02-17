@@ -442,7 +442,7 @@ class RIMTexts(CommonTerminals):
 Modélisation : RI_{t+1} = ω × RI_t (processus autorégressif AR(1), Ohlson 1995)"""
 
     # Formule TV RIM
-    FORMULA_TV = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
+    FORMULA_TV_RIM = r"TV_{RI} = \frac{RI_n \times \omega}{1 + k_e - \omega}"
 
     # Sections
     SEC_1_RIM_BASE = "1. Ancrage Comptable"
