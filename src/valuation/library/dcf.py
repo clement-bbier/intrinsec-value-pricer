@@ -281,7 +281,7 @@ class DCFLibrary:
             variables_map=variables,
         )
 
-        return fcfs, revenues, margins, step
+        return revenues, margins, fcfs, step
 
     @staticmethod
     def compute_terminal_value(
