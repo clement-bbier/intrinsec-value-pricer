@@ -110,7 +110,6 @@ class SOTPRunner:
         debt = cap.total_debt or 0.0
         cash = cap.cash_and_equivalents or 0.0
         minorities = cap.minority_interests or 0.0
-        pensions = cap.pension_provisions or 0.0
         lease_liabilities = cap.lease_liabilities or 0.0
         pension_liabilities = cap.pension_liabilities or 0.0
         shares = cap.shares_outstanding or 1.0
@@ -120,11 +119,11 @@ class SOTPRunner:
             total_debt=debt, cash=cash, lease_liabilities=lease_liabilities, pension_liabilities=pension_liabilities
         )
 
-        equity_value = consolidated_ev - comprehensive_net_debt - minorities - pensions
+        # Equity = EV - Comprehensive Net Debt - Minorities
+        equity_value = consolidated_ev - comprehensive_net_debt - minorities
         per_share_value = equity_value / shares if shares > 0 else 0.0
 
         # Note: For source tracking, we use SYSTEM (Resolver result).
-        # [CORRECTION] Utilisation stricte de VariableSource
         step2_vars = {
             "EV": VariableInfo(
                 symbol="EV",
@@ -132,6 +131,13 @@ class SOTPRunner:
                 formatted_value=format_smart_number(consolidated_ev),
                 source=VariableSource.CALCULATED,  # It comes from Step 1
                 description=RegistryTexts.DCF_EV_L,
+            ),
+            "Net_Debt": VariableInfo(
+                symbol="Net Debt",
+                value=comprehensive_net_debt,
+                formatted_value=format_smart_number(comprehensive_net_debt),
+                source=VariableSource.CALCULATED,
+                description="Comprehensive Net Debt (IFRS 16)",
             ),
             "Debt": VariableInfo(
                 symbol="Debt",
@@ -154,14 +160,13 @@ class SOTPRunner:
                 source=VariableSource.SYSTEM,
                 description=KPITexts.LABEL_MINORITIES,
             ),
-            "Pens": VariableInfo(
-                symbol="Pens",
-                value=pensions,
-                formatted_value=format_smart_number(pensions),
-                source=VariableSource.SYSTEM,
-                description=KPITexts.LABEL_PENSIONS,
-            ),
         }
+
+        # Build calculation display
+        calc_parts = [f"{format_smart_number(consolidated_ev)} (EV)"]
+        calc_parts.append(f"- {format_smart_number(comprehensive_net_debt)} (Net Debt)")
+        if minorities > 0.0:
+            calc_parts.append(f"- {format_smart_number(minorities)} (Min)")
 
         steps.append(
             CalculationStep(
@@ -169,10 +174,7 @@ class SOTPRunner:
                 step_key="SOTP_EQUITY_BRIDGE",
                 label=RegistryTexts.DCF_BRIDGE_L,
                 theoretical_formula=SOTPTexts.FORMULA_BRIDGE,
-                actual_calculation=(
-                    f"{format_smart_number(consolidated_ev)} - {format_smart_number(debt)} + "
-                    f"{format_smart_number(cash)} ..."
-                ),
+                actual_calculation=" ".join(calc_parts),
                 result=equity_value,
                 unit="currency",
                 interpretation=RegistryTexts.DCF_BRIDGE_D,
