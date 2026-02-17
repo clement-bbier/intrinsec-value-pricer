@@ -165,7 +165,7 @@ class CommonTerminals:
     MC_CALIBRATION = "Activer la simulation stochastique"
     MC_ITERATIONS = "Nombre d'itérations"
     MC_VOL_INCERTITUDE = "**Calibration des volatilités (Écarts-types σ)**"
-    MC_VOL_BASE_FLOW = f"Volatilité du flux de l'année 0"
+    MC_VOL_BASE_FLOW = "Volatilité du flux de l'année 0"
     MC_VOL_BETA = "Incertitude coefficient Bêta (σ)"
     MC_VOL_G = f"Incertitude croissance g {UNIT_PERCENT}"
     LBL_VOL_OMEGA = f"Incertitude persistance ω {UNIT_PERCENT}"
@@ -345,11 +345,20 @@ class FCFFNormalizedTexts(CommonTerminals):
 
     INP_BASE = f"Flux FCFF Normalisé {CommonTerminals.UNIT_MILLIONS}"
 
-    # Étape 2 : Croissance de Cycle
-    STEP_2_TITLE = "#### Étape 2 : Croissance de Cycle"
-    STEP_2_DESC = "Projection de la croissance moyenne stable attendue sur le cycle à venir."
-    HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
+    # Étape 2 : Drivers de Création de Valeur (Damodaran)
+    STEP_2_TITLE = "#### Étape 2 : Drivers de Création de Valeur (Damodaran)"
+    STEP_2_DESC = "Calcul de la croissance via les déterminants fondamentaux : rentabilité des réinvestissements."
+    STEP_2_FORMULA = r"g = ROIC \times \text{Taux de Réinvestissement}"
+
+    INP_ROIC = f"Rentabilité des Investissements (ROIC) {CommonTerminals.UNIT_PERCENT}"
+    HELP_ROIC = "Return on Invested Capital : rendement généré sur chaque euro réinvesti dans l'exploitation."
+
+    INP_REINVESTMENT_RATE = f"Taux de Réinvestissement {CommonTerminals.UNIT_PERCENT}"
+    HELP_REINVESTMENT_RATE = "Proportion des flux réinvestis dans la croissance (CapEx + ΔBFR - DA) / NOPAT."
+
     LBL_GROWTH_G = f"Taux de croissance (g) {CommonTerminals.UNIT_PERCENT}"
+    HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
+    HELP_GROWTH_OVERRIDE = "Optionnel : Surchargez g pour tester un scénario alternatif. Une vérification de cohérence sera effectuée."
 
     # Formule TV
     FORMULA_TV = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"

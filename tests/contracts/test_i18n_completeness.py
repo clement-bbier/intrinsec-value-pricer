@@ -149,6 +149,17 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
             UIRegistryTexts,
             UISharedTexts,
         )
+        # Import strategy-specific terminal texts directly
+        from src.i18n.fr.ui.terminals import (
+            CommonTerminals,
+            DDMTexts,
+            FCFETexts,
+            FCFFGrowthTexts,
+            FCFFNormalizedTexts,
+            FCFFStandardTexts,
+            GrahamTexts,
+            RIMTexts,
+        )
     except ImportError as e:
         pytest.fail(f"Failed to import i18n modules: {e}")
 
@@ -175,6 +186,15 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
         "UIMessages": UIMessages,
         "UIRegistryTexts": UIRegistryTexts,
         "UISharedTexts": UISharedTexts,
+        # Strategy-specific terminal texts
+        "CommonTerminals": CommonTerminals,
+        "DDMTexts": DDMTexts,
+        "FCFETexts": FCFETexts,
+        "FCFFGrowthTexts": FCFFGrowthTexts,
+        "FCFFNormalizedTexts": FCFFNormalizedTexts,
+        "FCFFStandardTexts": FCFFStandardTexts,
+        "GrahamTexts": GrahamTexts,
+        "RIMTexts": RIMTexts,
     }
 
     # Scan app/ directory
