@@ -101,6 +101,7 @@ class CommonTerminals:
     # Dilution et Prix
     INP_PRICE_WEIGHTS = f"Cours de l'action {UNIT_CURRENCY}"
     INP_SBC_DILUTION = f"Taux de dilution annuelle attendu {UNIT_PERCENT}"
+    INP_TARGET_DEBT_RATIO = f"Ratio d'endettement cible (D/(D+E)) {UNIT_PERCENT}"
 
     # Facteurs Spéciaux
     INP_OMEGA = "Facteur de persistance (ω)"
@@ -136,6 +137,7 @@ class CommonTerminals:
     HELP_PENSION_LIABILITIES = "Engagements au titre des retraites et avantages postérieurs à l'emploi (IFRS 16)."
     HELP_SBC_DILUTION = "Dilution annuelle moyenne liée à la rémunération en actions (Stock-Based Compensation)."
     HELP_PRICE_WEIGHTS = "Cours boursier de référence pour déterminer la pondération Equity/Dette dans le WACC."
+    HELP_TARGET_DEBT_RATIO = "Structure de capital cible normative. Si définie, évite la circularité liée au cours de marché dans le calcul du WACC."
 
     # Facteurs spéciaux (Concepts techniques)
     HELP_OMEGA = "Facteur de persistance des surprofits : 0 = érosion immédiate, 1 = rente perpétuelle."

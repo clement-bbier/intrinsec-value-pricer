@@ -524,9 +524,25 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     If params.common.rates.wacc is provided (manual override), it bypasses
     the CAPM calculation and uses the override value directly. This is used
     in sensitivity analysis to test valuation response to discount rate changes.
+
+    If params.common.rates.target_debt_to_capital is provided, uses the target
+    capital structure ratio instead of market-based weights to avoid circularity
+    with the intrinsic price calculation. In this case, beta is adjusted using
+    the Hamada formula to reflect the target financial risk:
+
+    1. Unlever current beta: β_u = β_L / (1 + (1-T) × D/E_market)
+    2. Relever to target: β_target = β_u × (1 + (1-T) × D/E_target)
     """
     r = params.common.rates
     c = params.common.capital
+
+    # Extract common parameters
+    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+    debt = c.total_debt if c.total_debt is not None else 0.0
+    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+    market_equity = financials.current_price * shares
+    total_cap = market_equity + debt
 
     # 0. Check for WACC override (used in sensitivity analysis)
     if r.wacc is not None:
@@ -538,26 +554,22 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
 
         # Calculate Kd for display purposes
-        tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
-        rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
-
         if r.cost_of_debt is not None:
             kd_gross = r.cost_of_debt
         else:
-            mcap = financials.current_price * (c.shares_outstanding or 1.0)
+            mcap = financials.current_price * shares
             ebit = getattr(financials, "ebit_ttm", None) or 0.0
             interest = getattr(financials, "interest_expense", None) or 0.0
             kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
 
         kd_net = kd_gross * (1.0 - tax)
 
-        # Calculate weights for display
-        debt = c.total_debt if c.total_debt is not None else 0.0
-        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
-        market_equity = financials.current_price * shares
-
-        total_cap = market_equity + debt
-        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        # Calculate weights for display (use target if provided, else market-based)
+        if r.target_debt_to_capital is not None:
+            wd = r.target_debt_to_capital
+            we = 1.0 - wd
+        else:
+            we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
 
         return WACCBreakdown(
             cost_of_equity=ke,
@@ -565,43 +577,64 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
             cost_of_debt_after_tax=kd_net,
             weight_equity=we,
             weight_debt=wd,
-            wacc=r.wacc,  # Use the override value
+            wacc=r.wacc,
             method=StrategySources.MANUAL_OVERRIDE,
             beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
             beta_adjusted=False,
         )
 
-    # 1. Calculate Ke
-    ke = calculate_cost_of_equity(params)
-
-    # 2. Calculate Kd
-    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
-    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
-
-    # Check for manual cost of debt override, else synthetic
+    # 1. Calculate Kd
     if r.cost_of_debt is not None:
         kd_gross = r.cost_of_debt
     else:
         # Need market cap for table selection
-        mcap = financials.current_price * (c.shares_outstanding or 1.0)
-
-        # Extract EBIT and Interest from the Company identity if available
-        # Fallback to 0.0 triggers the A-rated proxy spread (safe default)
+        mcap = financials.current_price * shares
         ebit = getattr(financials, "ebit_ttm", None) or 0.0
         interest = getattr(financials, "interest_expense", None) or 0.0
-
         kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
 
     kd_net = kd_gross * (1.0 - tax)
 
-    # 3. Capital Structure Weights
-    debt = c.total_debt if c.total_debt is not None else 0.0
-    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
-    market_equity = financials.current_price * shares
+    # 2. Calculate Ke with optional Hamada adjustment
+    beta_adjusted = False
+    beta_used = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
 
-    total_cap = market_equity + debt
-    we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+    if r.target_debt_to_capital is not None:
+        # Apply Hamada adjustment: unlever then relever beta to target structure
 
+        # Calculate current market D/E ratio
+        current_de_ratio = debt / market_equity if market_equity > 0 else 0.0
+
+        # Unlever current beta to remove financial risk
+        unlevered_beta = unlever_beta(beta_used, tax, current_de_ratio)
+
+        # Calculate target D/E ratio from target D/(D+E)
+        target_de_ratio = r.target_debt_to_capital / (1.0 - r.target_debt_to_capital) if r.target_debt_to_capital < 1.0 else 0.0
+
+        # Relever beta to target capital structure
+        beta_target = relever_beta(unlevered_beta, tax, target_de_ratio)
+
+        # Use adjusted beta for Ke calculation
+        beta_used = beta_target
+        beta_adjusted = True
+
+        # Calculate Ke with adjusted beta
+        mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+        ke = calculate_cost_of_equity_capm(rf, beta_target, mrp)
+
+        # Use target capital structure weights
+        wd = r.target_debt_to_capital
+        we = 1.0 - wd
+        method = StrategySources.WACC_TARGET
+    else:
+        # Use standard Ke calculation without beta adjustment
+        ke = calculate_cost_of_equity(params)
+
+        # Use market-based weights
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        method = StrategySources.WACC_MARKET
+
+    # 3. Calculate WACC
     wacc_raw = (we * ke) + (wd * kd_net)
 
     return WACCBreakdown(
@@ -611,9 +644,9 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
         weight_equity=we,
         weight_debt=wd,
         wacc=wacc_raw,
-        method=StrategySources.WACC_MARKET,
-        beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
-        beta_adjusted=False,
+        method=method,
+        beta_used=beta_used,
+        beta_adjusted=beta_adjusted,
     )
 
 

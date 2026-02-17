@@ -569,6 +569,129 @@ class TestCalculateWACC:
         assert breakdown.cost_of_debt_pre_tax == pytest.approx(0.08)
         assert breakdown.cost_of_debt_after_tax == pytest.approx(0.08 * 0.75)
 
+    def test_target_debt_to_capital_ratio(self):
+        """Test WACC with target debt-to-capital ratio and Hamada adjustment."""
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 100.0
+
+        # Set target debt-to-capital ratio of 30%
+        rates = FinancialRatesParameters(
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=6.0,
+            target_debt_to_capital=30.0,  # 30% debt, 70% equity
+        )
+        # Market structure: debt=5000, equity=100*1000=100000, D/E_market = 0.05
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        common = CommonParameters(rates=rates, capital=capital)
+
+        params = Mock(spec=Parameters)
+        params.common = common
+
+        breakdown = calculate_wacc(company, params)
+
+        # Verify target weights were used (not market-based)
+        assert breakdown.weight_debt == pytest.approx(0.30)
+        assert breakdown.weight_equity == pytest.approx(0.70)
+
+        # Verify beta was adjusted (Hamada)
+        assert breakdown.beta_adjusted is True
+
+        # Calculate expected adjusted beta
+        # Current D/E = 5000 / 100000 = 0.05
+        # Unlever: β_u = 1.2 / (1 + 0.75 * 0.05) = 1.2 / 1.0375 = 1.1566
+        # Target D/E = 0.30 / 0.70 = 0.4286
+        # Relever: β_target = 1.1566 * (1 + 0.75 * 0.4286) = 1.1566 * 1.3215 = 1.5283
+        current_de = 5000.0 / 100000.0
+        unlevered_beta = 1.2 / (1.0 + 0.75 * current_de)
+        target_de = 0.30 / 0.70
+        expected_beta = unlevered_beta * (1.0 + 0.75 * target_de)
+
+        assert breakdown.beta_used == pytest.approx(expected_beta, rel=1e-3)
+
+        # Verify Ke uses adjusted beta: Ke = Rf + Beta_adjusted * MRP
+        expected_ke = 0.04 + expected_beta * 0.05
+        assert breakdown.cost_of_equity == pytest.approx(expected_ke, rel=1e-3)
+
+        # Verify Kd_net = Kd * (1 - T) = 0.06 * 0.75 = 0.045
+        assert breakdown.cost_of_debt_after_tax == pytest.approx(0.06 * 0.75)
+
+        # Verify WACC = we * ke + wd * kd_net
+        expected_wacc = 0.70 * expected_ke + 0.30 * (0.06 * 0.75)
+        assert breakdown.wacc == pytest.approx(expected_wacc, rel=1e-3)
+
+        # Verify method uses i18n constant
+        from src.i18n import StrategySources
+        assert breakdown.method == StrategySources.WACC_TARGET
+
+    def test_target_debt_to_capital_with_wacc_override(self):
+        """Test that target ratio is used for display even with WACC override."""
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 100.0
+
+        rates = FinancialRatesParameters(
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=6.0,
+            target_debt_to_capital=40.0,  # 40% debt
+            wacc=9.0,  # Manual WACC override
+        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        common = CommonParameters(rates=rates, capital=capital)
+
+        params = Mock(spec=Parameters)
+        params.common = common
+
+        breakdown = calculate_wacc(company, params)
+
+        # Verify WACC override was used
+        assert breakdown.wacc == pytest.approx(0.09)
+
+        # Verify target weights were used for display
+        assert breakdown.weight_debt == pytest.approx(0.40)
+        assert breakdown.weight_equity == pytest.approx(0.60)
+
+        # Beta adjustment should not occur with WACC override
+        assert breakdown.beta_adjusted is False
+
+    def test_market_based_wacc_no_beta_adjustment(self):
+        """Test that market-based WACC does not adjust beta."""
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 100.0
+
+        rates = FinancialRatesParameters(
+            risk_free_rate=4.0,
+            market_risk_premium=5.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=6.0,
+        )
+        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        common = CommonParameters(rates=rates, capital=capital)
+
+        params = Mock(spec=Parameters)
+        params.common = common
+
+        breakdown = calculate_wacc(company, params)
+
+        # Verify beta was NOT adjusted for market-based calculation
+        assert breakdown.beta_adjusted is False
+        assert breakdown.beta_used == pytest.approx(1.2)
+
+        # Verify Ke uses original beta
+        expected_ke = 0.04 + 1.2 * 0.05
+        assert breakdown.cost_of_equity == pytest.approx(expected_ke)
+
 
 # ==============================================================================
 # 4. SHAREHOLDER MODELS (FCFE & DDM)
