@@ -168,7 +168,6 @@ class TestAllExportsImportable:
             "SharedTexts",
             "WorkflowTexts",
             "CommonTexts",
-            "ExpertTexts",
             "ExtensionTexts",
             "ResultsTexts",
             "SidebarTexts",

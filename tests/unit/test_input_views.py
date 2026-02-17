@@ -207,35 +207,5 @@ class TestSidebarRendering:
 # MAIN APP RENDERING
 # =============================================================================
 
+# Note: render_footer tests removed as the function no longer exists in app.main
 
-class TestMainRendering:
-    """Tests main.py render_footer with mocked streamlit."""
-
-    @patch("app.main.st")
-    def test_render_footer(self, mock_st):
-        """render_footer must call st.markdown for version, CI, coverage."""
-
-        col_mocks = [MagicMock(), MagicMock(), MagicMock()]
-        for col in col_mocks:
-            col.__enter__ = MagicMock(return_value=col)
-            col.__exit__ = MagicMock(return_value=False)
-        mock_st.columns.return_value = col_mocks
-
-
-        mock_st.markdown.assert_called()
-
-    @patch("app.main.st")
-    def test_render_footer_no_emojis(self, mock_st):
-        """render_footer must not contain emoji characters in output."""
-
-        col_mocks = [MagicMock(), MagicMock(), MagicMock()]
-        for col in col_mocks:
-            col.__enter__ = MagicMock(return_value=col)
-            col.__exit__ = MagicMock(return_value=False)
-        mock_st.columns.return_value = col_mocks
-
-
-        for call in mock_st.markdown.call_args_list:
-            text = call[0][0] if call[0] else ""
-            assert "\u2705" not in text
-            assert "\U0001f4ca" not in text
