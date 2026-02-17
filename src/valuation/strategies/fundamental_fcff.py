@@ -103,15 +103,15 @@ class FundamentalFCFFStrategy(IValuationRunner):
         roic = strategy_params.roic
         reinvestment_rate = strategy_params.reinvestment_rate
         user_growth = strategy_params.growth_rate
-        
+
         # Calculate g from value drivers if both ROIC and reinvestment rate are provided
         if roic is not None and reinvestment_rate is not None:
             g_derived = roic * reinvestment_rate
-            
+
             # Consistency check if user also provided manual growth override
             if user_growth is not None:
-                # Allow 1% tolerance for rounding differences
-                tolerance = 0.01
+                # Allow 0.1% tolerance (10 bps) for rounding differences
+                tolerance = 0.001
                 diff = abs(g_derived - user_growth)
                 if diff > tolerance:
                     # Log warning but continue (user override takes precedence)
@@ -119,11 +119,11 @@ class FundamentalFCFFStrategy(IValuationRunner):
                         steps.append(
                             CalculationStep(
                                 step_key="GROWTH_CONSISTENCY_CHECK",
-                                label="Vérification de Cohérence (g)",
+                                label=StrategyInterpretations.GROWTH_CONSISTENCY_CHECK,
                                 theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
                                 actual_calculation=f"g_derived={g_derived:.2%} vs g_override={user_growth:.2%} (Δ={diff:.2%})",
                                 result=user_growth,
-                                interpretation=f"AVERTISSEMENT: Écart détecté entre g calculé ({g_derived:.2%}) et g manuel ({user_growth:.2%}). Utilisation de g manuel.",
+                                interpretation=StrategyInterpretations.GROWTH_WARNING.format(g_derived=g_derived, g_user=user_growth),
                                 source=StrategySources.MANUAL_OVERRIDE,
                                 variables_map={
                                     "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
@@ -138,17 +138,17 @@ class FundamentalFCFFStrategy(IValuationRunner):
             else:
                 # Use derived growth
                 growth_to_use = g_derived
-                
+
             # Trace the growth calculation
             if self._glass_box and user_growth is None:
                 steps.append(
                     CalculationStep(
                         step_key="GROWTH_CALCULATION",
-                        label="Calcul de la Croissance (Drivers de Valeur)",
+                        label=StrategyInterpretations.GROWTH_CALCULATION,
                         theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
                         actual_calculation=f"g = {roic:.2%} × {reinvestment_rate:.2%} = {g_derived:.2%}",
                         result=g_derived,
-                        interpretation=f"Croissance dérivée des fondamentaux: ROIC de {roic:.1%} multiplié par taux de réinvestissement de {reinvestment_rate:.1%}",
+                        interpretation=StrategyInterpretations.GROWTH_INTERPRETATION.format(roic=roic, reinvestment_rate=reinvestment_rate),
                         source=StrategySources.COMPUTED_VALUE_DRIVERS,
                         variables_map={
                             "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
@@ -157,7 +157,7 @@ class FundamentalFCFFStrategy(IValuationRunner):
                         },
                     )
                 )
-            
+
             # Temporarily override growth_rate for projection
             strategy_params.growth_rate = growth_to_use
 
