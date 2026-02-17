@@ -37,6 +37,7 @@ def mock_params_fcff():
     terminal_value.perpetual_growth_rate = 0.03
     terminal_value.method = TerminalValueMethod.GORDON_GROWTH
     terminal_value.exit_multiple = 10.0
+    terminal_value.roic_stable = None  # Add roic_stable field
     strategy.terminal_value = terminal_value
 
     params.strategy = strategy
@@ -60,8 +61,9 @@ def mock_params_ddm():
     strategy.growth_rate = 0.06
     strategy.projection_years = 5
 
-    terminal_value = Mock(spec=["perpetual_growth_rate"])
+    terminal_value = Mock(spec=["perpetual_growth_rate", "roic_stable"])
     terminal_value.perpetual_growth_rate = 0.025
+    terminal_value.roic_stable = None
     strategy.terminal_value = terminal_value
 
     params.strategy = strategy
@@ -87,6 +89,7 @@ def mock_params_revenue_model():
 
     terminal_value = Mock()
     terminal_value.perpetual_growth_rate = 0.03
+    terminal_value.roic_stable = None
     strategy.terminal_value = terminal_value
 
     params.strategy = strategy
@@ -349,6 +352,7 @@ def test_compute_terminal_value_edge_case_small_spread():
     tv_params = Mock()
     tv_params.method = TerminalValueMethod.GORDON_GROWTH
     tv_params.perpetual_growth_rate = 0.095  # Very close to discount rate
+    tv_params.roic_stable = None
     strategy.terminal_value = tv_params
     params.strategy = strategy
 
@@ -570,3 +574,176 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
     for i in range(5):
         expected_fcf = revenues[i] * margins[i]
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+# ============================================================================
+# GOLDEN RULE INTEGRATION TESTS
+# ============================================================================
+
+
+def test_compute_terminal_value_with_golden_rule():
+    """Test terminal value with Golden Rule adjustment applied."""
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03  # 3% growth
+    tv_params.roic_stable = 0.15  # 15% ROIC -> 20% reinvestment
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+
+    # Expected: reinvestment = 3% / 15% = 20%
+    # Adjusted flow = 1,000,000 * (1 - 0.2) = 800,000
+    # TV = 800,000 * 1.03 / (0.10 - 0.03) = 11,771,428.57
+    expected_adjusted_flow = 1_000_000 * 0.8
+    expected_tv = expected_adjusted_flow * 1.03 / 0.07
+
+    assert tv == pytest.approx(expected_tv, rel=1e-4)
+
+    # Check that Golden Rule variables are in the step
+    assert "reinvestment_rate" in step.variables_map
+    assert "ROIC_stable" in step.variables_map
+    assert "FCF_adjusted" in step.variables_map
+    assert "FCF_unadjusted" in step.variables_map
+
+    # Verify values
+    assert step.variables_map["reinvestment_rate"].value == pytest.approx(0.2, rel=1e-6)
+    assert step.variables_map["ROIC_stable"].value == 0.15
+    assert step.variables_map["FCF_adjusted"].value == pytest.approx(expected_adjusted_flow, rel=1e-6)
+    assert step.variables_map["FCF_unadjusted"].value == pytest.approx(final_flow, rel=1e-6)
+
+
+def test_compute_terminal_value_without_golden_rule():
+    """Test terminal value without Golden Rule adjustment (roic_stable=None)."""
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    tv_params.roic_stable = None  # No ROIC provided
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+
+    # Expected: No adjustment
+    # TV = 1,000,000 * 1.03 / (0.10 - 0.03) = 14,714,285.71
+    expected_tv = final_flow * 1.03 / 0.07
+
+    assert tv == pytest.approx(expected_tv, rel=1e-4)
+
+    # Check that Golden Rule variables are NOT in the step (no adjustment)
+    assert "reinvestment_rate" not in step.variables_map
+    assert "ROIC_stable" not in step.variables_map
+    assert "FCF_adjusted" not in step.variables_map
+    assert "FCF_unadjusted" not in step.variables_map
+
+
+def test_compute_terminal_value_zero_roic():
+    """Test terminal value with zero ROIC (prevents division by zero)."""
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    tv_params.roic_stable = 0.0  # Zero ROIC
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+
+    # Expected: No adjustment (conservative approach with zero ROIC)
+    expected_tv = final_flow * 1.03 / 0.07
+
+    assert tv == pytest.approx(expected_tv, rel=1e-4)
+
+    # Golden Rule not applied
+    assert "reinvestment_rate" not in step.variables_map
+
+
+def test_compute_terminal_value_high_roic():
+    """Test terminal value with high ROIC (low reinvestment rate)."""
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.025  # 2.5% growth
+    tv_params.roic_stable = 0.25  # 25% ROIC -> 10% reinvestment
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    final_flow = 2_000_000
+    discount_rate = 0.09
+
+    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+
+    # Expected: reinvestment = 2.5% / 25% = 10%
+    # Adjusted flow = 2,000,000 * (1 - 0.1) = 1,800,000
+    expected_adjusted_flow = 2_000_000 * 0.9
+    expected_tv = expected_adjusted_flow * 1.025 / (0.09 - 0.025)
+
+    assert tv == pytest.approx(expected_tv, rel=1e-4)
+    assert step.variables_map["reinvestment_rate"].value == pytest.approx(0.1, rel=1e-6)
+
+
+def test_golden_rule_full_workflow():
+    """Integration test: Full DCF workflow with Golden Rule."""
+    params = Mock(spec=Parameters)
+    
+    # Setup strategy
+    strategy = Mock()
+    strategy.growth_rate_p1 = 0.08
+    strategy.projection_years = 5
+    
+    # Setup terminal value with Golden Rule
+    terminal_value = Mock()
+    terminal_value.perpetual_growth_rate = 0.03
+    terminal_value.method = TerminalValueMethod.GORDON_GROWTH
+    terminal_value.roic_stable = 0.12  # 12% ROIC
+    strategy.terminal_value = terminal_value
+    
+    params.strategy = strategy
+    
+    # Setup capital structure
+    capital = Mock()
+    capital.shares_outstanding = 100_000_000
+    capital.annual_dilution_rate = 0.02
+    common = Mock()
+    common.capital = capital
+    params.common = common
+
+    # 1. Project flows
+    base_flow = 1_000_000
+    flows, proj_step = DCFLibrary.project_flows_simple(base_flow, params)
+    assert len(flows) == 5
+
+    # 2. Calculate terminal value with Golden Rule
+    final_flow = flows[-1]
+    discount_rate = 0.10
+    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    
+    # Verify Golden Rule was applied
+    assert "reinvestment_rate" in tv_step.variables_map
+    expected_reinv_rate = 0.03 / 0.12  # 25%
+    assert tv_step.variables_map["reinvestment_rate"].value == pytest.approx(expected_reinv_rate, rel=1e-4)
+    
+    assert tv > 0
+
+    # 3. Discount everything
+    total_ev, disc_step = DCFLibrary.compute_discounting(flows, tv, discount_rate)
+    assert total_ev > 0
+
+    # 4. Calculate per-share value
+    final_iv, iv_step = DCFLibrary.compute_value_per_share(total_ev, params)
+    assert final_iv > 0

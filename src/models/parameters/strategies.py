@@ -32,11 +32,17 @@ class TerminalValueParameters(BaseNormalizedModel):
         The stable growth rate (g) assumed in perpetuity (Gordon Growth).
     exit_multiple : float | None
         The EV/EBITDA or PE multiple applied to the final projected year.
+    roic_stable : float | None
+        Return on Invested Capital in stable state (decimal form, e.g., 0.15 for 15%).
+        Used to apply the "Golden Rule" of terminal value: ensures consistency
+        between perpetual growth and required reinvestment. If None, no adjustment
+        is applied (conservative approach).
     """
 
     method: TerminalValueMethod | None = None
     perpetual_growth_rate: Annotated[float | None, UIKey(UIKeys.GN, scale="pct")] = None
     exit_multiple: Annotated[float | None, UIKey(UIKeys.EXIT_MULT, scale="raw")] = None
+    roic_stable: Annotated[float | None, UIKey(UIKeys.ROIC_STABLE, scale="pct")] = None
 
 
 class BaseProjectedParameters(BaseNormalizedModel):

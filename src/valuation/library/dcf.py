@@ -26,6 +26,7 @@ from src.computation.financial_math import (
     calculate_discount_factors,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    normalize_terminal_flow_for_stable_state,
 )
 
 # Configuration & i18n
@@ -254,33 +255,85 @@ class DCFLibrary:
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            tv = calculate_terminal_value_gordon(final_flow, discount_rate, g_perp)
+            roic_stable = tv_params.roic_stable  # Can be None
+            
+            # Apply Golden Rule: Normalize terminal flow for sustainable reinvestment
+            adjusted_flow, reinvestment_rate = normalize_terminal_flow_for_stable_state(
+                final_flow, g_perp, roic_stable
+            )
+            
+            # Calculate terminal value using the adjusted flow
+            tv = calculate_terminal_value_gordon(adjusted_flow, discount_rate, g_perp)
+
+            # Build variables map
+            variables_map = {
+                "g_perp": VariableInfo(
+                    symbol="g",
+                    value=g_perp,
+                    formatted_value=f"{g_perp:.2%}",
+                    source=VariableSource.MANUAL_OVERRIDE,
+                    description=SharedTexts.INP_PERP_G,
+                ),
+                "r": VariableInfo(
+                    symbol="r",
+                    value=discount_rate,
+                    formatted_value=f"{discount_rate:.2%}",
+                    source=VariableSource.CALCULATED,
+                    description="Discount Rate",
+                ),
+            }
+            
+            # Add Golden Rule details if adjustment was applied
+            if reinvestment_rate > 0:
+                variables_map["FCF_unadjusted"] = VariableInfo(
+                    symbol="FCF_n",
+                    value=final_flow,
+                    formatted_value=format_smart_number(final_flow),
+                    source=VariableSource.CALCULATED,
+                    description="Flow before Stable State adjustment",
+                )
+                variables_map["reinvestment_rate"] = VariableInfo(
+                    symbol="reinv",
+                    value=reinvestment_rate,
+                    formatted_value=f"{reinvestment_rate:.2%}",
+                    source=VariableSource.CALCULATED,
+                    description="Normative Reinvestment Rate (gn/ROIC)",
+                )
+                variables_map["ROIC_stable"] = VariableInfo(
+                    symbol="ROIC",
+                    value=roic_stable,
+                    formatted_value=f"{roic_stable:.2%}" if roic_stable else "N/A",
+                    source=VariableSource.MANUAL_OVERRIDE,
+                    description="Stable State ROIC",
+                )
+                variables_map["FCF_adjusted"] = VariableInfo(
+                    symbol="FCF_adj",
+                    value=adjusted_flow,
+                    formatted_value=format_smart_number(adjusted_flow),
+                    source=VariableSource.CALCULATED,
+                    description="Flow after Golden Rule adjustment",
+                )
+                
+                # Update calculation string to show adjustment
+                actual_calculation = (
+                    f"Golden Rule: {format_smart_number(final_flow)} × (1 - {reinvestment_rate:.2%}) = "
+                    f"{format_smart_number(adjusted_flow)} | "
+                    f"TV = ({format_smart_number(adjusted_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
+                )
+            else:
+                # No adjustment applied
+                actual_calculation = (
+                    f"({format_smart_number(adjusted_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
+                )
 
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                ),
+                actual_calculation=actual_calculation,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
-                variables_map={
-                    "g_perp": VariableInfo(
-                        symbol="g",
-                        value=g_perp,
-                        formatted_value=f"{g_perp:.2%}",
-                        source=VariableSource.MANUAL_OVERRIDE,
-                        description=SharedTexts.INP_PERP_G,
-                    ),
-                    "r": VariableInfo(
-                        symbol="r",
-                        value=discount_rate,
-                        formatted_value=f"{discount_rate:.2%}",
-                        source=VariableSource.CALCULATED,
-                        description="Discount Rate",
-                    ),
-                },
+                variables_map=variables_map,
             )
             return tv, step
 
