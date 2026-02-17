@@ -223,7 +223,7 @@ class CommonTerminals:
     HELP_SOTP = "Applique une décote de holding sur la somme des parties."
     WARN_SOTP_RELEVANCE = "L'analyse SOTP est recommandée pour les conglomérats. Pour une entreprise mono-segment, utilisez-la uniquement pour décomposer la valeur calculée."
 
-    SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (M$)**"
+    SEC_SOTP_SEGMENTS = "**Segmentation opérationnelle (Millions)**"
     SEC_SOTP_ADJUSTMENTS = "**Ajustements de holding / conglomérat**"
 
     LBL_SEGMENT_NAME = "Nom du Segment"
