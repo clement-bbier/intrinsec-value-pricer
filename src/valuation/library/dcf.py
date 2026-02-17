@@ -379,7 +379,7 @@ class DCFLibrary:
         # Fix: Dilution rate is stored in common.capital (from Model Batch)
         dilution_rate = params.common.capital.annual_dilution_rate or 0.0
         sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
-        
+
         # Fix: Years come from strategy
         years = getattr(params.strategy, "projection_years", ModelDefaults.DEFAULT_PROJECTION_YEARS)
 
