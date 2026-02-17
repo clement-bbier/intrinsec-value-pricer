@@ -74,6 +74,8 @@ class CommonTerminals:
     # Horizon de Projection
     INP_PROJ_YEARS = "Années de projection"
     SLIDER_PROJ_YEARS = "Horizon explicite (années)"
+    INP_HIGH_GROWTH_YEARS = "Années de Maturité (Transition)"
+    SLIDER_HIGH_GROWTH_YEARS = "Années de forte croissance"
 
     # Paramètres de Risque
     INP_RF = f"Taux Sans Risque (Rf) {UNIT_PERCENT}"
@@ -109,6 +111,11 @@ class CommonTerminals:
     # Paramètres de projection
     HELP_PROJ_YEARS = "Durée de la phase de croissance explicite avant le calcul de la valeur terminale."
     HELP_GROWTH_RATE = "Taux annuel moyen de croissance des flux (g). Vide = Estimation via historique Yahoo."
+    HELP_HIGH_GROWTH_YEARS = (
+        "Nombre d'années de forte croissance avant transition linéaire vers le taux perpétuel. "
+        "Évite le choc brutal entre phase de croissance et phase terminale. "
+        "Si vide ou égal aux années de projection, pas de transition (croissance constante puis g_n)."
+    )
 
     # Paramètres de risque (Concepts techniques)
     HELP_RF = "Rendement des obligations d'État à 10 ans. Vide = Taux actuel du marché (Auto)."

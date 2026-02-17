@@ -60,6 +60,7 @@ class UIKeys:
     GN: str = "gn"
     EXIT_MULT: str = "exit_mult"
     YEARS: str = "years"
+    HIGH_GROWTH_YEARS: str = "high_growth_years"
     GROWTH_VECTOR: str = "growth_vector"
     FCF_BASE: str = "fcf_base"
     FCF_NORM: str = "fcf_norm"
