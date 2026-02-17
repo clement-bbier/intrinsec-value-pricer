@@ -20,12 +20,6 @@ class TestMainStructure:
 
         assert callable(main)
 
-    def test_render_footer_exists(self):
-        """render_footer() must exist."""
-        from app.main import render_footer
-
-        assert callable(render_footer)
-
     def test_version_imported(self):
         """Version string must be importable."""
         from src import __version__
@@ -34,17 +28,6 @@ class TestMainStructure:
         assert len(__version__) > 0
 
 
-class TestFooterContent:
-    """Tests that the footer doesn't contain emojis."""
-
-    def test_no_emoji_in_footer(self):
-        """render_footer must not contain emoji characters."""
-        from app.main import render_footer
-
-        source = inspect.getsource(render_footer)
-        forbidden = ["\u2705", "\U0001f4ca", "\U0001f525", "\U0001f680"]
-        for emoji in forbidden:
-            assert emoji not in source, "Found forbidden emoji in render_footer"
 
 
 class TestPageConfig:

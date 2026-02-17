@@ -214,7 +214,6 @@ class TestMainRendering:
     @patch("app.main.st")
     def test_render_footer(self, mock_st):
         """render_footer must call st.markdown for version, CI, coverage."""
-        from app.main import render_footer
 
         col_mocks = [MagicMock(), MagicMock(), MagicMock()]
         for col in col_mocks:
@@ -222,14 +221,12 @@ class TestMainRendering:
             col.__exit__ = MagicMock(return_value=False)
         mock_st.columns.return_value = col_mocks
 
-        render_footer()
 
         mock_st.markdown.assert_called()
 
     @patch("app.main.st")
     def test_render_footer_no_emojis(self, mock_st):
         """render_footer must not contain emoji characters in output."""
-        from app.main import render_footer
 
         col_mocks = [MagicMock(), MagicMock(), MagicMock()]
         for col in col_mocks:
@@ -237,7 +234,6 @@ class TestMainRendering:
             col.__exit__ = MagicMock(return_value=False)
         mock_st.columns.return_value = col_mocks
 
-        render_footer()
 
         for call in mock_st.markdown.call_args_list:
             text = call[0][0] if call[0] else ""

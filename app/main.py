@@ -31,7 +31,6 @@ from app.views.inputs.sidebar import render_sidebar  # noqa: E402
 from app.views.results.orchestrator import render_valuation_results  # noqa: E402
 
 # Import i18n for page configuration
-from src import __version__  # noqa: E402
 from src.i18n import UIMessages  # noqa: E402
 
 # Configuration of the page must be the first Streamlit command
@@ -72,27 +71,6 @@ def main() -> None:
     # Priority 4: Onboarding
     else:
         render_auto_form()
-
-
-def render_footer() -> None:
-    """
-    Renders application footer with version and system information.
-    No emoji characters allowed per institutional design standards.
-    """
-    st.divider()
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("**Version Information**")
-        st.caption(f"Version {__version__}")
-
-    with col2:
-        st.markdown("**CI Status**")
-        st.caption("Continuous integration")
-
-    with col3:
-        st.markdown("**Coverage**")
-        st.caption("Test coverage metrics")
 
 
 if __name__ == "__main__":
