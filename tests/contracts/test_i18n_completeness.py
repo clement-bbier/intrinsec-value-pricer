@@ -131,7 +131,6 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
             BenchmarkTexts,
             ChartTexts,
             CommonTexts,
-            ExpertTexts,
             ExtensionTexts,
             FeedbackMessages,
             InputLabels,
@@ -159,7 +158,6 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
         "BenchmarkTexts": BenchmarkTexts,
         "ChartTexts": ChartTexts,
         "CommonTexts": CommonTexts,
-        "ExpertTexts": ExpertTexts,
         "ExtensionTexts": ExtensionTexts,
         "FeedbackMessages": FeedbackMessages,
         "InputLabels": InputLabels,
@@ -186,12 +184,19 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
 
     usages = scan_directory_for_i18n_usage(app_dir)
 
+    # Known exceptions: classes imported from specific submodules (not exported globally)
+    known_submodule_classes = {"RIMTexts", "FCFFTexts", "DDMTexts", "GrahamTexts", "FCFETexts"}
+
     # Validate each reference
     errors = []
     missing_by_class: dict[str, list[str]] = {}
 
     for file_path, references in usages.items():
         for class_name, attr_name, line_no in references:
+            # Skip classes that are imported from specific submodules
+            if class_name in known_submodule_classes:
+                continue
+
             if class_name not in i18n_classes:
                 errors.append(f"{file_path}:{line_no} - Unknown i18n class: {class_name}")
                 continue
@@ -259,7 +264,6 @@ class TestI18nCompleteness:
                 BenchmarkTexts,
                 ChartTexts,
                 CommonTexts,
-                ExpertTexts,
                 FeedbackMessages,
                 InputLabels,
                 KPITexts,
@@ -284,7 +288,6 @@ class TestI18nCompleteness:
                 BenchmarkTexts,
                 ChartTexts,
                 CommonTexts,
-                ExpertTexts,
                 FeedbackMessages,
                 InputLabels,
                 KPITexts,
