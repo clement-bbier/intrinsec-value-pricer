@@ -210,6 +210,82 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
     return final_net_income * pe_multiple
 
 
+def normalize_terminal_flow_for_stable_state(
+    final_flow: float, perpetual_growth: float, roic_stable: float | None
+) -> tuple[float, float]:
+    r"""
+    Applies the "Golden Rule" of Terminal Value: ensures consistency between
+    perpetual growth and required reinvestment based on stable-state ROIC.
+
+    The Golden Rule states that sustainable growth requires proportional
+    reinvestment. This function calculates the normative reinvestment needed
+    to support the perpetual growth rate and adjusts the terminal flow
+    accordingly.
+
+    $$Reinvestment_{norm} = \frac{g_n}{ROIC_{stable}}$$
+
+    $$FCF_{adjusted} = FCF_n \times (1 - \frac{g_n}{ROIC_{stable}})$$
+
+    Parameters
+    ----------
+    final_flow : float
+        The projected cash flow in the terminal year (before adjustment).
+    perpetual_growth : float
+        The perpetual growth rate (g_n) in decimal form (e.g., 0.03 for 3%).
+    roic_stable : float or None, optional
+        The Return on Invested Capital in stable state (decimal form).
+        If None or <= 0, no adjustment is applied (conservative approach).
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple containing:
+        - adjusted_flow (float): The terminal flow after reinvestment adjustment.
+        - reinvestment_rate (float): The calculated reinvestment rate as a fraction.
+
+    Notes
+    -----
+    This implementation follows the institutional best practice that perpetual
+    growth cannot occur without proportional capital reinvestment. The adjustment
+    ensures the terminal value reflects a sustainable economic equilibrium.
+
+    If ROIC is None, zero, or negative, the function returns the original flow
+    unchanged (reinvestment_rate = 0), applying the principle of conservatism.
+
+    If perpetual_growth is zero or negative, no adjustment is needed as the
+    company is not assumed to grow, so reinvestment_rate = 0.
+
+    Examples
+    --------
+    >>> normalize_terminal_flow_for_stable_state(1000.0, 0.03, 0.15)
+    (800.0, 0.2)  # 3% growth with 15% ROIC requires 20% reinvestment
+
+    >>> normalize_terminal_flow_for_stable_state(1000.0, 0.03, None)
+    (1000.0, 0.0)  # No ROIC provided, no adjustment
+
+    >>> normalize_terminal_flow_for_stable_state(1000.0, 0.0, 0.15)
+    (1000.0, 0.0)  # No growth, no reinvestment needed
+    """
+    # Case 1: No growth => No reinvestment needed
+    if perpetual_growth <= 0:
+        return final_flow, 0.0
+
+    # Case 2: ROIC not available or invalid => Conservative approach (no adjustment)
+    if roic_stable is None or roic_stable <= 0:
+        return final_flow, 0.0
+
+    # Case 3: Apply Golden Rule - Calculate normative reinvestment rate
+    # Reinvestment Rate = g_n / ROIC_stable
+    reinvestment_rate = perpetual_growth / roic_stable
+
+    # Adjusted flow = Original flow × (1 - reinvestment_rate)
+    # This represents the free cash flow available after setting aside
+    # the necessary reinvestment to sustain perpetual growth
+    adjusted_flow = final_flow * (1.0 - reinvestment_rate)
+
+    return adjusted_flow, reinvestment_rate
+
+
 # ==============================================================================
 # 2. STRUCTURE ADJUSTMENTS & DILUTION
 # ==============================================================================

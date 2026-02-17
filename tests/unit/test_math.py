@@ -42,6 +42,7 @@ from src.computation.financial_math import (
     calculate_wacc,
     compute_diluted_shares,
     compute_proportions,
+    normalize_terminal_flow_for_stable_state,
     relever_beta,
     unlever_beta,
 )
@@ -171,6 +172,123 @@ class TestCalculateTerminalValuePE:
         """Test that PE < 0 raises CalculationError."""
         with pytest.raises(CalculationError):
             calculate_terminal_value_pe(100.0, -10.0)
+
+
+@pytest.mark.unit
+class TestNormalizeTerminalFlowForStableState:
+    """Test the Golden Rule normalization for terminal flow."""
+
+    def test_normal_case_with_growth_and_roic(self):
+        """Test normal case: positive growth with positive ROIC."""
+        # 3% growth with 15% ROIC requires 20% reinvestment
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.03, 0.15)
+        
+        expected_reinv_rate = 0.03 / 0.15  # = 0.2 (20%)
+        expected_adjusted_flow = 1000.0 * (1.0 - 0.2)  # = 800.0
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+
+    def test_zero_growth_no_adjustment(self):
+        """Test zero growth: no reinvestment needed."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.0, 0.15)
+        
+        assert reinv_rate == 0.0
+        assert adjusted_flow == 1000.0
+
+    def test_negative_growth_no_adjustment(self):
+        """Test negative growth: no reinvestment needed."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, -0.02, 0.15)
+        
+        assert reinv_rate == 0.0
+        assert adjusted_flow == 1000.0
+
+    def test_none_roic_no_adjustment(self):
+        """Test None ROIC: conservative approach, no adjustment."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.03, None)
+        
+        assert reinv_rate == 0.0
+        assert adjusted_flow == 1000.0
+
+    def test_zero_roic_no_adjustment(self):
+        """Test zero ROIC: prevents division by zero, no adjustment."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.03, 0.0)
+        
+        assert reinv_rate == 0.0
+        assert adjusted_flow == 1000.0
+
+    def test_negative_roic_no_adjustment(self):
+        """Test negative ROIC: conservative approach, no adjustment."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.03, -0.05)
+        
+        assert reinv_rate == 0.0
+        assert adjusted_flow == 1000.0
+
+    def test_high_growth_high_roic(self):
+        """Test high growth with high ROIC."""
+        # 5% growth with 25% ROIC requires 20% reinvestment
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(2000.0, 0.05, 0.25)
+        
+        expected_reinv_rate = 0.05 / 0.25  # = 0.2 (20%)
+        expected_adjusted_flow = 2000.0 * (1.0 - 0.2)  # = 1600.0
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+
+    def test_low_growth_low_roic(self):
+        """Test low growth with low ROIC."""
+        # 1% growth with 5% ROIC requires 20% reinvestment
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.01, 0.05)
+        
+        expected_reinv_rate = 0.01 / 0.05  # = 0.2 (20%)
+        expected_adjusted_flow = 1000.0 * (1.0 - 0.2)  # = 800.0
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+
+    def test_growth_equals_roic(self):
+        """Test edge case where growth equals ROIC (100% reinvestment)."""
+        # 10% growth with 10% ROIC requires 100% reinvestment
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.10, 0.10)
+        
+        expected_reinv_rate = 1.0  # 100%
+        expected_adjusted_flow = 1000.0 * (1.0 - 1.0)  # = 0.0
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+
+    def test_growth_exceeds_roic(self):
+        """Test case where growth exceeds ROIC (>100% reinvestment)."""
+        # 15% growth with 10% ROIC requires 150% reinvestment (unsustainable)
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.15, 0.10)
+        
+        expected_reinv_rate = 1.5  # 150%
+        expected_adjusted_flow = 1000.0 * (1.0 - 1.5)  # = -500.0 (negative!)
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+        # Note: This is economically invalid but mathematically correct.
+        # The guardrails layer should catch this scenario.
+
+    def test_small_numbers(self):
+        """Test with small flow values."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(10.0, 0.02, 0.08)
+        
+        expected_reinv_rate = 0.02 / 0.08  # = 0.25
+        expected_adjusted_flow = 10.0 * (1.0 - 0.25)  # = 7.5
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
+
+    def test_large_numbers(self):
+        """Test with large flow values."""
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1_000_000.0, 0.03, 0.12)
+        
+        expected_reinv_rate = 0.03 / 0.12  # = 0.25
+        expected_adjusted_flow = 1_000_000.0 * (1.0 - 0.25)  # = 750,000
+        
+        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
+        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
 
 
 # ==============================================================================
