@@ -570,3 +570,105 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
     for i in range(5):
         expected_fcf = revenues[i] * margins[i]
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+# ============================================================================
+# TESTS FOR WCR (WORKING CAPITAL REQUIREMENT) INTEGRATION
+# ============================================================================
+
+
+def test_project_flows_revenue_model_with_wcr_adjustment(mock_params_revenue_model):
+    """Test project_flows_revenue_model with WCR adjustment."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+    wcr_ratio = 0.05  # 5% of revenue increase goes to WCR
+
+    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # Verify we have flows
+    assert len(fcfs) == 5
+    assert len(revenues) == 5
+    assert len(margins) == 5
+
+    # Verify WCR adjustment reduces FCF
+    # For each year: FCF = Revenue * Margin - (ΔRevenue * wcr_ratio)
+    prev_rev = base_revenue
+    for i in range(5):
+        base_fcf = revenues[i] * margins[i]
+        delta_revenue = revenues[i] - prev_rev
+        expected_wcr_adjustment = delta_revenue * wcr_ratio
+        expected_fcf = base_fcf - expected_wcr_adjustment
+        
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+        prev_rev = revenues[i]
+
+    # Verify WCR ratio is in variables
+    assert "WCR_ratio" in step.variables_map
+    assert step.variables_map["WCR_ratio"].value == wcr_ratio
+
+
+def test_project_flows_revenue_model_without_wcr_adjustment(mock_params_revenue_model):
+    """Test project_flows_revenue_model without WCR adjustment (wcr_ratio=None)."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+
+    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=None
+    )
+
+    # Verify we have flows
+    assert len(fcfs) == 5
+
+    # Without WCR adjustment: FCF = Revenue * Margin (simple)
+    for i in range(5):
+        expected_fcf = revenues[i] * margins[i]
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+    # Verify WCR ratio is NOT in variables
+    assert "WCR_ratio" not in step.variables_map
+
+
+def test_project_flows_revenue_model_wcr_zero(mock_params_revenue_model):
+    """Test that wcr_ratio=0.0 results in no adjustment."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+    wcr_ratio = 0.0
+
+    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # With wcr_ratio=0, FCF should equal Revenue * Margin (no adjustment)
+    for i in range(5):
+        expected_fcf = revenues[i] * margins[i]
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+def test_project_flows_revenue_model_wcr_high_ratio(mock_params_revenue_model):
+    """Test with a high WCR ratio (20%)."""
+    base_revenue = 100_000
+    current_margin = 0.15
+    target_margin = 0.20
+    wcr_ratio = 0.20  # 20% - aggressive working capital needs
+
+    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # Verify flows are reduced significantly due to high WCR
+    prev_rev = base_revenue
+    for i in range(5):
+        base_fcf = revenues[i] * margins[i]
+        delta_revenue = revenues[i] - prev_rev
+        wcr_adjustment = delta_revenue * wcr_ratio
+        expected_fcf = base_fcf - wcr_adjustment
+        
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+        # FCF should be lower than base FCF
+        assert fcfs[i] < base_fcf
+        prev_rev = revenues[i]
