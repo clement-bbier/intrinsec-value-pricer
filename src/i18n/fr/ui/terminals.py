@@ -65,7 +65,7 @@ class CommonTerminals:
     STEP_4_DESC = "Estimation de la valeur de l'entreprise au-delà de l'horizon de projection explicite."
 
     # Étape 5 : Bridge de Valeur
-    STEP_5_TITLE = "#### Étape 5 : Bridge de Valeur"
+    STEP_5_TITLE = "#### Étape 5 : Bridge de Valeur (Actif → Actionnaire)"
     STEP_5_DESC = "Passage de la valeur de l'actif économique (EV) à la valeur revenant aux actionnaires (Equity)."
 
     # ==========================================================================
@@ -245,7 +245,7 @@ class CommonTerminals:
     LBL_SENSITIVITY_ENABLE = "Activer la matrice de sensibilité"
     MSG_SENSITIVITY_DESC = "Génère une matrice croisée (Heatmap) pour visualiser l'impact des variations du WACC et de la croissance (g) sur la valorisation finale."
 
-    LBL_SENS_STEP = f"Amplitude du pas de variation (incréments +/-) {UNIT_PERCENT}"
+    LBL_SENS_STEP = f"Amplitude du pas de variation (±) {UNIT_PERCENT}"
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
     HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
@@ -297,7 +297,7 @@ class FCFFStandardTexts(CommonTerminals):
     """
 
     TITLE = "DCF : Standard"
-    DESCRIPTION = "L'approche par l'entité. Le moteur calcule la Valeur d'Entreprise en actualisant les flux de trésorerie disponibles (FCFF) au WACC, avec une valeur terminale basée sur le taux de croissance perpétuelle (g_n)."
+    DESCRIPTION = "L'approche par l'entité. Le moteur calcule la Valeur d'Entreprise en actualisant les flux de trésorerie disponibles (FCFF) au WACC."
 
     # Formule globale du modèle
     FORMULA_GLOBAL = r"EV = \sum_{t=1}^{n} \frac{FCFF_t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
@@ -326,7 +326,10 @@ class FCFFNormalizedTexts(CommonTerminals):
     """
 
     TITLE = "DCF : Fondamental"
-    DESCRIPTION = "Logique Damodaran pour entreprises cycliques : le moteur projette la capacité bénéficiaire structurelle en utilisant un flux FCF lissé (Normalisé) pour neutraliser la volatilité court terme."
+    DESCRIPTION = (
+        "Logique Damodaran pour entreprises cycliques : utilise un flux FCF lissé (Normalisé) pour neutraliser la "
+        "volatilité court terme."
+    )
 
     # Formule globale
     FORMULA_GLOBAL = r"EV = \sum_{t=1}^{n} \frac{FCFF_{norm} \times (1+g)^t}{(1+WACC)^t} + \frac{TV_n}{(1+WACC)^n}"
@@ -355,7 +358,9 @@ class FCFFGrowthTexts(CommonTerminals):
     """
 
     TITLE = "DCF : Croissance"
-    DESCRIPTION = "Variante dynamique qui reconstruit les flux futurs en corrélant la croissance du chiffre d'affaires à une convergence linéaire vers une marge opérationnelle cible."
+    DESCRIPTION = (
+        "Variante dynamique projetant les revenus avec une convergence linéaire vers une marge opérationnelle cible."
+    )
 
     # Formule globale
     FORMULA_GLOBAL = r"FCFF_t = (Revenue_{t-1} \times (1+g_{rev})) \times \text{Marge}_t"
@@ -399,7 +404,10 @@ class RIMTexts(CommonTerminals):
     """
 
     TITLE = "Modèle RIM"
-    DESCRIPTION = "Dédié au secteur financier. Il valorise l'entreprise comme la somme de sa Valeur Comptable actuelle et de la valeur actuelle de ses bénéfices excédentaires futurs (Profit - Coût du Capital)."
+    DESCRIPTION = (
+        "Dédié au secteur financier. Somme de la Valeur Comptable actuelle et de la valeur actuelle des bénéfices "
+        "excédentaires (Profit - K_e)."
+    )
 
     # Formule globale (canonique RIM)
     FORMULA_GLOBAL = r"V_0 = BV_0 + \sum_{t=1}^{n} \frac{RI_t}{(1+K_e)^t} + \frac{TV_{RI}}{(1+K_e)^n}"
@@ -448,7 +456,10 @@ class GrahamTexts(CommonTerminals):
     """
 
     TITLE = "Formule de Graham"
-    DESCRIPTION = "Implémentation révisée (1974) de la logique 'Intrinsèque'. Elle calcule une valeur pivot basée sur l'EPS et la croissance attendue, ajustée par le rendement actuel des obligations corporate AAA."
+    DESCRIPTION = (
+        "Implémentation révisée (1974). Valeur pivot basée sur l'EPS et la croissance, ajustée par le rendement "
+        "obligataire AAA."
+    )
 
     # Formule globale
     FORMULA_GLOBAL = r"V = \frac{EPS \times (8.5 + 2 \times g) \times 4.4}{Y_{AAA}}"
@@ -484,7 +495,10 @@ class FCFETexts(CommonTerminals):
     """
 
     TITLE = "DCF : FCFE"
-    DESCRIPTION = "Calcul direct de la valeur des capitaux propres en actualisant les flux de trésorerie résiduels (après service de la dette et réinvestissements) au coût des fonds propres (K_e)."
+    DESCRIPTION = (
+        "Calcul direct de la valeur des capitaux propres en actualisant les flux résiduels (post-dette) au coût des "
+        "fonds propres (K_e)."
+    )
 
     # Formule globale
     FORMULA_GLOBAL = r"EquityValue = \sum_{t=1}^{n} \frac{FCFE_t}{(1+K_e)^t} + \frac{TV_n}{(1+K_e)^n}"
