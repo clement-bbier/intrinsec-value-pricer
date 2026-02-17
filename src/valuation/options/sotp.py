@@ -137,7 +137,7 @@ class SOTPRunner:
                 value=comprehensive_net_debt,
                 formatted_value=format_smart_number(comprehensive_net_debt),
                 source=VariableSource.CALCULATED,
-                description="Comprehensive Net Debt (IFRS 16)",
+                description=KPITexts.LABEL_COMPREHENSIVE_NET_DEBT,
             ),
             "Debt": VariableInfo(
                 symbol="Debt",

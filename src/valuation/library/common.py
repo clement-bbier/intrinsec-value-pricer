@@ -191,7 +191,7 @@ class CommonLibrary:
                 symbol="Net Debt",
                 value=comprehensive_net_debt,
                 source=VariableSource.CALCULATED,
-                description="Comprehensive Net Debt (IFRS 16)",
+                description=KPITexts.LABEL_COMPREHENSIVE_NET_DEBT,
             ),
             "Debt": VariableInfo(
                 symbol="Debt", value=debt, source=VariableSource.SYSTEM, description=KPITexts.LABEL_DEBT
@@ -207,7 +207,7 @@ class CommonLibrary:
                 symbol="Leases",
                 value=lease_liabilities,
                 source=VariableSource.SYSTEM,
-                description="Lease Liabilities (IFRS 16)",
+                description=KPITexts.LABEL_LEASE_LIABILITIES,
             )
 
         if pension_liabilities > 0.0:
@@ -215,7 +215,7 @@ class CommonLibrary:
                 symbol="Pensions_IFRS",
                 value=pension_liabilities,
                 source=VariableSource.SYSTEM,
-                description="Pension Liabilities (IFRS 16)",
+                description=KPITexts.LABEL_PENSION_LIABILITIES,
             )
 
         # Build calculation display
