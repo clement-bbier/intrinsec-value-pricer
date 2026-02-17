@@ -30,6 +30,7 @@ class StrategySources:
     MACRO_CURRENCY_FALLBACK = r"Currency Fallback: {ticker}"
     MACRO_STATIC_FALLBACK = "Matrix Static Fallback (API Error)"
     MACRO_API_ERROR = "Matrix Fallback (API Error)"
+    COMPUTED_VALUE_DRIVERS = "Drivers de Création de Valeur (Damodaran: g = ROIC × RR)"
 
 
 class StrategyFormulas:

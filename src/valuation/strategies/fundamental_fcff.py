@@ -99,6 +99,68 @@ class FundamentalFCFFStrategy(IValuationRunner):
                 )
             )
 
+        # --- STEP 2.5: Compute Growth from Value Drivers (Damodaran) ---
+        roic = strategy_params.roic
+        reinvestment_rate = strategy_params.reinvestment_rate
+        user_growth = strategy_params.growth_rate
+        
+        # Calculate g from value drivers if both ROIC and reinvestment rate are provided
+        if roic is not None and reinvestment_rate is not None:
+            g_derived = roic * reinvestment_rate
+            
+            # Consistency check if user also provided manual growth override
+            if user_growth is not None:
+                # Allow 1% tolerance for rounding differences
+                tolerance = 0.01
+                diff = abs(g_derived - user_growth)
+                if diff > tolerance:
+                    # Log warning but continue (user override takes precedence)
+                    if self._glass_box:
+                        steps.append(
+                            CalculationStep(
+                                step_key="GROWTH_CONSISTENCY_CHECK",
+                                label="Vérification de Cohérence (g)",
+                                theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
+                                actual_calculation=f"g_derived={g_derived:.2%} vs g_override={user_growth:.2%} (Δ={diff:.2%})",
+                                result=user_growth,
+                                interpretation=f"AVERTISSEMENT: Écart détecté entre g calculé ({g_derived:.2%}) et g manuel ({user_growth:.2%}). Utilisation de g manuel.",
+                                source=StrategySources.MANUAL_OVERRIDE,
+                                variables_map={
+                                    "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
+                                    "RR": VariableInfo(symbol="RR", value=reinvestment_rate, formatted_value=f"{reinvestment_rate:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Reinvestment Rate"),
+                                    "g_derived": VariableInfo(symbol="g_calc", value=g_derived, formatted_value=f"{g_derived:.2%}", source=VariableSource.CALCULATED, description="Calculated Growth Rate"),
+                                    "g_override": VariableInfo(symbol="g_override", value=user_growth, formatted_value=f"{user_growth:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Manual Growth Override"),
+                                },
+                            )
+                        )
+                # Use manual override if provided
+                growth_to_use = user_growth
+            else:
+                # Use derived growth
+                growth_to_use = g_derived
+                
+            # Trace the growth calculation
+            if self._glass_box and user_growth is None:
+                steps.append(
+                    CalculationStep(
+                        step_key="GROWTH_CALCULATION",
+                        label="Calcul de la Croissance (Drivers de Valeur)",
+                        theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
+                        actual_calculation=f"g = {roic:.2%} × {reinvestment_rate:.2%} = {g_derived:.2%}",
+                        result=g_derived,
+                        interpretation=f"Croissance dérivée des fondamentaux: ROIC de {roic:.1%} multiplié par taux de réinvestissement de {reinvestment_rate:.1%}",
+                        source=StrategySources.COMPUTED_VALUE_DRIVERS,
+                        variables_map={
+                            "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
+                            "RR": VariableInfo(symbol="RR", value=reinvestment_rate, formatted_value=f"{reinvestment_rate:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Reinvestment Rate"),
+                            "g": VariableInfo(symbol="g", value=g_derived, formatted_value=f"{g_derived:.2%}", source=VariableSource.CALCULATED, description="Derived Growth Rate"),
+                        },
+                    )
+                )
+            
+            # Temporarily override growth_rate for projection
+            strategy_params.growth_rate = growth_to_use
+
         # --- STEP 3: FCF Projection ---
         manual_vector = getattr(params.strategy, "manual_growth_vector", None)
 
