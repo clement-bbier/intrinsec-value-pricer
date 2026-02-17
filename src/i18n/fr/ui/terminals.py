@@ -263,6 +263,25 @@ class CommonTerminals:
     # ==========================================================================
     LABEL_DILUTION_SBC = "Impact Dilutif (SBC)"
     WARN_SBC_TECH = "Pour les sociétés Tech, prévoyez un taux de 1% à 3% pour refléter la dilution future."
+    
+    # SBC Treatment Options
+    LBL_SBC_TREATMENT = "Traitement de la rémunération en actions (SBC)"
+    RADIO_SBC_DILUTION = "Dilution (Ajustement du nombre d'actions)"
+    RADIO_SBC_EXPENSE = "Dépense Cash-flow (Charge réelle)"
+    INP_SBC_ANNUAL_AMOUNT = f"Montant annuel estimé de la SBC {UNIT_MILLIONS}"
+    
+    HELP_SBC_TREATMENT = (
+        "Choisissez comment traiter la rémunération en actions :\n"
+        "• DILUTION : Reflète la dilution future via une réduction de la valeur par action (méthode actuelle).\n"
+        "• DÉPENSE : Soustrait la SBC comme une charge réelle des flux de trésorerie projetés."
+    )
+    HELP_SBC_ANNUAL_AMOUNT = (
+        "Estimation du montant annuel moyen de la Stock-Based Compensation sur l'horizon de projection. "
+        "Sera déduit de chaque flux annuel si le traitement DÉPENSE est sélectionné."
+    )
+    WARN_SBC_DOUBLE_COUNT = (
+        "⚠️ Mode DÉPENSE actif : L'ajustement de dilution final est désactivé pour éviter le double comptage."
+    )
 
     # ==========================================================================
     # 9. MESSAGES D'ERREUR & VALIDATION

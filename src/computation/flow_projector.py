@@ -23,6 +23,7 @@ from src.core.formatting import format_smart_number
 # i18n Imports for UI-facing elements
 from src.i18n import KPITexts, RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations
 from src.models import VariableInfo, VariableSource
+from src.models.enums import SBCTreatment
 
 if TYPE_CHECKING:
     from src.models import Company, Parameters
@@ -131,7 +132,23 @@ class SimpleFlowProjector(FlowProjector):
     """
 
     def project(self, base_value: float, financials: Company, params: Parameters) -> ProjectionOutput:
-        """Projects flows with full provenance of growth rates."""
+        """
+        Projects flows with full provenance of growth rates.
+
+        Parameters
+        ----------
+        base_value : float
+            The anchor value (FCF0 or Revenue0).
+        financials : Company
+            Current company financial data (Identity & Context).
+        params : Parameters
+            User-defined or automated projection parameters (Strategy).
+
+        Returns
+        -------
+        ProjectionOutput
+            Projected flows with calculation trace and metadata.
+        """
         # 1. Strategy Extraction (New Model Architecture)
         strat = params.strategy
 
@@ -156,7 +173,15 @@ class SimpleFlowProjector(FlowProjector):
             high_growth_years=years,
         )
 
-        # 3. Glass Box Traceability
+        # 3. Apply SBC expense if treatment mode is EXPENSE
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+        sbc_annual_amount = getattr(params.common.capital, "sbc_annual_amount", None) or 0.0
+
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            # Subtract SBC expense from each projected flow
+            flows = [f - sbc_annual_amount for f in flows]
+
+        # 4. Glass Box Traceability
         variables = {
             "g": self._build_trace_variable("g", g_start, g_start, None, SharedTexts.INP_GROWTH_G, True),
             "g_n": self._build_trace_variable("g_n", g_term, g_term, None, SharedTexts.INP_PERP_G, True),
@@ -164,6 +189,16 @@ class SimpleFlowProjector(FlowProjector):
                 symbol="n", value=float(years), source=VariableSource.CALCULATED, description=SharedTexts.INP_PROJ_YEARS
             ),
         }
+
+        # Add SBC trace if EXPENSE mode
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            variables["SBC"] = VariableInfo(
+                symbol="SBC",
+                value=sbc_annual_amount,
+                formatted_value=format_smart_number(sbc_annual_amount),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Annual SBC Expense (deducted from flows)",
+            )
 
         return ProjectionOutput(
             flows=flows,
@@ -183,7 +218,23 @@ class MarginConvergenceProjector(FlowProjector):
     """
 
     def project(self, base_value: float, financials: Company, params: Parameters) -> ProjectionOutput:
-        """Projects FCF with margin expansion/contraction traceability."""
+        """
+        Projects FCF with margin expansion/contraction traceability.
+
+        Parameters
+        ----------
+        base_value : float
+            The anchor value (Revenue TTM).
+        financials : Company
+            Current company financial data (Identity & Context).
+        params : Parameters
+            User-defined or automated projection parameters (Strategy).
+
+        Returns
+        -------
+        ProjectionOutput
+            Projected flows with calculation trace and metadata.
+        """
         strat = params.strategy
 
         # base_value here is assumed to be Revenue TTM
@@ -216,13 +267,31 @@ class MarginConvergenceProjector(FlowProjector):
             applied_margin = curr_margin + (target_margin - curr_margin) * (y / years)
             projected_fcfs.append(curr_rev * applied_margin)
 
-        # 4. Traceability
+        # 4. Apply SBC expense if treatment mode is EXPENSE
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+        sbc_annual_amount = getattr(params.common.capital, "sbc_annual_amount", None) or 0.0
+
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            # Subtract SBC expense from each projected flow
+            projected_fcfs = [f - sbc_annual_amount for f in projected_fcfs]
+
+        # 5. Traceability
         variables = {
             "m_target": self._build_trace_variable(
                 "m_target", target_margin, target_margin, None, "Target FCF Margin (Normative)", True
             ),
             "g_rev": self._build_trace_variable("g_rev", rev_growth, rev_growth, None, "Revenue Growth Rate", True),
         }
+
+        # Add SBC trace if EXPENSE mode
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            variables["SBC"] = VariableInfo(
+                symbol="SBC",
+                value=sbc_annual_amount,
+                formatted_value=format_smart_number(sbc_annual_amount),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Annual SBC Expense (deducted from flows)",
+            )
 
         return ProjectionOutput(
             flows=projected_fcfs,
