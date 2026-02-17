@@ -48,8 +48,12 @@ class UIKeys:
     CASH: str = "cash"
     MINORITIES: str = "min"
     PENSIONS: str = "pen"
+    LEASE_LIABILITIES: str = "lease_liab"
+    PENSION_LIABILITIES: str = "pension_liab"
     SHARES: str = "shares"
     SBC_RATE: str = "sbc_rate"
+    SBC_TREATMENT: str = "sbc_treatment"
+    SBC_ANNUAL_AMOUNT: str = "sbc_annual_amount"
 
     # ── Strategy Params (prefix: strategy mode) ──────────────────────
     GROWTH_RATE: str = "growth_rate"
@@ -70,6 +74,8 @@ class UIKeys:
     EPS_NORMALIZED: str = "eps_normalized"
     EPS_ANCHOR: str = "eps_anchor"
     GROWTH_ESTIMATE: str = "growth_estimate"
+    ROIC: str = "roic"
+    REINVESTMENT_RATE: str = "reinvestment_rate"
 
     # ── Monte Carlo (global, no prefix) ──────────────────────────────
     MC_ENABLE: str = "mc_enable"

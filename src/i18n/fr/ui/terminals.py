@@ -95,6 +95,8 @@ class CommonTerminals:
     INP_SHARES = f"Actions en circulation {UNIT_MILLIONS}"
     INP_MINORITIES = f"Intérêts Minoritaires {UNIT_MILLIONS}"
     INP_PENSIONS = f"Provisions / Engagements Sociaux {UNIT_MILLIONS}"
+    INP_LEASE_LIABILITIES = f"Engagements de Location (IFRS 16) {UNIT_MILLIONS}"
+    INP_PENSION_LIABILITIES = f"Engagements de Retraite (IFRS 16) {UNIT_MILLIONS}"
 
     # Dilution et Prix
     INP_PRICE_WEIGHTS = f"Cours de l'action {UNIT_CURRENCY}"
@@ -130,6 +132,8 @@ class CommonTerminals:
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
     HELP_DEBT = "Somme des dettes financières à court et long terme (Dette brute)."
     HELP_CASH = "Trésorerie disponible, équivalents de trésorerie et placements financiers."
+    HELP_LEASE_LIABILITIES = "Engagements locatifs long-terme selon IFRS 16 (Loyers capitalisés hors-bilan)."
+    HELP_PENSION_LIABILITIES = "Engagements au titre des retraites et avantages postérieurs à l'emploi (IFRS 16)."
     HELP_SBC_DILUTION = "Dilution annuelle moyenne liée à la rémunération en actions (Stock-Based Compensation)."
     HELP_PRICE_WEIGHTS = "Cours boursier de référence pour déterminer la pondération Equity/Dette dans le WACC."
 
@@ -271,6 +275,25 @@ class CommonTerminals:
     LABEL_DILUTION_SBC = "Impact Dilutif (SBC)"
     WARN_SBC_TECH = "Pour les sociétés Tech, prévoyez un taux de 1% à 3% pour refléter la dilution future."
 
+    # SBC Treatment Options
+    LBL_SBC_TREATMENT = "Traitement de la rémunération en actions (SBC)"
+    RADIO_SBC_DILUTION = "Dilution (Ajustement du nombre d'actions)"
+    RADIO_SBC_EXPENSE = "Dépense Cash-flow (Charge réelle)"
+    INP_SBC_ANNUAL_AMOUNT = f"Montant annuel estimé de la SBC {UNIT_MILLIONS}"
+
+    HELP_SBC_TREATMENT = (
+        "Choisissez comment traiter la rémunération en actions :\n"
+        "• DILUTION : Reflète la dilution future via une réduction de la valeur par action (méthode actuelle).\n"
+        "• DÉPENSE : Soustrait la SBC comme une charge réelle des flux de trésorerie projetés."
+    )
+    HELP_SBC_ANNUAL_AMOUNT = (
+        "Estimation du montant annuel moyen de la Stock-Based Compensation sur l'horizon de projection. "
+        "Sera déduit de chaque flux annuel si le traitement DÉPENSE est sélectionné."
+    )
+    WARN_SBC_DOUBLE_COUNT = (
+        "⚠️ Mode DÉPENSE actif : L'ajustement de dilution final est désactivé pour éviter le double comptage."
+    )
+
     # ==========================================================================
     # 9. MESSAGES D'ERREUR & VALIDATION
     # ==========================================================================
@@ -348,11 +371,20 @@ class FCFFNormalizedTexts(CommonTerminals):
 
     INP_BASE = f"Flux FCFF Normalisé {CommonTerminals.UNIT_MILLIONS}"
 
-    # Étape 2 : Croissance de Cycle
-    STEP_2_TITLE = "#### Étape 2 : Croissance de Cycle"
-    STEP_2_DESC = "Projection de la croissance moyenne stable attendue sur le cycle à venir."
-    HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
+    # Étape 2 : Drivers de Création de Valeur (Damodaran)
+    STEP_2_TITLE = "#### Étape 2 : Drivers de Création de Valeur (Damodaran)"
+    STEP_2_DESC = "Calcul de la croissance via les déterminants fondamentaux : rentabilité des réinvestissements."
+    STEP_2_FORMULA = r"g = ROIC \times \text{Taux de Réinvestissement}"
+
+    INP_ROIC = f"Rentabilité des Investissements (ROIC) {CommonTerminals.UNIT_PERCENT}"
+    HELP_ROIC = "Return on Invested Capital : rendement généré sur chaque euro réinvesti dans l'exploitation."
+
+    INP_REINVESTMENT_RATE = f"Taux de Réinvestissement {CommonTerminals.UNIT_PERCENT}"
+    HELP_REINVESTMENT_RATE = "Proportion des flux réinvestis dans la croissance (CapEx + ΔBFR - DA) / NOPAT."
+
     LBL_GROWTH_G = f"Taux de croissance (g) {CommonTerminals.UNIT_PERCENT}"
+    HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
+    HELP_GROWTH_OVERRIDE = "Optionnel : Surchargez g pour tester un scénario alternatif. Une vérification de cohérence sera effectuée."
 
     # Formule TV
     FORMULA_TV = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"

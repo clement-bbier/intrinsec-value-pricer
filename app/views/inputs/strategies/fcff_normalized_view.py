@@ -28,7 +28,7 @@ class FCFFNormalizedView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
-        """Renders Step 1 (normalized FCF) and Step 2 (growth rate) inputs."""
+        """Renders Step 1 (normalized FCF) and Step 2 (ROIC and Reinvestment Rate) inputs."""
         prefix = self.MODE.name
 
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)

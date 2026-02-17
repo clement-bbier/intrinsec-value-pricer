@@ -229,7 +229,16 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
 
 
 def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None:
-    """Renders balance sheet adjustments section."""
+    """
+    Renders balance sheet adjustments section.
+
+    Parameters
+    ----------
+    formula_latex : str
+        LaTeX formula for the equity bridge calculation.
+    mode : ValuationMethodology
+        Current valuation methodology (FCFF, FCFE, DDM, etc.).
+    """
     prefix = f"bridge_{mode.name}"
     st.markdown(CommonTerminals.STEP_5_TITLE)
     st.info(CommonTerminals.STEP_5_DESC)
@@ -271,13 +280,35 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
             key=f"{prefix}_{UIKeys.SHARES}",
         )
 
-    st.number_input(
-        CommonTerminals.INP_SBC_DILUTION,
-        value=None,
-        format="%.2f",
-        help=CommonTerminals.HELP_SBC_DILUTION,
-        key=f"{prefix}_{UIKeys.SBC_RATE}",
+    # SBC Treatment Selection
+    st.markdown("**Traitement de la rémunération en actions (SBC)**")
+    sbc_treatment = st.radio(
+        CommonTerminals.LBL_SBC_TREATMENT,
+        options=["DILUTION", "EXPENSE"],
+        format_func=lambda x: CommonTerminals.RADIO_SBC_DILUTION if x == "DILUTION" else CommonTerminals.RADIO_SBC_EXPENSE,
+        horizontal=True,
+        help=CommonTerminals.HELP_SBC_TREATMENT,
+        key=f"{prefix}_{UIKeys.SBC_TREATMENT}",
     )
+
+    # Conditional inputs based on SBC treatment
+    if sbc_treatment == "DILUTION":
+        st.number_input(
+            CommonTerminals.INP_SBC_DILUTION,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_SBC_DILUTION,
+            key=f"{prefix}_{UIKeys.SBC_RATE}",
+        )
+    else:  # EXPENSE
+        st.warning(CommonTerminals.WARN_SBC_DOUBLE_COUNT)
+        st.number_input(
+            CommonTerminals.INP_SBC_ANNUAL_AMOUNT,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_SBC_ANNUAL_AMOUNT,
+            key=f"{prefix}_{UIKeys.SBC_ANNUAL_AMOUNT}",
+        )
 
 
 # ==============================================================================

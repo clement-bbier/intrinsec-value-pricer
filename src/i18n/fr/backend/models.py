@@ -25,3 +25,6 @@ class ModelTexts:
     LABEL_MINORITIES = "Intérêts Minoritaires"
     LABEL_PENSIONS = "Provisions pour Retraites"
     LABEL_EQUITY = "Valeur des Capitaux Propres"
+    LABEL_COMPREHENSIVE_NET_DEBT = "Dette Nette Consolidée (IFRS 16)"
+    LABEL_LEASE_LIABILITIES = "Engagements de Location (IFRS 16)"
+    LABEL_PENSION_LIABILITIES = "Engagements de Retraite (IFRS 16)"
