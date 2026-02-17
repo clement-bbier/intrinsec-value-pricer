@@ -43,7 +43,15 @@ from src.valuation.strategies.interface import IValuationRunner
 class FundamentalFCFFStrategy(IValuationRunner):
     """
     Normalized FCFF Strategy.
-    Anchors valuation on a 'Cycle-Mid' FCF rather than TTM.
+
+    Anchors valuation on a 'Cycle-Mid' FCF rather than TTM. This approach is
+    particularly useful for cyclical or volatile firms where current TTM flows
+    may not be representative of long-term earning power.
+
+    Attributes
+    ----------
+    _glass_box : bool
+        Flag to enable/disable detailed calculation tracing for transparency.
     """
 
     def __init__(self) -> None:
@@ -59,7 +67,34 @@ class FundamentalFCFFStrategy(IValuationRunner):
 
     def execute(self, financials: Company, params: Parameters) -> ValuationResult:
         """
-        Executes the Normalized DCF sequence.
+        Execute the Normalized DCF valuation sequence.
+
+        This method performs a complete DCF valuation using a normalized (cycle-average)
+        Free Cash Flow as the anchor point. The process includes:
+        1. Calculating WACC (or cost of equity)
+        2. Selecting or computing the normalized FCF anchor
+        3. Deriving growth rate from value drivers (ROIC × Reinvestment Rate)
+        4. Projecting cash flows over the explicit forecast period
+        5. Computing terminal value
+        6. Discounting all flows to present value
+        7. Converting enterprise value to equity value per share
+
+        Parameters
+        ----------
+        financials : Company
+            Company financial data including current price, TTM metrics, and historical data.
+        params : Parameters
+            Valuation parameters including strategy-specific settings, capital structure,
+            and discount rate inputs.
+
+        Returns
+        -------
+        ValuationResult
+            Complete valuation output containing:
+            - Intrinsic value per share
+            - Detailed calculation steps (if glass_box enabled)
+            - Projected cash flows and discount factors
+            - Terminal value and its weight in total value
         """
         # Type narrowing for mypy
         strategy_params = cast(FCFFNormalizedParameters, params.strategy)
@@ -246,8 +281,30 @@ class FundamentalFCFFStrategy(IValuationRunner):
     @staticmethod
     def execute_stochastic(_financials: Company, params: Parameters, vectors: dict[str, np.ndarray]) -> np.ndarray:
         """
-        High-Performance Vectorized Execution for Monte Carlo (Fundamental DCF).
-        Identical math to Standard DCF, just using the shocked 'base_flow' which maps to Normalized FCF.
+        High-performance vectorized execution for Monte Carlo simulation.
+
+        This method performs the same DCF valuation as the standard execute() method,
+        but operates on arrays of shocked input parameters simultaneously. It uses
+        vectorized NumPy operations for computational efficiency in Monte Carlo scenarios.
+
+        Parameters
+        ----------
+        _financials : Company
+            Company financial data (not used in vectorized calculation, included for interface consistency).
+        params : Parameters
+            Valuation parameters for capital structure and configuration.
+        vectors : dict[str, np.ndarray]
+            Dictionary of shocked input vectors with keys:
+            - 'wacc': Array of shocked WACC values
+            - 'growth': Array of shocked growth rates (g)
+            - 'terminal_growth': Array of shocked perpetual growth rates (g_n)
+            - 'base_flow': Array of shocked normalized FCF values
+
+        Returns
+        -------
+        np.ndarray
+            Array of intrinsic values per share, one for each Monte Carlo iteration.
+            Shape: (n_simulations,)
         """
         # 1. Unpack Vectors
         wacc = vectors["wacc"]
