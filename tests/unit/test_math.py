@@ -258,17 +258,32 @@ class TestNormalizeTerminalFlowForStableState:
         assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
 
     def test_growth_exceeds_roic(self):
-        """Test case where growth exceeds ROIC (>100% reinvestment)."""
-        # 15% growth with 10% ROIC requires 150% reinvestment (unsustainable)
+        """Test case where growth exceeds ROIC (>100% reinvestment) - NOW CLAMPED."""
+        # 15% growth with 10% ROIC would require 150% reinvestment (unsustainable)
+        # With clamping, reinvestment is limited to 100%
         adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.15, 0.10)
         
-        expected_reinv_rate = 1.5  # 150%
-        expected_adjusted_flow = 1000.0 * (1.0 - 1.5)  # = -500.0 (negative!)
+        # After clamping, reinvestment rate should be 1.0 (100%)
+        assert reinv_rate == pytest.approx(1.0, rel=1e-6)
+        # Adjusted flow should be zero (all flow reinvested)
+        assert adjusted_flow == pytest.approx(0.0, rel=1e-6)
+
+    def test_clamping_at_boundary(self):
+        """Test clamping behavior at exactly 100% reinvestment (growth = ROIC)."""
+        # When growth equals ROIC, reinvestment is exactly 100%
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.10, 0.10)
         
-        assert reinv_rate == pytest.approx(expected_reinv_rate, rel=1e-6)
-        assert adjusted_flow == pytest.approx(expected_adjusted_flow, rel=1e-6)
-        # Note: This is economically invalid but mathematically correct.
-        # The guardrails layer should catch this scenario.
+        assert reinv_rate == pytest.approx(1.0, rel=1e-6)
+        assert adjusted_flow == pytest.approx(0.0, rel=1e-6)
+
+    def test_clamping_extreme_case(self):
+        """Test clamping with extreme mismatch between growth and ROIC."""
+        # 20% growth with 5% ROIC would require 400% reinvestment (absurd)
+        # Should be clamped to 100%
+        adjusted_flow, reinv_rate = normalize_terminal_flow_for_stable_state(1000.0, 0.20, 0.05)
+        
+        assert reinv_rate == pytest.approx(1.0, rel=1e-6)
+        assert adjusted_flow == pytest.approx(0.0, rel=1e-6)
 
     def test_small_numbers(self):
         """Test with small flow values."""

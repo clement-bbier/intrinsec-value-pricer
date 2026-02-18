@@ -272,11 +272,27 @@ def normalize_terminal_flow_for_stable_state(
 
     # Case 2: ROIC not available or invalid => Conservative approach (no adjustment)
     if roic_stable is None or roic_stable <= 0:
+        logger.debug(
+            f"Golden Rule: ROIC not available or invalid (roic_stable={roic_stable}). "
+            "Returning unadjusted flow (conservative approach)."
+        )
         return final_flow, 0.0
 
     # Case 3: Apply Golden Rule - Calculate normative reinvestment rate
     # Reinvestment Rate = g_n / ROIC_stable
-    reinvestment_rate = perpetual_growth / roic_stable
+    raw_reinvestment_rate = perpetual_growth / roic_stable
+    
+    # CRITICAL SAFETY: Clamp reinvestment rate between 0.0 and 1.0
+    # If ROIC < growth, reinvestment would exceed 100%, making flow negative
+    # This is economically impossible, so we clamp to 100% max
+    reinvestment_rate = min(max(raw_reinvestment_rate, 0.0), 1.0)
+    
+    if raw_reinvestment_rate > 1.0:
+        logger.warning(
+            f"Golden Rule: Reinvestment rate clamped from {raw_reinvestment_rate:.2%} to 100%. "
+            f"ROIC ({roic_stable:.2%}) < Growth ({perpetual_growth:.2%}) implies unsustainable economics. "
+            "Consider revising assumptions."
+        )
 
     # Adjusted flow = Original flow × (1 - reinvestment_rate)
     # This represents the free cash flow available after setting aside
