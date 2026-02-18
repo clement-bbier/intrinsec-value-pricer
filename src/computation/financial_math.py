@@ -285,19 +285,9 @@ def calculate_fcf_tax_adjustment_factor(
     if return_diagnostics:
         return final_factor, diagnostics_list
     return final_factor
-        
-        if ebit_ttm is not None and revenue_ttm is not None and revenue_ttm > 0:
-            # Use real operating margin
-            operating_margin = ebit_ttm / revenue_ttm
-            # Clamp to reasonable bounds (0-50%)
-            operating_margin = max(0.0, min(0.50, operating_margin))
-    
-    # Calculate adjustment factor
-    tax_delta = effective_tax_rate - marginal_tax_rate
-    adjustment = 1.0 + (operating_margin * tax_delta)
-    
-    # Clamp to reasonable bounds (±50% adjustment maximum)
-    return max(0.5, min(1.5, adjustment))
+
+
+# ==============================================================================
 
 
 def calculate_terminal_value_exit_multiple(final_metric: float, multiple: float) -> float:

@@ -249,7 +249,7 @@ class DCFLibrary:
     @staticmethod
     def compute_terminal_value(
         final_flow: float, discount_rate: float, params: Parameters, financials=None
-    ) -> tuple[float, CalculationStep]:
+    ) -> tuple[float, CalculationStep, list]:
         """
         Calculates Terminal Value based on Strategy selection.
         
@@ -266,8 +266,8 @@ class DCFLibrary:
         
         Returns
         -------
-        tuple[float, CalculationStep]
-            Terminal value and calculation step for audit trail.
+        tuple[float, CalculationStep, list]
+            Terminal value, calculation step for audit trail, and list of diagnostic events.
         
         Notes
         -----
@@ -275,6 +275,10 @@ class DCFLibrary:
         the terminal value will be calculated using a WACC that applies the
         marginal tax rate instead of the effective tax rate. This reflects that
         temporary tax benefits are not perpetual.
+        
+        Diagnostics are generated for:
+        - Beta adjustment skipped due to 5% threshold
+        - Operating margin fallback when EBIT/Revenue data unavailable
         """
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
@@ -285,6 +289,7 @@ class DCFLibrary:
             # Use marginal tax rate for terminal value WACC if available
             tv_discount_rate = discount_rate
             tax_adjustment_factor = 1.0
+            tv_diagnostics = []  # Collect diagnostics from TV calculation
             marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
             
             if marginal_tax_rate is not None and financials is not None:
@@ -292,16 +297,25 @@ class DCFLibrary:
                 wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
                 tv_discount_rate = wacc_tv_breakdown.wacc
                 
+                # Collect WACC diagnostics (e.g., beta adjustment skipped)
+                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                    tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
+                
                 # Calculate tax adjustment factor for FCF
                 # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
                 # Pass financials to use real operating margin
                 effective_tax_rate = params.common.rates.tax_rate or ModelDefaults.DEFAULT_TAX_RATE
                 if effective_tax_rate != marginal_tax_rate:
-                    tax_adjustment_factor = calculate_fcf_tax_adjustment_factor(
+                    # Request diagnostics to detect fallback usage
+                    tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
                         effective_tax_rate=effective_tax_rate,
                         marginal_tax_rate=marginal_tax_rate,
-                        financials=financials  # Pass financials for real margin calculation
+                        financials=financials,  # Pass financials for real margin calculation
+                        return_diagnostics=True
                     )
+                    # Collect FCF adjustment diagnostics (e.g., margin fallback used)
+                    if fcf_diagnostics:
+                        tv_diagnostics.extend(fcf_diagnostics)
             
             tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
 
@@ -335,7 +349,7 @@ class DCFLibrary:
                     ),
                 },
             )
-            return tv, step
+            return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
             multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
@@ -358,7 +372,8 @@ class DCFLibrary:
                     )
                 },
             )
-            return tv, step
+            # Exit multiple doesn't use marginal tax or beta adjustments, so no diagnostics
+            return tv, step, []
 
     @staticmethod
     def compute_discounting(

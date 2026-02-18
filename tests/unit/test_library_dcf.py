@@ -315,7 +315,7 @@ def test_compute_terminal_value_gordon(mock_params_fcff):
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * (1+g) / (r - g)
     # TV = 1,500,000 * 1.03 / (0.10 - 0.03)
@@ -335,7 +335,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff):
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * Multiple
     expected_tv = 1_500_000 * 10.0
@@ -367,7 +367,7 @@ def test_compute_terminal_value_edge_case_small_spread():
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
 
     # Should still calculate without error
     assert tv > 0
@@ -398,7 +398,7 @@ def test_compute_terminal_value_with_marginal_tax_rate():
     discount_rate = 0.10
 
     # Call without financials - should work normally despite marginal_tax_rate being set
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials=None)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials=None)
 
     # Verify TV was calculated correctly with standard Gordon model
     # TV = FCF_n * (1+g) / (r - g) = 1,000,000 * 1.03 / (0.10 - 0.03)
@@ -583,7 +583,7 @@ def test_dcf_full_workflow(mock_params_fcff):
     # 2. Calculate terminal value
     final_flow = flows[-1]
     discount_rate = 0.10
-    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, tv_step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
     assert tv > 0
 
     # 3. Discount everything
@@ -661,7 +661,7 @@ def test_terminal_value_with_marginal_tax_applies_adjustment():
     discount_rate = 0.10
 
     # Calculate TV with marginal tax adjustment
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials)
 
     # Verify calculation was successful
     assert tv > 0
