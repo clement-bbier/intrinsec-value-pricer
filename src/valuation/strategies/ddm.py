@@ -34,7 +34,7 @@ from src.models.results.options import ExtensionBundleResults
 from src.models.results.strategies import DDMResults
 
 # Models Results
-from src.models.valuation import ValuationRequest, ValuationResult
+from src.models.valuation import AuditReport, ValuationRequest, ValuationResult
 
 # Libraries
 from src.valuation.library.common import CommonLibrary
@@ -129,9 +129,14 @@ class DividendDiscountStrategy(IValuationRunner):
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else total_dividend_mass
         # TV calculated with Ke (not WACC)
-        tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, ke, params)
+        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params)
         if self._glass_box:
             steps.append(step_tv)
+
+        # Collect diagnostics for audit report (will be added by orchestrator)
+        all_diagnostics = []
+        if tv_diagnostics:
+            all_diagnostics.extend(tv_diagnostics)
 
         # --- STEP 5: Discounting ---
         # Discount at Ke. Result is Total Equity Value.
@@ -203,6 +208,7 @@ class DividendDiscountStrategy(IValuationRunner):
         return ValuationResult(
             request=ValuationRequest(mode=ValuationMethodology.DDM, parameters=params),
             results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
+            audit_report=AuditReport(events=all_diagnostics) if all_diagnostics else None,
         )
 
     @staticmethod

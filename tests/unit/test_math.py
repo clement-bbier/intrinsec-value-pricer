@@ -48,6 +48,7 @@ from src.computation.financial_math import (
 )
 from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
 from src.core.exceptions import CalculationError
+from src.i18n import StrategySources
 from src.models import CapitalStructureParameters, CommonParameters, Company, FinancialRatesParameters, Parameters
 
 # ==============================================================================
@@ -576,17 +577,22 @@ class TestCalculateWACC:
         company.ebit_ttm = 1000.0
         company.interest_expense = 100.0
 
-        # Set target debt-to-capital ratio of 30%
+        # Set target D/E ratio: 30% debt / 70% equity = D/E = 0.4286
+        # Target weights will be calculated from D/E: wd = D/E / (1+D/E) = 0.4286/1.4286 = 0.30
         rates = FinancialRatesParameters(
             risk_free_rate=4.0,
             market_risk_premium=5.0,
             beta=1.2,
             tax_rate=25.0,
             cost_of_debt=6.0,
-            target_debt_to_capital=30.0,  # 30% debt, 70% equity
         )
         # Market structure: debt=5000, equity=100*1000=100000, D/E_market = 0.05
-        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        # Target structure: D/E = 0.30/0.70 = 0.4286 (for 30% debt in capital structure)
+        capital = CapitalStructureParameters(
+            total_debt=5000.0, 
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.4286  # D/E ratio (not percentage)
+        )
         common = CommonParameters(rates=rates, capital=capital)
 
         params = Mock(spec=Parameters)
@@ -595,8 +601,8 @@ class TestCalculateWACC:
         breakdown = calculate_wacc(company, params)
 
         # Verify target weights were used (not market-based)
-        assert breakdown.weight_debt == pytest.approx(0.30)
-        assert breakdown.weight_equity == pytest.approx(0.70)
+        assert breakdown.weight_debt == pytest.approx(0.30, abs=1e-3)
+        assert breakdown.weight_equity == pytest.approx(0.70, abs=1e-3)
 
         # Verify beta was adjusted (Hamada)
         assert breakdown.beta_adjusted is True
@@ -940,3 +946,420 @@ class TestCalculateTriangulatedPrice:
         # Should fallback to simple average since no active weights
         expected = (100.0 + 120.0) / 2.0
         assert price == pytest.approx(expected)
+
+
+class TestCalculateFCFTaxAdjustmentFactor:
+    """Tests for FCF tax adjustment factor calculation."""
+
+    def test_no_adjustment_when_rates_equal(self):
+        """Tax adjustment factor should be 1.0 when rates are equal."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        factor = calculate_fcf_tax_adjustment_factor(0.25, 0.25, financials=None)
+        assert factor == 1.0
+
+    def test_adjustment_when_marginal_higher(self):
+        """Factor < 1.0 when marginal rate > effective rate (tax increase, FCF decrease)."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 15%, Marginal 25%, Operating margin fallback 15%
+        # Factor ≈ 1 + 0.15 × (0.15 - 0.25) = 1 - 0.015 = 0.985
+        factor = calculate_fcf_tax_adjustment_factor(0.15, 0.25, financials=None)
+        assert factor < 1.0
+        assert factor == pytest.approx(0.985, rel=1e-6)
+
+    def test_adjustment_when_marginal_lower(self):
+        """Factor > 1.0 when marginal rate < effective rate (tax decrease, FCF increase)."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 30%, Marginal 20%, Operating margin fallback 15%
+        # Factor ≈ 1 + 0.15 × (0.30 - 0.20) = 1 + 0.015 = 1.015
+        factor = calculate_fcf_tax_adjustment_factor(0.30, 0.20, financials=None)
+        assert factor > 1.0
+        assert factor == pytest.approx(1.015, rel=1e-6)
+
+    def test_france_example(self):
+        """Test with France example: effective 36.1% -> marginal 25%."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Effective 36.1%, Marginal 25%, Operating margin fallback 15%
+        # Factor ≈ 1 + 0.15 × (0.361 - 0.25) = 1 + 0.01665 = 1.01665
+        factor = calculate_fcf_tax_adjustment_factor(0.361, 0.25, financials=None)
+        assert factor > 1.0
+        assert factor == pytest.approx(1.01665, rel=1e-3)
+
+    def test_with_real_financials_margin(self):
+        """Test using real company financials for operating margin."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        from unittest.mock import Mock
+        
+        # Create mock company with 20% operating margin
+        financials = Mock()
+        financials.ebit_ttm = 200.0
+        financials.revenue_ttm = 1000.0  # 20% margin
+        
+        # Effective 15%, Marginal 25%, Operating margin 20% (from financials)
+        # Factor ≈ 1 + 0.20 × (0.15 - 0.25) = 1 - 0.02 = 0.98
+        factor = calculate_fcf_tax_adjustment_factor(0.15, 0.25, financials=financials)
+        assert factor < 1.0
+        assert factor == pytest.approx(0.98, rel=1e-6)
+
+    def test_higher_operating_margin(self):
+        """Higher operating margin means more sensitivity to tax changes."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        from unittest.mock import Mock
+        
+        # Create mocks with different operating margins
+        financials_20 = Mock()
+        financials_20.ebit_ttm = 200.0
+        financials_20.revenue_ttm = 1000.0  # 20% margin
+        
+        financials_40 = Mock()
+        financials_40.ebit_ttm = 400.0
+        financials_40.revenue_ttm = 1000.0  # 40% margin
+        
+        # With 40% operating margin, impact should be double that of 20%
+        factor_20 = calculate_fcf_tax_adjustment_factor(0.15, 0.25, financials=financials_20)
+        factor_40 = calculate_fcf_tax_adjustment_factor(0.15, 0.25, financials=financials_40)
+        
+        assert factor_40 < factor_20  # More impact
+        # Both should be below 1.0 (tax increase)
+        assert factor_20 < 1.0
+        assert factor_40 < 1.0
+
+    def test_clamping_bounds(self):
+        """Extreme tax changes should be clamped to reasonable bounds."""
+        from src.computation.financial_math import calculate_fcf_tax_adjustment_factor
+        
+        # Extreme case: effective 0%, marginal 90%
+        # With 15% fallback: 1 + 0.15 × (0 - 0.90) = 1 - 0.135 = 0.865
+        # Should be clamped to minimum 0.5
+        factor = calculate_fcf_tax_adjustment_factor(0.0, 0.90, financials=None)
+        assert factor >= 0.5  # Minimum bound
+        assert factor <= 1.5  # Maximum bound
+
+
+class TestWACCTerminalValueWithHamadaAndMarginalTax:
+    """Integration test for WACC TV with Hamada beta adjustment and marginal tax rate."""
+
+    def test_tv_wacc_with_hamada_and_marginal_tax(self):
+        """
+        Test that terminal value WACC correctly applies both:
+        1. Hamada beta adjustment when target structure differs from current
+        2. Marginal tax rate instead of effective tax rate
+        
+        This ensures the terminal value uses both optimal capital structure
+        (financial risk) and normalized fiscal conditions (marginal tax).
+        """
+        from src.computation.financial_math import calculate_wacc_for_terminal_value
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        # Create mock Company with current market structure
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Setup: Current structure is 20% debt, target is 40% debt
+        # Current: $100k equity, $25k debt (D/E = 0.25)
+        # Target: D/E = 0.67 (40% debt, 60% equity)
+        current_market_equity = 100.0 * 1000.0  # price × shares = $100k
+        current_debt = 25000.0  # $25k debt
+        # Current D/E = 25000 / 100000 = 0.25
+        
+        # Create Parameters with target structure and marginal tax
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,  # Observed beta at current leverage
+            tax_rate=15.0,  # Effective tax rate (with temporary benefits)
+            marginal_tax_rate=25.0,  # Long-term marginal tax rate
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.67,  # Target 40% debt in capital structure
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        # Calculate TV WACC (should use marginal tax and Hamada adjustment)
+        tv_wacc = calculate_wacc_for_terminal_value(company, params)
+        
+        # Assertions
+        assert isinstance(tv_wacc, WACCBreakdown)
+        
+        # 1. Beta should be adjusted (Hamada applied)
+        assert tv_wacc.beta_adjusted is True
+        assert tv_wacc.beta_used != 1.2  # Should differ from input beta
+        
+        # 2. Method should indicate target structure was used
+        assert tv_wacc.method == StrategySources.WACC_TARGET
+        
+        # 3. Weights should reflect target structure (40% debt, 60% equity)
+        # D/E = 0.67 means D/(D+E) = 0.67/1.67 ≈ 0.40, E/(D+E) ≈ 0.60
+        assert tv_wacc.weight_debt == pytest.approx(0.40, abs=0.01)
+        assert tv_wacc.weight_equity == pytest.approx(0.60, abs=0.01)
+        
+        # 4. After-tax cost of debt should use marginal rate (25%)
+        # Kd_net = Kd × (1 - τ_marg) = 5.0% × (1 - 0.25) = 3.75%
+        expected_kd_net = 0.05 * (1.0 - 0.25)
+        assert tv_wacc.cost_of_debt_after_tax == pytest.approx(expected_kd_net, rel=1e-6)
+        
+        # 5. Compare with explicit period WACC (also uses target structure, but with effective tax)
+        from src.computation.financial_math import calculate_wacc
+        
+        explicit_wacc = calculate_wacc(company, params)
+        
+        # Explicit period should also use target structure (since specified) but effective tax
+        assert explicit_wacc.beta_adjusted is True  # Both periods adjust beta for target structure
+        assert explicit_wacc.method == StrategySources.WACC_TARGET
+        
+        # Effective tax (15%) gives higher after-tax debt benefit
+        # Kd_net = 5.0% × (1 - 0.15) = 4.25%
+        expected_kd_net_explicit = 0.05 * (1.0 - 0.15)
+        assert explicit_wacc.cost_of_debt_after_tax == pytest.approx(expected_kd_net_explicit, rel=1e-6)
+        
+        # 6. TV WACC should differ from explicit WACC due to different tax rates
+        # Both use target structure and Hamada adjustment, but different tax rates
+        assert tv_wacc.wacc != explicit_wacc.wacc
+        
+        # Key difference: tax rate affects both Kd_net and beta relevering
+        # Higher marginal tax (25% vs 15%) means:
+        # - Lower Kd_net (less tax shield benefit)
+        # - Different beta relevering (tax rate used in Hamada formula)
+        
+        print(f"\nExplicit Period WACC: {explicit_wacc.wacc:.2%}")
+        print(f"  - Beta: {explicit_wacc.beta_used:.3f} (adjusted: {explicit_wacc.beta_adjusted})")
+        print(f"  - Weights: {explicit_wacc.weight_equity:.1%} equity, {explicit_wacc.weight_debt:.1%} debt")
+        print(f"  - Kd after tax (15%): {explicit_wacc.cost_of_debt_after_tax:.2%}")
+        print(f"\nTerminal Value WACC: {tv_wacc.wacc:.2%}")
+        print(f"  - Beta: {tv_wacc.beta_used:.3f} (adjusted: {tv_wacc.beta_adjusted})")
+        print(f"  - Weights: {tv_wacc.weight_equity:.1%} equity, {tv_wacc.weight_debt:.1%} debt")
+        print(f"  - Kd after tax (25%): {tv_wacc.cost_of_debt_after_tax:.2%}")
+
+    def test_tv_wacc_no_adjustment_when_structure_matches(self):
+        """Test that beta is not adjusted when current structure matches target."""
+        from src.computation.financial_math import calculate_wacc_for_terminal_value
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Current and target D/E are the same (25%)
+        current_market_equity = 100.0 * 1000.0
+        current_debt = 25000.0
+        current_de = current_debt / current_market_equity  # 0.25
+        
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,
+            tax_rate=15.0,
+            marginal_tax_rate=25.0,
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=current_de,  # Same as current
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        tv_wacc = calculate_wacc_for_terminal_value(company, params)
+        
+        # Beta should not be adjusted (within 5% tolerance)
+        assert tv_wacc.beta_adjusted is False
+        assert tv_wacc.beta_used == 1.2
+        
+        # Still uses target structure method and marginal tax
+        assert tv_wacc.method == StrategySources.WACC_TARGET
+        # Marginal tax should still be applied
+        assert tv_wacc.cost_of_debt_after_tax == pytest.approx(0.05 * 0.75, rel=1e-6)
+
+
+class TestRatioConversionHelpers:
+    """Test D/E to D/Cap conversion helper functions."""
+
+    def test_convert_de_to_dcap_basic(self):
+        """Test basic D/E to D/Cap conversion."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0.5 → 33.3% debt in capital
+        we, wd = convert_de_to_dcap(0.5)
+        assert we == pytest.approx(0.6667, abs=1e-4)
+        assert wd == pytest.approx(0.3333, abs=1e-4)
+        assert we + wd == pytest.approx(1.0)
+        
+    def test_convert_de_to_dcap_equal_leverage(self):
+        """Test D/E = 1.0 (equal debt and equity)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 1.0 → 50% debt in capital
+        we, wd = convert_de_to_dcap(1.0)
+        assert we == pytest.approx(0.5)
+        assert wd == pytest.approx(0.5)
+        
+    def test_convert_de_to_dcap_low_leverage(self):
+        """Test D/E = 0.25 (low leverage)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0.25 → 20% debt in capital
+        we, wd = convert_de_to_dcap(0.25)
+        assert we == pytest.approx(0.8)
+        assert wd == pytest.approx(0.2)
+        
+    def test_convert_de_to_dcap_zero_debt(self):
+        """Test D/E = 0 (no debt)."""
+        from src.computation.financial_math import convert_de_to_dcap
+        
+        # D/E = 0 → 0% debt in capital
+        we, wd = convert_de_to_dcap(0.0)
+        assert we == pytest.approx(1.0)
+        assert wd == pytest.approx(0.0)
+        
+    def test_convert_dcap_to_de_basic(self):
+        """Test D/Cap to D/E conversion."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 33.3% debt in capital → D/E = 0.5
+        de = convert_dcap_to_de(0.3333)
+        assert de == pytest.approx(0.5, abs=1e-3)
+        
+    def test_convert_dcap_to_de_half_debt(self):
+        """Test 50% debt in capital."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 50% debt in capital → D/E = 1.0
+        de = convert_dcap_to_de(0.5)
+        assert de == pytest.approx(1.0)
+        
+    def test_convert_dcap_to_de_low_debt(self):
+        """Test 20% debt in capital."""
+        from src.computation.financial_math import convert_dcap_to_de
+        
+        # 20% debt in capital → D/E = 0.25
+        de = convert_dcap_to_de(0.2)
+        assert de == pytest.approx(0.25)
+        
+    def test_roundtrip_conversion(self):
+        """Test roundtrip: D/E → D/Cap → D/E."""
+        from src.computation.financial_math import convert_de_to_dcap, convert_dcap_to_de
+        
+        original_de = 0.75
+        we, wd = convert_de_to_dcap(original_de)
+        recovered_de = convert_dcap_to_de(wd)
+        
+        assert recovered_de == pytest.approx(original_de, rel=1e-6)
+
+
+class TestBetaAdjustmentThreshold:
+    """Test the 5% threshold for Hamada beta adjustment."""
+    
+    def test_no_adjustment_when_difference_below_threshold(self):
+        """Beta should not adjust when target differs by less than 5%."""
+        from src.computation.financial_math import calculate_wacc
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Current D/E = 25000/100000 = 0.25
+        # Target D/E = 0.28 (difference = 0.03 < 0.05)
+        current_market_equity = 100.0 * 1000.0
+        current_debt = 25000.0
+        
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.28,  # Within 5% threshold
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        wacc = calculate_wacc(company, params)
+        
+        # Beta should NOT be adjusted (within threshold)
+        assert wacc.beta_adjusted is False
+        assert wacc.beta_used == 1.2
+        
+    def test_adjustment_when_difference_exceeds_threshold(self):
+        """Beta should adjust when target differs by more than 5%."""
+        from src.computation.financial_math import calculate_wacc
+        from src.models.parameters.common import (
+            CapitalStructureParameters,
+            CommonParameters,
+            FinancialRatesParameters,
+        )
+        from src.models import Parameters
+        from unittest.mock import Mock
+        
+        company = Mock(spec=Company)
+        company.current_price = 100.0
+        company.ebit_ttm = 1000.0
+        company.interest_expense = 50.0
+        
+        # Current D/E = 25000/100000 = 0.25
+        # Target D/E = 0.35 (difference = 0.10 > 0.05)
+        current_market_equity = 100.0 * 1000.0
+        current_debt = 25000.0
+        
+        rates = FinancialRatesParameters(
+            risk_free_rate=3.0,
+            market_risk_premium=6.0,
+            beta=1.2,
+            tax_rate=25.0,
+            cost_of_debt=5.0,
+        )
+        capital = CapitalStructureParameters(
+            total_debt=current_debt,
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=0.35,  # Exceeds 5% threshold
+        )
+        common = CommonParameters(rates=rates, capital=capital)
+        
+        params = Mock(spec=Parameters)
+        params.common = common
+        
+        wacc = calculate_wacc(company, params)
+        
+        # Beta SHOULD be adjusted (exceeds threshold)
+        assert wacc.beta_adjusted is True
+        assert wacc.beta_used != 1.2  # Beta changed

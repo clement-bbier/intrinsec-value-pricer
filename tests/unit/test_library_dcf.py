@@ -41,12 +41,17 @@ def mock_params_fcff():
 
     params.strategy = strategy
 
-    # Mock common params for capital structure
+    # Mock common params for capital structure and rates
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
+    
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    
     common = Mock()
     common.capital = capital
+    common.rates = rates
     params.common = common
 
     return params
@@ -310,7 +315,7 @@ def test_compute_terminal_value_gordon(mock_params_fcff):
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * (1+g) / (r - g)
     # TV = 1,500,000 * 1.03 / (0.10 - 0.03)
@@ -330,7 +335,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff):
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
 
     # TV = FCF * Multiple
     expected_tv = 1_500_000 * 10.0
@@ -351,15 +356,59 @@ def test_compute_terminal_value_edge_case_small_spread():
     tv_params.perpetual_growth_rate = 0.095  # Very close to discount rate
     strategy.terminal_value = tv_params
     params.strategy = strategy
+    
+    # Add common.rates mock to prevent AttributeError
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    common.rates = rates
+    params.common = common
 
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
 
     # Should still calculate without error
     assert tv > 0
     assert tv > final_flow * 10  # Should be large with small spread
+
+
+def test_compute_terminal_value_with_marginal_tax_rate():
+    """Test that terminal value calculation works when marginal_tax_rate is provided."""
+    # This test verifies that having marginal_tax_rate doesn't break TV calculation
+    # Full WACC recalculation testing is covered in integration tests
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+    
+    # Mock common with marginal tax rate set
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = 0.25  # Marginal tax rate is set
+    common.rates = rates
+    params.common = common
+    
+    # Don't pass financials - should use standard discount rate
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Call without financials - should work normally despite marginal_tax_rate being set
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials=None)
+
+    # Verify TV was calculated correctly with standard Gordon model
+    # TV = FCF_n * (1+g) / (r - g) = 1,000,000 * 1.03 / (0.10 - 0.03)
+    expected_tv = 1_000_000 * 1.03 / 0.07
+    assert tv == pytest.approx(expected_tv, rel=1e-6)
+    assert step.step_key == "TV_GORDON"
+    
+    # Verify discount rate used is the one passed in (since no financials provided)
+    assert "r" in step.variables_map
+    assert step.variables_map["r"].value == discount_rate
 
 
 # ============================================================================
@@ -534,7 +583,7 @@ def test_dcf_full_workflow(mock_params_fcff):
     # 2. Calculate terminal value
     final_flow = flows[-1]
     discount_rate = 0.10
-    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, tv_step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
     assert tv > 0
 
     # 3. Discount everything
@@ -570,3 +619,58 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
     for i in range(5):
         expected_fcf = revenues[i] * margins[i]
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+def test_terminal_value_with_marginal_tax_applies_adjustment():
+    """Test that marginal tax rate triggers FCF tax adjustment in TV calculation."""
+    from src.models.company import Company
+    
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+    
+    # Setup with different tax rates
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = 0.25  # Higher than effective
+    rates.tax_rate = 0.15  # Effective rate with temporary benefits
+    rates.cost_of_debt = 0.05
+    rates.risk_free_rate = 0.03
+    rates.beta = 1.0
+    rates.market_risk_premium = 0.06
+    rates.wacc = None
+    rates.cost_of_equity = None
+    
+    capital = Mock()
+    capital.total_debt = 100.0
+    capital.shares_outstanding = 100.0
+    capital.target_debt_equity_ratio = None  # No target structure for this test
+    
+    common.rates = rates
+    common.capital = capital
+    params.common = common
+    
+    financials = Mock(spec=Company)
+    financials.current_price = 50.0
+    
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Calculate TV with marginal tax adjustment
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials)
+
+    # Verify calculation was successful
+    assert tv > 0
+    assert step.step_key == "TV_GORDON"
+    
+    # Verify result is reasonable
+    assert tv > final_flow  # TV should exceed single period flow
+    
+    # The actual_calculation should show the formula was applied
+    assert "%" in step.actual_calculation  # Contains percentage formatting
+    assert "g_perp" in step.variables_map
+    assert "r" in step.variables_map

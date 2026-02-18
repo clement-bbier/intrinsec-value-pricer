@@ -87,7 +87,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Projection", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="Terminal Value", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="Terminal Value", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Discounting", result=950000))
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="Per Share", result=62.5))
 
@@ -131,7 +131,7 @@ class TestFCFEStrategy:
             [88000, 95040, 99792],
             CalculationStep(step_key="PROJ_MANUAL", label="Manual Projection", result=99792),
         )
-        mock_tv.return_value = (1400000, CalculationStep(step_key="TV", label="TV", result=1400000))
+        mock_tv.return_value = (1400000, CalculationStep(step_key="TV", label="TV", result=1400000), [])
         mock_discount.return_value = (900000, CalculationStep(step_key="DISC", label="Disc", result=900000))
         mock_per_share.return_value = (59.4, CalculationStep(step_key="PS", label="PS", result=59.4))
 
@@ -156,7 +156,7 @@ class TestFCFEStrategy:
         # Setup mocks
         mock_rate.return_value = (0.10, CalculationStep(step_key="KE", label="Ke", result=0.10))
         mock_project.return_value = ([0, 0, 0, 0, 0], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_per_share.return_value = (3.125, CalculationStep(step_key="PS", label="PS", result=3.125))
 
@@ -183,7 +183,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
 
@@ -209,7 +209,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         # PV of operating FCFE
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
@@ -254,7 +254,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
         mock_disc_factors.return_value = [0.909, 0.826, 0.751, 0.683, 0.621]
@@ -282,7 +282,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (62.5, CalculationStep(step_key="PS", label="PS", result=62.5))
 
@@ -327,7 +327,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (180.0, CalculationStep(step_key="PS", label="PS", result=180.0))
 
@@ -349,7 +349,7 @@ class TestFCFEStrategy:
         # Setup mocks with empty flows
         mock_rate.return_value = (0.10, CalculationStep(step_key="KE", label="Ke", result=0.10))
         mock_project.return_value = ([], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_per_share.return_value = (3.125, CalculationStep(step_key="PS", label="PS", result=3.125))
 
@@ -387,7 +387,7 @@ class TestFCFEStrategy:
             [84000, 88200, 92610, 97240, 102102],
             CalculationStep(step_key="PROJ", label="Proj", result=102102),
         )
-        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000))
+        mock_tv.return_value = (1500000, CalculationStep(step_key="TV", label="TV", result=1500000), [])
         mock_discount.return_value = (950000, CalculationStep(step_key="DISC", label="Disc", result=950000))
         mock_per_share.return_value = (59.375, CalculationStep(step_key="PS", label="PS", result=59.375))
 

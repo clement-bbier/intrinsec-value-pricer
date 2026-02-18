@@ -88,7 +88,7 @@ class TestDDMStrategy:
             [3150, 3300, 3450, 3600, 3750],
             CalculationStep(step_key="PROJ", label="Projection", result=3750),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="Terminal Value", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="Terminal Value", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Discounting", result=60000))
         mock_per_share.return_value = (3.75, CalculationStep(step_key="PS", label="Per Share", result=3.75))
 
@@ -137,7 +137,7 @@ class TestDDMStrategy:
             [3300, 3564, 3742],
             CalculationStep(step_key="PROJ_MANUAL", label="Manual Projection", result=3742),
         )
-        mock_tv.return_value = (45000, CalculationStep(step_key="TV", label="TV", result=45000))
+        mock_tv.return_value = (45000, CalculationStep(step_key="TV", label="TV", result=45000), [])
         mock_discount.return_value = (50000, CalculationStep(step_key="DISC", label="Disc", result=50000))
         mock_per_share.return_value = (3.12, CalculationStep(step_key="PS", label="PS", result=3.12))
 
@@ -170,7 +170,7 @@ class TestDDMStrategy:
         # Setup mocks
         mock_rate.return_value = (0.10, CalculationStep(step_key="KE", label="Ke", result=0.10))
         mock_project.return_value = ([0, 0, 0, 0, 0], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_per_share.return_value = (0, CalculationStep(step_key="PS", label="PS", result=0))
 
@@ -198,7 +198,7 @@ class TestDDMStrategy:
             [4200, 4400, 4600, 4800, 5000],
             CalculationStep(step_key="PROJ", label="Proj", result=5000),
         )
-        mock_tv.return_value = (60000, CalculationStep(step_key="TV", label="TV", result=60000))
+        mock_tv.return_value = (60000, CalculationStep(step_key="TV", label="TV", result=60000), [])
         mock_discount.return_value = (70000, CalculationStep(step_key="DISC", label="Disc", result=70000))
         mock_per_share.return_value = (4.37, CalculationStep(step_key="PS", label="PS", result=4.37))
 
@@ -225,7 +225,7 @@ class TestDDMStrategy:
             [3000, 3150, 3300, 3450, 3600],
             CalculationStep(step_key="PROJ", label="Proj", result=3600),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Disc", result=60000))
         mock_per_share.return_value = (3.75, CalculationStep(step_key="PS", label="PS", result=3.75))
 
@@ -261,7 +261,7 @@ class TestDDMStrategy:
             [3000, 3150, 3300, 3450, 3600],
             CalculationStep(step_key="PROJ", label="Proj", result=3600),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Disc", result=60000))
         mock_per_share.return_value = (3.75, CalculationStep(step_key="PS", label="PS", result=3.75))
         mock_disc_factors.return_value = [0.909, 0.826, 0.751, 0.683, 0.621]
@@ -297,7 +297,7 @@ class TestDDMStrategy:
             [3000, 3150, 3300, 3450, 3600],
             CalculationStep(step_key="PROJ", label="Proj", result=3600),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Disc", result=60000))
         mock_per_share.return_value = (3.75, CalculationStep(step_key="PS", label="PS", result=3.75))
         mock_disc_factors.return_value = [0.909, 0.826, 0.751, 0.683, 0.621]
@@ -325,7 +325,7 @@ class TestDDMStrategy:
             [3000, 3150, 3300, 3450, 3600],
             CalculationStep(step_key="PROJ", label="Proj", result=3600),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Disc", result=60000))
         mock_per_share.return_value = (180.0, CalculationStep(step_key="PS", label="PS", result=180.0))
 
@@ -350,7 +350,7 @@ class TestDDMStrategy:
             [3000, 3150, 3300, 3450, 3600],
             CalculationStep(step_key="PROJ", label="Proj", result=3600),
         )
-        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000))
+        mock_tv.return_value = (50000, CalculationStep(step_key="TV", label="TV", result=50000), [])
         mock_discount.return_value = (60000, CalculationStep(step_key="DISC", label="Disc", result=60000))
         mock_per_share.return_value = (3.75, CalculationStep(step_key="PS", label="PS", result=3.75))
 
@@ -375,7 +375,7 @@ class TestDDMStrategy:
         # Setup mocks with empty flows
         mock_rate.return_value = (0.10, CalculationStep(step_key="KE", label="Ke", result=0.10))
         mock_project.return_value = ([], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_per_share.return_value = (0, CalculationStep(step_key="PS", label="PS", result=0))
 

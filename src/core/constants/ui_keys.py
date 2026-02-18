@@ -38,6 +38,7 @@ class UIKeys:
     BETA: str = "beta"
     KD: str = "kd"
     TAX: str = "tax"
+    MARGINAL_TAX: str = "marginal_tax"
     YIELD_AAA: str = "yield_aaa"
     WACC_OVERRIDE: str = "wacc_override"
     KE_OVERRIDE: str = "ke_override"
@@ -53,6 +54,7 @@ class UIKeys:
     PENSION_LIABILITIES: str = "pension_liab"
     SHARES: str = "shares"
     SBC_RATE: str = "sbc_rate"
+    TARGET_DE_RATIO: str = "target_de_ratio"
     SBC_TREATMENT: str = "sbc_treatment"
     SBC_ANNUAL_AMOUNT: str = "sbc_annual_amount"
 

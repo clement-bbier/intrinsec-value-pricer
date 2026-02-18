@@ -98,7 +98,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="Terminal Value", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="Terminal Value", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Discounting", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Equity Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="Per Share", result=89.375))
@@ -159,7 +159,7 @@ class TestFundamentalFCFFStrategy:
             [104500, 112860, 118503],
             CalculationStep(step_key="PROJ_MANUAL", label="Manual Projection", result=118503),
         )
-        mock_tv.return_value = (1700000, CalculationStep(step_key="TV", label="TV", result=1700000))
+        mock_tv.return_value = (1700000, CalculationStep(step_key="TV", label="TV", result=1700000), [])
         mock_discount.return_value = (1450000, CalculationStep(step_key="DISC", label="Disc", result=1450000))
         mock_bridge.return_value = (1380000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1380000))
         mock_per_share.return_value = (86.25, CalculationStep(step_key="PS", label="PS", result=86.25))
@@ -198,7 +198,7 @@ class TestFundamentalFCFFStrategy:
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
         mock_project.return_value = ([0, 0, 0, 0, 0], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_bridge.return_value = (0, CalculationStep(step_key="BRIDGE", label="Bridge", result=0))
         mock_per_share.return_value = (0, CalculationStep(step_key="PS", label="PS", result=0))
@@ -239,7 +239,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Proj", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -281,7 +281,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Proj", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -327,7 +327,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Proj", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -368,7 +368,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Proj", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -412,7 +412,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Proj", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -450,7 +450,7 @@ class TestFundamentalFCFFStrategy:
         # Setup mocks with empty flows
         mock_rate.return_value = (0.08, mock_wacc_step)
         mock_project.return_value = ([], CalculationStep(step_key="PROJ", label="Proj", result=0))
-        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0))
+        mock_tv.return_value = (0, CalculationStep(step_key="TV", label="TV", result=0), [])
         mock_discount.return_value = (0, CalculationStep(step_key="DISC", label="Disc", result=0))
         mock_bridge.return_value = (0, CalculationStep(step_key="BRIDGE", label="Bridge", result=0))
         mock_per_share.return_value = (0, CalculationStep(step_key="PS", label="PS", result=0))
@@ -502,7 +502,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -559,7 +559,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -610,7 +610,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))

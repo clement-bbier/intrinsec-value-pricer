@@ -21,6 +21,8 @@ class CountryData(TypedDict):
     ----------
     tax_rate : float
         Standard corporate tax rate (decimal).
+    marginal_tax_rate : float
+        Long-term marginal legal tax rate for terminal value calculations (decimal).
     risk_free_rate : float
         10Y Sovereign Bond yield as of Jan 2026.
     market_risk_premium : float
@@ -38,6 +40,7 @@ class CountryData(TypedDict):
     """
 
     tax_rate: float
+    marginal_tax_rate: float
     risk_free_rate: float
     market_risk_premium: float
     inflation_rate: float
@@ -61,6 +64,7 @@ GLOBAL_URLS = {
 COUNTRY_CONTEXT: dict[str, CountryData] = {
     "United States": {
         "tax_rate": 0.21,
+        "marginal_tax_rate": 0.21,  # Federal statutory rate
         "risk_free_rate": 0.0425,  # Yield curve shift (Feb 2026)
         "market_risk_premium": 0.046,  # Damodaran Jan 26 update
         "inflation_rate": 0.027,  # Core sticky inflation
@@ -71,6 +75,7 @@ COUNTRY_CONTEXT: dict[str, CountryData] = {
     },
     "France": {
         "tax_rate": 0.361,  # Exceptional contribution for 2026
+        "marginal_tax_rate": 0.25,  # Long-term normalized rate (post-exceptional period)
         "risk_free_rate": 0.0345,  # OAT 10Y Feb 2026
         "market_risk_premium": 0.053,
         "inflation_rate": 0.019,
@@ -81,6 +86,7 @@ COUNTRY_CONTEXT: dict[str, CountryData] = {
     },
     "Germany": {
         "tax_rate": 0.301,  # Statutory trade tax adjustment
+        "marginal_tax_rate": 0.301,  # Long-term rate (trade tax + corporate tax)
         "risk_free_rate": 0.0289,  # Bund 10Y Feb 2026
         "market_risk_premium": 0.051,
         "inflation_rate": 0.020,
@@ -91,6 +97,7 @@ COUNTRY_CONTEXT: dict[str, CountryData] = {
     },
     "United Kingdom": {
         "tax_rate": 0.25,
+        "marginal_tax_rate": 0.25,  # Statutory rate
         "risk_free_rate": 0.035,  # Gilt 10Y
         "market_risk_premium": 0.058,
         "inflation_rate": 0.022,
@@ -101,6 +108,7 @@ COUNTRY_CONTEXT: dict[str, CountryData] = {
     },
     "China": {
         "tax_rate": 0.25,
+        "marginal_tax_rate": 0.25,  # Statutory rate
         "risk_free_rate": 0.021,  # PBOC Rate cuts trend
         "market_risk_premium": 0.068,  # Adjusted systemic risk premium
         "inflation_rate": 0.025,
@@ -111,6 +119,7 @@ COUNTRY_CONTEXT: dict[str, CountryData] = {
     },
     "Japan": {
         "tax_rate": 0.354,  # Effective rate with 2026 defense surtax
+        "marginal_tax_rate": 0.30,  # Long-term normalized rate (post-surtax period)
         "risk_free_rate": 0.0226,  # Normalized JGB 10Y
         "market_risk_premium": 0.059,
         "inflation_rate": 0.015,

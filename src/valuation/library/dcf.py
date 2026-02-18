@@ -24,13 +24,15 @@ from src.computation.financial_math import (
     apply_dilution_adjustment,
     calculate_dilution_factor,
     calculate_discount_factors,
+    calculate_fcf_tax_adjustment_factor,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    calculate_wacc_for_terminal_value,
 )
 from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
-from src.config.constants import ModelDefaults
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.enums import TerminalValueMethod, VariableSource
@@ -285,23 +287,88 @@ class DCFLibrary:
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters
-    ) -> tuple[float, CalculationStep]:
-        """Calculates Terminal Value based on Strategy selection."""
+        final_flow: float, discount_rate: float, params: Parameters, financials=None
+    ) -> tuple[float, CalculationStep, list]:
+        """
+        Calculates Terminal Value based on Strategy selection.
+
+        Parameters
+        ----------
+        final_flow : float
+            The last projected cash flow from the explicit period.
+        discount_rate : float
+            The discount rate for the explicit period (WACC or Ke).
+        params : Parameters
+            User-defined or automated parameters.
+        financials : Company, optional
+            Financial snapshots. Required to recalculate WACC with marginal tax rate for TV.
+
+        Returns
+        -------
+        tuple[float, CalculationStep, list]
+            Terminal value, calculation step for audit trail, and list of diagnostic events.
+
+        Notes
+        -----
+        If marginal_tax_rate is provided in params and financials is available,
+        the terminal value will be calculated using a WACC that applies the
+        marginal tax rate instead of the effective tax rate. This reflects that
+        temporary tax benefits are not perpetual.
+
+        Diagnostics are generated for:
+        - Beta adjustment skipped due to 5% threshold
+        - Operating margin fallback when EBIT/Revenue data unavailable
+        """
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            tv = calculate_terminal_value_gordon(final_flow, discount_rate, g_perp)
+
+            # Use marginal tax rate for terminal value WACC if available
+            tv_discount_rate = discount_rate
+            tax_adjustment_factor = 1.0
+            tv_diagnostics = []  # Collect diagnostics from TV calculation
+            marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
+
+            if marginal_tax_rate is not None and financials is not None:
+                # Recalculate WACC using marginal tax rate for terminal value
+                wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
+                tv_discount_rate = wacc_tv_breakdown.wacc
+
+                # Collect WACC diagnostics (e.g., beta adjustment skipped)
+                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                    tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
+
+                # Calculate tax adjustment factor for FCF
+                # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                # Pass financials to use real operating margin
+                effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
+                if effective_tax_rate != marginal_tax_rate:
+                    # Request diagnostics to detect fallback usage
+                    tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
+                        effective_tax_rate=effective_tax_rate,
+                        marginal_tax_rate=marginal_tax_rate,
+                        financials=financials,  # Pass financials for real margin calculation
+                        return_diagnostics=True
+                    )
+                    # Collect FCF adjustment diagnostics (e.g., margin fallback used)
+                    if fcf_diagnostics:
+                        tv_diagnostics.extend(fcf_diagnostics)
+
+            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
+
+            # Build calculation step with appropriate discount rate
+            calculation_note = f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
+            calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
 
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                ),
+                actual_calculation=calculation_note,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
@@ -314,14 +381,14 @@ class DCFLibrary:
                     ),
                     "r": VariableInfo(
                         symbol="r",
-                        value=discount_rate,
-                        formatted_value=f"{discount_rate:.2%}",
+                        value=tv_discount_rate,
+                        formatted_value=f"{tv_discount_rate:.2%}",
                         source=VariableSource.CALCULATED,
-                        description="Discount Rate",
+                        description="Discount Rate (TV)" if marginal_tax_rate is not None else "Discount Rate",
                     ),
                 },
             )
-            return tv, step
+            return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
             multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
@@ -344,7 +411,8 @@ class DCFLibrary:
                     )
                 },
             )
-            return tv, step
+            # Exit multiple doesn't use marginal tax or beta adjustments, so no diagnostics
+            return tv, step, []
 
     @staticmethod
     def compute_discounting(

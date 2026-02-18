@@ -80,7 +80,10 @@ class FinancialRatesParameters(BaseNormalizedModel):
     cost_of_debt : float | None
         The effective rate that a company pays on its debt (Pre-tax).
     tax_rate : float | None
-        The marginal corporate tax rate used to calculate the tax shield.
+        The effective corporate tax rate used to calculate the tax shield during the explicit period.
+    marginal_tax_rate : float | None
+        The long-term marginal legal tax rate applied to terminal value calculations.
+        Temporary tax benefits are not perpetual, so this rate reflects the normalized long-term rate.
     corporate_aaa_yield : float | None
         The benchmark yield for high-grade corporate bonds (used in Graham formulas).
     wacc : float | None
@@ -99,6 +102,7 @@ class FinancialRatesParameters(BaseNormalizedModel):
     beta: Annotated[float | None, UIKey(UIKeys.BETA, scale="raw")] = None
     cost_of_debt: Annotated[float | None, UIKey(UIKeys.KD, scale="pct")] = None
     tax_rate: Annotated[float | None, UIKey(UIKeys.TAX, scale="pct")] = None
+    marginal_tax_rate: Annotated[float | None, UIKey(UIKeys.MARGINAL_TAX, scale="pct")] = None
     corporate_aaa_yield: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
     wacc: Annotated[float | None, UIKey(UIKeys.WACC_OVERRIDE, scale="pct")] = None
     cost_of_equity: Annotated[float | None, UIKey(UIKeys.KE_OVERRIDE, scale="pct")] = None
@@ -127,6 +131,24 @@ class CapitalStructureParameters(BaseNormalizedModel):
         Total number of shares used to calculate per-share intrinsic value.
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
+    target_debt_equity_ratio : float | None
+        Target Debt-to-Equity ratio (D/E) for Hamada beta adjustment and optimal
+        capital structure. This is expressed as D/E, NOT D/(D+E).
+
+        Examples
+        --------
+        - D/E = 0.50 → 50% debt / 100% equity → 33.3% debt in capital structure
+        - D/E = 1.00 → 100% debt / 100% equity → 50% debt in capital structure
+        - D/E = 0.25 → 25% debt / 100% equity → 20% debt in capital structure
+
+        The system automatically converts D/E to capital structure weights:
+        - Weight of Equity: we = 1 / (1 + D/E)
+        - Weight of Debt: wd = (D/E) / (1 + D/E)
+
+        When provided, the WACC calculation will adjust beta to reflect the target
+        leverage using the Hamada formula. Beta adjustment only occurs if the
+        target structure differs from current structure by more than 5% to avoid
+        noise from minor differences.
         Only used when sbc_treatment is DILUTION.
     sbc_treatment : str | None
         Method to handle Stock-Based Compensation: "DILUTION" or "EXPENSE".
@@ -144,6 +166,7 @@ class CapitalStructureParameters(BaseNormalizedModel):
     pension_liabilities: Annotated[float | None, UIKey(UIKeys.PENSION_LIABILITIES, scale="million")] = None
     shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
     annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
+    target_debt_equity_ratio: Annotated[float | None, UIKey(UIKeys.TARGET_DE_RATIO, scale="raw")] = None
     sbc_treatment: Annotated[str | None, UIKey(UIKeys.SBC_TREATMENT, scale="raw")] = None
     sbc_annual_amount: Annotated[float | None, UIKey(UIKeys.SBC_ANNUAL_AMOUNT, scale="million")] = None
 

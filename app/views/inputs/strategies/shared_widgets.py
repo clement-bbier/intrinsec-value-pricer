@@ -204,6 +204,15 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             help=CommonTerminals.HELP_PERP_G,
             key=f"{key_prefix}_{UIKeys.GN}",
         )
+        # Add marginal tax rate input for terminal value calculation (only for FCFF models)
+        if not mode.is_direct_equity:
+            st.number_input(
+                CommonTerminals.INP_MARGINAL_TAX,
+                value=None,
+                format="%.2f",
+                help=CommonTerminals.HELP_MARGINAL_TAX,
+                key=f"{key_prefix}_{UIKeys.MARGINAL_TAX}",
+            )
     else:
         st.latex(CommonTerminals.FORMULA_TV_EXIT)
         st.number_input(
