@@ -33,12 +33,101 @@ from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
 from src.config.constants import MacroDefaults, ModelDefaults
+from src.config.sector_multiples import SECTORS
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n.fr.backend.models import ModelTexts
 from src.models.company import Company
 from src.models.enums import TerminalValueMethod, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+
+
+def _normalize_sector_name(name: str | None) -> str | None:
+    """
+    Normalize sector/industry name for SECTORS dictionary lookup.
+
+    Converts to lowercase and replaces spaces/hyphens with underscores.
+
+    Parameters
+    ----------
+    name : str | None
+        Raw sector or industry name from data provider.
+
+    Returns
+    -------
+    str | None
+        Normalized name ready for dictionary lookup, or None if input was None/empty.
+
+    Examples
+    --------
+    >>> _normalize_sector_name("Luxury Goods")
+    'luxury_goods'
+    >>> _normalize_sector_name("Software-Application")
+    'software_application'
+    """
+    if not name:
+        return None
+    return name.lower().strip().replace(" ", "_").replace("-", "_")
+
+
+def _get_sector_multiple(
+    financials: Company,
+    strategy_type: str,
+) -> tuple[float | None, str, str]:
+    """
+    Perform hierarchical sector lookup for exit multiple fallback.
+
+    Lookup order: Industry → Sector → default
+
+    Parameters
+    ----------
+    financials : Company
+        Company financial data containing industry and sector classification.
+    strategy_type : str
+        Either "fcff" (uses ev_ebitda) or "equity" (uses pe_ratio).
+
+    Returns
+    -------
+    tuple[float | None, str, str]
+        (multiple_value, lookup_key_used, source_description)
+
+    Notes
+    -----
+    - For FCFF strategies: Returns ev_ebitda from benchmark
+    - For Equity strategies (DDM, FCFE): Returns pe_ratio from benchmark
+    - Fallback chain: Industry → Sector → "default" key
+    """
+    # Normalize names for lookup
+    industry_norm = _normalize_sector_name(financials.industry)
+
+    # Handle sector which might be an enum
+    sector_value = financials.sector
+    sector_str: str | None
+    if hasattr(sector_value, 'value'):
+        sector_str = str(sector_value.value)
+    else:
+        sector_str = str(sector_value) if sector_value else None
+    sector_norm = _normalize_sector_name(sector_str)
+
+    # Hierarchical lookup: Industry → Sector → default
+    lookup_key = None
+    if industry_norm and industry_norm in SECTORS:
+        lookup_key = industry_norm
+    elif sector_norm and sector_norm in SECTORS:
+        lookup_key = sector_norm
+    else:
+        lookup_key = "default"
+
+    benchmark = SECTORS[lookup_key]
+
+    # Select appropriate multiple based on strategy type
+    if strategy_type == "fcff":
+        multiple = benchmark.ev_ebitda
+    else:  # equity strategies (DDM, FCFE)
+        multiple = benchmark.pe_ratio
+
+    return multiple, lookup_key, benchmark.source
 
 
 class DCFLibrary:
@@ -449,8 +538,63 @@ class DCFLibrary:
             return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
-            multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
+            tv_diagnostics = []
+            multiple = tv_params.exit_multiple  # User manual override
+
+            if multiple is None:
+                # Fallback to sector benchmark lookup
+                # Determine strategy type to select correct multiple (EV/EBITDA vs P/E)
+                strategy_type = "fcff"  # Default to FCFF
+
+                # Check if this is an equity-based strategy
+                if hasattr(params.strategy, '__class__'):
+                    strategy_class_name = params.strategy.__class__.__name__.lower()
+                    if 'ddm' in strategy_class_name or 'fcfe' in strategy_class_name:
+                        strategy_type = "equity"
+
+                # Perform hierarchical lookup
+                sector_multiple, sector_key, sector_source = _get_sector_multiple(financials, strategy_type)
+
+                if sector_multiple is not None:
+                    multiple = sector_multiple
+
+                    # Add French diagnostic for traceability (Glass Box) - USING i18n
+                    diagnostic_msg = StrategyInterpretations.SECTOR_BENCHMARK_TV.format(
+                        multiple=multiple,
+                        sector=sector_key,
+                        source=sector_source
+                    )
+                    tv_diagnostics.append({
+                        "type": "sector_fallback",
+                        "message": diagnostic_msg,
+                        "multiple": float(multiple),
+                        "sector": sector_key,
+                        "source": sector_source
+                    })
+
+            # Ultimate fallback if sector lookup failed
+            if multiple is None:
+                multiple = ModelDefaults.DEFAULT_EXIT_MULTIPLE
+                # Use i18n for default fallback message
+                diagnostic_msg = StrategyInterpretations.DEFAULT_MULTIPLE_TV.format(
+                    multiple=multiple
+                )
+                tv_diagnostics.append({
+                    "type": "default_fallback",
+                    "message": diagnostic_msg,
+                    "multiple": float(multiple)
+                })
+
+            # Calculate terminal value
             tv = calculate_terminal_value_exit_multiple(final_flow, multiple)
+
+            # Determine variable source and description for traceability
+            if tv_params.exit_multiple is not None:
+                var_source = VariableSource.MANUAL_OVERRIDE
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_MANUAL
+            else:
+                var_source = VariableSource.SYSTEM
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_SECTOR
 
             step = CalculationStep(
                 step_key="TV_MULTIPLE",
@@ -464,13 +608,12 @@ class DCFLibrary:
                         symbol="M",
                         value=multiple,
                         formatted_value=f"{multiple:.1f}x",
-                        source=VariableSource.MANUAL_OVERRIDE,
-                        description="Exit Multiple",
+                        source=var_source,
+                        description=var_description,
                     )
                 },
             )
-            # Exit multiple doesn't use marginal tax or beta adjustments, so no diagnostics
-            return tv, step, []
+            return tv, step, tv_diagnostics
 
     @staticmethod
     def compute_discounting(

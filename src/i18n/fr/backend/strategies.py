@@ -151,6 +151,10 @@ class StrategyInterpretations:
     IV_PER_SHARE_FINAL = "Valeur intrinsèque finale par action."
     SBC_EXPENSE_DESC = "Dépense annuelle SBC (déduite des flux)"
 
+    # Terminal value sector benchmark diagnostics
+    SECTOR_BENCHMARK_TV = "Utilisation du benchmark sectoriel {multiple:.1f}x pour le secteur '{sector}' (source: {source})"
+    DEFAULT_MULTIPLE_TV = "Utilisation du multiple par défaut {multiple:.1f}x"
+
 
 class SharedTexts:
     """

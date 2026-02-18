@@ -28,3 +28,7 @@ class ModelTexts:
     LABEL_COMPREHENSIVE_NET_DEBT = "Dette Nette Consolidée (IFRS 16)"
     LABEL_LEASE_LIABILITIES = "Engagements de Location (IFRS 16)"
     LABEL_PENSION_LIABILITIES = "Engagements de Retraite (IFRS 16)"
+
+    # Variable descriptions for terminal value calculations
+    VAR_DESC_EXIT_MULT_MANUAL = "Exit Multiple (Manuel)"
+    VAR_DESC_EXIT_MULT_SECTOR = "Exit Multiple (Benchmark Sectoriel)"
