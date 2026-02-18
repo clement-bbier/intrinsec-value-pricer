@@ -591,7 +591,7 @@ class TestCalculateWACC:
         capital = CapitalStructureParameters(
             total_debt=5000.0, 
             shares_outstanding=1000.0,
-            target_debt_equity_ratio=42.86  # Will be normalized to 0.4286
+            target_debt_equity_ratio=0.4286  # D/E ratio (not percentage)
         )
         common = CommonParameters(rates=rates, capital=capital)
 
