@@ -114,6 +114,19 @@ class DiagnosticLevel(str, Enum):
     INFO = "INFO"  # Informational note
 
 
+class SBCTreatment(str, Enum):
+    """
+    Treatment method for Stock-Based Compensation.
+
+    Defines how SBC is accounted for in valuation calculations:
+    - DILUTION: SBC is reflected as share dilution (reduces per-share value)
+    - EXPENSE: SBC is deducted as a cash expense from projected flows
+    """
+
+    DILUTION = "DILUTION"
+    EXPENSE = "EXPENSE"
+
+
 class CompanySector(str, Enum):
     """
     High-level GICS Sectors used for fallback logic and peer selection.

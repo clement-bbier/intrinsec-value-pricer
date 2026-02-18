@@ -247,7 +247,7 @@ def test_project_flows_revenue_model_basic(mock_params_revenue_model):
     current_margin = 0.05
     target_margin = 0.15
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 
@@ -280,7 +280,7 @@ def test_project_flows_revenue_model_with_manual_vector(mock_params_revenue_mode
     current_margin = 0.10
     target_margin = 0.12
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 
@@ -295,7 +295,7 @@ def test_project_flows_revenue_model_zero_years(mock_params_revenue_model):
 
     base_revenue = 1_000_000
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, 0.10, 0.15, mock_params_revenue_model
     )
 
@@ -608,7 +608,7 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
     target_margin = 0.15
 
     # Project using revenue model
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 

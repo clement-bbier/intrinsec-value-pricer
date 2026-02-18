@@ -1,6 +1,7 @@
 import streamlit as st
 
 from app.views.inputs.base_strategy import BaseStrategyView
+from app.views.inputs.strategies.shared_widgets import widget_high_growth_years
 from src.config.constants import UIKeys
 from src.i18n.fr.ui.terminals import FCFFGrowthTexts as Texts
 from src.models import ValuationMethodology
@@ -29,6 +30,7 @@ class FCFFGrowthView(BaseStrategyView):
     def render_model_inputs(self) -> None:
         """Renders Step 1 (revenue base) and Step 2 (growth + margin) inputs."""
         prefix = self.MODE.name
+
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
         st.latex(Texts.STEP_1_FORMULA)
         st.number_input(
@@ -57,4 +59,6 @@ class FCFFGrowthView(BaseStrategyView):
                 help=Texts.HELP_MARGIN_TARGET,
                 key=f"{prefix}_{UIKeys.FCF_MARGIN}",
             )
+        # Add maturity years slider for fade transition
+        widget_high_growth_years(prefix)
         st.divider()

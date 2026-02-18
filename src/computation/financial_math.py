@@ -351,6 +351,49 @@ def calculate_terminal_value_pe(final_net_income: float, pe_multiple: float) -> 
 # ==============================================================================
 
 
+def calculate_comprehensive_net_debt(
+    total_debt: float | None = None,
+    cash: float | None = None,
+    lease_liabilities: float | None = None,
+    pension_liabilities: float | None = None,
+) -> float:
+    r"""
+    Calculates comprehensive net debt including IFRS 16 off-balance-sheet liabilities.
+
+    Implements the IFRS 16 standard by including lease and pension obligations
+    as debt-equivalents in the equity bridge calculation.
+
+    $$NetDebt_{comprehensive} = Debt + Leases + Pensions - Cash$$
+
+    Parameters
+    ----------
+    total_debt : float, optional
+        Total interest-bearing debt.
+    cash : float, optional
+        Cash and cash equivalents.
+    lease_liabilities : float, optional
+        Long-term lease liabilities (IFRS 16).
+    pension_liabilities : float, optional
+        Pension and post-retirement benefit obligations.
+
+    Returns
+    -------
+    float
+        Comprehensive net debt including all off-balance-sheet liabilities.
+
+    Notes
+    -----
+    This function ensures IFRS 16 compliance by treating lease and pension
+    liabilities as debt-equivalents when calculating the equity bridge.
+    """
+    debt = total_debt or 0.0
+    cash_val = cash or 0.0
+    leases = lease_liabilities or 0.0
+    pensions = pension_liabilities or 0.0
+
+    return debt + leases + pensions - cash_val
+
+
 def calculate_historical_share_growth(shares_series: list[float]) -> float:
     r"""
     Calculates the historical CAGR of shares outstanding to estimate dilution.
@@ -685,6 +728,14 @@ def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     If params.common.rates.wacc is provided (manual override), it bypasses
     the CAPM calculation and uses the override value directly. This is used
     in sensitivity analysis to test valuation response to discount rate changes.
+
+    If params.common.rates.target_debt_to_capital is provided, uses the target
+    capital structure ratio instead of market-based weights to avoid circularity
+    with the intrinsic price calculation. In this case, beta is adjusted using
+    the Hamada formula to reflect the target financial risk:
+
+    1. Unlever current beta: β_u = β_L / (1 + (1-T) × D/E_market)
+    2. Relever to target: β_target = β_u × (1 + (1-T) × D/E_target)
     """
     return _calculate_wacc_internal(financials, params, use_marginal_tax=False)
 
@@ -751,6 +802,14 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
     r = params.common.rates
     c = params.common.capital
 
+    # Extract common parameters
+    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+    debt = c.total_debt if c.total_debt is not None else 0.0
+    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+    market_equity = financials.current_price * shares
+    total_cap = market_equity + debt
+
     # 0. Check for WACC override (used in sensitivity analysis)
     if r.wacc is not None:
         # When WACC is manually overridden, we still need to decompose it
@@ -771,20 +830,19 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         if r.cost_of_debt is not None:
             kd_gross = r.cost_of_debt
         else:
-            mcap = financials.current_price * (c.shares_outstanding or 1.0)
+            mcap = financials.current_price * shares
             ebit = getattr(financials, "ebit_ttm", None) or 0.0
             interest = getattr(financials, "interest_expense", None) or 0.0
             kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
 
         kd_net = kd_gross * (1.0 - tax)
 
-        # Calculate weights for display
-        debt = c.total_debt if c.total_debt is not None else 0.0
-        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
-        market_equity = financials.current_price * shares
-
-        total_cap = market_equity + debt
-        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        # Calculate weights for display (use target if provided, else market-based)
+        if r.target_debt_to_capital is not None:
+            wd = r.target_debt_to_capital
+            we = 1.0 - wd
+        else:
+            we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
 
         return WACCBreakdown(
             cost_of_equity=ke,
@@ -792,7 +850,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
             cost_of_debt_after_tax=kd_net,
             weight_equity=we,
             weight_debt=wd,
-            wacc=r.wacc,  # Use the override value
+            wacc=r.wacc,
             method=StrategySources.MANUAL_OVERRIDE,
             beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
             beta_adjusted=False,
@@ -850,13 +908,9 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         kd_gross = r.cost_of_debt
     else:
         # Need market cap for table selection
-        mcap = financials.current_price * (c.shares_outstanding or 1.0)
-
-        # Extract EBIT and Interest from the Company identity if available
-        # Fallback to 0.0 triggers the A-rated proxy spread (safe default)
+        mcap = financials.current_price * shares
         ebit = getattr(financials, "ebit_ttm", None) or 0.0
         interest = getattr(financials, "interest_expense", None) or 0.0
-
         kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
 
     kd_net = kd_gross * (1.0 - tax)
@@ -878,6 +932,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
         method = StrategySources.WACC_MARKET
 
+    # 3. Calculate WACC
     wacc_raw = (we * ke) + (wd * kd_net)
 
     return WACCBreakdown(
@@ -1082,11 +1137,13 @@ def calculate_price_from_ev_multiple(
     shares: float,
     minorities: float = 0.0,
     pensions: float = 0.0,
+    lease_liabilities: float = 0.0,
+    pension_liabilities: float = 0.0,
 ) -> float:
     r"""
     Derives Price per Share from an Enterprise Value multiple (Equity Bridge).
 
-    $$Price = \frac{EV - NetDebt - Minorities - Pensions}{Shares}$$
+    $$Price = \frac{EV - NetDebt - Minorities - Pensions - Leases - PensionLiab}{Shares}$$
 
     Parameters
     ----------
@@ -1102,6 +1159,10 @@ def calculate_price_from_ev_multiple(
         Non-controlling interests.
     pensions : float, default 0.0
         Pension liability provisions.
+    lease_liabilities : float, default 0.0
+        Long-term lease liabilities (IFRS 16).
+    pension_liabilities : float, default 0.0
+        Pension and post-retirement benefit obligations (IFRS 16).
 
     Returns
     -------
@@ -1112,7 +1173,7 @@ def calculate_price_from_ev_multiple(
         return 0.0
 
     enterprise_value = metric_value * median_ev_multiple
-    equity_value = enterprise_value - net_debt - minorities - pensions
+    equity_value = enterprise_value - net_debt - minorities - pensions - lease_liabilities - pension_liabilities
     return max(0.0, equity_value / shares)
 
 

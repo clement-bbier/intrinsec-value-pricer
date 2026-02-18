@@ -91,6 +91,10 @@ class FinancialRatesParameters(BaseNormalizedModel):
         Used in sensitivity analysis to test valuation response to discount rate changes.
     cost_of_equity : float | None
         Manual Cost of Equity override. When provided, bypasses CAPM calculation.
+    target_debt_to_capital : float | None
+        Target debt-to-capital ratio (D/(D+E)) for WACC calculation. When provided,
+        uses this normative capital structure instead of market-based weights to avoid
+        circularity with the intrinsic price calculation.
     """
 
     risk_free_rate: Annotated[float | None, UIKey(UIKeys.RF, scale="pct")] = None
@@ -102,6 +106,7 @@ class FinancialRatesParameters(BaseNormalizedModel):
     corporate_aaa_yield: Annotated[float | None, UIKey(UIKeys.YIELD_AAA, scale="pct")] = None
     wacc: Annotated[float | None, UIKey(UIKeys.WACC_OVERRIDE, scale="pct")] = None
     cost_of_equity: Annotated[float | None, UIKey(UIKeys.KE_OVERRIDE, scale="pct")] = None
+    target_debt_to_capital: Annotated[float | None, UIKey(UIKeys.TARGET_DEBT_TO_CAPITAL, scale="pct")] = None
 
 
 class CapitalStructureParameters(BaseNormalizedModel):
@@ -118,6 +123,10 @@ class CapitalStructureParameters(BaseNormalizedModel):
         Value of the portion of subsidiaries not owned by the parent company.
     pension_provisions : float | None
         Unfunded pension obligations treated as debt-equivalents.
+    lease_liabilities : float | None
+        Long-term lease obligations under IFRS 16 (Off-balance-sheet debt).
+    pension_liabilities : float | None
+        Pension and other post-retirement benefit plans (Off-balance-sheet debt).
     shares_outstanding : float | None
         Total number of shares used to calculate per-share intrinsic value.
     annual_dilution_rate : float | None
@@ -140,15 +149,26 @@ class CapitalStructureParameters(BaseNormalizedModel):
         leverage using the Hamada formula. Beta adjustment only occurs if the
         target structure differs from current structure by more than 5% to avoid
         noise from minor differences.
+        Only used when sbc_treatment is DILUTION.
+    sbc_treatment : str | None
+        Method to handle Stock-Based Compensation: "DILUTION" or "EXPENSE".
+        Defaults to "DILUTION" (current behavior).
+    sbc_annual_amount : float | None
+        Estimated annual SBC expense in millions.
+        Only used when sbc_treatment is "EXPENSE".
     """
 
     total_debt: Annotated[float | None, UIKey(UIKeys.DEBT, scale="million")] = None
     cash_and_equivalents: Annotated[float | None, UIKey(UIKeys.CASH, scale="million")] = None
     minority_interests: Annotated[float | None, UIKey(UIKeys.MINORITIES, scale="million")] = None
     pension_provisions: Annotated[float | None, UIKey(UIKeys.PENSIONS, scale="million")] = None
+    lease_liabilities: Annotated[float | None, UIKey(UIKeys.LEASE_LIABILITIES, scale="million")] = None
+    pension_liabilities: Annotated[float | None, UIKey(UIKeys.PENSION_LIABILITIES, scale="million")] = None
     shares_outstanding: Annotated[float | None, UIKey(UIKeys.SHARES, scale="million")] = None
     annual_dilution_rate: Annotated[float | None, UIKey(UIKeys.SBC_RATE, scale="pct")] = None
     target_debt_equity_ratio: Annotated[float | None, UIKey(UIKeys.TARGET_DE_RATIO, scale="raw")] = None
+    sbc_treatment: Annotated[str | None, UIKey(UIKeys.SBC_TREATMENT, scale="raw")] = None
+    sbc_annual_amount: Annotated[float | None, UIKey(UIKeys.SBC_ANNUAL_AMOUNT, scale="million")] = None
 
 
 class CommonParameters(BaseModel):

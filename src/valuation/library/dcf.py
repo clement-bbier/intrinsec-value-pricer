@@ -29,6 +29,7 @@ from src.computation.financial_math import (
     calculate_terminal_value_gordon,
     calculate_wacc_for_terminal_value,
 )
+from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
 from src.config.constants import ModelDefaults
@@ -47,9 +48,12 @@ class DCFLibrary:
     @staticmethod
     def project_flows_simple(base_flow: float, params: Parameters) -> tuple[list[float], CalculationStep]:
         """
-        Projects cash flows using a standard growth rate with linear fade-down.
+        Projects cash flows using fade transition logic with optional high growth period.
+
+        Supports both legacy linear convergence (fade from year 1) and the new
+        fade transition (high growth period followed by linear fade).
         """
-        # --- FIX: Access Strategy Parameters (Polymorphic) ---
+        # --- Access Strategy Parameters (Polymorphic) ---
         strat = params.strategy
 
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
@@ -65,21 +69,29 @@ class DCFLibrary:
         # Access Projection Years
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
 
-        # 2. Projection Loop (Linear Convergence)
-        flows = []
-        current_flow = base_flow
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            # Ensure it's actually an integer (not None)
+            if isinstance(hgy, int):
+                high_growth_years = hgy
 
-        for t in range(1, years + 1):
-            if years > 1:
-                alpha = (t - 1) / (years - 1)
-                current_g = g_start * (1 - alpha) + g_term * alpha
-            else:
-                current_g = g_start
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
 
-            current_flow *= 1.0 + current_g
-            flows.append(current_flow)
+        # Use the centralized project_flows function with fade transition logic
+        flows = project_flows(
+            base_flow=base_flow,
+            years=years,
+            g_start=g_start,
+            g_term=g_term,
+            high_growth_years=high_growth_years,
+        )
 
-        # 3. Trace Building
+        # Build trace for Glass Box transparency
+        fade_description = "No fade" if high_growth_years >= years else f"Fade after year {high_growth_years}"
         variables = {
             "FCF_0": VariableInfo(
                 symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"
@@ -104,13 +116,19 @@ class DCFLibrary:
                 source=VariableSource.MANUAL_OVERRIDE,
                 description=SharedTexts.INP_PROJ_YEARS,
             ),
+            "n_high": VariableInfo(
+                symbol="n_high",
+                value=float(high_growth_years),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="High Growth Period (years)",
+            ),
         }
 
         step = CalculationStep(
             step_key="FCF_PROJ",
             label=RegistryTexts.DCF_PROJ_L,
             theoretical_formula=StrategyFormulas.FCF_PROJECTION,
-            actual_calculation=f"{format_smart_number(base_flow)} × (Linear Convergence {g_start:.1%} → {g_term:.1%})",
+            actual_calculation=f"{format_smart_number(base_flow)} × (Growth: {g_start:.1%} → {g_term:.1%}, {fade_description})",
             result=sum(flows),
             interpretation=StrategyInterpretations.PROJ.format(years=years, g=g_start),
             source=StrategySources.YAHOO_TTM_SIMPLE,
@@ -169,6 +187,8 @@ class DCFLibrary:
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
+
+        Supports manual growth vector or fade transition with high growth period.
         """
         # Access Strategy Parameters (Specifically FCFFGrowthParameters)
         strat = params.strategy
@@ -180,6 +200,17 @@ class DCFLibrary:
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
         manual_vector = getattr(strat, "manual_growth_vector", None)
 
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            if isinstance(hgy, int):
+                high_growth_years = hgy
+
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
+
         revenues = []
         margins = []
         fcfs = []
@@ -189,13 +220,21 @@ class DCFLibrary:
         for t in range(1, years + 1):
             # A. Revenue Growth Logic
             if manual_vector and (t - 1) < len(manual_vector):
+                # Use manual vector if provided (takes precedence over fade)
                 current_g = manual_vector[t - 1]
             else:
-                if years > 1:
-                    alpha = (t - 1) / (years - 1)
-                    current_g = g_start * (1 - alpha) + g_term * alpha
-                else:
+                # Use fade transition logic
+                if t <= high_growth_years:
                     current_g = g_start
+                else:
+                    # Linear interpolation towards terminal growth
+                    years_remaining = years - high_growth_years
+                    if years_remaining > 0:
+                        step_in_fade = t - high_growth_years
+                        alpha = step_in_fade / years_remaining
+                        current_g = g_start * (1 - alpha) + g_term * alpha
+                    else:
+                        current_g = g_term
 
             current_rev *= 1.0 + current_g
             revenues.append(current_rev)
@@ -244,7 +283,7 @@ class DCFLibrary:
             variables_map=variables,
         )
 
-        return fcfs, revenues, margins, step
+        return revenues, margins, fcfs, step
 
     @staticmethod
     def compute_terminal_value(
@@ -420,16 +459,64 @@ class DCFLibrary:
 
     @staticmethod
     def compute_value_per_share(equity_value: float, params: Parameters) -> tuple[float, CalculationStep]:
-        """Calculates final price per share, applying SBC dilution adjustment."""
+        """
+        Calculates final price per share, applying SBC dilution adjustment if needed.
+
+        Parameters
+        ----------
+        equity_value : float
+            Total equity value before per-share calculation.
+        params : Parameters
+            User-defined or automated projection parameters.
+
+        Returns
+        -------
+        tuple[float, CalculationStep]
+            Final intrinsic value per share and calculation trace.
+
+        Notes
+        -----
+        When SBC treatment is EXPENSE, dilution adjustment is skipped to avoid
+        double counting (SBC already deducted from cash flows).
+        """
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         base_iv = equity_value / shares
 
         # Fix: Dilution rate is stored in common.capital (from Model Batch)
         dilution_rate = params.common.capital.annual_dilution_rate or 0.0
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+
         # Fix: Years come from strategy
         years = getattr(params.strategy, "projection_years", ModelDefaults.DEFAULT_PROJECTION_YEARS)
 
+        # Skip dilution adjustment if SBC treatment is EXPENSE (avoid double counting)
+        from src.models.enums import SBCTreatment
+        if sbc_treatment == SBCTreatment.EXPENSE.value:
+            step = CalculationStep(
+                step_key="VALUE_PER_SHARE",
+                label=RegistryTexts.DCF_IV_L,
+                theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
+                actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
+                result=base_iv,
+                interpretation=StrategyInterpretations.SBC_EXPENSE_NO_DILUTION,
+                variables_map={
+                    "Equity": VariableInfo(
+                        symbol="Eq",
+                        value=equity_value,
+                        source=VariableSource.CALCULATED,
+                    ),
+                    "Shares": VariableInfo(
+                        symbol="Shares",
+                        value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                    ),
+                },
+            )
+            return base_iv, step
+
+        # Apply dilution adjustment (original behavior when treatment is DILUTION or not specified)
         dilution_factor = calculate_dilution_factor(dilution_rate, years)
         final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
 
@@ -465,7 +552,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=final_iv,
-                interpretation="Final Intrinsic Value per share.",
+                interpretation=StrategyInterpretations.IV_PER_SHARE_FINAL,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",

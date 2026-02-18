@@ -508,13 +508,12 @@ class TestUICharts:
 class TestMainFullFlow:
     """Tests main.py entry point with mocked dependencies."""
 
-    @patch("app.main.render_footer")
     @patch("app.main.render_sidebar")
     @patch("app.main.inject_institutional_design")
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_error_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_footer):
+    def test_main_error_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar):
         """main() with error_message should show st.error."""
         from app.main import main
 
@@ -528,7 +527,6 @@ class TestMainFullFlow:
 
         mock_st.error.assert_called_with("Something went wrong")
 
-    @patch("app.main.render_footer")
     @patch("app.main.render_valuation_results")
     @patch("app.main.render_sidebar")
     @patch("app.main.inject_institutional_design")
@@ -536,7 +534,7 @@ class TestMainFullFlow:
     @patch("app.main.SessionManager")
     @patch("app.main.st")
     def test_main_results_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_results, mock_footer
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_results
     ):
         """main() with last_result should render valuation results."""
         from app.main import main
@@ -550,7 +548,6 @@ class TestMainFullFlow:
 
         mock_results.assert_called_once_with(state.last_result)
 
-    @patch("app.main.render_footer")
     @patch("app.main.render_auto_form")
     @patch("app.main.render_sidebar")
     @patch("app.main.inject_institutional_design")
@@ -558,7 +555,7 @@ class TestMainFullFlow:
     @patch("app.main.SessionManager")
     @patch("app.main.st")
     def test_main_auto_mode_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_auto, mock_footer
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_auto
     ):
         """main() in auto mode should render auto form."""
         from app.main import main
@@ -573,7 +570,6 @@ class TestMainFullFlow:
 
         mock_auto.assert_called_once()
 
-    @patch("app.main.render_footer")
     @patch("app.main.render_expert_form")
     @patch("app.main.render_sidebar")
     @patch("app.main.inject_institutional_design")
@@ -581,7 +577,7 @@ class TestMainFullFlow:
     @patch("app.main.SessionManager")
     @patch("app.main.st")
     def test_main_expert_mode_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_expert, mock_footer
+        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_expert
     ):
         """main() in expert mode should render expert form."""
         from app.main import main
@@ -596,13 +592,12 @@ class TestMainFullFlow:
 
         mock_expert.assert_called_once()
 
-    @patch("app.main.render_footer")
     @patch("app.main.render_sidebar")
     @patch("app.main.inject_institutional_design")
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_error_dismiss(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_footer):
+    def test_main_error_dismiss(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar):
         """main() error dismiss button should clear error_message."""
         from app.main import main
 

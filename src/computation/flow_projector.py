@@ -23,6 +23,7 @@ from src.core.formatting import format_smart_number
 # i18n Imports for UI-facing elements
 from src.i18n import KPITexts, RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations
 from src.models import VariableInfo, VariableSource
+from src.models.enums import SBCTreatment
 
 if TYPE_CHECKING:
     from src.models import Company, Parameters
@@ -131,7 +132,23 @@ class SimpleFlowProjector(FlowProjector):
     """
 
     def project(self, base_value: float, financials: Company, params: Parameters) -> ProjectionOutput:
-        """Projects flows with full provenance of growth rates."""
+        """
+        Projects flows with full provenance of growth rates.
+
+        Parameters
+        ----------
+        base_value : float
+            The anchor value (FCF0 or Revenue0).
+        financials : Company
+            Current company financial data (Identity & Context).
+        params : Parameters
+            User-defined or automated projection parameters (Strategy).
+
+        Returns
+        -------
+        ProjectionOutput
+            Projected flows with calculation trace and metadata.
+        """
         # 1. Strategy Extraction (New Model Architecture)
         strat = params.strategy
 
@@ -146,17 +163,35 @@ class SimpleFlowProjector(FlowProjector):
 
         years = getattr(strat, "projection_years", 5) or 5
 
+        # High Growth Period: If not set or not an integer, default to full projection period (no fade)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            # Ensure it's actually an integer (not a Mock or None)
+            if isinstance(hgy, int):
+                high_growth_years = hgy
+
+        if high_growth_years is None:
+            high_growth_years = years
+
         # 2. Computation
         flows = project_flows(
             base_flow=base_value,
             years=years,
             g_start=g_start,
             g_term=g_term,
-            # Note: High growth plateau logic can be extended here if params support it later
-            high_growth_years=years,
+            high_growth_years=high_growth_years,
         )
 
-        # 3. Glass Box Traceability
+        # 3. Apply SBC expense if treatment mode is EXPENSE
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+        sbc_annual_amount = getattr(params.common.capital, "sbc_annual_amount", None) or 0.0
+
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            # Subtract SBC expense from each projected flow
+            flows = [f - sbc_annual_amount for f in flows]
+
+        # 4. Glass Box Traceability
         variables = {
             "g": self._build_trace_variable("g", g_start, g_start, None, SharedTexts.INP_GROWTH_G, True),
             "g_n": self._build_trace_variable("g_n", g_term, g_term, None, SharedTexts.INP_PERP_G, True),
@@ -164,6 +199,16 @@ class SimpleFlowProjector(FlowProjector):
                 symbol="n", value=float(years), source=VariableSource.CALCULATED, description=SharedTexts.INP_PROJ_YEARS
             ),
         }
+
+        # Add SBC trace if EXPENSE mode
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            variables["SBC"] = VariableInfo(
+                symbol="SBC",
+                value=sbc_annual_amount,
+                formatted_value=format_smart_number(sbc_annual_amount),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description=StrategyInterpretations.SBC_EXPENSE_DESC,
+            )
 
         return ProjectionOutput(
             flows=flows,
@@ -183,7 +228,23 @@ class MarginConvergenceProjector(FlowProjector):
     """
 
     def project(self, base_value: float, financials: Company, params: Parameters) -> ProjectionOutput:
-        """Projects FCF with margin expansion/contraction traceability."""
+        """
+        Projects FCF with margin expansion/contraction traceability.
+
+        Parameters
+        ----------
+        base_value : float
+            The anchor value (Revenue TTM).
+        financials : Company
+            Current company financial data (Identity & Context).
+        params : Parameters
+            User-defined or automated projection parameters (Strategy).
+
+        Returns
+        -------
+        ProjectionOutput
+            Projected flows with calculation trace and metadata.
+        """
         strat = params.strategy
 
         # base_value here is assumed to be Revenue TTM
@@ -216,13 +277,31 @@ class MarginConvergenceProjector(FlowProjector):
             applied_margin = curr_margin + (target_margin - curr_margin) * (y / years)
             projected_fcfs.append(curr_rev * applied_margin)
 
-        # 4. Traceability
+        # 4. Apply SBC expense if treatment mode is EXPENSE
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+        sbc_annual_amount = getattr(params.common.capital, "sbc_annual_amount", None) or 0.0
+
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            # Subtract SBC expense from each projected flow
+            projected_fcfs = [f - sbc_annual_amount for f in projected_fcfs]
+
+        # 5. Traceability
         variables = {
             "m_target": self._build_trace_variable(
                 "m_target", target_margin, target_margin, None, "Target FCF Margin (Normative)", True
             ),
             "g_rev": self._build_trace_variable("g_rev", rev_growth, rev_growth, None, "Revenue Growth Rate", True),
         }
+
+        # Add SBC trace if EXPENSE mode
+        if sbc_treatment == SBCTreatment.EXPENSE.value and sbc_annual_amount > 0:
+            variables["SBC"] = VariableInfo(
+                symbol="SBC",
+                value=sbc_annual_amount,
+                formatted_value=format_smart_number(sbc_annual_amount),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description=StrategyInterpretations.SBC_EXPENSE_DESC,
+            )
 
         return ProjectionOutput(
             flows=projected_fcfs,
@@ -243,8 +322,43 @@ def project_flows(
     base_flow: float, years: int, g_start: float, g_term: float, high_growth_years: int | None = 0
 ) -> list[float]:
     """
-    Atomic engine for financial flow projection.
-    Supports a 'High Growth' plateau followed by a linear 'Fade-Down'.
+    Atomic engine for financial flow projection with fade transition.
+
+    Supports a 'High Growth' plateau followed by a linear 'Fade-Down' to terminal growth.
+    This eliminates the brutal shock between strong growth and perpetual growth rates.
+
+    Parameters
+    ----------
+    base_flow : float
+        The starting cash flow value (FCF0, Revenue0, etc.).
+    years : int
+        Total number of projection years.
+    g_start : float
+        High growth rate during the plateau phase.
+    g_term : float
+        Terminal perpetual growth rate.
+    high_growth_years : int | None, optional
+        Number of years to maintain high growth before fading.
+        If None, defaults to full projection period (no fade).
+        If 0, fade begins immediately from year 1.
+
+    Returns
+    -------
+    list[float]
+        Projected cash flows for each year.
+
+    Notes
+    -----
+    The fade phase uses linear interpolation:
+    - Year t in fade phase: g(t) = g_start * (1 - α) + g_term * α
+    - Where α = (t - high_growth_years) / (years - high_growth_years)
+
+    Examples
+    --------
+    >>> # 5 years projection, 3 years high growth at 10%, then fade to 2%
+    >>> flows = project_flows(1000, 5, 0.10, 0.02, 3)
+    >>> # Years 1-3: 10% growth
+    >>> # Years 4-5: Linear fade from 10% to 2%
     """
     if years <= 0:
         return []

@@ -43,21 +43,27 @@ class UIKeys:
     WACC_OVERRIDE: str = "wacc_override"
     KE_OVERRIDE: str = "ke_override"
     PRICE: str = "price"
+    TARGET_DEBT_TO_CAPITAL: str = "target_debt_to_capital"
 
     # ── Capital Structure (prefix: bridge_{mode}) ────────────────────
     DEBT: str = "debt"
     CASH: str = "cash"
     MINORITIES: str = "min"
     PENSIONS: str = "pen"
+    LEASE_LIABILITIES: str = "lease_liab"
+    PENSION_LIABILITIES: str = "pension_liab"
     SHARES: str = "shares"
     SBC_RATE: str = "sbc_rate"
     TARGET_DE_RATIO: str = "target_de_ratio"
+    SBC_TREATMENT: str = "sbc_treatment"
+    SBC_ANNUAL_AMOUNT: str = "sbc_annual_amount"
 
     # ── Strategy Params (prefix: strategy mode) ──────────────────────
     GROWTH_RATE: str = "growth_rate"
     GN: str = "gn"
     EXIT_MULT: str = "exit_mult"
     YEARS: str = "years"
+    HIGH_GROWTH_YEARS: str = "high_growth_years"
     GROWTH_VECTOR: str = "growth_vector"
     FCF_BASE: str = "fcf_base"
     FCF_NORM: str = "fcf_norm"
@@ -71,6 +77,8 @@ class UIKeys:
     EPS_NORMALIZED: str = "eps_normalized"
     EPS_ANCHOR: str = "eps_anchor"
     GROWTH_ESTIMATE: str = "growth_estimate"
+    ROIC: str = "roic"
+    REINVESTMENT_RATE: str = "reinvestment_rate"
 
     # ── Monte Carlo (global, no prefix) ──────────────────────────────
     MC_ENABLE: str = "mc_enable"
