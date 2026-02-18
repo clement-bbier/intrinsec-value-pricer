@@ -17,7 +17,7 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
 from src.i18n import KPITexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
@@ -221,10 +221,15 @@ class FCFEStrategy(IValuationRunner):
         discount_factors = 1.0 / ((1 + ke_vec)[:, np.newaxis] ** time_exponents)
         pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
 
-        # 4. Terminal Value
+        # 4. Terminal Value with Golden Rule
         final_flow = projected_flows[:, -1]
+        
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+        
         denominator = np.maximum(ke_vec - g_n, 0.001)
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + ke_vec) ** years)
 
         # 5. Total Equity Value

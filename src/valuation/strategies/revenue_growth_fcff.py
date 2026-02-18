@@ -24,7 +24,7 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
 from src.config.constants import ModelDefaults
@@ -238,11 +238,16 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
         pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
 
-        # 6. Terminal Value
-        # Uses last year FCF and Revenue Growth? No, Gordon Growth on FCF.
+        # 6. Terminal Value with Golden Rule
+        # Uses last year FCF with Gordon Growth
         final_flow = projected_flows[:, -1]
+        
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+        
         denominator = np.maximum(wacc - g_n, 0.001)
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + wacc) ** years)
 
         # 7. Equity Bridge

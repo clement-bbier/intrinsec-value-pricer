@@ -18,7 +18,7 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
 from src.config.constants import ModelDefaults
@@ -259,14 +259,19 @@ class DividendDiscountStrategy(IValuationRunner):
         # PV of Explicit Dividends
         pv_explicit = np.sum(projected_divs * discount_factors, axis=1)
 
-        # 4. Vectorized Terminal Value
+        # 4. Vectorized Terminal Value with Golden Rule
         # TV = Div_n * (1 + g_n) / (Ke - g_n)
         final_div = projected_divs[:, -1]
+        
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        # Note: For DDM, the terminal flow is dividends, not FCF
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_div_adjusted = normalize_terminal_flow_vectorized(final_div, g_n, roic_stable)
 
         # Safety guardrail: Ensure Ke > g_n
         denominator = np.maximum(ke_vec - g_n, 0.001)
 
-        tv_nominal = final_div * (1 + g_n) / denominator
+        tv_nominal = final_div_adjusted * (1 + g_n) / denominator
 
         # Discount TV back to T0
         pv_tv = tv_nominal / ((1 + ke_vec) ** years)
