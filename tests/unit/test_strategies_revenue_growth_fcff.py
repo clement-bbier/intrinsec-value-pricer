@@ -565,7 +565,7 @@ class TestRevenueGrowthFCFFStrategy:
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
 
         # Execute
-        result = strategy.execute(basic_company, params)
+        strategy.execute(basic_company, params)
 
         # Verify wcr_ratio was passed to project_flows_revenue_model
         assert mock_project_rev.called
@@ -624,7 +624,7 @@ class TestRevenueGrowthFCFFStrategy:
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
 
         # Execute
-        result = strategy.execute(basic_company, params)
+        strategy.execute(basic_company, params)
 
         # Verify wcr_ratio was passed as None
         assert mock_project_rev.called
@@ -752,7 +752,7 @@ class TestRevenueGrowthFCFFStrategy:
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
 
         # Execute
-        result = strategy.execute(basic_company, params)
+        strategy.execute(basic_company, params)
 
         # Verify user-provided wcr_ratio was used (not historical)
         assert mock_project_rev.called

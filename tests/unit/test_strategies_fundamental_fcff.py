@@ -513,7 +513,7 @@ class TestFundamentalFCFFStrategy:
         # Verify growth was computed: g = 0.15 × 0.30 = 0.045
         assert result is not None
         assert result.results.common.intrinsic_value_per_share == 89.375
-        
+
         # Verify that growth_rate was dynamically set based on ROIC × RR
         # This is the key test: the strategy modifies params.strategy.growth_rate internally
         assert params.strategy.growth_rate == pytest.approx(0.045, rel=0.01)

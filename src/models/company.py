@@ -66,7 +66,7 @@ class CompanySnapshot(BaseModel):
     This object acts as a 'Data Bag' that aggregates raw Micro (Accounting)
     and Macro (Market) data. It is used exclusively as a bridge between
     Data Providers and the Resolver.
-    
+
     Attributes
     ----------
     historical_wcr_ratio : float, optional
@@ -131,7 +131,7 @@ class CompanySnapshot(BaseModel):
     sector_pe_fallback: float | None = None
     sector_ev_ebitda_fallback: float | None = None
     sector_ev_rev_fallback: float | None = None
-    
+
     # Working Capital Requirement historical ratio
     historical_wcr_ratio: float | None = None
 

@@ -149,6 +149,7 @@ def validate_i18n_references() -> tuple[list[str], dict[str, list[str]]]:
             UIRegistryTexts,
             UISharedTexts,
         )
+
         # Import strategy-specific terminal texts directly
         from src.i18n.fr.ui.terminals import (
             CommonTerminals,

@@ -268,10 +268,10 @@ class DCFLibrary:
                 current_m = target_margin
 
             margins.append(current_m)
-            
+
             # C. Base FCF Calculation
             base_fcf = current_rev * current_m
-            
+
             # D. Working Capital Adjustment
             # ΔBFR = ΔRevenue × wcr_ratio
             # This represents the cash consumed by working capital needs as revenue grows
@@ -283,7 +283,7 @@ class DCFLibrary:
             else:
                 wcr_adjustments.append(0.0)
                 final_fcf = base_fcf
-            
+
             fcfs.append(final_fcf)
             prev_rev = current_rev
 
