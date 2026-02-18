@@ -45,10 +45,10 @@ def mock_params_fcff():
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
-    
+
     rates = Mock()
     rates.marginal_tax_rate = None
-    
+
     common = Mock()
     common.capital = capital
     common.rates = rates
@@ -356,7 +356,7 @@ def test_compute_terminal_value_edge_case_small_spread():
     tv_params.perpetual_growth_rate = 0.095  # Very close to discount rate
     strategy.terminal_value = tv_params
     params.strategy = strategy
-    
+
     # Add common.rates mock to prevent AttributeError
     common = Mock()
     rates = Mock()
@@ -385,14 +385,14 @@ def test_compute_terminal_value_with_marginal_tax_rate():
     tv_params.perpetual_growth_rate = 0.03
     strategy.terminal_value = tv_params
     params.strategy = strategy
-    
+
     # Mock common with marginal tax rate set
     common = Mock()
     rates = Mock()
     rates.marginal_tax_rate = 0.25  # Marginal tax rate is set
     common.rates = rates
     params.common = common
-    
+
     # Don't pass financials - should use standard discount rate
     final_flow = 1_000_000
     discount_rate = 0.10
@@ -405,7 +405,7 @@ def test_compute_terminal_value_with_marginal_tax_rate():
     expected_tv = 1_000_000 * 1.03 / 0.07
     assert tv == pytest.approx(expected_tv, rel=1e-6)
     assert step.step_key == "TV_GORDON"
-    
+
     # Verify discount rate used is the one passed in (since no financials provided)
     assert "r" in step.variables_map
     assert step.variables_map["r"].value == discount_rate
@@ -621,7 +621,6 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
 
 
-<<<<<<< copilot/link-cash-flow-bfr-growth
 # ============================================================================
 # TESTS FOR WCR (WORKING CAPITAL REQUIREMENT) INTEGRATION
 # ============================================================================
@@ -634,7 +633,7 @@ def test_project_flows_revenue_model_with_wcr_adjustment(mock_params_revenue_mod
     target_margin = 0.15
     wcr_ratio = 0.05  # 5% of revenue increase goes to WCR
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
     )
 
@@ -651,7 +650,7 @@ def test_project_flows_revenue_model_with_wcr_adjustment(mock_params_revenue_mod
         delta_revenue = revenues[i] - prev_rev
         expected_wcr_adjustment = delta_revenue * wcr_ratio
         expected_fcf = base_fcf - expected_wcr_adjustment
-        
+
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
         prev_rev = revenues[i]
 
@@ -666,7 +665,7 @@ def test_project_flows_revenue_model_without_wcr_adjustment(mock_params_revenue_
     current_margin = 0.10
     target_margin = 0.15
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=None
     )
 
@@ -689,7 +688,7 @@ def test_project_flows_revenue_model_wcr_zero(mock_params_revenue_model):
     target_margin = 0.15
     wcr_ratio = 0.0
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
     )
 
@@ -706,7 +705,7 @@ def test_project_flows_revenue_model_wcr_high_ratio(mock_params_revenue_model):
     target_margin = 0.20
     wcr_ratio = 0.20  # 20% - aggressive working capital needs
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
     )
 
@@ -717,16 +716,17 @@ def test_project_flows_revenue_model_wcr_high_ratio(mock_params_revenue_model):
         delta_revenue = revenues[i] - prev_rev
         wcr_adjustment = delta_revenue * wcr_ratio
         expected_fcf = base_fcf - wcr_adjustment
-        
+
         assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
         # FCF should be lower than base FCF
         assert fcfs[i] < base_fcf
         prev_rev = revenues[i]
-=======
+
+
 def test_terminal_value_with_marginal_tax_applies_adjustment():
     """Test that marginal tax rate triggers FCF tax adjustment in TV calculation."""
     from src.models.company import Company
-    
+
     params = Mock(spec=Parameters)
     strategy = Mock()
     tv_params = Mock()
@@ -734,7 +734,7 @@ def test_terminal_value_with_marginal_tax_applies_adjustment():
     tv_params.perpetual_growth_rate = 0.03
     strategy.terminal_value = tv_params
     params.strategy = strategy
-    
+
     # Setup with different tax rates
     common = Mock()
     rates = Mock()
@@ -746,19 +746,19 @@ def test_terminal_value_with_marginal_tax_applies_adjustment():
     rates.market_risk_premium = 0.06
     rates.wacc = None
     rates.cost_of_equity = None
-    
+
     capital = Mock()
     capital.total_debt = 100.0
     capital.shares_outstanding = 100.0
     capital.target_debt_equity_ratio = None  # No target structure for this test
-    
+
     common.rates = rates
     common.capital = capital
     params.common = common
-    
+
     financials = Mock(spec=Company)
     financials.current_price = 50.0
-    
+
     final_flow = 1_000_000
     discount_rate = 0.10
 
@@ -768,12 +768,11 @@ def test_terminal_value_with_marginal_tax_applies_adjustment():
     # Verify calculation was successful
     assert tv > 0
     assert step.step_key == "TV_GORDON"
-    
+
     # Verify result is reasonable
     assert tv > final_flow  # TV should exceed single period flow
-    
+
     # The actual_calculation should show the formula was applied
     assert "%" in step.actual_calculation  # Contains percentage formatting
     assert "g_perp" in step.variables_map
     assert "r" in step.variables_map
->>>>>>> develop

@@ -77,12 +77,9 @@ class UIKeys:
     EPS_NORMALIZED: str = "eps_normalized"
     EPS_ANCHOR: str = "eps_anchor"
     GROWTH_ESTIMATE: str = "growth_estimate"
-<<<<<<< copilot/link-cash-flow-bfr-growth
     WCR_TO_REVENUE_RATIO: str = "wcr_to_revenue_ratio"
-=======
     ROIC: str = "roic"
     REINVESTMENT_RATE: str = "reinvestment_rate"
->>>>>>> develop
 
     # ── Monte Carlo (global, no prefix) ──────────────────────────────
     MC_ENABLE: str = "mc_enable"
