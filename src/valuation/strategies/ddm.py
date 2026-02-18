@@ -262,7 +262,7 @@ class DividendDiscountStrategy(IValuationRunner):
         # 4. Vectorized Terminal Value with Golden Rule
         # TV = Div_n * (1 + g_n) / (Ke - g_n)
         final_div = projected_divs[:, -1]
-        
+
         # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
         # Note: For DDM, the terminal flow is dividends, not FCF
         roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)

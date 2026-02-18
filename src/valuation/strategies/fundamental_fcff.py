@@ -207,11 +207,11 @@ class FundamentalFCFFStrategy(IValuationRunner):
 
         # 4. Terminal Value with Golden Rule
         final_flow = projected_flows[:, -1]
-        
+
         # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
         roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
         final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
-        
+
         denominator = np.maximum(wacc - g_n, 0.001)
         tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + wacc) ** years)

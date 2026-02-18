@@ -283,12 +283,12 @@ def normalize_terminal_flow_for_stable_state(
     # Case 3: Apply Golden Rule - Calculate normative reinvestment rate
     # Reinvestment Rate = g_n / ROIC_stable
     raw_reinvestment_rate = perpetual_growth / roic_stable
-    
+
     # CRITICAL SAFETY: Clamp reinvestment rate between 0.0 and 1.0
     # If ROIC < growth, reinvestment would exceed 100%, making flow negative
     # This is economically impossible, so we clamp to 100% max
     reinvestment_rate = min(max(raw_reinvestment_rate, 0.0), 1.0)
-    
+
     if raw_reinvestment_rate > 1.0:
         logger.warning(
             f"Golden Rule: Reinvestment rate clamped from {raw_reinvestment_rate:.2%} to 100%. "

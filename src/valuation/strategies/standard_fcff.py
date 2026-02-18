@@ -217,7 +217,7 @@ class StandardFCFFStrategy(IValuationRunner):
         # 4. Vectorized Terminal Value
         # TV = FCF_n * (1 + g_n) / (wacc - g_n)
         final_flow = projected_flows[:, -1]
-        
+
         # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
         # Get roic_stable from terminal_value parameters
         roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
