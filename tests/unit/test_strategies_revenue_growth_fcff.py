@@ -590,7 +590,9 @@ class TestRevenueGrowthFCFFStrategy:
         strategy,
         basic_company,
     ):
-        """Test that wcr_ratio=None is passed correctly (no WCR adjustment)."""
+        """Test that when no WCR ratio is provided and no historical data, it uses default constant."""
+        from src.config.constants import ModelDefaults
+
         mock_wacc_step = Mock(spec=CalculationStep)
         mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10))
 
@@ -626,11 +628,11 @@ class TestRevenueGrowthFCFFStrategy:
         # Execute
         strategy.execute(basic_company, params)
 
-        # Verify wcr_ratio was passed as None
+        # Verify wcr_ratio was passed as default value (0.15)
         assert mock_project_rev.called
         call_kwargs = mock_project_rev.call_args.kwargs
         assert "wcr_ratio" in call_kwargs
-        assert call_kwargs["wcr_ratio"] is None
+        assert call_kwargs["wcr_ratio"] == ModelDefaults.DEFAULT_WCR_RATIO
 
     @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate")
     @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model")

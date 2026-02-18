@@ -97,16 +97,20 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         wcr_ratio = strategy_params.wcr_to_revenue_ratio
         wcr_source = None
 
-        # Fallback to historical WCR/Revenue ratio if user didn't provide one
+        # Fallback chain for WCR ratio: User → Historical → Default constant
         if wcr_ratio is None:
             historical_ratio = getattr(financials, "historical_wcr_ratio", None)
             if historical_ratio is not None:
-                wcr_ratio = historical_ratio
+                wcr_ratio = float(historical_ratio)
                 wcr_source = StrategySources.YAHOO_HISTORICAL
                 logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
             else:
-                logger.info("No WCR ratio provided and no historical data available - no WCR adjustment will be applied")
+                # Ultimate fallback to system default
+                wcr_ratio = float(ModelDefaults.DEFAULT_WCR_RATIO)
+                wcr_source = StrategySources.SYSTEM
+                logger.info(f"Using default WCR ratio: {wcr_ratio:.4f} (no historical data available)")
         else:
+            wcr_ratio = float(wcr_ratio)
             wcr_source = StrategySources.MANUAL_OVERRIDE
 
         if self._glass_box:
@@ -129,7 +133,18 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             # Add Glass Box step for WCR ratio if used
             if wcr_ratio is not None and wcr_source is not None:
                 wcr_percentage = wcr_ratio * 100
-                wcr_label = "Historical WCR Ratio (Yahoo Finance)" if wcr_source == StrategySources.YAHOO_HISTORICAL else "WCR Ratio (User Input)"
+
+                # Determine label and variable source based on origin
+                if wcr_source == StrategySources.MANUAL_OVERRIDE:
+                    wcr_label = "WCR Ratio (User Input)"
+                    var_source = VariableSource.MANUAL_OVERRIDE
+                elif wcr_source == StrategySources.YAHOO_HISTORICAL:
+                    wcr_label = "Historical WCR Ratio (Yahoo Finance)"
+                    var_source = VariableSource.YAHOO_HISTORICAL
+                else:  # SYSTEM
+                    wcr_label = "WCR Ratio (System Default)"
+                    var_source = VariableSource.SYSTEM
+
                 steps.append(
                     CalculationStep(
                         step_key="WCR_RATIO",
@@ -144,7 +159,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                                 symbol="WCR/Rev",
                                 value=wcr_ratio,
                                 formatted_value=f"{wcr_percentage:.2f}%",
-                                source=VariableSource.MANUAL_OVERRIDE if wcr_source == StrategySources.MANUAL_OVERRIDE else VariableSource.YAHOO_HISTORICAL,
+                                source=var_source,
                                 description="Working Capital to Revenue Ratio"
                             ),
                         },
