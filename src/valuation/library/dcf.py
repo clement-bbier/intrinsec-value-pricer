@@ -24,15 +24,18 @@ from src.computation.financial_math import (
     apply_dilution_adjustment,
     calculate_dilution_factor,
     calculate_discount_factors,
+    calculate_fcf_tax_adjustment_factor,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    calculate_wacc_for_terminal_value,
     normalize_terminal_flow_for_stable_state,
 )
 
 # Configuration & i18n
-from src.config.constants import ModelDefaults
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.company import Company
 from src.models.enums import TerminalValueMethod, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
@@ -247,23 +250,91 @@ class DCFLibrary:
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters
-    ) -> tuple[float, CalculationStep]:
-        """Calculates Terminal Value based on Strategy selection."""
+        final_flow: float, discount_rate: float, params: Parameters, financials: Company
+    ) -> tuple[float, CalculationStep, list]:
+        """
+        Calculates Terminal Value based on Strategy selection.
+
+        Combines:
+        1. Tax Convergence (Agent #34): Adjusts WACC and FCF for marginal tax rate
+        2. Golden Rule: Adjusts FCF for sustainable reinvestment based on ROIC
+
+        Parameters
+        ----------
+        final_flow : float
+            The last projected cash flow from the explicit period.
+        discount_rate : float
+            The discount rate for the explicit period (WACC or Ke).
+        params : Parameters
+            User-defined or automated parameters.
+        financials : Company
+            Financial snapshots. Used to recalculate WACC with marginal tax rate for TV
+            when applicable (FCFF strategies). Required for all strategies for consistency.
+
+        Returns
+        -------
+        tuple[float, CalculationStep, list]
+            Terminal value, calculation step for audit trail, and list of diagnostic events.
+
+        Notes
+        -----
+        If marginal_tax_rate is provided in params and financials is available,
+        the terminal value will be calculated using a WACC that applies the
+        marginal tax rate instead of the effective tax rate. This reflects that
+        temporary tax benefits are not perpetual.
+
+        For equity-based strategies (DDM, FCFE), the financials parameter is still
+        required but marginal tax adjustments don't apply.
+
+        Diagnostics are generated for:
+        - Beta adjustment skipped due to 5% threshold
+        - Operating margin fallback when EBIT/Revenue data unavailable
+        """
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            roic_stable = tv_params.roic_stable  # Can be None
+            roic_stable = tv_params.roic_stable  # Can be None for Golden Rule
 
-            # Apply Golden Rule: Normalize terminal flow for sustainable reinvestment
+            # Step 1: Tax Convergence - Use marginal tax rate for terminal value WACC if available
+            tv_discount_rate = discount_rate
+            tax_adjustment_factor = 1.0
+            tv_diagnostics = []  # Collect diagnostics from TV calculation
+            marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
+
+            if marginal_tax_rate is not None and financials is not None:
+                # Recalculate WACC using marginal tax rate for terminal value
+                wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
+                tv_discount_rate = wacc_tv_breakdown.wacc
+
+                # Collect WACC diagnostics (e.g., beta adjustment skipped)
+                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                    tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
+
+                # Calculate tax adjustment factor for FCF
+                # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                # Pass financials to use real operating margin
+                effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
+                if effective_tax_rate != marginal_tax_rate:
+                    # Request diagnostics to detect fallback usage
+                    tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
+                        effective_tax_rate=effective_tax_rate,
+                        marginal_tax_rate=marginal_tax_rate,
+                        financials=financials,  # Pass financials for real margin calculation
+                        return_diagnostics=True
+                    )
+                    # Collect FCF adjustment diagnostics (e.g., margin fallback used)
+                    if fcf_diagnostics:
+                        tv_diagnostics.extend(fcf_diagnostics)
+
+            # Step 2: Golden Rule - Normalize terminal flow for sustainable reinvestment
             adjusted_flow, reinvestment_rate = normalize_terminal_flow_for_stable_state(
                 final_flow, g_perp, roic_stable
             )
 
-            # Calculate terminal value using the adjusted flow
-            tv = calculate_terminal_value_gordon(adjusted_flow, discount_rate, g_perp)
+            # Step 3: Calculate terminal value using adjusted flow with tax factor
+            tv = calculate_terminal_value_gordon(adjusted_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
 
             # Build variables map
             variables_map = {
@@ -276,8 +347,8 @@ class DCFLibrary:
                 ),
                 "r": VariableInfo(
                     symbol="r",
-                    value=discount_rate,
-                    formatted_value=f"{discount_rate:.2%}",
+                    value=tv_discount_rate,
+                    formatted_value=f"{tv_discount_rate:.2%}",
                     source=VariableSource.CALCULATED,
                     description="Discount Rate",
                 ),
@@ -314,28 +385,29 @@ class DCFLibrary:
                     description=SharedTexts.LABEL_FCF_AFTER_ADJUSTMENT,
                 )
 
-                # Update calculation string to show adjustment
-                actual_calculation = (
-                    f"Golden Rule: {format_smart_number(final_flow)} × (1 - {reinvestment_rate:.2%}) = "
-                    f"{format_smart_number(adjusted_flow)} | "
-                    f"TV = ({format_smart_number(adjusted_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                )
-            else:
-                # No adjustment applied
-                actual_calculation = (
-                    f"({format_smart_number(adjusted_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                )
+            # Build calculation string to show all adjustments
+            calculation_note = f"({format_smart_number(final_flow)}"
+            
+            if reinvestment_rate > 0:
+                calculation_note += f" × (1 - {reinvestment_rate:.2%})"
+            
+            calculation_note += f" × (1 + {g_perp:.1%}))"
+            
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
+            
+            calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
 
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=actual_calculation,
+                actual_calculation=calculation_note,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map=variables_map,
             )
-            return tv, step
+            return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
             multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
@@ -348,6 +420,17 @@ class DCFLibrary:
                 actual_calculation=f"{format_smart_number(final_flow)} × {multiple:.1f}x",
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
+                variables_map={
+                    "multiple": VariableInfo(
+                        symbol="M",
+                        value=multiple,
+                        formatted_value=f"{multiple:.1f}x",
+                        source=VariableSource.MANUAL_OVERRIDE,
+                        description="Exit Multiple",
+                    )
+                },
+            )
+            return tv, step, []  # No diagnostics for exit multiple method
                 variables_map={
                     "M": VariableInfo(
                         symbol="M",
