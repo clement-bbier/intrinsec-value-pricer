@@ -23,6 +23,23 @@ from src.valuation.library.dcf import DCFLibrary
 
 
 @pytest.fixture
+def basic_company():
+    """Basic Company object for testing."""
+    from src.models.company import CompanySnapshot
+    
+    return CompanySnapshot(
+        ticker="TEST",
+        name="Test Company",
+        country="US",
+        sector="Technology",
+        industry="Software",
+        currency="USD",
+        current_price=100.0,
+        beta=1.0,
+    )
+
+
+@pytest.fixture
 def mock_params_fcff():
     """Mock Parameters object for FCFF with terminal_value and projection_years."""
     params = Mock(spec=Parameters)
@@ -46,8 +63,15 @@ def mock_params_fcff():
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
+    
+    # Mock rates with marginal_tax_rate = None to skip tax adjustment in tests
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    rates.tax_rate = 0.25
+    
     common = Mock()
     common.capital = capital
+    common.rates = rates
     params.common = common
 
     return params
@@ -270,7 +294,7 @@ def test_project_flows_revenue_model_basic(mock_params_revenue_model):
     assert "M_target" in step.variables_map
 
 
-def test_project_flows_revenue_model_with_manual_vector(mock_params_revenue_model):
+def test_project_flows_revenue_model_with_manual_vector(mock_params_revenue_model, basic_company):
     """Test revenue model with manual growth vector override."""
     mock_params_revenue_model.strategy.manual_growth_vector = [0.15, 0.12, 0.10, 0.08, 0.05]
 
@@ -287,7 +311,7 @@ def test_project_flows_revenue_model_with_manual_vector(mock_params_revenue_mode
     assert revenues[0] == pytest.approx(expected_rev_y1, rel=1e-6)
 
 
-def test_project_flows_revenue_model_zero_years(mock_params_revenue_model):
+def test_project_flows_revenue_model_zero_years(mock_params_revenue_model, basic_company):
     """Test revenue model with zero projection years (defaults to 5)."""
     mock_params_revenue_model.strategy.projection_years = 0  # Will default to 5 due to 'or' fallback
 
@@ -308,12 +332,12 @@ def test_project_flows_revenue_model_zero_years(mock_params_revenue_model):
 # ============================================================================
 
 
-def test_compute_terminal_value_gordon(mock_params_fcff):
+def test_compute_terminal_value_gordon(mock_params_fcff, basic_company):
     """Test terminal value using Gordon Growth method."""
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
 
     # TV = FCF * (1+g) / (r - g)
     # TV = 1,500,000 * 1.03 / (0.10 - 0.03)
@@ -326,14 +350,14 @@ def test_compute_terminal_value_gordon(mock_params_fcff):
     assert step.variables_map["g_perp"].value == 0.03
 
 
-def test_compute_terminal_value_exit_multiple(mock_params_fcff):
+def test_compute_terminal_value_exit_multiple(mock_params_fcff, basic_company):
     """Test terminal value using Exit Multiple method."""
     mock_params_fcff.strategy.terminal_value.method = TerminalValueMethod.EXIT_MULTIPLE
 
     final_flow = 1_500_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
 
     # TV = FCF * Multiple
     expected_tv = 1_500_000 * 10.0
@@ -345,7 +369,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff):
     assert step.variables_map["M"].value == 10.0
 
 
-def test_compute_terminal_value_edge_case_small_spread():
+def test_compute_terminal_value_edge_case_small_spread(basic_company):
     """Test terminal value with small r-g spread."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -359,7 +383,7 @@ def test_compute_terminal_value_edge_case_small_spread():
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
 
     # Should still calculate without error
     assert tv > 0
@@ -500,7 +524,7 @@ def test_compute_value_per_share_high_dilution():
     assert final_iv < base_iv * 0.5
 
 
-def test_compute_value_per_share_default_shares():
+def test_compute_value_per_share_default_shares(basic_company):
     """Test per-share when shares_outstanding is None."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -528,7 +552,7 @@ def test_compute_value_per_share_default_shares():
 # ============================================================================
 
 
-def test_dcf_full_workflow(mock_params_fcff):
+def test_dcf_full_workflow(mock_params_fcff, basic_company):
     """Integration test: Full DCF workflow."""
     # 1. Project flows
     base_flow = 1_000_000
@@ -538,7 +562,7 @@ def test_dcf_full_workflow(mock_params_fcff):
     # 2. Calculate terminal value
     final_flow = flows[-1]
     discount_rate = 0.10
-    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff)
+    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
     assert tv > 0
 
     # 3. Discount everything
@@ -556,7 +580,7 @@ def test_dcf_full_workflow(mock_params_fcff):
         assert len(step.variables_map) > 0
 
 
-def test_dcf_revenue_model_workflow(mock_params_revenue_model):
+def test_dcf_revenue_model_workflow(mock_params_revenue_model, basic_company):
     """Integration test: Revenue model workflow."""
     base_revenue = 50_000_000
     current_margin = 0.08
@@ -581,7 +605,7 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model):
 # ============================================================================
 
 
-def test_compute_terminal_value_with_golden_rule():
+def test_compute_terminal_value_with_golden_rule(basic_company):
     """Test terminal value with Golden Rule adjustment applied."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -595,7 +619,7 @@ def test_compute_terminal_value_with_golden_rule():
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
 
     # Expected: reinvestment = 3% / 15% = 20%
     # Adjusted flow = 1,000,000 * (1 - 0.2) = 800,000
@@ -618,7 +642,7 @@ def test_compute_terminal_value_with_golden_rule():
     assert step.variables_map["FCF_unadjusted"].value == pytest.approx(final_flow, rel=1e-6)
 
 
-def test_compute_terminal_value_without_golden_rule():
+def test_compute_terminal_value_without_golden_rule(basic_company):
     """Test terminal value without Golden Rule adjustment (roic_stable=None)."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -632,7 +656,7 @@ def test_compute_terminal_value_without_golden_rule():
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
 
     # Expected: No adjustment
     # TV = 1,000,000 * 1.03 / (0.10 - 0.03) = 14,714,285.71
@@ -647,7 +671,7 @@ def test_compute_terminal_value_without_golden_rule():
     assert "FCF_unadjusted" not in step.variables_map
 
 
-def test_compute_terminal_value_zero_roic():
+def test_compute_terminal_value_zero_roic(basic_company):
     """Test terminal value with zero ROIC (prevents division by zero)."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -661,7 +685,7 @@ def test_compute_terminal_value_zero_roic():
     final_flow = 1_000_000
     discount_rate = 0.10
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
 
     # Expected: No adjustment (conservative approach with zero ROIC)
     expected_tv = final_flow * 1.03 / 0.07
@@ -672,7 +696,7 @@ def test_compute_terminal_value_zero_roic():
     assert "reinvestment_rate" not in step.variables_map
 
 
-def test_compute_terminal_value_high_roic():
+def test_compute_terminal_value_high_roic(basic_company):
     """Test terminal value with high ROIC (low reinvestment rate)."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -686,7 +710,7 @@ def test_compute_terminal_value_high_roic():
     final_flow = 2_000_000
     discount_rate = 0.09
 
-    tv, step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
+    tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
 
     # Expected: reinvestment = 2.5% / 25% = 10%
     # Adjusted flow = 2,000,000 * (1 - 0.1) = 1,800,000
@@ -697,24 +721,24 @@ def test_compute_terminal_value_high_roic():
     assert step.variables_map["reinvestment_rate"].value == pytest.approx(0.1, rel=1e-6)
 
 
-def test_golden_rule_full_workflow():
+def test_golden_rule_full_workflow(basic_company):
     """Integration test: Full DCF workflow with Golden Rule."""
     params = Mock(spec=Parameters)
-    
+
     # Setup strategy
     strategy = Mock()
     strategy.growth_rate_p1 = 0.08
     strategy.projection_years = 5
-    
+
     # Setup terminal value with Golden Rule
     terminal_value = Mock()
     terminal_value.perpetual_growth_rate = 0.03
     terminal_value.method = TerminalValueMethod.GORDON_GROWTH
     terminal_value.roic_stable = 0.12  # 12% ROIC
     strategy.terminal_value = terminal_value
-    
+
     params.strategy = strategy
-    
+
     # Setup capital structure
     capital = Mock()
     capital.shares_outstanding = 100_000_000
@@ -731,13 +755,13 @@ def test_golden_rule_full_workflow():
     # 2. Calculate terminal value with Golden Rule
     final_flow = flows[-1]
     discount_rate = 0.10
-    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params)
-    
+    tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
+
     # Verify Golden Rule was applied
     assert "reinvestment_rate" in tv_step.variables_map
     expected_reinv_rate = 0.03 / 0.12  # 25%
     assert tv_step.variables_map["reinvestment_rate"].value == pytest.approx(expected_reinv_rate, rel=1e-4)
-    
+
     assert tv > 0
 
     # 3. Discount everything

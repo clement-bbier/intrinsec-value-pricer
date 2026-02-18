@@ -24,11 +24,10 @@ from src.computation.financial_math import (
     apply_dilution_adjustment,
     calculate_dilution_factor,
     calculate_discount_factors,
-    # TODO: These functions exist in develop but need to be copied over:
-    # calculate_fcf_tax_adjustment_factor,
-    # calculate_wacc_for_terminal_value,
+    calculate_fcf_tax_adjustment_factor,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    calculate_wacc_for_terminal_value,
     normalize_terminal_flow_for_stable_state,
 )
 
@@ -291,6 +290,10 @@ class DCFLibrary:
         - Beta adjustment skipped due to 5% threshold
         - Operating margin fallback when EBIT/Revenue data unavailable
         """
+        # Check if strategy has terminal_value attribute (not all strategies do, e.g., GrahamParameters)
+        if not hasattr(params.strategy, 'terminal_value'):
+            raise ValueError(f"Strategy {type(params.strategy).__name__} does not support terminal value calculation")
+
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
@@ -304,28 +307,30 @@ class DCFLibrary:
             tv_diagnostics = []  # Collect diagnostics from TV calculation
             marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
 
-            # TODO: Restore tax adjustment logic when functions are available
-            # This was temporarily disabled because calculate_fcf_tax_adjustment_factor and
-            # calculate_wacc_for_terminal_value need to be copied from develop branch
-            #
-            # if marginal_tax_rate is not None and financials is not None:
-            #     # Recalculate WACC using marginal tax rate for terminal value
-            #     wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
-            #     tv_discount_rate = wacc_tv_breakdown.wacc
-            #     
-            #     if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
-            #         tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
-            #     
-            #     effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
-            #     if effective_tax_rate != marginal_tax_rate:
-            #         tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
-            #             effective_tax_rate=effective_tax_rate,
-            #             marginal_tax_rate=marginal_tax_rate,
-            #             financials=financials,
-            #             return_diagnostics=True
-            #         )
-            #         if fcf_diagnostics:
-            #             tv_diagnostics.extend(fcf_diagnostics)
+            if marginal_tax_rate is not None and financials is not None:
+                # Recalculate WACC using marginal tax rate for terminal value
+                wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
+                tv_discount_rate = wacc_tv_breakdown.wacc
+
+                # Collect WACC diagnostics (e.g., beta adjustment skipped)
+                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                    tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
+
+                # Calculate tax adjustment factor for FCF
+                # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                # Pass financials to use real operating margin
+                effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
+                if effective_tax_rate != marginal_tax_rate:
+                    # Request diagnostics to detect fallback usage
+                    tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
+                        effective_tax_rate=effective_tax_rate,
+                        marginal_tax_rate=marginal_tax_rate,
+                        financials=financials,  # Pass financials for real margin calculation
+                        return_diagnostics=True
+                    )
+                    # Collect FCF adjustment diagnostics (e.g., margin fallback used)
+                    if fcf_diagnostics:
+                        tv_diagnostics.extend(fcf_diagnostics)
 
             # Step 2: Golden Rule - Normalize terminal flow for sustainable reinvestment
             adjusted_flow, reinvestment_rate = normalize_terminal_flow_for_stable_state(
@@ -386,15 +391,15 @@ class DCFLibrary:
 
             # Build calculation string to show all adjustments
             calculation_note = f"({format_smart_number(final_flow)}"
-            
+
             if reinvestment_rate > 0:
                 calculation_note += f" × (1 - {reinvestment_rate:.2%})"
-            
+
             calculation_note += f" × (1 + {g_perp:.1%}))"
-            
+
             if tax_adjustment_factor != 1.0:
                 calculation_note += f" × {tax_adjustment_factor:.4f}"
-            
+
             calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
 
             step = CalculationStep(

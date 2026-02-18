@@ -32,7 +32,7 @@ from src.models.results.options import ExtensionBundleResults
 from src.models.results.strategies import FCFEResults
 
 # Models Results
-from src.models.valuation import ValuationRequest, ValuationResult, AuditReport
+from src.models.valuation import AuditReport, ValuationRequest, ValuationResult
 
 # Libraries
 from src.valuation.library.common import CommonLibrary

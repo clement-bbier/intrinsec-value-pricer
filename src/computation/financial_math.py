@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Literal, overload
 
 import numpy as np
 
 from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
+from src.core.diagnostics import DiagnosticRegistry
 from src.core.exceptions import CalculationError
 
 # DT-001/002: Internal i18n imports for UI-facing error messages
@@ -610,6 +612,41 @@ def calculate_synthetic_cost_of_debt(
     return rf + 0.1900
 
 
+def convert_de_to_dcap(debt_equity_ratio: float) -> tuple[float, float]:
+    r"""
+    Converts Debt-to-Equity ratio (D/E) to capital structure weights.
+
+    $$w_e = \frac{1}{1 + D/E}, \quad w_d = \frac{D/E}{1 + D/E}$$
+
+    Parameters
+    ----------
+    debt_equity_ratio : float
+        Debt-to-Equity ratio (D/E). Must be non-negative.
+
+    Returns
+    -------
+    tuple[float, float]
+        (weight_equity, weight_debt) where weights sum to 1.0
+
+    Examples
+    --------
+    >>> convert_de_to_dcap(0.5)  # 50% debt / 100% equity
+    (0.6667, 0.3333)  # 66.7% equity, 33.3% debt in capital
+
+    >>> convert_de_to_dcap(1.0)  # 100% debt / 100% equity
+    (0.5, 0.5)  # 50% equity, 50% debt in capital
+
+    >>> convert_de_to_dcap(0.25)  # 25% debt / 100% equity
+    (0.8, 0.2)  # 80% equity, 20% debt in capital
+    """
+    if debt_equity_ratio < 0:
+        raise ValueError(f"D/E ratio must be non-negative, got {debt_equity_ratio}")
+
+    we = 1.0 / (1.0 + debt_equity_ratio)
+    wd = debt_equity_ratio / (1.0 + debt_equity_ratio)
+    return we, wd
+
+
 def calculate_wacc(financials: Company, params: Parameters) -> WACCBreakdown:
     r"""
     Computes the Weighted Average Cost of Capital (WACC).
@@ -984,3 +1021,360 @@ def calculate_triangulated_price(valuation_signals: dict[str, float], weights: d
 
     weighted_sum = sum(valid_signals[k] * active_weights[k] for k in active_weights)
     return weighted_sum / total_weight
+
+# === Tax Adjustment Functions from Agent #34 ===
+
+@overload
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
+    financials: Company | None = None,
+    return_diagnostics: Literal[False] = False
+) -> float:
+    ...
+
+
+@overload
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
+    financials: Company | None,
+    return_diagnostics: Literal[True]
+) -> tuple[float, list]:
+    ...
+
+
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
+    financials: Company | None = None,
+    return_diagnostics: bool = False
+) -> float | tuple[float, list]:
+    r"""
+    Calculates the adjustment factor to convert FCF from effective to marginal tax rate.
+
+    $$\text{factor} \approx 1 + OM \times (\tau_{eff} - \tau_{marg})$$
+
+    Parameters
+    ----------
+    effective_tax_rate : float
+        The effective tax rate used during the explicit projection period (decimal).
+    marginal_tax_rate : float
+        The marginal legal tax rate for perpetuity (decimal).
+    financials : Company, optional
+        Company financials to extract real operating margin.
+        If provided, uses EBIT_TTM / Revenue_TTM for precise calculation.
+        If None or data unavailable, falls back to conservative 15% estimate.
+    return_diagnostics : bool, default False
+        If True, returns tuple (factor, diagnostics_list).
+        If False, returns just the factor for backward compatibility.
+
+    Returns
+    -------
+    float or tuple[float, list]
+        If return_diagnostics is False: Tax adjustment factor.
+        If return_diagnostics is True: (factor, list of DiagnosticEvent objects).
+
+        Factor interpretation:
+        - Factor = 1.0 when rates are equal (no adjustment needed)
+        - Factor < 1.0 when marginal > effective (tax goes up, FCF goes down)
+        - Factor > 1.0 when marginal < effective (tax goes down, FCF goes up)
+
+    Notes
+    -----
+    FCF = NOPAT + DA - CapEx - ΔNWC where NOPAT = EBIT × (1 - τ).
+
+    When tax rate changes, only NOPAT is affected, not non-cash items.
+    The operating margin represents what portion of FCF is tax-sensitive.
+
+    Operating Margin Calculation Priority:
+    1. Real margin from financials: EBIT_TTM / Revenue_TTM
+    2. Fallback: 15% (conservative estimate for mature companies)
+
+    A diagnostic warning is generated when fallback is used, indicating that
+    real company data was unavailable from the data provider.
+
+    Example:
+    - Effective rate: 15% (with temporary credits)
+    - Marginal rate: 25% (legal rate)
+    - Operating margin: 18% (calculated from financials)
+    - Factor ≈ 1 + 0.18 × (0.15 - 0.25) = 1 - 0.018 = 0.982 (1.8% reduction)
+
+    The real margin provides more accurate adjustments than the previous
+    fixed 20% assumption. Users should still consider inputting normalized
+    FCF that already reflects the marginal tax rate for maximum precision.
+    """
+    if effective_tax_rate == marginal_tax_rate:
+        if return_diagnostics:
+            return 1.0, []
+        return 1.0
+
+    # Calculate real operating margin from financials if available
+    operating_margin = 0.15  # Default fallback: conservative 15%
+    diagnostics_list = []
+    used_fallback = False
+    ebit_available = False
+    revenue_available = False
+
+    if financials is not None:
+        ebit_ttm = getattr(financials, "ebit_ttm", None)
+        revenue_ttm = getattr(financials, "revenue_ttm", None)
+
+        ebit_available = ebit_ttm is not None and ebit_ttm != 0
+        revenue_available = revenue_ttm is not None and revenue_ttm != 0
+
+        if ebit_available and revenue_available and revenue_ttm is not None and revenue_ttm > 0:
+            # Use real operating margin
+            # Type narrowing: we know ebit_ttm and revenue_ttm are not None here
+            assert ebit_ttm is not None  # Help mypy understand type narrowing
+            operating_margin = ebit_ttm / revenue_ttm
+            # Clamp to reasonable bounds (0-50%)
+            operating_margin = max(0.0, min(0.50, operating_margin))
+        else:
+            # Missing data - use fallback and create diagnostic
+            used_fallback = True
+    else:
+        # No financials provided - use fallback
+        used_fallback = True
+
+    # Create diagnostic if fallback was used
+    if used_fallback:
+        diagnostics_list.append(
+            DiagnosticRegistry.operating_margin_fallback_used(
+                fallback_margin=operating_margin,
+                ebit_available=ebit_available,
+                revenue_available=revenue_available,
+            )
+        )
+
+    # Calculate adjustment factor
+    tax_delta = effective_tax_rate - marginal_tax_rate
+    adjustment = 1.0 + (operating_margin * tax_delta)
+
+    # Clamp to reasonable bounds (±50% adjustment maximum)
+    final_factor = max(0.5, min(1.5, adjustment))
+
+    if return_diagnostics:
+        return final_factor, diagnostics_list
+    return final_factor
+
+
+# ==============================================================================
+
+
+
+
+def calculate_wacc_for_terminal_value(financials: Company, params: Parameters) -> WACCBreakdown:
+    r"""
+    Computes the WACC for Terminal Value calculation using marginal tax rate.
+
+    Parameters
+    ----------
+    financials : Company
+        Financial snapshots.
+    params : Parameters
+        Projection parameters.
+
+    Returns
+    -------
+    WACCBreakdown
+        Full technical decomposition using marginal tax rate for TV calculations.
+
+    Notes
+    -----
+    Temporary tax benefits are not perpetual. This function ensures the terminal
+    value uses the long-term marginal legal tax rate instead of the effective rate
+    from the growth period.
+    """
+    return _calculate_wacc_internal(financials, params, use_marginal_tax=True)
+
+
+def _calculate_wacc_internal(financials: Company, params: Parameters, use_marginal_tax: bool = False) -> WACCBreakdown:
+    r"""
+    Internal implementation for WACC calculation with Hamada beta adjustment and marginal tax support.
+
+    Parameters
+    ----------
+    financials : Company
+        Financial snapshots.
+    params : Parameters
+        Projection parameters.
+    use_marginal_tax : bool, default False
+        If True, uses marginal_tax_rate for terminal value calculation.
+        If False, uses standard tax_rate for explicit period.
+
+    Returns
+    -------
+    WACCBreakdown
+        Full technical decomposition for audit and rendering.
+
+    Notes
+    -----
+    This function integrates two advanced features:
+
+    1. **Hamada Beta Adjustment**: When `target_debt_equity_ratio` is specified,
+       the function unlevers the observed beta to asset beta, then relevers it
+       to the target capital structure using the Hamada formula.
+
+    2. **Marginal Tax Convergence**: When `use_marginal_tax=True`, applies the
+       long-term marginal tax rate instead of effective tax rate, ensuring
+       terminal value assumptions reflect normalized perpetuity conditions.
+
+    The combination ensures that terminal value calculations use both the target
+    capital structure (financial risk) and marginal tax rate (fiscal convergence).
+    """
+    r = params.common.rates
+    c = params.common.capital
+
+    # Extract common parameters
+    tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+    debt = c.total_debt if c.total_debt is not None else 0.0
+    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+    market_equity = financials.current_price * shares
+    total_cap = market_equity + debt
+
+    # 0. Check for WACC override (used in sensitivity analysis)
+    if r.wacc is not None:
+        # When WACC is manually overridden, we still need to decompose it
+        # but we use the override value as the final WACC.
+        # Note: Ke and Kd calculations are required for UI display and audit trails.
+
+        # Calculate Ke for display/audit purposes
+        ke = r.cost_of_equity if r.cost_of_equity is not None else calculate_cost_of_equity(params)
+
+        # Calculate Kd for display purposes
+        if use_marginal_tax and r.marginal_tax_rate is not None:
+            tax = r.marginal_tax_rate
+        else:
+            tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+
+        rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+
+        if r.cost_of_debt is not None:
+            kd_gross = r.cost_of_debt
+        else:
+            mcap = financials.current_price * shares
+            ebit = getattr(financials, "ebit_ttm", None) or 0.0
+            interest = getattr(financials, "interest_expense", None) or 0.0
+            kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
+
+        kd_net = kd_gross * (1.0 - tax)
+
+        # Calculate weights for display (use target if provided, else market-based)
+        if r.target_debt_to_capital is not None:
+            wd = r.target_debt_to_capital
+            we = 1.0 - wd
+        else:
+            we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+
+        return WACCBreakdown(
+            cost_of_equity=ke,
+            cost_of_debt_pre_tax=kd_gross,
+            cost_of_debt_after_tax=kd_net,
+            weight_equity=we,
+            weight_debt=wd,
+            wacc=r.wacc,
+            method=StrategySources.MANUAL_OVERRIDE,
+            beta_used=r.beta if r.beta else ModelDefaults.DEFAULT_BETA,
+            beta_adjusted=False,
+        )
+
+    # 1. Determine tax rate (marginal for TV, effective for explicit period)
+    if use_marginal_tax and r.marginal_tax_rate is not None:
+        tax = r.marginal_tax_rate
+    else:
+        tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
+
+    # 2. Hamada Beta Adjustment (if target structure specified)
+    beta_input = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
+    beta_adjusted_flag = False
+    beta_used = beta_input
+    diagnostics_list = []
+
+    target_de_ratio = c.target_debt_equity_ratio if c.target_debt_equity_ratio is not None else None
+
+    if target_de_ratio is not None and target_de_ratio > 0:
+        # Apply Hamada adjustment: unlever observed beta, then relever to target
+        debt = c.total_debt if c.total_debt is not None else 0.0
+        shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+        market_equity = financials.current_price * shares
+
+        # Current D/E ratio
+        current_de_ratio = (debt / market_equity) if market_equity > 0 else 0.0
+
+        # Only adjust if target differs meaningfully from current
+        # Threshold prevents noise from minor differences (e.g., 0.249 vs 0.251)
+        threshold = ModelDefaults.BETA_ADJUSTMENT_THRESHOLD  # 5% difference
+        if abs(target_de_ratio - current_de_ratio) > threshold:
+            # Unlever to asset beta using current structure and tax rate
+            beta_unlevered = unlever_beta(beta_input, tax, current_de_ratio)
+            # Relever to target structure using tax rate (marginal for TV, effective for explicit)
+            beta_used = relever_beta(beta_unlevered, tax, target_de_ratio)
+            beta_adjusted_flag = True
+        else:
+            # Threshold not met - create diagnostic to inform user
+            diagnostics_list.append(
+                DiagnosticRegistry.beta_adjustment_skipped_threshold(
+                    current_de=current_de_ratio,
+                    target_de=target_de_ratio,
+                    threshold=threshold
+                )
+            )
+
+    # 3. Calculate Ke with (possibly adjusted) beta
+    rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
+    mrp = r.market_risk_premium if r.market_risk_premium is not None else MacroDefaults.DEFAULT_MARKET_RISK_PREMIUM
+    ke = calculate_cost_of_equity_capm(rf, beta_used, mrp)
+
+    # 4. Calculate Kd with appropriate tax rate
+    if r.cost_of_debt is not None:
+        kd_gross = r.cost_of_debt
+    else:
+        # Need market cap for table selection
+        mcap = financials.current_price * shares
+        ebit = getattr(financials, "ebit_ttm", None) or 0.0
+        interest = getattr(financials, "interest_expense", None) or 0.0
+        kd_gross = calculate_synthetic_cost_of_debt(rf, ebit, interest, mcap)
+
+    kd_net = kd_gross * (1.0 - tax)
+
+    # 5. Capital Structure Weights (use target if specified, else market)
+    debt = c.total_debt if c.total_debt is not None else 0.0
+    shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
+    market_equity = financials.current_price * shares
+
+    if target_de_ratio is not None and target_de_ratio > 0:
+        # Use target structure for weights
+        # Convert D/E ratio to capital structure weights
+        # Example: D/E = 0.5 → we = 1/(1+0.5) = 0.667, wd = 0.5/(1+0.5) = 0.333
+        we, wd = convert_de_to_dcap(target_de_ratio)
+        method = StrategySources.WACC_TARGET
+    else:
+        # Use market structure (actual observed D and E)
+        total_cap = market_equity + debt
+        we, wd = (market_equity / total_cap, debt / total_cap) if total_cap > 0 else (1.0, 0.0)
+        method = StrategySources.WACC_MARKET
+
+    # 3. Calculate WACC
+    wacc_raw = (we * ke) + (wd * kd_net)
+
+    return WACCBreakdown(
+        cost_of_equity=ke,
+        cost_of_debt_pre_tax=kd_gross,
+        cost_of_debt_after_tax=kd_net,
+        weight_equity=we,
+        weight_debt=wd,
+        wacc=wacc_raw,
+        method=method,
+        beta_used=beta_used,
+        beta_adjusted=beta_adjusted_flag,
+        diagnostics=diagnostics_list,
+    )
+
+
+# ==============================================================================
+# 4. SHAREHOLDER MODELS (FCFE & DDM)
+# ==============================================================================
+
+

@@ -110,6 +110,16 @@ class YahooSnapshotMapper:
         snapshot.revenue_prev = self._sum_quarters_with_offset(raw.quarterly_income_stmt, ["Total Revenue"], offset=4)
         snapshot.shares_outstanding_prev = self._extract_value_at_position(bs, ["Share Issued"], position=1)
 
+        # === ROIC Calculation (Golden Rule Support) ===
+        # ROIC = Net Income / (Total Debt + Total Equity - Cash)
+        # This provides a default value for the Golden Rule terminal value adjustment
+        snapshot.roic_ttm = self._calculate_roic(
+            net_income=snapshot.net_income_ttm,
+            total_debt=snapshot.long_term_debt,
+            total_equity=snapshot.total_equity,
+            cash=snapshot.cash_and_equivalents
+        )
+
         return snapshot
 
     # =========================================================================
@@ -225,3 +235,70 @@ class YahooSnapshotMapper:
                     except (ValueError, TypeError):
                         continue
         return None
+
+    @staticmethod
+    def _calculate_roic(
+        net_income: float | None,
+        total_debt: float | None,
+        total_equity: float | None,
+        cash: float | None
+    ) -> float | None:
+        """
+        Calculates ROIC (Return on Invested Capital) for Golden Rule support.
+
+        Formula: ROIC = Net Income / (Total Debt + Total Equity - Cash)
+
+        This provides a default estimate for the Golden Rule terminal value adjustment.
+        Returns None if any required component is missing or if invested capital is invalid.
+
+        Parameters
+        ----------
+        net_income : float, optional
+            Net Income TTM
+        total_debt : float, optional
+            Total Debt (long-term debt)
+        total_equity : float, optional
+            Total Stockholders' Equity
+        cash : float, optional
+            Cash and Cash Equivalents
+
+        Returns
+        -------
+        float, optional
+            ROIC as a decimal (e.g., 0.15 for 15%) or None if calculation not possible
+
+        Notes
+        -----
+        If any input is None or if invested capital <= 0, returns None.
+        This is a conservative approach that allows manual override when automatic
+        calculation is not reliable.
+        """
+        # Check if all components are available
+        if net_income is None or total_debt is None or total_equity is None or cash is None:
+            return None
+
+        # Calculate invested capital
+        invested_capital = total_debt + total_equity - cash
+
+        # Validate invested capital is positive
+        if invested_capital <= 0:
+            logger.debug(
+                f"ROIC calculation skipped: invested capital is {invested_capital:.2f} "
+                f"(debt={total_debt:.2f}, equity={total_equity:.2f}, cash={cash:.2f})"
+            )
+            return None
+
+        # Calculate ROIC
+        roic = net_income / invested_capital
+
+        # Sanity check: ROIC should typically be between -100% and +100%
+        # If outside this range, data is likely unreliable
+        if roic < -1.0 or roic > 1.0:
+            logger.warning(
+                f"ROIC calculation returned unusual value: {roic:.2%}. "
+                f"Net Income={net_income:.2f}, Invested Capital={invested_capital:.2f}. "
+                f"Returning None for manual review."
+            )
+            return None
+
+        return roic

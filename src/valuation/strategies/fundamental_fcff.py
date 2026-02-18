@@ -32,7 +32,7 @@ from src.models.results.options import ExtensionBundleResults
 from src.models.results.strategies import FCFFNormalizedResults
 
 # Models Results (Nested Architecture)
-from src.models.valuation import ValuationRequest, ValuationResult, AuditReport
+from src.models.valuation import ValuationRequest, ValuationResult
 
 # Libraries (DRY Logic)
 from src.valuation.library.common import CommonLibrary
