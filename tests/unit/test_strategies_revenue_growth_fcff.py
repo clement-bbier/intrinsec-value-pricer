@@ -559,7 +559,7 @@ class TestRevenueGrowthFCFFStrategy:
             [0.10, 0.10, 0.10, 0.10, 0.10],
             CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
         )
-        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000))
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
         mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
         mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
@@ -618,7 +618,7 @@ class TestRevenueGrowthFCFFStrategy:
             [0.10, 0.10, 0.10, 0.10, 0.10],
             CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
         )
-        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000))
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
         mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
         mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
@@ -680,7 +680,7 @@ class TestRevenueGrowthFCFFStrategy:
             [0.10, 0.10, 0.10, 0.10, 0.10],
             CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
         )
-        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000))
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
         mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
         mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
@@ -746,7 +746,7 @@ class TestRevenueGrowthFCFFStrategy:
             [0.10, 0.10, 0.10, 0.10, 0.10],
             CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
         )
-        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000))
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
         mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
         mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
         mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
