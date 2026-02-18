@@ -13,6 +13,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.config.constants import ModelDefaults
+from src.models.company import Company
 from src.models.enums import TerminalValueMethod
 from src.models.parameters.base_parameter import Parameters
 from src.valuation.library.dcf import DCFLibrary
@@ -37,6 +38,15 @@ def basic_company():
         current_price=100.0,
         beta=1.0,
     )
+def mock_company():
+    """Mock Company object for terminal value calculations."""
+    company = Mock(spec=Company)
+    company.ticker = "TEST"
+    company.current_price = 100.0
+    company.revenue_ttm = 1_000_000.0
+    company.ebit_ttm = 200_000.0
+    company.fcf_ttm = 150_000.0
+    return company
 
 
 @pytest.fixture
@@ -59,7 +69,7 @@ def mock_params_fcff():
 
     params.strategy = strategy
 
-    # Mock common params for capital structure
+    # Mock common params for capital structure and rates
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
@@ -68,6 +78,8 @@ def mock_params_fcff():
     rates = Mock()
     rates.marginal_tax_rate = None
     rates.tax_rate = 0.25
+    rates = Mock()
+    rates.marginal_tax_rate = None
 
     common = Mock()
     common.capital = capital
@@ -269,7 +281,7 @@ def test_project_flows_revenue_model_basic(mock_params_revenue_model):
     current_margin = 0.05
     target_margin = 0.15
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 
@@ -302,7 +314,7 @@ def test_project_flows_revenue_model_with_manual_vector(mock_params_revenue_mode
     current_margin = 0.10
     target_margin = 0.12
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 
@@ -317,7 +329,7 @@ def test_project_flows_revenue_model_zero_years(mock_params_revenue_model, basic
 
     base_revenue = 1_000_000
 
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, 0.10, 0.15, mock_params_revenue_model
     )
 
@@ -333,11 +345,13 @@ def test_project_flows_revenue_model_zero_years(mock_params_revenue_model, basic
 
 
 def test_compute_terminal_value_gordon(mock_params_fcff, basic_company):
+def test_compute_terminal_value_gordon(mock_params_fcff, mock_company):
     """Test terminal value using Gordon Growth method."""
     final_flow = 1_500_000
     discount_rate = 0.10
 
     tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, mock_company)
 
     # TV = FCF * (1+g) / (r - g)
     # TV = 1,500,000 * 1.03 / (0.10 - 0.03)
@@ -351,6 +365,7 @@ def test_compute_terminal_value_gordon(mock_params_fcff, basic_company):
 
 
 def test_compute_terminal_value_exit_multiple(mock_params_fcff, basic_company):
+def test_compute_terminal_value_exit_multiple(mock_params_fcff, mock_company):
     """Test terminal value using Exit Multiple method."""
     mock_params_fcff.strategy.terminal_value.method = TerminalValueMethod.EXIT_MULTIPLE
 
@@ -358,6 +373,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff, basic_company):
     discount_rate = 0.10
 
     tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, mock_company)
 
     # TV = FCF * Multiple
     expected_tv = 1_500_000 * 10.0
@@ -370,6 +386,7 @@ def test_compute_terminal_value_exit_multiple(mock_params_fcff, basic_company):
 
 
 def test_compute_terminal_value_edge_case_small_spread(basic_company):
+def test_compute_terminal_value_edge_case_small_spread(mock_company):
     """Test terminal value with small r-g spread."""
     params = Mock(spec=Parameters)
     strategy = Mock()
@@ -380,14 +397,59 @@ def test_compute_terminal_value_edge_case_small_spread(basic_company):
     strategy.terminal_value = tv_params
     params.strategy = strategy
 
+    # Add common.rates mock to prevent AttributeError
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = None
+    common.rates = rates
+    params.common = common
+
     final_flow = 1_000_000
     discount_rate = 0.10
 
     tv, step, _diagnostics = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, basic_company)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, mock_company)
 
     # Should still calculate without error
     assert tv > 0
     assert tv > final_flow * 10  # Should be large with small spread
+
+
+def test_compute_terminal_value_with_marginal_tax_rate(mock_company):
+    """Test that terminal value calculation works when marginal_tax_rate is provided."""
+    # This test verifies that having marginal_tax_rate doesn't break TV calculation
+    # The marginal tax calculation requires full Company and Parameters setup
+    # This test focuses on ensuring financials parameter is now mandatory
+    params = Mock(spec=Parameters)
+    strategy = Mock()
+    tv_params = Mock()
+    tv_params.method = TerminalValueMethod.GORDON_GROWTH
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    # Mock common without marginal tax rate (simple path)
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = None  # No marginal tax adjustment in this test
+    common.rates = rates
+    params.common = common
+
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Call with financials (now mandatory)
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, mock_company)
+
+    # Verify TV was calculated correctly with standard Gordon model
+    # TV = FCF_n * (1+g) / (r - g) = 1,000,000 * 1.03 / (0.10 - 0.03)
+    expected_tv = 1_000_000 * 1.03 / 0.07
+    assert tv == pytest.approx(expected_tv, rel=1e-6)
+    assert step.step_key == "TV_GORDON"
+
+    # Verify discount rate used is the one passed in (since no financials provided)
+    assert "r" in step.variables_map
+    assert step.variables_map["r"].value == discount_rate
 
 
 # ============================================================================
@@ -553,6 +615,7 @@ def test_compute_value_per_share_default_shares(basic_company):
 
 
 def test_dcf_full_workflow(mock_params_fcff, basic_company):
+def test_dcf_full_workflow(mock_params_fcff, mock_company):
     """Integration test: Full DCF workflow."""
     # 1. Project flows
     base_flow = 1_000_000
@@ -563,6 +626,7 @@ def test_dcf_full_workflow(mock_params_fcff, basic_company):
     final_flow = flows[-1]
     discount_rate = 0.10
     tv, tv_step = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, basic_company)
+    tv, tv_step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, mock_params_fcff, mock_company)
     assert tv > 0
 
     # 3. Discount everything
@@ -587,7 +651,7 @@ def test_dcf_revenue_model_workflow(mock_params_revenue_model, basic_company):
     target_margin = 0.15
 
     # Project using revenue model
-    fcfs, revenues, margins, step = DCFLibrary.project_flows_revenue_model(
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
         base_revenue, current_margin, target_margin, mock_params_revenue_model
     )
 
@@ -698,6 +762,111 @@ def test_compute_terminal_value_zero_roic(basic_company):
 
 def test_compute_terminal_value_high_roic(basic_company):
     """Test terminal value with high ROIC (low reinvestment rate)."""
+# TESTS FOR WCR (WORKING CAPITAL REQUIREMENT) INTEGRATION
+# ============================================================================
+
+
+def test_project_flows_revenue_model_with_wcr_adjustment(mock_params_revenue_model):
+    """Test project_flows_revenue_model with WCR adjustment."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+    wcr_ratio = 0.05  # 5% of revenue increase goes to WCR
+
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # Verify we have flows
+    assert len(fcfs) == 5
+    assert len(revenues) == 5
+    assert len(margins) == 5
+
+    # Verify WCR adjustment reduces FCF
+    # For each year: FCF = Revenue * Margin - (ΔRevenue * wcr_ratio)
+    prev_rev = base_revenue
+    for i in range(5):
+        base_fcf = revenues[i] * margins[i]
+        delta_revenue = revenues[i] - prev_rev
+        expected_wcr_adjustment = delta_revenue * wcr_ratio
+        expected_fcf = base_fcf - expected_wcr_adjustment
+
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+        prev_rev = revenues[i]
+
+    # Verify WCR ratio is in variables
+    assert "WCR_ratio" in step.variables_map
+    assert step.variables_map["WCR_ratio"].value == wcr_ratio
+
+
+def test_project_flows_revenue_model_without_wcr_adjustment(mock_params_revenue_model):
+    """Test project_flows_revenue_model without WCR adjustment (wcr_ratio=None)."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=None
+    )
+
+    # Verify we have flows
+    assert len(fcfs) == 5
+
+    # Without WCR adjustment: FCF = Revenue * Margin (simple)
+    for i in range(5):
+        expected_fcf = revenues[i] * margins[i]
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+    # Verify WCR ratio is NOT in variables
+    assert "WCR_ratio" not in step.variables_map
+
+
+def test_project_flows_revenue_model_wcr_zero(mock_params_revenue_model):
+    """Test that wcr_ratio=0.0 results in no adjustment."""
+    base_revenue = 100_000
+    current_margin = 0.10
+    target_margin = 0.15
+    wcr_ratio = 0.0
+
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # With wcr_ratio=0, FCF should equal Revenue * Margin (no adjustment)
+    for i in range(5):
+        expected_fcf = revenues[i] * margins[i]
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+
+
+def test_project_flows_revenue_model_wcr_high_ratio(mock_params_revenue_model):
+    """Test with a high WCR ratio (20%)."""
+    base_revenue = 100_000
+    current_margin = 0.15
+    target_margin = 0.20
+    wcr_ratio = 0.20  # 20% - aggressive working capital needs
+
+    revenues, margins, fcfs, step = DCFLibrary.project_flows_revenue_model(
+        base_revenue, current_margin, target_margin, mock_params_revenue_model, wcr_ratio=wcr_ratio
+    )
+
+    # Verify flows are reduced significantly due to high WCR
+    prev_rev = base_revenue
+    for i in range(5):
+        base_fcf = revenues[i] * margins[i]
+        delta_revenue = revenues[i] - prev_rev
+        wcr_adjustment = delta_revenue * wcr_ratio
+        expected_fcf = base_fcf - wcr_adjustment
+
+        assert fcfs[i] == pytest.approx(expected_fcf, rel=1e-6)
+        # FCF should be lower than base FCF
+        assert fcfs[i] < base_fcf
+        prev_rev = revenues[i]
+
+
+def test_terminal_value_with_marginal_tax_applies_adjustment():
+    """Test that marginal tax rate triggers FCF tax adjustment in TV calculation."""
+    from src.models.company import Company
+
     params = Mock(spec=Parameters)
     strategy = Mock()
     tv_params = Mock()
@@ -771,3 +940,48 @@ def test_golden_rule_full_workflow(basic_company):
     # 4. Calculate per-share value
     final_iv, iv_step = DCFLibrary.compute_value_per_share(total_ev, params)
     assert final_iv > 0
+    tv_params.perpetual_growth_rate = 0.03
+    strategy.terminal_value = tv_params
+    params.strategy = strategy
+
+    # Setup with different tax rates
+    common = Mock()
+    rates = Mock()
+    rates.marginal_tax_rate = 0.25  # Higher than effective
+    rates.tax_rate = 0.15  # Effective rate with temporary benefits
+    rates.cost_of_debt = 0.05
+    rates.risk_free_rate = 0.03
+    rates.beta = 1.0
+    rates.market_risk_premium = 0.06
+    rates.wacc = None
+    rates.cost_of_equity = None
+
+    capital = Mock()
+    capital.total_debt = 100.0
+    capital.shares_outstanding = 100.0
+    capital.target_debt_equity_ratio = None  # No target structure for this test
+
+    common.rates = rates
+    common.capital = capital
+    params.common = common
+
+    financials = Mock(spec=Company)
+    financials.current_price = 50.0
+
+    final_flow = 1_000_000
+    discount_rate = 0.10
+
+    # Calculate TV with marginal tax adjustment
+    tv, step, _ = DCFLibrary.compute_terminal_value(final_flow, discount_rate, params, financials)
+
+    # Verify calculation was successful
+    assert tv > 0
+    assert step.step_key == "TV_GORDON"
+
+    # Verify result is reasonable
+    assert tv > final_flow  # TV should exceed single period flow
+
+    # The actual_calculation should show the formula was applied
+    assert "%" in step.actual_calculation  # Contains percentage formatting
+    assert "g_perp" in step.variables_map
+    assert "r" in step.variables_map

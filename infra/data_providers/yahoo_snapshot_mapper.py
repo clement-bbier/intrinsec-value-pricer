@@ -69,6 +69,10 @@ class YahooSnapshotMapper:
         snapshot.cash_and_equivalents = extract_most_recent_value(bs, ["Cash And Cash Equivalents"])
         snapshot.minority_interests = extract_most_recent_value(bs, ["Minority Interest"])
         snapshot.pension_provisions = extract_most_recent_value(bs, ["Long Term Provisions"])
+        snapshot.lease_liabilities = extract_most_recent_value(bs, ["Long Term Lease Liabilities"])
+        snapshot.pension_liabilities = extract_most_recent_value(
+            bs, ["Pension And Other Post Retirement Benefit Plans"]
+        )
         snapshot.shares_outstanding = float(info.get("sharesOutstanding") or 1.0)
         snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"])  # For Cost of Debt
 
@@ -119,6 +123,8 @@ class YahooSnapshotMapper:
             total_equity=snapshot.total_equity,
             cash=snapshot.cash_and_equivalents
         )
+        # --- Historical WCR Ratio Calculation ---
+        snapshot.historical_wcr_ratio = self._calculate_historical_wcr_ratio(raw)
 
         return snapshot
 
@@ -261,6 +267,17 @@ class YahooSnapshotMapper:
             Total Stockholders' Equity
         cash : float, optional
             Cash and Cash Equivalents
+    def _calculate_historical_wcr_ratio(self, raw: RawFinancialData) -> float | None:
+        """
+        Calculate historical Working Capital Requirement to Revenue ratio.
+
+        Computes the average WCR/Revenue ratio over the last 3 fiscal years where:
+        WCR = (Inventory + Accounts Receivable) - Accounts Payable
+
+        Parameters
+        ----------
+        raw : RawFinancialData
+            Raw financial data containing balance sheet and income statement.
 
         Returns
         -------
@@ -302,3 +319,64 @@ class YahooSnapshotMapper:
             return None
 
         return roic
+            Average historical WCR to revenue ratio (as decimal, e.g., 0.05 for 5%),
+            or None if insufficient data is available.
+
+        Notes
+        -----
+        This method handles missing data gracefully and only computes the ratio
+        when all required components are available for a given year.
+        Division by zero is avoided by checking revenue > 0.
+
+        Examples
+        --------
+        >>> # If WCR averages 5M over 3 years with revenue of 100M
+        >>> # Returns 0.05 (5%)
+        """
+        bs = raw.balance_sheet
+        income_stmt = raw.income_stmt
+
+        if bs is None or bs.empty or income_stmt is None or income_stmt.empty:
+            return None
+
+        # Keys for balance sheet components
+        inventory_keys = ["Inventory"]
+        receivables_keys = ["Accounts Receivable", "Receivables"]
+        payables_keys = ["Accounts Payable", "Payables"]
+        revenue_keys = ["Total Revenue"]
+
+        wcr_ratios = []
+
+        # Calculate WCR ratio for up to 3 most recent fiscal years
+        for year_offset in range(3):
+            # Extract components for this year
+            inventory = self._extract_value_at_position(bs, inventory_keys, position=year_offset)
+            receivables = self._extract_value_at_position(bs, receivables_keys, position=year_offset)
+            payables = self._extract_value_at_position(bs, payables_keys, position=year_offset)
+            revenue = self._extract_value_at_position(income_stmt, revenue_keys, position=year_offset)
+
+            # Only calculate if all components are available and revenue is positive
+            # Type narrowing for mypy: explicitly check each value is not None
+            if (
+                inventory is not None
+                and receivables is not None
+                and payables is not None
+                and revenue is not None
+                and revenue > 0
+            ):
+                # WCR = (Inventory + Receivables) - Payables
+                wcr = (inventory + receivables) - payables
+                ratio = wcr / revenue
+                wcr_ratios.append(ratio)
+
+        # Return average if we have at least one valid ratio
+        if wcr_ratios:
+            avg_ratio = sum(wcr_ratios) / len(wcr_ratios)
+            logger.info(
+                f"Calculated historical WCR ratio: {avg_ratio:.4f} "
+                f"({len(wcr_ratios)} years available)"
+            )
+            return avg_ratio
+
+        logger.warning("Insufficient data to calculate historical WCR ratio")
+        return None

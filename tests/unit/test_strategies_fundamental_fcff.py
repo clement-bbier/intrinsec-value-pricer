@@ -46,7 +46,9 @@ class TestFundamentalFCFFStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Fundamental FCFF parameters."""
-        strategy = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, growth_rate=0.04)
+        strategy = FCFFNormalizedParameters(
+            fcf_norm=95000.0, projection_years=5, roic=15.0, reinvestment_rate=30.0
+        )
         common = CommonParameters(
             rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
             capital=CapitalStructureParameters(
@@ -459,3 +461,165 @@ class TestFundamentalFCFFStrategy:
         # Should handle empty flows gracefully
         assert result.results.strategy.projected_flows == []
         assert result.results.common.intrinsic_value_per_share == 0
+
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
+    def test_growth_calculated_from_roic_and_reinvestment_rate(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that growth is calculated from ROIC × Reinvestment Rate (Damodaran)."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10 if key == "Ke" else 0.05))
+
+        # Setup params with ROIC and Reinvestment Rate (no manual growth)
+        # roic=15.0 becomes 0.15 after scaling, reinvestment_rate=30.0 becomes 0.30
+        strategy_params = FCFFNormalizedParameters(
+            fcf_norm=95000.0, projection_years=5, roic=15.0, reinvestment_rate=30.0
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
+            capital=CapitalStructureParameters(
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
+        )
+        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+
+        # Setup mocks
+        mock_rate.return_value = (0.08, mock_wacc_step)
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Projection", result=115582),
+        )
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
+        mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
+        mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
+        mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
+
+        # Execute
+        result = strategy.execute(basic_company, params)
+
+        # Verify growth was computed: g = 0.15 × 0.30 = 0.045
+        assert result is not None
+        assert result.results.common.intrinsic_value_per_share == 89.375
+
+        # Verify that growth_rate was dynamically set based on ROIC × RR
+        # This is the key test: the strategy modifies params.strategy.growth_rate internally
+        assert params.strategy.growth_rate == pytest.approx(0.045, rel=0.01)
+
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
+    def test_growth_consistency_check_with_manual_override(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test consistency check when user provides both ROIC/RR and manual growth."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10 if key == "Ke" else 0.05))
+
+        # Setup params with ROIC, Reinvestment Rate AND manual growth (inconsistent)
+        # g_derived = 0.15 × 0.30 = 0.045, but user overrides with 0.06
+        # roic=15.0 becomes 0.15, reinvestment_rate=30.0 becomes 0.30, growth_rate=6.0 becomes 0.06
+        strategy_params = FCFFNormalizedParameters(
+            fcf_norm=95000.0, projection_years=5, roic=15.0, reinvestment_rate=30.0, growth_rate=6.0
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
+            capital=CapitalStructureParameters(
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
+        )
+        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+
+        # Setup mocks
+        mock_rate.return_value = (0.08, mock_wacc_step)
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Projection", result=115582),
+        )
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
+        mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
+        mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
+        mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
+
+        # Execute
+        result = strategy.execute(basic_company, params)
+
+        # Manual override should take precedence
+        assert result is not None
+        # The growth_rate should still be 0.06 (manual override)
+        assert params.strategy.growth_rate == 0.06
+
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.project_flows_simple")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.fundamental_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.fundamental_fcff.DCFLibrary.compute_value_per_share")
+    def test_fallback_when_roic_or_rr_missing(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that execution continues when ROIC or RR is None (no calculation)."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10 if key == "Ke" else 0.05))
+
+        # Setup params with only manual growth (old behavior - backward compatible)
+        # growth_rate=5.0 becomes 0.05 after scaling
+        strategy_params = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, growth_rate=5.0)
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
+            capital=CapitalStructureParameters(
+                shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
+            ),
+        )
+        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+
+        # Setup mocks
+        mock_rate.return_value = (0.08, mock_wacc_step)
+        mock_project.return_value = (
+            [98800, 102752, 106862, 111136, 115582],
+            CalculationStep(step_key="PROJ", label="Projection", result=115582),
+        )
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
+        mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
+        mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
+        mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
+
+        # Execute - should work with old behavior (no ROIC/RR)
+        result = strategy.execute(basic_company, params)
+
+        # Should execute normally without ROIC calculation
+        assert result is not None
+        assert result.results.common.intrinsic_value_per_share == 89.375
+        # Growth rate should remain as provided (0.05)
+        assert params.strategy.growth_rate == 0.05

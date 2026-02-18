@@ -14,6 +14,7 @@ from src.computation.financial_math import (
     calculate_cost_of_equity,
     calculate_dilution_factor,
     calculate_discount_factors,
+    calculate_fcf_tax_adjustment_factor,
     calculate_fcfe_base,
     calculate_fcfe_reconstruction,
     calculate_graham_1974_value,
@@ -29,6 +30,8 @@ from src.computation.financial_math import (
     calculate_triangulated_price,
     calculate_wacc,
     compute_diluted_shares,
+    convert_dcap_to_de,
+    convert_de_to_dcap,
 )
 from src.computation.flow_projector import (
     FlowProjector,
@@ -54,6 +57,7 @@ __all__ = [
     "calculate_terminal_value_gordon",
     "calculate_terminal_value_exit_multiple",
     "calculate_terminal_value_pe",
+    "calculate_fcf_tax_adjustment_factor",
     "calculate_historical_share_growth",
     "calculate_dilution_factor",
     "apply_dilution_adjustment",
@@ -65,6 +69,8 @@ __all__ = [
     "calculate_price_from_pe_multiple",
     "calculate_price_from_ev_multiple",
     "calculate_triangulated_price",
+    "convert_de_to_dcap",
+    "convert_dcap_to_de",
     # Flow Projections (Strategy)
     "FlowProjector",
     "SimpleFlowProjector",

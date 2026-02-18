@@ -30,15 +30,107 @@ from src.computation.financial_math import (
     calculate_wacc_for_terminal_value,
     normalize_terminal_flow_for_stable_state,
 )
+from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
 from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.config.sector_multiples import SECTORS
+from src.core.formatting import format_smart_number
+from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n.fr.backend.models import ModelTexts
 from src.models.company import Company
 from src.models.enums import TerminalValueMethod, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+
+
+def _normalize_sector_name(name: str | None) -> str | None:
+    """
+    Normalize sector/industry name for SECTORS dictionary lookup.
+
+    Converts to lowercase and replaces spaces/hyphens with underscores.
+
+    Parameters
+    ----------
+    name : str | None
+        Raw sector or industry name from data provider.
+
+    Returns
+    -------
+    str | None
+        Normalized name ready for dictionary lookup, or None if input was None/empty.
+
+    Examples
+    --------
+    >>> _normalize_sector_name("Luxury Goods")
+    'luxury_goods'
+    >>> _normalize_sector_name("Software-Application")
+    'software_application'
+    """
+    if not name:
+        return None
+    return name.lower().strip().replace(" ", "_").replace("-", "_")
+
+
+def _get_sector_multiple(
+    financials: Company,
+    strategy_type: str,
+) -> tuple[float | None, str, str]:
+    """
+    Perform hierarchical sector lookup for exit multiple fallback.
+
+    Lookup order: Industry → Sector → default
+
+    Parameters
+    ----------
+    financials : Company
+        Company financial data containing industry and sector classification.
+    strategy_type : str
+        Either "fcff" (uses ev_ebitda) or "equity" (uses pe_ratio).
+
+    Returns
+    -------
+    tuple[float | None, str, str]
+        (multiple_value, lookup_key_used, source_description)
+
+    Notes
+    -----
+    - For FCFF strategies: Returns ev_ebitda from benchmark
+    - For Equity strategies (DDM, FCFE): Returns pe_ratio from benchmark
+    - Fallback chain: Industry → Sector → "default" key
+    """
+    # Normalize names for lookup
+    industry_norm = _normalize_sector_name(financials.industry)
+
+    # Handle sector which might be an enum
+    sector_value = financials.sector
+    sector_str: str | None
+    if hasattr(sector_value, 'value'):
+        sector_str = str(sector_value.value)
+    else:
+        sector_str = str(sector_value) if sector_value else None
+    sector_norm = _normalize_sector_name(sector_str)
+
+    # Hierarchical lookup: Industry → Sector → default
+    lookup_key = None
+    if industry_norm and industry_norm in SECTORS:
+        lookup_key = industry_norm
+    elif sector_norm and sector_norm in SECTORS:
+        lookup_key = sector_norm
+    else:
+        lookup_key = "default"
+
+    benchmark = SECTORS[lookup_key]
+
+    # Select appropriate multiple based on strategy type
+    if strategy_type == "fcff":
+        multiple = benchmark.ev_ebitda
+    else:  # equity strategies (DDM, FCFE)
+        multiple = benchmark.pe_ratio
+
+    return multiple, lookup_key, benchmark.source
 
 
 class DCFLibrary:
@@ -49,9 +141,12 @@ class DCFLibrary:
     @staticmethod
     def project_flows_simple(base_flow: float, params: Parameters) -> tuple[list[float], CalculationStep]:
         """
-        Projects cash flows using a standard growth rate with linear fade-down.
+        Projects cash flows using fade transition logic with optional high growth period.
+
+        Supports both legacy linear convergence (fade from year 1) and the new
+        fade transition (high growth period followed by linear fade).
         """
-        # --- FIX: Access Strategy Parameters (Polymorphic) ---
+        # --- Access Strategy Parameters (Polymorphic) ---
         strat = params.strategy
 
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
@@ -67,21 +162,29 @@ class DCFLibrary:
         # Access Projection Years
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
 
-        # 2. Projection Loop (Linear Convergence)
-        flows = []
-        current_flow = base_flow
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            # Ensure it's actually an integer (not None)
+            if isinstance(hgy, int):
+                high_growth_years = hgy
 
-        for t in range(1, years + 1):
-            if years > 1:
-                alpha = (t - 1) / (years - 1)
-                current_g = g_start * (1 - alpha) + g_term * alpha
-            else:
-                current_g = g_start
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
 
-            current_flow *= 1.0 + current_g
-            flows.append(current_flow)
+        # Use the centralized project_flows function with fade transition logic
+        flows = project_flows(
+            base_flow=base_flow,
+            years=years,
+            g_start=g_start,
+            g_term=g_term,
+            high_growth_years=high_growth_years,
+        )
 
-        # 3. Trace Building
+        # Build trace for Glass Box transparency
+        fade_description = "No fade" if high_growth_years >= years else f"Fade after year {high_growth_years}"
         variables = {
             "FCF_0": VariableInfo(
                 symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"
@@ -106,13 +209,19 @@ class DCFLibrary:
                 source=VariableSource.MANUAL_OVERRIDE,
                 description=SharedTexts.INP_PROJ_YEARS,
             ),
+            "n_high": VariableInfo(
+                symbol="n_high",
+                value=float(high_growth_years),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="High Growth Period (years)",
+            ),
         }
 
         step = CalculationStep(
             step_key="FCF_PROJ",
             label=RegistryTexts.DCF_PROJ_L,
             theoretical_formula=StrategyFormulas.FCF_PROJECTION,
-            actual_calculation=f"{format_smart_number(base_flow)} × (Linear Convergence {g_start:.1%} → {g_term:.1%})",
+            actual_calculation=f"{format_smart_number(base_flow)} × (Growth: {g_start:.1%} → {g_term:.1%}, {fade_description})",
             result=sum(flows),
             interpretation=StrategyInterpretations.PROJ.format(years=years, g=g_start),
             source=StrategySources.YAHOO_TTM_SIMPLE,
@@ -167,10 +276,31 @@ class DCFLibrary:
 
     @staticmethod
     def project_flows_revenue_model(
-        base_revenue: float, current_margin: float, target_margin: float, params: Parameters
+        base_revenue: float, current_margin: float, target_margin: float, params: Parameters, wcr_ratio: float | None = None
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
+
+        Parameters
+        ----------
+        base_revenue : float
+            Starting revenue (TTM or Year 0).
+        current_margin : float
+            Current FCF margin (FCF_0 / Revenue_0).
+        target_margin : float
+            Target FCF margin to converge towards.
+        params : Parameters
+            Full parameter set containing strategy and common parameters.
+        wcr_ratio : float | None, optional
+            Working Capital Requirement to Revenue ratio. If provided, used to
+            calculate working capital consumption: ΔBFR = ΔRevenue × wcr_ratio.
+            This amount is subtracted from projected FCF each year.
+
+        Returns
+        -------
+        tuple[list[float], list[float], list[float], CalculationStep]
+            (projected_fcfs, projected_revenues, projected_margins, calculation_step)
+        Supports manual growth vector or fade transition with high growth period.
         """
         # Access Strategy Parameters (Specifically FCFFGrowthParameters)
         strat = params.strategy
@@ -182,22 +312,43 @@ class DCFLibrary:
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
         manual_vector = getattr(strat, "manual_growth_vector", None)
 
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            if isinstance(hgy, int):
+                high_growth_years = hgy
+
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
+
         revenues = []
         margins = []
         fcfs = []
+        wcr_adjustments = []
 
         current_rev = base_revenue
+        prev_rev = base_revenue
 
         for t in range(1, years + 1):
             # A. Revenue Growth Logic
             if manual_vector and (t - 1) < len(manual_vector):
+                # Use manual vector if provided (takes precedence over fade)
                 current_g = manual_vector[t - 1]
             else:
-                if years > 1:
-                    alpha = (t - 1) / (years - 1)
-                    current_g = g_start * (1 - alpha) + g_term * alpha
-                else:
+                # Use fade transition logic
+                if t <= high_growth_years:
                     current_g = g_start
+                else:
+                    # Linear interpolation towards terminal growth
+                    years_remaining = years - high_growth_years
+                    if years_remaining > 0:
+                        step_in_fade = t - high_growth_years
+                        alpha = step_in_fade / years_remaining
+                        current_g = g_start * (1 - alpha) + g_term * alpha
+                    else:
+                        current_g = g_term
 
             current_rev *= 1.0 + current_g
             revenues.append(current_rev)
@@ -210,7 +361,24 @@ class DCFLibrary:
                 current_m = target_margin
 
             margins.append(current_m)
-            fcfs.append(current_rev * current_m)
+
+            # C. Base FCF Calculation
+            base_fcf = current_rev * current_m
+
+            # D. Working Capital Adjustment
+            # ΔBFR = ΔRevenue × wcr_ratio
+            # This represents the cash consumed by working capital needs as revenue grows
+            if wcr_ratio is not None:
+                delta_revenue = current_rev - prev_rev
+                wcr_adjustment = delta_revenue * wcr_ratio
+                wcr_adjustments.append(wcr_adjustment)
+                final_fcf = base_fcf - wcr_adjustment
+            else:
+                wcr_adjustments.append(0.0)
+                final_fcf = base_fcf
+
+            fcfs.append(final_fcf)
+            prev_rev = current_rev
 
         variables = {
             "Rev_0": VariableInfo(
@@ -235,18 +403,33 @@ class DCFLibrary:
             ),
         }
 
+        # Add WCR ratio to variables if used
+        if wcr_ratio is not None:
+            variables["WCR_ratio"] = VariableInfo(
+                symbol="WCR/Rev",
+                value=wcr_ratio,
+                formatted_value=f"{wcr_ratio:.1%}",
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="Working Capital to Revenue Ratio",
+            )
+
+        # Update actual calculation to reflect WCR if used
+        calc_desc = f"Revenue Growth & Margin Convergence ({current_margin:.1%} -> {target_margin:.1%})"
+        if wcr_ratio is not None:
+            calc_desc += f" - WCR Adjustment ({wcr_ratio:.1%})"
+
         step = CalculationStep(
             step_key="REV_MARGIN_CONV",
             label=RegistryTexts.GROWTH_MARGIN_L,
             theoretical_formula=StrategyFormulas.GROWTH_MARGIN_CONV,
-            actual_calculation=f"Revenue Growth & Margin Convergence ({current_margin:.1%} -> {target_margin:.1%})",
+            actual_calculation=calc_desc,
             result=sum(fcfs),
             interpretation=StrategyInterpretations.GROWTH_MARGIN,
             source=StrategySources.CALCULATED,
             variables_map=variables,
         )
 
-        return fcfs, revenues, margins, step
+        return revenues, margins, fcfs, step
 
     @staticmethod
     def compute_terminal_value(
@@ -302,6 +485,8 @@ class DCFLibrary:
             roic_stable = tv_params.roic_stable  # Can be None for Golden Rule
 
             # Step 1: Tax Convergence - Use marginal tax rate for terminal value WACC if available
+
+            # Use marginal tax rate for terminal value WACC if available
             tv_discount_rate = discount_rate
             tax_adjustment_factor = 1.0
             tv_diagnostics = []  # Collect diagnostics from TV calculation
@@ -400,6 +585,12 @@ class DCFLibrary:
             if tax_adjustment_factor != 1.0:
                 calculation_note += f" × {tax_adjustment_factor:.4f}"
 
+            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
+
+            # Build calculation step with appropriate discount rate
+            calculation_note = f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
             calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
 
             step = CalculationStep(
@@ -410,12 +601,83 @@ class DCFLibrary:
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map=variables_map,
+                variables_map={
+                    "g_perp": VariableInfo(
+                        symbol="g",
+                        value=g_perp,
+                        formatted_value=f"{g_perp:.2%}",
+                        source=VariableSource.MANUAL_OVERRIDE,
+                        description=SharedTexts.INP_PERP_G,
+                    ),
+                    "r": VariableInfo(
+                        symbol="r",
+                        value=tv_discount_rate,
+                        formatted_value=f"{tv_discount_rate:.2%}",
+                        source=VariableSource.CALCULATED,
+                        description="Discount Rate (TV)" if marginal_tax_rate is not None else "Discount Rate",
+                    ),
+                },
             )
             return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
-            multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
+            tv_diagnostics = []
+            multiple = tv_params.exit_multiple  # User manual override
+
+            if multiple is None:
+                # Fallback to sector benchmark lookup
+                # Determine strategy type to select correct multiple (EV/EBITDA vs P/E)
+                strategy_type = "fcff"  # Default to FCFF
+
+                # Check if this is an equity-based strategy
+                if hasattr(params.strategy, '__class__'):
+                    strategy_class_name = params.strategy.__class__.__name__.lower()
+                    if 'ddm' in strategy_class_name or 'fcfe' in strategy_class_name:
+                        strategy_type = "equity"
+
+                # Perform hierarchical lookup
+                sector_multiple, sector_key, sector_source = _get_sector_multiple(financials, strategy_type)
+
+                if sector_multiple is not None:
+                    multiple = sector_multiple
+
+                    # Add French diagnostic for traceability (Glass Box) - USING i18n
+                    diagnostic_msg = StrategyInterpretations.SECTOR_BENCHMARK_TV.format(
+                        multiple=multiple,
+                        sector=sector_key,
+                        source=sector_source
+                    )
+                    tv_diagnostics.append({
+                        "type": "sector_fallback",
+                        "message": diagnostic_msg,
+                        "multiple": float(multiple),
+                        "sector": sector_key,
+                        "source": sector_source
+                    })
+
+            # Ultimate fallback if sector lookup failed
+            if multiple is None:
+                multiple = ModelDefaults.DEFAULT_EXIT_MULTIPLE
+                # Use i18n for default fallback message
+                diagnostic_msg = StrategyInterpretations.DEFAULT_MULTIPLE_TV.format(
+                    multiple=multiple
+                )
+                tv_diagnostics.append({
+                    "type": "default_fallback",
+                    "message": diagnostic_msg,
+                    "multiple": float(multiple)
+                })
+
+            # Calculate terminal value
             tv = calculate_terminal_value_exit_multiple(final_flow, multiple)
+
+            # Determine variable source and description for traceability
+            if tv_params.exit_multiple is not None:
+                var_source = VariableSource.MANUAL_OVERRIDE
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_MANUAL
+            else:
+                var_source = VariableSource.SYSTEM
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_SECTOR
 
             step = CalculationStep(
                 step_key="TV_MULTIPLE",
@@ -429,12 +691,13 @@ class DCFLibrary:
                         symbol="M",
                         value=multiple,
                         formatted_value=f"{multiple:.1f}x",
-                        source=VariableSource.MANUAL_OVERRIDE,
-                        description="Exit Multiple",
+                        source=var_source,
+                        description=var_description,
                     )
                 },
             )
             return tv, step, []  # No diagnostics for exit multiple method
+            return tv, step, tv_diagnostics
 
     @staticmethod
     def compute_discounting(
@@ -481,16 +744,64 @@ class DCFLibrary:
 
     @staticmethod
     def compute_value_per_share(equity_value: float, params: Parameters) -> tuple[float, CalculationStep]:
-        """Calculates final price per share, applying SBC dilution adjustment."""
+        """
+        Calculates final price per share, applying SBC dilution adjustment if needed.
+
+        Parameters
+        ----------
+        equity_value : float
+            Total equity value before per-share calculation.
+        params : Parameters
+            User-defined or automated projection parameters.
+
+        Returns
+        -------
+        tuple[float, CalculationStep]
+            Final intrinsic value per share and calculation trace.
+
+        Notes
+        -----
+        When SBC treatment is EXPENSE, dilution adjustment is skipped to avoid
+        double counting (SBC already deducted from cash flows).
+        """
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         base_iv = equity_value / shares
 
         # Fix: Dilution rate is stored in common.capital (from Model Batch)
         dilution_rate = params.common.capital.annual_dilution_rate or 0.0
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+
         # Fix: Years come from strategy
         years = getattr(params.strategy, "projection_years", ModelDefaults.DEFAULT_PROJECTION_YEARS)
 
+        # Skip dilution adjustment if SBC treatment is EXPENSE (avoid double counting)
+        from src.models.enums import SBCTreatment
+        if sbc_treatment == SBCTreatment.EXPENSE.value:
+            step = CalculationStep(
+                step_key="VALUE_PER_SHARE",
+                label=RegistryTexts.DCF_IV_L,
+                theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
+                actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
+                result=base_iv,
+                interpretation=StrategyInterpretations.SBC_EXPENSE_NO_DILUTION,
+                variables_map={
+                    "Equity": VariableInfo(
+                        symbol="Eq",
+                        value=equity_value,
+                        source=VariableSource.CALCULATED,
+                    ),
+                    "Shares": VariableInfo(
+                        symbol="Shares",
+                        value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                    ),
+                },
+            )
+            return base_iv, step
+
+        # Apply dilution adjustment (original behavior when treatment is DILUTION or not specified)
         dilution_factor = calculate_dilution_factor(dilution_rate, years)
         final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
 
@@ -526,7 +837,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=final_iv,
-                interpretation="Final Intrinsic Value per share.",
+                interpretation=StrategyInterpretations.IV_PER_SHARE_FINAL,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",

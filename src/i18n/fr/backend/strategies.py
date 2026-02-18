@@ -24,12 +24,14 @@ class StrategySources:
     YAHOO_TTM = "Last reported FCF (TTM) - Yahoo Deep Fetch"
     YAHOO_FUNDAMENTAL = "Fundamental smoothed FCF (Yahoo/Analyst)"
     YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
+    YAHOO_HISTORICAL = "Yahoo Finance (Historical Average - 3 Years)"
     CALCULATED_NI = "Calculated (Net Income / Shares)"
     ANALYST_OVERRIDE = "Surcharge Analyste"
     MACRO_MATRIX = r"Matrix: {ticker}"
     MACRO_CURRENCY_FALLBACK = r"Currency Fallback: {ticker}"
     MACRO_STATIC_FALLBACK = "Matrix Static Fallback (API Error)"
     MACRO_API_ERROR = "Matrix Fallback (API Error)"
+    COMPUTED_VALUE_DRIVERS = "Drivers de Création de Valeur (Damodaran: g = ROIC × RR)"
 
 
 class StrategyFormulas:
@@ -119,6 +121,10 @@ class StrategyInterpretations:
     GROWTH_IV = "Estimation finale du prix théorique par titre."
     FUND_NORM = "Le modèle utilise un flux lisse sur un cycle complet."
     FUND_VIABILITY = "Validation de la capacité à générer des flux positifs sur un cycle."
+    GROWTH_CONSISTENCY_CHECK = "Vérification de Cohérence (g)"
+    GROWTH_WARNING = "Écart détecté entre g calculé ({g_derived:.2%}) et g manuel ({g_user:.2%}). Utilisation de g manuel."
+    GROWTH_CALCULATION = "Calcul de la Croissance (Drivers de Valeur)"
+    GROWTH_INTERPRETATION = "Croissance dérivée des fondamentaux: ROIC de {roic:.1%} multiplié par taux de réinvestissement de {reinvestment_rate:.1%}"
     GRAHAM_EPS = "Bénéfice par action utilisé comme socle de rentabilité."
     GRAHAM_MULT = "Prime de croissance appliquée selon le barème révisé de Graham."
     GRAHAM_IV = "Estimation de la valeur intrinsèque ajustée par le rendement AAA."
@@ -142,6 +148,13 @@ class StrategyInterpretations:
         r"La dilution annuelle (SBC) réduit la part des actionnaires existants"
         r" de {pct} sur l'horizon de projection."
     )
+    SBC_EXPENSE_NO_DILUTION = "Valeur intrinsèque finale par action (SBC traité en dépense, pas d'ajustement de dilution)."
+    IV_PER_SHARE_FINAL = "Valeur intrinsèque finale par action."
+    SBC_EXPENSE_DESC = "Dépense annuelle SBC (déduite des flux)"
+
+    # Terminal value sector benchmark diagnostics
+    SECTOR_BENCHMARK_TV = "Utilisation du benchmark sectoriel {multiple:.1f}x pour le secteur '{sector}' (source: {source})"
+    DEFAULT_MULTIPLE_TV = "Utilisation du multiple par défaut {multiple:.1f}x"
 
 
 class SharedTexts:

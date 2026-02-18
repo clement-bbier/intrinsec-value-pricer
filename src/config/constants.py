@@ -158,6 +158,8 @@ class ModelDefaults:
     - DEFAULT_SHARES_OUTSTANDING: 1.0 to avoid ZeroDivisionError.
     - DEFAULT_PROJECTION_YEARS: Standard 5-year DCF horizon.
     - DEFAULT_TERMINAL_GROWTH: 2% matching long-term nominal GDP growth.
+    - BETA_ADJUSTMENT_THRESHOLD: 0.05 (5%) minimum difference in D/E ratios
+      before applying Hamada beta adjustment. Prevents noise from minor differences.
     """
 
     # Capital Structure
@@ -171,10 +173,15 @@ class ModelDefaults:
     DEFAULT_CASH_EQUIVALENTS: float = 0.0
     DEFAULT_MINORITY_INTERESTS: float = 0.0
     DEFAULT_PENSION_PROVISIONS: float = 0.0
+    DEFAULT_LEASE_LIABILITIES: float = 0.0
+    DEFAULT_PENSION_LIABILITIES: float = 0.0
     DEFAULT_SHARES_OUTSTANDING: float = 1.0
     DEFAULT_ANNUAL_DILUTION_RATE: float = 0.0
     DEFAULT_BETA: float = 1.0
     DEFAULT_COST_OF_DEBT: float = 0.06
+
+    # Hamada Beta Adjustment
+    BETA_ADJUSTMENT_THRESHOLD: float = 0.05  # 5% minimum D/E difference
 
     # Financials
     DEFAULT_REVENUE_TTM: float = 0.0
@@ -194,6 +201,9 @@ class ModelDefaults:
     DEFAULT_GROWTH_RATE: float = 0.05
     DEFAULT_TERMINAL_GROWTH: float = 0.02
     DEFAULT_EXIT_MULTIPLE: float = 15.0
+
+    # Working Capital Requirement
+    DEFAULT_WCR_RATIO: float = 0.15  # 15% of revenue increase consumed by working capital
 
 
 # ==============================================================================

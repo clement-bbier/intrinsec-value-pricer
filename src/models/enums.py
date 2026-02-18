@@ -79,6 +79,7 @@ class VariableSource(str, Enum):
     # 1. External Data
     YAHOO_FINANCE = "YAHOO_FINANCE"  # Raw provider data
     YAHOO_TTM_SIMPLE = "YAHOO_TTM_SIMPLE"  # Aggregated TTM data
+    YAHOO_HISTORICAL = "YAHOO_HISTORICAL"  # Historical averages (multi-year)
     MACRO_PROVIDER = "MACRO_PROVIDER"  # Risk-free rates, ERP, Yields
 
     # 2. User Input
@@ -112,6 +113,19 @@ class DiagnosticLevel(str, Enum):
     CRITICAL = "CRITICAL"  # Prevents calculation
     WARNING = "WARNING"  # Calculation proceeds with risk
     INFO = "INFO"  # Informational note
+
+
+class SBCTreatment(str, Enum):
+    """
+    Treatment method for Stock-Based Compensation.
+
+    Defines how SBC is accounted for in valuation calculations:
+    - DILUTION: SBC is reflected as share dilution (reduces per-share value)
+    - EXPENSE: SBC is deducted as a cash expense from projected flows
+    """
+
+    DILUTION = "DILUTION"
+    EXPENSE = "EXPENSE"
 
 
 class CompanySector(str, Enum):

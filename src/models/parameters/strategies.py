@@ -53,6 +53,9 @@ class BaseProjectedParameters(BaseNormalizedModel):
     ----------
     projection_years : int | None
         Number of years in the explicit forecast period (Standard: 5-10).
+    high_growth_period : int | None
+        Number of years of high growth before linear fade to terminal rate.
+        If None, defaults to projection_years (no fade transition).
     manual_growth_vector : List[float] | None
         Optional year-by-year growth overrides provided by the user.
     terminal_value : TerminalValueParameters
@@ -60,6 +63,9 @@ class BaseProjectedParameters(BaseNormalizedModel):
     """
 
     projection_years: Annotated[int | None, UIKey(UIKeys.YEARS, scale="raw")] = Field(None, ge=1, le=50)
+    high_growth_period: Annotated[int | None, UIKey(UIKeys.HIGH_GROWTH_YEARS, scale="raw")] = Field(
+        None, ge=0, le=50
+    )
     manual_growth_vector: Annotated[list[float] | None, UIKey(UIKeys.GROWTH_VECTOR, scale="pct")] = None
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
 
@@ -87,18 +93,27 @@ class FCFFNormalizedParameters(BaseProjectedParameters):
     """
     DCF based on normalized flows to smooth out cyclicality.
 
+    Implements Damodaran value creation drivers: g = ROIC × Reinvestment Rate.
+
     Attributes
     ----------
     mode : ValuationMethodology
         Fixed to FCFF_NORMALIZED.
     fcf_norm : float | None
         The normalized (mid-cycle) Free Cash Flow.
+    roic : float | None
+        Return on Invested Capital (ROIC), used to compute growth.
+    reinvestment_rate : float | None
+        Proportion of earnings reinvested, used to compute growth.
     growth_rate : float | None
-        The growth rate applied to the normalized base.
+        Optional manual override for growth rate (g). If provided, used for
+        consistency validation against ROIC × Reinvestment Rate.
     """
 
     mode: Literal[ValuationMethodology.FCFF_NORMALIZED] = ValuationMethodology.FCFF_NORMALIZED
     fcf_norm: Annotated[float | None, UIKey(UIKeys.FCF_NORM, scale="million")] = None
+    roic: Annotated[float | None, UIKey(UIKeys.ROIC, scale="pct")] = None
+    reinvestment_rate: Annotated[float | None, UIKey(UIKeys.REINVESTMENT_RATE, scale="pct")] = None
     growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
 
 
@@ -116,12 +131,17 @@ class FCFFGrowthParameters(BaseProjectedParameters):
         Expected annual revenue growth.
     target_fcf_margin : float | None
         The expected FCF margin (FCF / Revenue) at maturity.
+    wcr_to_revenue_ratio : float | None
+        Working Capital Requirement to Revenue ratio. Used to calculate
+        working capital needs based on revenue changes (ΔBFR = ΔRevenue × ratio).
+        If None, uses historical average from company data.
     """
 
     mode: Literal[ValuationMethodology.FCFF_GROWTH] = ValuationMethodology.FCFF_GROWTH
     revenue_ttm: Annotated[float | None, UIKey(UIKeys.REVENUE_TTM, scale="million")] = None
     revenue_growth_rate: Annotated[float | None, UIKey(UIKeys.GROWTH_RATE, scale="pct")] = None
     target_fcf_margin: Annotated[float | None, UIKey(UIKeys.FCF_MARGIN, scale="pct")] = None
+    wcr_to_revenue_ratio: Annotated[float | None, UIKey(UIKeys.WCR_TO_REVENUE_RATIO, scale="pct")] = None
 
 
 class FCFEParameters(BaseProjectedParameters):

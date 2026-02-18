@@ -66,6 +66,14 @@ class CompanySnapshot(BaseModel):
     This object acts as a 'Data Bag' that aggregates raw Micro (Accounting)
     and Macro (Market) data. It is used exclusively as a bridge between
     Data Providers and the Resolver.
+
+    Attributes
+    ----------
+    historical_wcr_ratio : float, optional
+        Historical Working Capital Requirement to Revenue ratio, calculated as the
+        average of (WCR / Revenue) over the last 3 fiscal years. Used as a fallback
+        when user doesn't provide manual WCR intensity. WCR is calculated as:
+        (Inventory + Accounts Receivable) - Accounts Payable.
     """
 
     model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)
@@ -85,6 +93,8 @@ class CompanySnapshot(BaseModel):
     cash_and_equivalents: float | None = None
     minority_interests: float | None = None
     pension_provisions: float | None = None
+    lease_liabilities: float | None = None
+    pension_liabilities: float | None = None
     shares_outstanding: float | None = None
     interest_expense: float | None = None
     net_borrowing_ttm: float | None = None
@@ -124,6 +134,9 @@ class CompanySnapshot(BaseModel):
     sector_pe_fallback: float | None = None
     sector_ev_ebitda_fallback: float | None = None
     sector_ev_rev_fallback: float | None = None
+
+    # Working Capital Requirement historical ratio
+    historical_wcr_ratio: float | None = None
 
     # --- 4. Raw Macro Context (Macro) ---
     risk_free_rate: float | None = None
