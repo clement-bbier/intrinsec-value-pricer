@@ -46,6 +46,7 @@ class StrategyFormulas:
     WACC = r"WACC = K_e \times \frac{E}{D+E} + K_d(1-T) \times \frac{D}{D+E}"
     HAMADA = r"\beta_L = \beta_U \times [1 + (1 - T) \times \frac{D}{E}]"
     GORDON = r"TV_n = \frac{FCF_n \times (1 + g_\infty)}{WACC - g_\infty}"
+    GOLDEN_RULE = r"FCF_{adj} = FCF_n \times (1 - \frac{g_n}{ROIC_{stable}})"
     TERMINAL_MULTIPLE = r"TV_n = FCF_n \times Multiple"
     GROWTH_MARGIN_CONV = r"FCF_t = Rev_t \times [Margin_0 + (Margin_n - Margin_0) \times \frac{t}{n}]"
     FCF_PROJECTION = r"FCF_t = FCF_0 \times (1+g)^t"
@@ -247,6 +248,28 @@ class SharedTexts:
 
     # ==========================================================================
     # 3. SECTION VALEUR TERMINALE (TERMINAL VALUE)
+    # ==========================================================================
+    SEC_4_TERMINAL = "#### Étape 4 : Valeur Terminale & État Stable"
+
+    INP_EXIT_MULT = "Multiple de Sortie"
+
+    # Golden Rule - ROIC Stable State
+    INP_ROIC_STABLE = "ROIC Stable (État Stable)"
+    HELP_ROIC_STABLE = (
+        "Retour sur Capital Investi en régime stable. Utilisé pour la 'Règle d'Or' : "
+        "ajuste le flux terminal pour refléter le réinvestissement normatif (gn/ROIC). "
+        "Si non renseigné, aucun ajustement n'est appliqué (approche conservatrice)."
+    )
+    DESC_GOLDEN_RULE = (
+        "Ajustement 'Règle d'Or' : Le flux terminal est normalisé pour tenir compte du "
+        "réinvestissement requis pour soutenir la croissance perpétuelle. "
+        "Taux de réinvestissement = gn / ROIC_stable."
+    )
+    LABEL_GOLDEN_RULE_ADJUSTMENT = "Ajustement Règle d'Or (Golden Rule)"
+    LABEL_FCF_BEFORE_ADJUSTMENT = "Flux avant ajustement"
+    LABEL_FCF_AFTER_ADJUSTMENT = "Flux après ajustement"
+    LABEL_REINVESTMENT_RATE = "Taux de réinvestissement normatif"
+    LABEL_ROIC_STABLE = "ROIC en état stable"
     # ==========================================================================
     SEC_4_TERMINAL = "#### Étape 4 : Valeur Terminale (TV)"
     SEC_4_DESC = "Méthodologie de calcul de la valeur au-delà de l'horizon explicite."

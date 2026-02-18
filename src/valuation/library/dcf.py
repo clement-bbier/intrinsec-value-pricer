@@ -256,12 +256,12 @@ class DCFLibrary:
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
             roic_stable = tv_params.roic_stable  # Can be None
-            
+
             # Apply Golden Rule: Normalize terminal flow for sustainable reinvestment
             adjusted_flow, reinvestment_rate = normalize_terminal_flow_for_stable_state(
                 final_flow, g_perp, roic_stable
             )
-            
+
             # Calculate terminal value using the adjusted flow
             tv = calculate_terminal_value_gordon(adjusted_flow, discount_rate, g_perp)
 
@@ -282,7 +282,7 @@ class DCFLibrary:
                     description="Discount Rate",
                 ),
             }
-            
+
             # Add Golden Rule details if adjustment was applied
             if reinvestment_rate > 0:
                 variables_map["FCF_unadjusted"] = VariableInfo(
@@ -290,30 +290,30 @@ class DCFLibrary:
                     value=final_flow,
                     formatted_value=format_smart_number(final_flow),
                     source=VariableSource.CALCULATED,
-                    description="Flow before Stable State adjustment",
+                    description=SharedTexts.LABEL_FCF_BEFORE_ADJUSTMENT,
                 )
                 variables_map["reinvestment_rate"] = VariableInfo(
                     symbol="reinv",
                     value=reinvestment_rate,
                     formatted_value=f"{reinvestment_rate:.2%}",
                     source=VariableSource.CALCULATED,
-                    description="Normative Reinvestment Rate (gn/ROIC)",
+                    description=SharedTexts.LABEL_REINVESTMENT_RATE,
                 )
                 variables_map["ROIC_stable"] = VariableInfo(
                     symbol="ROIC",
                     value=roic_stable,
                     formatted_value=f"{roic_stable:.2%}" if roic_stable else "N/A",
                     source=VariableSource.MANUAL_OVERRIDE,
-                    description="Stable State ROIC",
+                    description=SharedTexts.LABEL_ROIC_STABLE,
                 )
                 variables_map["FCF_adjusted"] = VariableInfo(
                     symbol="FCF_adj",
                     value=adjusted_flow,
                     formatted_value=format_smart_number(adjusted_flow),
                     source=VariableSource.CALCULATED,
-                    description="Flow after Golden Rule adjustment",
+                    description=SharedTexts.LABEL_FCF_AFTER_ADJUSTMENT,
                 )
-                
+
                 # Update calculation string to show adjustment
                 actual_calculation = (
                     f"Golden Rule: {format_smart_number(final_flow)} × (1 - {reinvestment_rate:.2%}) = "
