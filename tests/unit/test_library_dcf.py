@@ -26,7 +26,7 @@ from src.valuation.library.dcf import DCFLibrary
 def basic_company():
     """Basic Company object for testing."""
     from src.models.company import CompanySnapshot
-    
+
     return CompanySnapshot(
         ticker="TEST",
         name="Test Company",
@@ -63,12 +63,12 @@ def mock_params_fcff():
     capital = Mock()
     capital.shares_outstanding = 100_000_000
     capital.annual_dilution_rate = 0.02
-    
+
     # Mock rates with marginal_tax_rate = None to skip tax adjustment in tests
     rates = Mock()
     rates.marginal_tax_rate = None
     rates.tax_rate = 0.25
-    
+
     common = Mock()
     common.capital = capital
     common.rates = rates
