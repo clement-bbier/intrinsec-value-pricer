@@ -136,13 +136,13 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
                 # Determine label and variable source based on origin
                 if wcr_source == StrategySources.MANUAL_OVERRIDE:
-                    wcr_label = "WCR Ratio (User Input)"
+                    wcr_label = RegistryTexts.WCR_LABEL_MANUAL
                     var_source = VariableSource.MANUAL_OVERRIDE
                 elif wcr_source == StrategySources.YAHOO_HISTORICAL:
-                    wcr_label = "Historical WCR Ratio (Yahoo Finance)"
+                    wcr_label = RegistryTexts.WCR_LABEL_HISTORICAL
                     var_source = VariableSource.YAHOO_HISTORICAL
                 else:  # SYSTEM
-                    wcr_label = "WCR Ratio (System Default)"
+                    wcr_label = RegistryTexts.WCR_LABEL_SYSTEM
                     var_source = VariableSource.SYSTEM
 
                 steps.append(
@@ -150,9 +150,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                         step_key="WCR_RATIO",
                         label=wcr_label,
                         theoretical_formula=r"\text{WCR Ratio} = \frac{(\text{Inventory} + \text{Receivables}) - \text{Payables}}{\text{Revenue}}",
-                        actual_calculation=f"WCR Intensity: {wcr_percentage:.2f}%",
+                        actual_calculation=RegistryTexts.WCR_CALC_TEMPLATE.format(percentage=wcr_percentage),
                         result=wcr_ratio,
-                        interpretation=f"Working capital will consume {wcr_percentage:.2f}% of each revenue increase",
+                        interpretation=RegistryTexts.WCR_INTERP_TEMPLATE.format(percentage=wcr_percentage),
                         source=wcr_source,
                         variables_map={
                             "WCR_Ratio": VariableInfo(
@@ -160,7 +160,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                                 value=wcr_ratio,
                                 formatted_value=f"{wcr_percentage:.2f}%",
                                 source=var_source,
-                                description="Working Capital to Revenue Ratio"
+                                description=RegistryTexts.WCR_DESC
                             ),
                         },
                     )

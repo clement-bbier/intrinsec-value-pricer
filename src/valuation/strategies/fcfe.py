@@ -20,7 +20,7 @@ import numpy as np
 from src.computation.financial_math import calculate_discount_factors
 
 # Config & i18n
-from src.i18n import KPITexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n import KPITexts, ModelTexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
@@ -137,7 +137,7 @@ class FCFEStrategy(IValuationRunner):
                     theoretical_formula="Equity = PV(FCFE) + Cash",
                     actual_calculation=f"{pv_equity:,.0f} + {cash:,.0f}",
                     result=total_equity_value,
-                    interpretation="Adding non-operating cash to operating equity value.",
+                    interpretation=ModelTexts.INTERP_CASH_ADDITION,
                     source=StrategySources.CALCULATED,
                     variables_map={
                         "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
