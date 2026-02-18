@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Literal, Optional, overload
+from typing import Literal, overload
 
 from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
 from src.core.diagnostics import DiagnosticRegistry
