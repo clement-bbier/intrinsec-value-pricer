@@ -285,7 +285,14 @@ class YahooSnapshotMapper:
             revenue = self._extract_value_at_position(income_stmt, revenue_keys, position=year_offset)
 
             # Only calculate if all components are available and revenue is positive
-            if all(v is not None for v in [inventory, receivables, payables, revenue]) and revenue > 0:
+            # Type narrowing for mypy: explicitly check each value is not None
+            if (
+                inventory is not None
+                and receivables is not None
+                and payables is not None
+                and revenue is not None
+                and revenue > 0
+            ):
                 # WCR = (Inventory + Receivables) - Payables
                 wcr = (inventory + receivables) - payables
                 ratio = wcr / revenue
