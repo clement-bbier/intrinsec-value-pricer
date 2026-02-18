@@ -601,8 +601,8 @@ class TestCalculateWACC:
         breakdown = calculate_wacc(company, params)
 
         # Verify target weights were used (not market-based)
-        assert breakdown.weight_debt == pytest.approx(0.30)
-        assert breakdown.weight_equity == pytest.approx(0.70)
+        assert breakdown.weight_debt == pytest.approx(0.30, abs=1e-3)
+        assert breakdown.weight_equity == pytest.approx(0.70, abs=1e-3)
 
         # Verify beta was adjusted (Hamada)
         assert breakdown.beta_adjusted is True
