@@ -129,7 +129,7 @@ class DividendDiscountStrategy(IValuationRunner):
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else total_dividend_mass
         # TV calculated with Ke (not WACC)
-        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params)
+        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params, financials)
         if self._glass_box:
             steps.append(step_tv)
 

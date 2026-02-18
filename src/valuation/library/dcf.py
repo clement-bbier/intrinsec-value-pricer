@@ -35,6 +35,7 @@ from src.computation.flow_projector import project_flows
 from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.models.company import Company
 from src.models.enums import TerminalValueMethod, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
@@ -340,7 +341,7 @@ class DCFLibrary:
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters, financials=None
+        final_flow: float, discount_rate: float, params: Parameters, financials: Company
     ) -> tuple[float, CalculationStep, list]:
         """
         Calculates Terminal Value based on Strategy selection.
@@ -353,8 +354,9 @@ class DCFLibrary:
             The discount rate for the explicit period (WACC or Ke).
         params : Parameters
             User-defined or automated parameters.
-        financials : Company, optional
-            Financial snapshots. Required to recalculate WACC with marginal tax rate for TV.
+        financials : Company
+            Financial snapshots. Used to recalculate WACC with marginal tax rate for TV
+            when applicable (FCFF strategies). Required for all strategies for consistency.
 
         Returns
         -------
@@ -367,6 +369,9 @@ class DCFLibrary:
         the terminal value will be calculated using a WACC that applies the
         marginal tax rate instead of the effective tax rate. This reflects that
         temporary tax benefits are not perpetual.
+
+        For equity-based strategies (DDM, FCFE), the financials parameter is still
+        required but marginal tax adjustments don't apply.
 
         Diagnostics are generated for:
         - Beta adjustment skipped due to 5% threshold
