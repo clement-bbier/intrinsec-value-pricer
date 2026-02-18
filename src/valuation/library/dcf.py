@@ -32,7 +32,7 @@ from src.computation.financial_math import (
 from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
-from src.config.constants import ModelDefaults
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.enums import TerminalValueMethod, VariableSource
@@ -343,7 +343,7 @@ class DCFLibrary:
                 # Calculate tax adjustment factor for FCF
                 # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
                 # Pass financials to use real operating margin
-                effective_tax_rate = params.common.rates.tax_rate or ModelDefaults.DEFAULT_TAX_RATE
+                effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
                 if effective_tax_rate != marginal_tax_rate:
                     # Request diagnostics to detect fallback usage
                     tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(

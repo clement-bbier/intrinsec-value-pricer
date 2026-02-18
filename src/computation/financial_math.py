@@ -11,7 +11,8 @@ Standards: McKinsey/Damodaran institutional frameworks.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Literal, Optional, overload
 
 from src.config.constants import MacroDefaults, ModelDefaults, ValuationEngineDefaults
 from src.core.diagnostics import DiagnosticRegistry
@@ -70,12 +71,12 @@ class WACCBreakdown:
     method: str
     beta_used: float = 1.0
     beta_adjusted: bool = False
-    diagnostics: list = None  # Will be list[DiagnosticEvent] but avoiding circular import
+    diagnostics: list = field(default_factory=list)  # Will be list[DiagnosticEvent] but avoiding circular import
 
     def __post_init__(self):
-        """Initialize diagnostics list if None."""
+        """Initialize diagnostics list if None (for backward compatibility)."""
         if self.diagnostics is None:
-            self.diagnostics = []
+            object.__setattr__(self, 'diagnostics', [])
 
 
 # ==============================================================================
@@ -174,6 +175,26 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
     return (final_flow * (1.0 + g_perp) * tax_adjustment_factor) / (rate - g_perp)
 
 
+@overload
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
+    financials: Company | None = None,
+    return_diagnostics: Literal[False] = False
+) -> float:
+    ...
+
+
+@overload
+def calculate_fcf_tax_adjustment_factor(
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
+    financials: Company | None,
+    return_diagnostics: Literal[True]
+) -> tuple[float, list]:
+    ...
+
+
 def calculate_fcf_tax_adjustment_factor(
     effective_tax_rate: float,
     marginal_tax_rate: float,
@@ -253,8 +274,10 @@ def calculate_fcf_tax_adjustment_factor(
         ebit_available = ebit_ttm is not None and ebit_ttm != 0
         revenue_available = revenue_ttm is not None and revenue_ttm != 0
 
-        if ebit_available and revenue_available and revenue_ttm > 0:
+        if ebit_available and revenue_available and revenue_ttm is not None and revenue_ttm > 0:
             # Use real operating margin
+            # Type narrowing: we know ebit_ttm and revenue_ttm are not None here
+            assert ebit_ttm is not None  # Help mypy understand type narrowing
             operating_margin = ebit_ttm / revenue_ttm
             # Clamp to reasonable bounds (0-50%)
             operating_margin = max(0.0, min(0.50, operating_margin))
