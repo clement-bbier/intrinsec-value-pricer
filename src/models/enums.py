@@ -79,6 +79,7 @@ class VariableSource(str, Enum):
     # 1. External Data
     YAHOO_FINANCE = "YAHOO_FINANCE"  # Raw provider data
     YAHOO_TTM_SIMPLE = "YAHOO_TTM_SIMPLE"  # Aggregated TTM data
+    YAHOO_HISTORICAL = "YAHOO_HISTORICAL"  # Historical averages (multi-year)
     MACRO_PROVIDER = "MACRO_PROVIDER"  # Risk-free rates, ERP, Yields
 
     # 2. User Input

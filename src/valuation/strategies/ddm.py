@@ -22,7 +22,7 @@ from src.computation.financial_math import calculate_discount_factors
 
 # Config & i18n
 from src.config.constants import ModelDefaults
-from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n import ModelTexts, RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
@@ -101,7 +101,7 @@ class DividendDiscountStrategy(IValuationRunner):
                             symbol="D_0",
                             value=d0_per_share,
                             source=VariableSource.MANUAL_OVERRIDE if user_div else VariableSource.YAHOO_FINANCE,
-                            description="Dividend Per Share (Base)",
+                            description=ModelTexts.VAR_DESC_DIVIDEND_BASE,
                         ),
                         "Shares": VariableInfo(
                             symbol="Shares",
@@ -129,7 +129,7 @@ class DividendDiscountStrategy(IValuationRunner):
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else total_dividend_mass
         # TV calculated with Ke (not WACC)
-        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params)
+        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params, financials)
         if self._glass_box:
             steps.append(step_tv)
 

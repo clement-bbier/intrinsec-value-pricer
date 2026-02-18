@@ -426,6 +426,9 @@ class FCFFGrowthTexts(CommonTerminals):
     INP_MARGIN_TARGET = f"Marge FCF Normative (Cible) {CommonTerminals.UNIT_PERCENT}"
     HELP_MARGIN_TARGET = "Marge de flux de trésorerie disponible visée à la fin de l'horizon de projection."
 
+    INP_WCR_RATIO = f"Intensité du BFR / Revenus {CommonTerminals.UNIT_PERCENT}"
+    HELP_WCR_RATIO = "Ratio du Besoin en Fonds de Roulement par rapport aux revenus. Utilisé pour calculer la consommation de trésorerie liée à la croissance (ΔBFR = ΔRevenue × ratio). Vide = Moyenne historique de l'entreprise."
+
     # Disclaimer
     MARGIN_DISCLAIMER = """ATTENTION - Approche simplifiée : La formule FCF_t = Revenue_t × Marge_cible
 suppose que le CapEx, la variation du BFR et les impôts sont implicitement intégrés dans la marge.

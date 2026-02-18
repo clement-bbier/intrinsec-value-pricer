@@ -28,7 +28,14 @@ class FCFFGrowthView(BaseStrategyView):
     SHOW_PEER_TRIANGULATION = True
 
     def render_model_inputs(self) -> None:
-        """Renders Step 1 (revenue base) and Step 2 (growth + margin) inputs."""
+        """
+        Renders Step 1 (revenue base) and Step 2 (growth, margin, and WCR) inputs.
+
+        Step 2 includes:
+        - Revenue growth rate
+        - Target FCF margin
+        - Working Capital Requirement (WCR) to revenue ratio
+        """
         prefix = self.MODE.name
 
         self._render_step_header(Texts.STEP_1_TITLE, Texts.STEP_1_DESC)
@@ -59,6 +66,16 @@ class FCFFGrowthView(BaseStrategyView):
                 help=Texts.HELP_MARGIN_TARGET,
                 key=f"{prefix}_{UIKeys.FCF_MARGIN}",
             )
+
+        # Working Capital Requirement (WCR/BFR) intensity
+        st.number_input(
+            Texts.INP_WCR_RATIO,
+            value=None,
+            format="%.2f",
+            help=Texts.HELP_WCR_RATIO,
+            key=f"{prefix}_{UIKeys.WCR_TO_REVENUE_RATIO}",
+        )
+
         # Add maturity years slider for fade transition
         widget_high_growth_years(prefix)
         st.divider()

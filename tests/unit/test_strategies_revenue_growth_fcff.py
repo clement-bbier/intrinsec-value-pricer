@@ -513,3 +513,251 @@ class TestRevenueGrowthFCFFStrategy:
 
         # Should use target margin from params as fallback
         assert result.results.strategy.target_margin_reached == 0.15
+
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_value_per_share")
+    def test_wcr_ratio_passed_to_projection(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project_rev,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that wcr_ratio is passed to project_flows_revenue_model."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10))
+
+        # Setup params with wcr_ratio
+        strategy_params = FCFFGrowthParameters(
+            revenue_ttm=80000.0,
+            revenue_growth_rate=20.0,
+            target_fcf_margin=15.0,
+            projection_years=5,
+            wcr_to_revenue_ratio=5.0,
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
+            capital=CapitalStructureParameters(shares_outstanding=3000.0),
+        )
+        params = Parameters(
+            structure=Company(ticker="TSLA", name="Tesla Inc."), strategy=strategy_params, common=common
+        )
+
+        # Setup mocks
+        mock_rate.return_value = (0.10, mock_wacc_step)
+        mock_project_rev.return_value = (
+            [9000, 10500, 12000, 13000, 13500],  # FCF with WCR adjustment
+            [96000, 115200, 134400, 144000, 150000],
+            [0.10, 0.10, 0.10, 0.10, 0.10],
+            CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
+        )
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
+        mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
+        mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
+        mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
+
+        # Execute
+        strategy.execute(basic_company, params)
+
+        # Verify wcr_ratio was passed to project_flows_revenue_model
+        assert mock_project_rev.called
+        call_kwargs = mock_project_rev.call_args.kwargs
+        assert "wcr_ratio" in call_kwargs
+        assert call_kwargs["wcr_ratio"] == 0.05  # 5% normalized to 0.05
+
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_value_per_share")
+    def test_wcr_ratio_none_fallback(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project_rev,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that when no WCR ratio is provided and no historical data, it uses default constant."""
+        from src.config.constants import ModelDefaults
+
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10))
+
+        # Setup params without wcr_ratio
+        strategy_params = FCFFGrowthParameters(
+            revenue_ttm=80000.0,
+            revenue_growth_rate=20.0,
+            target_fcf_margin=15.0,
+            projection_years=5,
+            wcr_to_revenue_ratio=None,
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
+            capital=CapitalStructureParameters(shares_outstanding=3000.0),
+        )
+        params = Parameters(
+            structure=Company(ticker="TSLA", name="Tesla Inc."), strategy=strategy_params, common=common
+        )
+
+        # Setup mocks
+        mock_rate.return_value = (0.10, mock_wacc_step)
+        mock_project_rev.return_value = (
+            [9600, 11520, 13440, 14400, 15000],  # FCF without WCR adjustment
+            [96000, 115200, 134400, 144000, 150000],
+            [0.10, 0.10, 0.10, 0.10, 0.10],
+            CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
+        )
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
+        mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
+        mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
+        mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
+
+        # Execute
+        strategy.execute(basic_company, params)
+
+        # Verify wcr_ratio was passed as default value (0.15)
+        assert mock_project_rev.called
+        call_kwargs = mock_project_rev.call_args.kwargs
+        assert "wcr_ratio" in call_kwargs
+        assert call_kwargs["wcr_ratio"] == ModelDefaults.DEFAULT_WCR_RATIO
+
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_value_per_share")
+    def test_historical_wcr_ratio_fallback(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project_rev,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that historical WCR ratio is used as fallback when user doesn't provide one."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10))
+
+        # Setup params without wcr_ratio (None)
+        strategy_params = FCFFGrowthParameters(
+            revenue_ttm=80000.0,
+            revenue_growth_rate=20.0,
+            target_fcf_margin=15.0,
+            projection_years=5,
+            wcr_to_revenue_ratio=None,  # User didn't provide
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
+            capital=CapitalStructureParameters(shares_outstanding=3000.0),
+        )
+        params = Parameters(
+            structure=Company(ticker="TSLA", name="Tesla Inc."), strategy=strategy_params, common=common
+        )
+
+        # Mock company with historical WCR ratio
+        basic_company.historical_wcr_ratio = 0.08  # 8% historical ratio
+
+        # Setup mocks
+        mock_rate.return_value = (0.10, mock_wacc_step)
+        mock_project_rev.return_value = (
+            [8800, 10560, 12320, 13200, 13800],  # FCF with WCR adjustment
+            [96000, 115200, 134400, 144000, 150000],
+            [0.10, 0.10, 0.10, 0.10, 0.10],
+            CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
+        )
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
+        mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
+        mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
+        mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
+
+        # Execute
+        result = strategy.execute(basic_company, params)
+
+        # Verify historical wcr_ratio was used
+        assert mock_project_rev.called
+        call_kwargs = mock_project_rev.call_args.kwargs
+        assert "wcr_ratio" in call_kwargs
+        assert call_kwargs["wcr_ratio"] == 0.08  # Historical ratio was used
+
+        # Verify result is successful
+        assert result is not None
+        assert result.results is not None
+
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.resolve_discount_rate")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.project_flows_revenue_model")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_terminal_value")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_discounting")
+    @patch("src.valuation.strategies.revenue_growth_fcff.CommonLibrary.compute_equity_bridge")
+    @patch("src.valuation.strategies.revenue_growth_fcff.DCFLibrary.compute_value_per_share")
+    def test_user_wcr_overrides_historical(
+        self,
+        mock_per_share,
+        mock_bridge,
+        mock_discount,
+        mock_tv,
+        mock_project_rev,
+        mock_rate,
+        strategy,
+        basic_company,
+    ):
+        """Test that user-provided WCR ratio takes precedence over historical."""
+        mock_wacc_step = Mock(spec=CalculationStep)
+        mock_wacc_step.get_variable = Mock(side_effect=lambda key: Mock(value=0.10))
+
+        # Setup params with wcr_ratio (user provided)
+        strategy_params = FCFFGrowthParameters(
+            revenue_ttm=80000.0,
+            revenue_growth_rate=20.0,
+            target_fcf_margin=15.0,
+            projection_years=5,
+            wcr_to_revenue_ratio=5.0,  # User provided 5%
+        )
+        common = CommonParameters(
+            rates=FinancialRatesParameters(risk_free_rate=4.0, market_risk_premium=6.0, beta=1.5, tax_rate=21.0),
+            capital=CapitalStructureParameters(shares_outstanding=3000.0),
+        )
+        params = Parameters(
+            structure=Company(ticker="TSLA", name="Tesla Inc."), strategy=strategy_params, common=common
+        )
+
+        # Mock company with historical WCR ratio (should be ignored)
+        basic_company.historical_wcr_ratio = 0.08  # 8% historical ratio
+
+        # Setup mocks
+        mock_rate.return_value = (0.10, mock_wacc_step)
+        mock_project_rev.return_value = (
+            [9000, 10500, 12000, 13000, 13500],
+            [96000, 115200, 134400, 144000, 150000],
+            [0.10, 0.10, 0.10, 0.10, 0.10],
+            CalculationStep(step_key="PROJ_REV", label="Revenue Projection", result=15000),
+        )
+        mock_tv.return_value = (200000, CalculationStep(step_key="TV", label="TV", result=200000), [])
+        mock_discount.return_value = (150000, CalculationStep(step_key="DISC", label="Disc", result=150000))
+        mock_bridge.return_value = (140000, CalculationStep(step_key="BRIDGE", label="Bridge", result=140000))
+        mock_per_share.return_value = (46.67, CalculationStep(step_key="PS", label="PS", result=46.67))
+
+        # Execute
+        strategy.execute(basic_company, params)
+
+        # Verify user-provided wcr_ratio was used (not historical)
+        assert mock_project_rev.called
+        call_kwargs = mock_project_rev.call_args.kwargs
+        assert "wcr_ratio" in call_kwargs
+        assert call_kwargs["wcr_ratio"] == 0.05  # User's 5% was used, not historical 8%

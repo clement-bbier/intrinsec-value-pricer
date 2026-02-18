@@ -20,6 +20,7 @@ adjustments.
 
 from __future__ import annotations
 
+import logging
 from typing import cast
 
 import numpy as np
@@ -46,6 +47,8 @@ from src.models.valuation import AuditReport, ValuationRequest, ValuationResult
 from src.valuation.library.common import CommonLibrary
 from src.valuation.library.dcf import DCFLibrary
 from src.valuation.strategies.interface import IValuationRunner
+
+logger = logging.getLogger(__name__)
 
 
 class RevenueGrowthFCFFStrategy(IValuationRunner):
@@ -90,6 +93,26 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         current_margin = (fcf_ttm / rev_anchor) if rev_anchor > 0 else 0.0
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
+        # Extract WCR ratio from parameters (if provided by user)
+        wcr_ratio = strategy_params.wcr_to_revenue_ratio
+        wcr_source = None
+
+        # Fallback chain for WCR ratio: User → Historical → Default constant
+        if wcr_ratio is None:
+            historical_ratio = getattr(financials, "historical_wcr_ratio", None)
+            if historical_ratio is not None:
+                wcr_ratio = float(historical_ratio)
+                wcr_source = StrategySources.YAHOO_HISTORICAL
+                logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
+            else:
+                # Ultimate fallback to system default
+                wcr_ratio = float(ModelDefaults.DEFAULT_WCR_RATIO)
+                wcr_source = StrategySources.SYSTEM
+                logger.info(f"Using default WCR ratio: {wcr_ratio:.4f} (no historical data available)")
+        else:
+            wcr_ratio = float(wcr_ratio)
+            wcr_source = StrategySources.MANUAL_OVERRIDE
+
         if self._glass_box:
             steps.append(
                 CalculationStep(
@@ -107,9 +130,45 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                 )
             )
 
+            # Add Glass Box step for WCR ratio if used
+            if wcr_ratio is not None and wcr_source is not None:
+                wcr_percentage = wcr_ratio * 100
+
+                # Determine label and variable source based on origin
+                if wcr_source == StrategySources.MANUAL_OVERRIDE:
+                    wcr_label = RegistryTexts.WCR_LABEL_MANUAL
+                    var_source = VariableSource.MANUAL_OVERRIDE
+                elif wcr_source == StrategySources.YAHOO_HISTORICAL:
+                    wcr_label = RegistryTexts.WCR_LABEL_HISTORICAL
+                    var_source = VariableSource.YAHOO_HISTORICAL
+                else:  # SYSTEM
+                    wcr_label = RegistryTexts.WCR_LABEL_SYSTEM
+                    var_source = VariableSource.SYSTEM
+
+                steps.append(
+                    CalculationStep(
+                        step_key="WCR_RATIO",
+                        label=wcr_label,
+                        theoretical_formula=r"\text{WCR Ratio} = \frac{(\text{Inventory} + \text{Receivables}) - \text{Payables}}{\text{Revenue}}",
+                        actual_calculation=RegistryTexts.WCR_CALC_TEMPLATE.format(percentage=wcr_percentage),
+                        result=wcr_ratio,
+                        interpretation=RegistryTexts.WCR_INTERP_TEMPLATE.format(percentage=wcr_percentage),
+                        source=wcr_source,
+                        variables_map={
+                            "WCR_Ratio": VariableInfo(
+                                symbol="WCR/Rev",
+                                value=wcr_ratio,
+                                formatted_value=f"{wcr_percentage:.2f}%",
+                                source=var_source,
+                                description=RegistryTexts.WCR_DESC
+                            ),
+                        },
+                    )
+                )
+
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
-            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params
+            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params, wcr_ratio=wcr_ratio
         )
 
         if self._glass_box:
@@ -225,6 +284,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         target_margin = strategy_params.target_fcf_margin or ModelDefaults.DEFAULT_FCF_MARGIN_TARGET
 
+        # Extract WCR ratio for working capital adjustments
+        wcr_ratio = strategy_params.wcr_to_revenue_ratio or 0.0
+
         # Create Margin Vector [Years] via linear interpolation
         # shape: (Years,) e.g. [0.12, 0.14, 0.16, 0.18, 0.20]
         margin_curve = np.linspace(current_margin, target_margin, years + 1)[1:]  # Skip index 0 (current)
@@ -239,6 +301,19 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         # 4. Derive FCF [N_SIMS, YEARS]
         # Broadcasting: [N, Y] * [Y] -> [N, Y]
         projected_flows = projected_revenue * margin_curve
+
+        # 4b. Apply WCR Adjustments if wcr_ratio is provided
+        # ΔBFR = ΔRevenue × wcr_ratio for each year
+        if wcr_ratio != 0.0:
+            # Calculate revenue deltas: [N_SIMS, YEARS]
+            # For year 1: delta = Rev_1 - Rev_0
+            # For year t: delta = Rev_t - Rev_{t-1}
+            prev_revenue = np.concatenate([rev_0[:, np.newaxis], projected_revenue[:, :-1]], axis=1)
+            revenue_deltas = projected_revenue - prev_revenue
+
+            # WCR adjustment reduces FCF: FCF_adjusted = FCF_base - (ΔRev × wcr_ratio)
+            wcr_adjustments = revenue_deltas * wcr_ratio
+            projected_flows = projected_flows - wcr_adjustments
 
         # 5. Discounting
         discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)

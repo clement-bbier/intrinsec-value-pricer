@@ -24,6 +24,7 @@ class StrategySources:
     YAHOO_TTM = "Last reported FCF (TTM) - Yahoo Deep Fetch"
     YAHOO_FUNDAMENTAL = "Fundamental smoothed FCF (Yahoo/Analyst)"
     YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
+    YAHOO_HISTORICAL = "Yahoo Finance (Historical Average - 3 Years)"
     CALCULATED_NI = "Calculated (Net Income / Shares)"
     ANALYST_OVERRIDE = "Surcharge Analyste"
     MACRO_MATRIX = r"Matrix: {ticker}"
@@ -149,6 +150,10 @@ class StrategyInterpretations:
     SBC_EXPENSE_NO_DILUTION = "Valeur intrinsèque finale par action (SBC traité en dépense, pas d'ajustement de dilution)."
     IV_PER_SHARE_FINAL = "Valeur intrinsèque finale par action."
     SBC_EXPENSE_DESC = "Dépense annuelle SBC (déduite des flux)"
+
+    # Terminal value sector benchmark diagnostics
+    SECTOR_BENCHMARK_TV = "Utilisation du benchmark sectoriel {multiple:.1f}x pour le secteur '{sector}' (source: {source})"
+    DEFAULT_MULTIPLE_TV = "Utilisation du multiple par défaut {multiple:.1f}x"
 
 
 class SharedTexts:
