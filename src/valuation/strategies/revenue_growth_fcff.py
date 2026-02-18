@@ -20,6 +20,7 @@ adjustments.
 
 from __future__ import annotations
 
+import logging
 from typing import cast
 
 import numpy as np
@@ -46,6 +47,8 @@ from src.models.valuation import ValuationRequest, ValuationResult
 from src.valuation.library.common import CommonLibrary
 from src.valuation.library.dcf import DCFLibrary
 from src.valuation.strategies.interface import IValuationRunner
+
+logger = logging.getLogger(__name__)
 
 
 class RevenueGrowthFCFFStrategy(IValuationRunner):
@@ -92,9 +95,19 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # Extract WCR ratio from parameters (if provided by user)
         wcr_ratio = strategy_params.wcr_to_revenue_ratio
+        wcr_source = None
         
-        # TODO: Implement fallback to historical WCR/Revenue ratio from company data
-        # For now, if wcr_ratio is None, no WCR adjustment will be applied
+        # Fallback to historical WCR/Revenue ratio if user didn't provide one
+        if wcr_ratio is None:
+            historical_ratio = getattr(financials, "historical_wcr_ratio", None)
+            if historical_ratio is not None:
+                wcr_ratio = historical_ratio
+                wcr_source = StrategySources.YAHOO_HISTORICAL
+                logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
+            else:
+                logger.info("No WCR ratio provided and no historical data available - no WCR adjustment will be applied")
+        else:
+            wcr_source = StrategySources.MANUAL_OVERRIDE
 
         if self._glass_box:
             steps.append(
@@ -112,6 +125,31 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                     },
                 )
             )
+            
+            # Add Glass Box step for WCR ratio if used
+            if wcr_ratio is not None and wcr_source is not None:
+                wcr_percentage = wcr_ratio * 100
+                wcr_label = "Historical WCR Ratio (Yahoo Finance)" if wcr_source == StrategySources.YAHOO_HISTORICAL else "WCR Ratio (User Input)"
+                steps.append(
+                    CalculationStep(
+                        step_key="WCR_RATIO",
+                        label=wcr_label,
+                        theoretical_formula=r"\text{WCR Ratio} = \frac{(\text{Inventory} + \text{Receivables}) - \text{Payables}}{\text{Revenue}}",
+                        actual_calculation=f"WCR Intensity: {wcr_percentage:.2f}%",
+                        result=wcr_ratio,
+                        interpretation=f"Working capital will consume {wcr_percentage:.2f}% of each revenue increase",
+                        source=wcr_source,
+                        variables_map={
+                            "WCR_Ratio": VariableInfo(
+                                symbol="WCR/Rev",
+                                value=wcr_ratio,
+                                formatted_value=f"{wcr_percentage:.2f}%",
+                                source=VariableSource.MANUAL_OVERRIDE if wcr_source == StrategySources.MANUAL_OVERRIDE else VariableSource.YAHOO_HISTORICAL,
+                                description="Working Capital to Revenue Ratio"
+                            ),
+                        },
+                    )
+                )
 
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(

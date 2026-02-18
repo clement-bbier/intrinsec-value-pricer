@@ -24,6 +24,7 @@ class StrategySources:
     YAHOO_TTM = "Last reported FCF (TTM) - Yahoo Deep Fetch"
     YAHOO_FUNDAMENTAL = "Fundamental smoothed FCF (Yahoo/Analyst)"
     YAHOO_TTM_SIMPLE = "Yahoo Finance (TTM)"
+    YAHOO_HISTORICAL = "Yahoo Finance (Historical Average - 3 Years)"
     CALCULATED_NI = "Calculated (Net Income / Shares)"
     ANALYST_OVERRIDE = "Surcharge Analyste"
     MACRO_MATRIX = r"Matrix: {ticker}"
