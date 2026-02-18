@@ -311,3 +311,98 @@ class TestExtractionConstants:
         assert isinstance(DEBT_KEYS, list)
         assert len(DEBT_KEYS) > 0
         assert "Total Debt" in DEBT_KEYS
+
+class TestYahooSnapshotMapperWCR:
+    """Test suite for YahooSnapshotMapper WCR calculation."""
+
+    def test_calculate_historical_wcr_ratio_with_complete_data(self):
+        """Test WCR calculation when all data is available for 3 years."""
+        from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
+        from infra.data_providers.yahoo_snapshot_mapper import YahooSnapshotMapper
+
+        mapper = YahooSnapshotMapper()
+
+        # Create mock balance sheet with 3 years of data
+        # Index = metric names, Columns = years (0 = most recent)
+        bs_data = {
+            0: [1000, 500, 300],  # Most recent: Inventory, Receivables, Payables
+            1: [900, 450, 280],   # Previous year
+            2: [800, 400, 250],   # 2 years ago
+        }
+        bs = pd.DataFrame(bs_data, index=["Inventory", "Accounts Receivable", "Accounts Payable"])
+
+        # Create mock income statement with 3 years of revenue
+        income_data = {
+            0: [10000],  # Most recent
+            1: [9000],   # Previous year
+            2: [8000],   # 2 years ago
+        }
+        income_stmt = pd.DataFrame(income_data, index=["Total Revenue"])
+
+        raw = RawFinancialData(
+            ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True
+        )
+
+        # Calculate
+        result = mapper._calculate_historical_wcr_ratio(raw)
+
+        # Expected WCR for each year:
+        # Year 0: (1000 + 500) - 300 = 1200, Ratio = 1200/10000 = 0.12
+        # Year 1: (900 + 450) - 280 = 1070, Ratio = 1070/9000 = 0.1189
+        # Year 2: (800 + 400) - 250 = 950, Ratio = 950/8000 = 0.1188
+        # Average: (0.12 + 0.1189 + 0.1188) / 3 = 0.1192
+
+        assert result is not None
+        assert 0.118 < result < 0.120  # Allow small floating point variance
+
+    def test_calculate_historical_wcr_ratio_no_data(self):
+        """Test WCR calculation returns None when data is insufficient."""
+        from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
+        from infra.data_providers.yahoo_snapshot_mapper import YahooSnapshotMapper
+
+        mapper = YahooSnapshotMapper()
+
+        # Empty dataframes
+        raw = RawFinancialData(
+            ticker="TEST",
+            balance_sheet=pd.DataFrame(),
+            income_stmt=pd.DataFrame(),
+            is_valid=True,
+        )
+
+        result = mapper._calculate_historical_wcr_ratio(raw)
+        assert result is None
+
+    def test_calculate_historical_wcr_ratio_negative_wcr(self):
+        """Test WCR calculation handles negative working capital (payables > inventory + receivables)."""
+        from infra.data_providers.yahoo_raw_fetcher import RawFinancialData
+        from infra.data_providers.yahoo_snapshot_mapper import YahooSnapshotMapper
+
+        mapper = YahooSnapshotMapper()
+
+        # Negative WCR scenario (high payables)
+        bs_data = {
+            0: [500, 300, 1000],  # Payables > (Inv + Rec)
+            1: [500, 300, 1000],
+            2: [500, 300, 1000],
+        }
+        bs = pd.DataFrame(bs_data, index=["Inventory", "Accounts Receivable", "Accounts Payable"])
+
+        income_data = {
+            0: [10000],
+            1: [10000],
+            2: [10000],
+        }
+        income_stmt = pd.DataFrame(income_data, index=["Total Revenue"])
+
+        raw = RawFinancialData(
+            ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True
+        )
+
+        result = mapper._calculate_historical_wcr_ratio(raw)
+
+        # WCR = (500 + 300) - 1000 = -200 for each year
+        # Ratio = -200/10000 = -0.02
+        assert result is not None
+        assert result < 0  # Negative WCR is valid
+        assert -0.03 < result < -0.01
