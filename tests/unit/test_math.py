@@ -577,17 +577,22 @@ class TestCalculateWACC:
         company.ebit_ttm = 1000.0
         company.interest_expense = 100.0
 
-        # Set target debt-to-capital ratio of 30%
+        # Set target D/E ratio: 30% debt / 70% equity = D/E = 0.4286
+        # Target weights will be calculated from D/E: wd = D/E / (1+D/E) = 0.4286/1.4286 = 0.30
         rates = FinancialRatesParameters(
             risk_free_rate=4.0,
             market_risk_premium=5.0,
             beta=1.2,
             tax_rate=25.0,
             cost_of_debt=6.0,
-            target_debt_to_capital=30.0,  # 30% debt, 70% equity
         )
         # Market structure: debt=5000, equity=100*1000=100000, D/E_market = 0.05
-        capital = CapitalStructureParameters(total_debt=5000.0, shares_outstanding=1000.0)
+        # Target structure: D/E = 0.30/0.70 = 0.4286 (for 30% debt in capital structure)
+        capital = CapitalStructureParameters(
+            total_debt=5000.0, 
+            shares_outstanding=1000.0,
+            target_debt_equity_ratio=42.86  # Will be normalized to 0.4286
+        )
         common = CommonParameters(rates=rates, capital=capital)
 
         params = Mock(spec=Parameters)

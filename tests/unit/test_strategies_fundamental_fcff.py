@@ -502,7 +502,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -559,7 +559,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
@@ -610,7 +610,7 @@ class TestFundamentalFCFFStrategy:
             [98800, 102752, 106862, 111136, 115582],
             CalculationStep(step_key="PROJ", label="Projection", result=115582),
         )
-        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000))
+        mock_tv.return_value = (1800000, CalculationStep(step_key="TV", label="TV", result=1800000), [])
         mock_discount.return_value = (1500000, CalculationStep(step_key="DISC", label="Disc", result=1500000))
         mock_bridge.return_value = (1430000, CalculationStep(step_key="BRIDGE", label="Bridge", result=1430000))
         mock_per_share.return_value = (89.375, CalculationStep(step_key="PS", label="PS", result=89.375))
