@@ -93,6 +93,8 @@ class CompanySnapshot(BaseModel):
     cash_and_equivalents: float | None = None
     minority_interests: float | None = None
     pension_provisions: float | None = None
+    lease_liabilities: float | None = None
+    pension_liabilities: float | None = None
     shares_outstanding: float | None = None
     interest_expense: float | None = None
     net_borrowing_ttm: float | None = None

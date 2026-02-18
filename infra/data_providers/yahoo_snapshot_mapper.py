@@ -69,6 +69,10 @@ class YahooSnapshotMapper:
         snapshot.cash_and_equivalents = extract_most_recent_value(bs, ["Cash And Cash Equivalents"])
         snapshot.minority_interests = extract_most_recent_value(bs, ["Minority Interest"])
         snapshot.pension_provisions = extract_most_recent_value(bs, ["Long Term Provisions"])
+        snapshot.lease_liabilities = extract_most_recent_value(bs, ["Long Term Lease Liabilities"])
+        snapshot.pension_liabilities = extract_most_recent_value(
+            bs, ["Pension And Other Post Retirement Benefit Plans"]
+        )
         snapshot.shares_outstanding = float(info.get("sharesOutstanding") or 1.0)
         snapshot.interest_expense = extract_most_recent_value(raw.income_stmt, ["Interest Expense"])  # For Cost of Debt
 

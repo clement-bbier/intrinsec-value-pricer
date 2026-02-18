@@ -50,6 +50,37 @@ def widget_growth_rate(label: str, key_prefix: str) -> None:
     )
 
 
+def widget_high_growth_years(key_prefix: str) -> None:
+    """
+    Renders a slider for maturity years (high growth period).
+
+    Parameters
+    ----------
+    key_prefix : str
+        The strategy-specific key prefix.
+
+    Notes
+    -----
+    This widget controls the fade transition between strong growth
+    and perpetual growth. If set to equal projection_years, there
+    is no fade (growth remains constant until terminal value).
+    The projection_years value is read from session_state where it's
+    managed by the sidebar.
+    """
+    # Get projection_years from session_state (managed by sidebar)
+    projection_years = st.session_state.get("projection_years", 5)
+
+    st.slider(
+        CommonTerminals.INP_HIGH_GROWTH_YEARS,
+        min_value=0,
+        max_value=projection_years,
+        value=projection_years,  # Default: no fade
+        step=1,
+        help=CommonTerminals.HELP_HIGH_GROWTH_YEARS,
+        key=f"{key_prefix}_{UIKeys.HIGH_GROWTH_YEARS}",
+    )
+
+
 # ==============================================================================
 # 2. COST OF CAPITAL (Section 3)
 # ==============================================================================
@@ -71,6 +102,13 @@ def widget_cost_of_capital(mode: ValuationMethodology) -> None:
             format="%.2f",
             help=CommonTerminals.HELP_PRICE_WEIGHTS,
             key=f"{prefix}_{UIKeys.PRICE}",
+        )
+        st.number_input(
+            CommonTerminals.INP_TARGET_DEBT_RATIO,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_TARGET_DEBT_RATIO,
+            key=f"{prefix}_{UIKeys.TARGET_DEBT_TO_CAPITAL}",
         )
 
     col_a, col_b = st.columns(2)
@@ -166,6 +204,15 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
             help=CommonTerminals.HELP_PERP_G,
             key=f"{key_prefix}_{UIKeys.GN}",
         )
+        # Add marginal tax rate input for terminal value calculation (only for FCFF models)
+        if not mode.is_direct_equity:
+            st.number_input(
+                CommonTerminals.INP_MARGINAL_TAX,
+                value=None,
+                format="%.2f",
+                help=CommonTerminals.HELP_MARGINAL_TAX,
+                key=f"{key_prefix}_{UIKeys.MARGINAL_TAX}",
+            )
     else:
         st.latex(CommonTerminals.FORMULA_TV_EXIT)
         st.number_input(
@@ -198,7 +245,16 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
 
 
 def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None:
-    """Renders balance sheet adjustments section."""
+    """
+    Renders balance sheet adjustments section.
+
+    Parameters
+    ----------
+    formula_latex : str
+        LaTeX formula for the equity bridge calculation.
+    mode : ValuationMethodology
+        Current valuation methodology (FCFF, FCFE, DDM, etc.).
+    """
     prefix = f"bridge_{mode.name}"
     st.markdown(CommonTerminals.STEP_5_TITLE)
     st.info(CommonTerminals.STEP_5_DESC)
@@ -240,13 +296,35 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
             key=f"{prefix}_{UIKeys.SHARES}",
         )
 
-    st.number_input(
-        CommonTerminals.INP_SBC_DILUTION,
-        value=None,
-        format="%.2f",
-        help=CommonTerminals.HELP_SBC_DILUTION,
-        key=f"{prefix}_{UIKeys.SBC_RATE}",
+    # SBC Treatment Selection
+    st.markdown("**Traitement de la rémunération en actions (SBC)**")
+    sbc_treatment = st.radio(
+        CommonTerminals.LBL_SBC_TREATMENT,
+        options=["DILUTION", "EXPENSE"],
+        format_func=lambda x: CommonTerminals.RADIO_SBC_DILUTION if x == "DILUTION" else CommonTerminals.RADIO_SBC_EXPENSE,
+        horizontal=True,
+        help=CommonTerminals.HELP_SBC_TREATMENT,
+        key=f"{prefix}_{UIKeys.SBC_TREATMENT}",
     )
+
+    # Conditional inputs based on SBC treatment
+    if sbc_treatment == "DILUTION":
+        st.number_input(
+            CommonTerminals.INP_SBC_DILUTION,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_SBC_DILUTION,
+            key=f"{prefix}_{UIKeys.SBC_RATE}",
+        )
+    else:  # EXPENSE
+        st.warning(CommonTerminals.WARN_SBC_DOUBLE_COUNT)
+        st.number_input(
+            CommonTerminals.INP_SBC_ANNUAL_AMOUNT,
+            value=None,
+            format="%.2f",
+            help=CommonTerminals.HELP_SBC_ANNUAL_AMOUNT,
+            key=f"{prefix}_{UIKeys.SBC_ANNUAL_AMOUNT}",
+        )
 
 
 # ==============================================================================

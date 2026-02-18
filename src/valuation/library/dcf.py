@@ -24,12 +24,15 @@ from src.computation.financial_math import (
     apply_dilution_adjustment,
     calculate_dilution_factor,
     calculate_discount_factors,
+    calculate_fcf_tax_adjustment_factor,
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
+    calculate_wacc_for_terminal_value,
 )
+from src.computation.flow_projector import project_flows
 
 # Configuration & i18n
-from src.config.constants import ModelDefaults
+from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.enums import TerminalValueMethod, VariableSource
@@ -45,9 +48,12 @@ class DCFLibrary:
     @staticmethod
     def project_flows_simple(base_flow: float, params: Parameters) -> tuple[list[float], CalculationStep]:
         """
-        Projects cash flows using a standard growth rate with linear fade-down.
+        Projects cash flows using fade transition logic with optional high growth period.
+
+        Supports both legacy linear convergence (fade from year 1) and the new
+        fade transition (high growth period followed by linear fade).
         """
-        # --- FIX: Access Strategy Parameters (Polymorphic) ---
+        # --- Access Strategy Parameters (Polymorphic) ---
         strat = params.strategy
 
         # Safe access to growth attributes depending on the model (FCFF vs FCFE)
@@ -63,21 +69,29 @@ class DCFLibrary:
         # Access Projection Years
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
 
-        # 2. Projection Loop (Linear Convergence)
-        flows = []
-        current_flow = base_flow
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            # Ensure it's actually an integer (not None)
+            if isinstance(hgy, int):
+                high_growth_years = hgy
 
-        for t in range(1, years + 1):
-            if years > 1:
-                alpha = (t - 1) / (years - 1)
-                current_g = g_start * (1 - alpha) + g_term * alpha
-            else:
-                current_g = g_start
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
 
-            current_flow *= 1.0 + current_g
-            flows.append(current_flow)
+        # Use the centralized project_flows function with fade transition logic
+        flows = project_flows(
+            base_flow=base_flow,
+            years=years,
+            g_start=g_start,
+            g_term=g_term,
+            high_growth_years=high_growth_years,
+        )
 
-        # 3. Trace Building
+        # Build trace for Glass Box transparency
+        fade_description = "No fade" if high_growth_years >= years else f"Fade after year {high_growth_years}"
         variables = {
             "FCF_0": VariableInfo(
                 symbol="FCF_0", value=base_flow, source=VariableSource.SYSTEM, description="Base Year Flow"
@@ -102,13 +116,19 @@ class DCFLibrary:
                 source=VariableSource.MANUAL_OVERRIDE,
                 description=SharedTexts.INP_PROJ_YEARS,
             ),
+            "n_high": VariableInfo(
+                symbol="n_high",
+                value=float(high_growth_years),
+                source=VariableSource.MANUAL_OVERRIDE,
+                description="High Growth Period (years)",
+            ),
         }
 
         step = CalculationStep(
             step_key="FCF_PROJ",
             label=RegistryTexts.DCF_PROJ_L,
             theoretical_formula=StrategyFormulas.FCF_PROJECTION,
-            actual_calculation=f"{format_smart_number(base_flow)} × (Linear Convergence {g_start:.1%} → {g_term:.1%})",
+            actual_calculation=f"{format_smart_number(base_flow)} × (Growth: {g_start:.1%} → {g_term:.1%}, {fade_description})",
             result=sum(flows),
             interpretation=StrategyInterpretations.PROJ.format(years=years, g=g_start),
             source=StrategySources.YAHOO_TTM_SIMPLE,
@@ -187,6 +207,7 @@ class DCFLibrary:
         -------
         tuple[list[float], list[float], list[float], CalculationStep]
             (projected_fcfs, projected_revenues, projected_margins, calculation_step)
+        Supports manual growth vector or fade transition with high growth period.
         """
         # Access Strategy Parameters (Specifically FCFFGrowthParameters)
         strat = params.strategy
@@ -197,6 +218,17 @@ class DCFLibrary:
         g_term = tv_params.perpetual_growth_rate if tv_params else ModelDefaults.DEFAULT_TERMINAL_GROWTH
         years = getattr(strat, "projection_years", None) or ModelDefaults.DEFAULT_PROJECTION_YEARS
         manual_vector = getattr(strat, "manual_growth_vector", None)
+
+        # Access High Growth Period (for fade transition)
+        high_growth_years = None
+        if hasattr(strat, "high_growth_period"):
+            hgy = strat.high_growth_period
+            if isinstance(hgy, int):
+                high_growth_years = hgy
+
+        # Default to full projection period (no fade) for backward compatibility
+        if high_growth_years is None:
+            high_growth_years = years
 
         revenues = []
         margins = []
@@ -209,13 +241,21 @@ class DCFLibrary:
         for t in range(1, years + 1):
             # A. Revenue Growth Logic
             if manual_vector and (t - 1) < len(manual_vector):
+                # Use manual vector if provided (takes precedence over fade)
                 current_g = manual_vector[t - 1]
             else:
-                if years > 1:
-                    alpha = (t - 1) / (years - 1)
-                    current_g = g_start * (1 - alpha) + g_term * alpha
-                else:
+                # Use fade transition logic
+                if t <= high_growth_years:
                     current_g = g_start
+                else:
+                    # Linear interpolation towards terminal growth
+                    years_remaining = years - high_growth_years
+                    if years_remaining > 0:
+                        step_in_fade = t - high_growth_years
+                        alpha = step_in_fade / years_remaining
+                        current_g = g_start * (1 - alpha) + g_term * alpha
+                    else:
+                        current_g = g_term
 
             current_rev *= 1.0 + current_g
             revenues.append(current_rev)
@@ -296,27 +336,92 @@ class DCFLibrary:
             variables_map=variables,
         )
 
-        return fcfs, revenues, margins, step
+        return revenues, margins, fcfs, step
 
     @staticmethod
     def compute_terminal_value(
-        final_flow: float, discount_rate: float, params: Parameters
-    ) -> tuple[float, CalculationStep]:
-        """Calculates Terminal Value based on Strategy selection."""
+        final_flow: float, discount_rate: float, params: Parameters, financials=None
+    ) -> tuple[float, CalculationStep, list]:
+        """
+        Calculates Terminal Value based on Strategy selection.
+
+        Parameters
+        ----------
+        final_flow : float
+            The last projected cash flow from the explicit period.
+        discount_rate : float
+            The discount rate for the explicit period (WACC or Ke).
+        params : Parameters
+            User-defined or automated parameters.
+        financials : Company, optional
+            Financial snapshots. Required to recalculate WACC with marginal tax rate for TV.
+
+        Returns
+        -------
+        tuple[float, CalculationStep, list]
+            Terminal value, calculation step for audit trail, and list of diagnostic events.
+
+        Notes
+        -----
+        If marginal_tax_rate is provided in params and financials is available,
+        the terminal value will be calculated using a WACC that applies the
+        marginal tax rate instead of the effective tax rate. This reflects that
+        temporary tax benefits are not perpetual.
+
+        Diagnostics are generated for:
+        - Beta adjustment skipped due to 5% threshold
+        - Operating margin fallback when EBIT/Revenue data unavailable
+        """
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            tv = calculate_terminal_value_gordon(final_flow, discount_rate, g_perp)
+
+            # Use marginal tax rate for terminal value WACC if available
+            tv_discount_rate = discount_rate
+            tax_adjustment_factor = 1.0
+            tv_diagnostics = []  # Collect diagnostics from TV calculation
+            marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
+
+            if marginal_tax_rate is not None and financials is not None:
+                # Recalculate WACC using marginal tax rate for terminal value
+                wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
+                tv_discount_rate = wacc_tv_breakdown.wacc
+
+                # Collect WACC diagnostics (e.g., beta adjustment skipped)
+                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                    tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
+
+                # Calculate tax adjustment factor for FCF
+                # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
+                # Pass financials to use real operating margin
+                effective_tax_rate = params.common.rates.tax_rate or MacroDefaults.DEFAULT_TAX_RATE
+                if effective_tax_rate != marginal_tax_rate:
+                    # Request diagnostics to detect fallback usage
+                    tax_adjustment_factor, fcf_diagnostics = calculate_fcf_tax_adjustment_factor(
+                        effective_tax_rate=effective_tax_rate,
+                        marginal_tax_rate=marginal_tax_rate,
+                        financials=financials,  # Pass financials for real margin calculation
+                        return_diagnostics=True
+                    )
+                    # Collect FCF adjustment diagnostics (e.g., margin fallback used)
+                    if fcf_diagnostics:
+                        tv_diagnostics.extend(fcf_diagnostics)
+
+            tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
+
+            # Build calculation step with appropriate discount rate
+            calculation_note = f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%}))"
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
+            calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
 
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,
                 theoretical_formula=StrategyFormulas.GORDON,
-                actual_calculation=(
-                    f"({format_smart_number(final_flow)} × (1 + {g_perp:.1%})) / ({discount_rate:.1%} - {g_perp:.1%})"
-                ),
+                actual_calculation=calculation_note,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
@@ -329,14 +434,14 @@ class DCFLibrary:
                     ),
                     "r": VariableInfo(
                         symbol="r",
-                        value=discount_rate,
-                        formatted_value=f"{discount_rate:.2%}",
+                        value=tv_discount_rate,
+                        formatted_value=f"{tv_discount_rate:.2%}",
                         source=VariableSource.CALCULATED,
-                        description="Discount Rate",
+                        description="Discount Rate (TV)" if marginal_tax_rate is not None else "Discount Rate",
                     ),
                 },
             )
-            return tv, step
+            return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
             multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
@@ -359,7 +464,8 @@ class DCFLibrary:
                     )
                 },
             )
-            return tv, step
+            # Exit multiple doesn't use marginal tax or beta adjustments, so no diagnostics
+            return tv, step, []
 
     @staticmethod
     def compute_discounting(
@@ -406,16 +512,64 @@ class DCFLibrary:
 
     @staticmethod
     def compute_value_per_share(equity_value: float, params: Parameters) -> tuple[float, CalculationStep]:
-        """Calculates final price per share, applying SBC dilution adjustment."""
+        """
+        Calculates final price per share, applying SBC dilution adjustment if needed.
+
+        Parameters
+        ----------
+        equity_value : float
+            Total equity value before per-share calculation.
+        params : Parameters
+            User-defined or automated projection parameters.
+
+        Returns
+        -------
+        tuple[float, CalculationStep]
+            Final intrinsic value per share and calculation trace.
+
+        Notes
+        -----
+        When SBC treatment is EXPENSE, dilution adjustment is skipped to avoid
+        double counting (SBC already deducted from cash flows).
+        """
         # Fix: Capital structure comes from common.capital
         shares = params.common.capital.shares_outstanding or ModelDefaults.DEFAULT_SHARES_OUTSTANDING
         base_iv = equity_value / shares
 
         # Fix: Dilution rate is stored in common.capital (from Model Batch)
         dilution_rate = params.common.capital.annual_dilution_rate or 0.0
+        sbc_treatment = getattr(params.common.capital, "sbc_treatment", None)
+
         # Fix: Years come from strategy
         years = getattr(params.strategy, "projection_years", ModelDefaults.DEFAULT_PROJECTION_YEARS)
 
+        # Skip dilution adjustment if SBC treatment is EXPENSE (avoid double counting)
+        from src.models.enums import SBCTreatment
+        if sbc_treatment == SBCTreatment.EXPENSE.value:
+            step = CalculationStep(
+                step_key="VALUE_PER_SHARE",
+                label=RegistryTexts.DCF_IV_L,
+                theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
+                actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
+                result=base_iv,
+                interpretation=StrategyInterpretations.SBC_EXPENSE_NO_DILUTION,
+                variables_map={
+                    "Equity": VariableInfo(
+                        symbol="Eq",
+                        value=equity_value,
+                        source=VariableSource.CALCULATED,
+                    ),
+                    "Shares": VariableInfo(
+                        symbol="Shares",
+                        value=shares,
+                        formatted_value=f"{shares:,.0f}",
+                        source=VariableSource.SYSTEM,
+                    ),
+                },
+            )
+            return base_iv, step
+
+        # Apply dilution adjustment (original behavior when treatment is DILUTION or not specified)
         dilution_factor = calculate_dilution_factor(dilution_rate, years)
         final_iv = apply_dilution_adjustment(base_iv, dilution_factor)
 
@@ -451,7 +605,7 @@ class DCFLibrary:
                 theoretical_formula=StrategyFormulas.VALUE_PER_SHARE,
                 actual_calculation=f"{format_smart_number(equity_value)} / {shares:,.0f}",
                 result=final_iv,
-                interpretation="Final Intrinsic Value per share.",
+                interpretation=StrategyInterpretations.IV_PER_SHARE_FINAL,
                 variables_map={
                     "Equity": VariableInfo(
                         symbol="Eq",

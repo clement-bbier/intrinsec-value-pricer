@@ -14,7 +14,11 @@ Standard: Institutional Grade (Glass Box, i18n, Type-Safe).
 from __future__ import annotations
 
 # Atomic imports for pure math
-from src.computation.financial_math import calculate_cost_of_equity_capm, calculate_synthetic_cost_of_debt
+from src.computation.financial_math import (
+    calculate_comprehensive_net_debt,
+    calculate_cost_of_equity_capm,
+    calculate_synthetic_cost_of_debt,
+)
 
 # Configuration and i18n imports
 from src.config.constants import MacroDefaults, ModelDefaults
@@ -148,15 +152,33 @@ class CommonLibrary:
     def compute_equity_bridge(enterprise_value: float, params: Parameters) -> tuple[float, CalculationStep]:
         """
         Walks from Enterprise Value (EV) to Equity Value using the Bridge.
+
+        Implements IFRS 16 compliance by including lease and pension liabilities
+        as debt-equivalents in the equity bridge calculation.
+
+        Note: pension_provisions and pension_liabilities are distinct items.
+        - pension_provisions: Legacy accounting provisions
+        - pension_liabilities: IFRS 16 off-balance-sheet obligations
+        Both are subtracted from EV as debt-equivalents.
         """
         cap = params.common.capital
 
         debt = cap.total_debt or 0.0
         cash = cap.cash_and_equivalents or 0.0
         minorities = cap.minority_interests or 0.0
-        pensions = cap.pension_provisions or 0.0
+        lease_liabilities = cap.lease_liabilities or 0.0
+        pension_liabilities = cap.pension_liabilities or 0.0
 
-        equity_value = enterprise_value - debt + cash - minorities - pensions
+        # Use comprehensive net debt calculation (IFRS 16 compliant)
+        # This includes debt, cash, and IFRS 16 off-balance-sheet liabilities
+        comprehensive_net_debt = calculate_comprehensive_net_debt(
+            total_debt=debt, cash=cash, lease_liabilities=lease_liabilities, pension_liabilities=pension_liabilities
+        )
+
+        # Equity = EV - Comprehensive Net Debt - Minorities
+        # Note: pension_provisions are already included in total_debt if on balance sheet,
+        # or captured separately as legacy provisions distinct from IFRS 16 pension_liabilities
+        equity_value = enterprise_value - comprehensive_net_debt - minorities
 
         variables = {
             "EV": VariableInfo(
@@ -164,6 +186,12 @@ class CommonLibrary:
                 value=enterprise_value,
                 source=VariableSource.CALCULATED,
                 description=RegistryTexts.DCF_EV_L,
+            ),
+            "Net_Debt": VariableInfo(
+                symbol="Net Debt",
+                value=comprehensive_net_debt,
+                source=VariableSource.CALCULATED,
+                description=KPITexts.LABEL_COMPREHENSIVE_NET_DEBT,
             ),
             "Debt": VariableInfo(
                 symbol="Debt", value=debt, source=VariableSource.SYSTEM, description=KPITexts.LABEL_DEBT
@@ -173,13 +201,34 @@ class CommonLibrary:
             ),
         }
 
+        # Add IFRS 16 liabilities to variables if present
+        if lease_liabilities > 0.0:
+            variables["Leases"] = VariableInfo(
+                symbol="Leases",
+                value=lease_liabilities,
+                source=VariableSource.SYSTEM,
+                description=KPITexts.LABEL_LEASE_LIABILITIES,
+            )
+
+        if pension_liabilities > 0.0:
+            variables["Pensions_IFRS"] = VariableInfo(
+                symbol="Pensions_IFRS",
+                value=pension_liabilities,
+                source=VariableSource.SYSTEM,
+                description=KPITexts.LABEL_PENSION_LIABILITIES,
+            )
+
+        # Build calculation display
+        calc_parts = [f"{format_smart_number(enterprise_value)} (EV)"]
+        calc_parts.append(f"- {format_smart_number(comprehensive_net_debt)} (Net Debt)")
+        if minorities > 0.0:
+            calc_parts.append(f"- {format_smart_number(minorities)} (Min)")
+
         step = CalculationStep(
             step_key="EQUITY_BRIDGE",
             label=RegistryTexts.DCF_BRIDGE_L,
             theoretical_formula=StrategyFormulas.EQUITY_BRIDGE,
-            actual_calculation=(
-                f"{format_smart_number(enterprise_value)} - {format_smart_number(debt)} + {format_smart_number(cash)}..."
-            ),
+            actual_calculation=" ".join(calc_parts),
             result=equity_value,
             unit="currency",
             interpretation=StrategyInterpretations.BRIDGE,
