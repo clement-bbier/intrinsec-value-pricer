@@ -40,7 +40,7 @@ from src.models.results.options import ExtensionBundleResults
 from src.models.results.strategies import FCFFGrowthResults
 
 # Models Results (Nested Architecture)
-from src.models.valuation import ValuationRequest, ValuationResult
+from src.models.valuation import ValuationRequest, ValuationResult, AuditReport
 
 # Libraries (DRY Logic)
 from src.valuation.library.common import CommonLibrary
@@ -117,9 +117,14 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # --- STEP 4: Terminal Value ---
         final_flow = flows[-1] if flows else 0.0
-        tv, step_tv = DCFLibrary.compute_terminal_value(final_flow, wacc, params)
+        tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, wacc, params, financials)
         if self._glass_box:
             steps.append(step_tv)
+
+        # Collect diagnostics for audit report (will be added by orchestrator)
+        all_diagnostics = []
+        if tv_diagnostics:
+            all_diagnostics.extend(tv_diagnostics)
 
         # --- STEP 5: Discounting ---
         ev, step_ev = DCFLibrary.compute_discounting(flows, tv, wacc)
@@ -186,6 +191,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         return ValuationResult(
             request=ValuationRequest(mode=ValuationMethodology.FCFF_GROWTH, parameters=params),
             results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
+            audit_report=AuditReport(events=all_diagnostics) if all_diagnostics else None,
         )
 
     @staticmethod
