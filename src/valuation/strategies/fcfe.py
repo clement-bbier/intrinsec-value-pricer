@@ -32,7 +32,7 @@ from src.models.results.options import ExtensionBundleResults
 from src.models.results.strategies import FCFEResults
 
 # Models Results
-from src.models.valuation import ValuationRequest, ValuationResult
+from src.models.valuation import AuditReport, ValuationRequest, ValuationResult
 
 # Libraries
 from src.valuation.library.common import CommonLibrary
@@ -114,6 +114,11 @@ class FCFEStrategy(IValuationRunner):
         tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, ke, params)
         if self._glass_box:
             steps.append(step_tv)
+        
+        # Collect diagnostics for audit report (will be added by orchestrator)
+        all_diagnostics = []
+        if tv_diagnostics:
+            all_diagnostics.extend(tv_diagnostics)
 
         # --- STEP 5: Discounting ---
         pv_equity, step_ev = DCFLibrary.compute_discounting(flows, tv, ke)
@@ -193,6 +198,7 @@ class FCFEStrategy(IValuationRunner):
         return ValuationResult(
             request=ValuationRequest(mode=ValuationMethodology.FCFE, parameters=params),
             results=Results(common=common_res, strategy=strategy_res, extensions=ExtensionBundleResults()),
+            audit_report=AuditReport(events=all_diagnostics) if all_diagnostics else None,
         )
 
     @staticmethod
