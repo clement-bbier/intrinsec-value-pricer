@@ -291,7 +291,7 @@ class DCFLibrary:
     ) -> tuple[float, CalculationStep, list]:
         """
         Calculates Terminal Value based on Strategy selection.
-        
+
         Parameters
         ----------
         final_flow : float
@@ -302,19 +302,19 @@ class DCFLibrary:
             User-defined or automated parameters.
         financials : Company, optional
             Financial snapshots. Required to recalculate WACC with marginal tax rate for TV.
-        
+
         Returns
         -------
         tuple[float, CalculationStep, list]
             Terminal value, calculation step for audit trail, and list of diagnostic events.
-        
+
         Notes
         -----
         If marginal_tax_rate is provided in params and financials is available,
         the terminal value will be calculated using a WACC that applies the
         marginal tax rate instead of the effective tax rate. This reflects that
         temporary tax benefits are not perpetual.
-        
+
         Diagnostics are generated for:
         - Beta adjustment skipped due to 5% threshold
         - Operating margin fallback when EBIT/Revenue data unavailable
@@ -324,22 +324,22 @@ class DCFLibrary:
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
-            
+
             # Use marginal tax rate for terminal value WACC if available
             tv_discount_rate = discount_rate
             tax_adjustment_factor = 1.0
             tv_diagnostics = []  # Collect diagnostics from TV calculation
             marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
-            
+
             if marginal_tax_rate is not None and financials is not None:
                 # Recalculate WACC using marginal tax rate for terminal value
                 wacc_tv_breakdown = calculate_wacc_for_terminal_value(financials, params)
                 tv_discount_rate = wacc_tv_breakdown.wacc
-                
+
                 # Collect WACC diagnostics (e.g., beta adjustment skipped)
                 if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
                     tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
-                
+
                 # Calculate tax adjustment factor for FCF
                 # This adjusts FCF_n to reflect the marginal tax rate in perpetuity
                 # Pass financials to use real operating margin
@@ -355,7 +355,7 @@ class DCFLibrary:
                     # Collect FCF adjustment diagnostics (e.g., margin fallback used)
                     if fcf_diagnostics:
                         tv_diagnostics.extend(fcf_diagnostics)
-            
+
             tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
 
             # Build calculation step with appropriate discount rate
@@ -363,7 +363,7 @@ class DCFLibrary:
             if tax_adjustment_factor != 1.0:
                 calculation_note += f" × {tax_adjustment_factor:.4f}"
             calculation_note += f" / ({tv_discount_rate:.1%} - {g_perp:.1%})"
-            
+
             step = CalculationStep(
                 step_key="TV_GORDON",
                 label=RegistryTexts.DCF_TV_GORDON_L,

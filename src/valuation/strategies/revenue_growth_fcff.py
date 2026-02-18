@@ -120,7 +120,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         tv, step_tv, tv_diagnostics = DCFLibrary.compute_terminal_value(final_flow, wacc, params, financials)
         if self._glass_box:
             steps.append(step_tv)
-        
+
         # Collect diagnostics for audit report (will be added by orchestrator)
         all_diagnostics = []
         if tv_diagnostics:

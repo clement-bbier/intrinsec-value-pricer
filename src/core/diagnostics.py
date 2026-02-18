@@ -253,7 +253,7 @@ class DiagnosticRegistry:
         """
         Generates an informational event when Hamada beta adjustment is skipped
         because the target D/E ratio differs by less than the noise threshold.
-        
+
         Parameters
         ----------
         current_de : float
@@ -303,7 +303,7 @@ class DiagnosticRegistry:
         """
         Generates a warning when FCF tax adjustment uses fallback operating margin
         instead of real company data due to missing EBIT or Revenue.
-        
+
         Parameters
         ----------
         fallback_margin : float, default 0.15
@@ -318,9 +318,9 @@ class DiagnosticRegistry:
             missing_fields.append("EBIT_TTM")
         if not revenue_available:
             missing_fields.append("Revenue_TTM")
-        
+
         missing_str = " and ".join(missing_fields) if missing_fields else "financial data"
-        
+
         return DiagnosticEvent(
             code="OPERATING_MARGIN_FALLBACK_USED",
             severity=SeverityLevel.WARNING,

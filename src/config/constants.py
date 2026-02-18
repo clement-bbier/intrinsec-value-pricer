@@ -179,7 +179,7 @@ class ModelDefaults:
     DEFAULT_ANNUAL_DILUTION_RATE: float = 0.0
     DEFAULT_BETA: float = 1.0
     DEFAULT_COST_OF_DEBT: float = 0.06
-    
+
     # Hamada Beta Adjustment
     BETA_ADJUSTMENT_THRESHOLD: float = 0.05  # 5% minimum D/E difference
 

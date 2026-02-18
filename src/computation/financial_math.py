@@ -71,7 +71,7 @@ class WACCBreakdown:
     beta_used: float = 1.0
     beta_adjusted: bool = False
     diagnostics: list = None  # Will be list[DiagnosticEvent] but avoiding circular import
-    
+
     def __post_init__(self):
         """Initialize diagnostics list if None."""
         if self.diagnostics is None:
@@ -149,7 +149,7 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
         The perpetual growth rate (g).
     tax_adjustment_factor : float, default 1.0
         Adjustment factor to account for tax rate changes between explicit period and perpetuity.
-        When marginal tax rate differs from effective tax rate, this adjusts the operating 
+        When marginal tax rate differs from effective tax rate, this adjusts the operating
         profit component of FCF. Factor > 1 when marginal rate < effective rate (tax increase).
 
     Returns
@@ -161,7 +161,7 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
     ------
     CalculationError
         If the rate is $\leq$ growth rate, preventing model convergence.
-        
+
     Notes
     -----
     The tax adjustment factor corrects for the fact that FCF_n was calculated using the
@@ -175,16 +175,16 @@ def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: floa
 
 
 def calculate_fcf_tax_adjustment_factor(
-    effective_tax_rate: float, 
-    marginal_tax_rate: float, 
+    effective_tax_rate: float,
+    marginal_tax_rate: float,
     financials: Company | None = None,
     return_diagnostics: bool = False
 ) -> float | tuple[float, list]:
     r"""
     Calculates the adjustment factor to convert FCF from effective to marginal tax rate.
-    
+
     $$\text{factor} \approx 1 + OM \times (\tau_{eff} - \tau_{marg})$$
-    
+
     Parameters
     ----------
     effective_tax_rate : float
@@ -198,38 +198,38 @@ def calculate_fcf_tax_adjustment_factor(
     return_diagnostics : bool, default False
         If True, returns tuple (factor, diagnostics_list).
         If False, returns just the factor for backward compatibility.
-    
+
     Returns
     -------
     float or tuple[float, list]
         If return_diagnostics is False: Tax adjustment factor.
         If return_diagnostics is True: (factor, list of DiagnosticEvent objects).
-        
+
         Factor interpretation:
         - Factor = 1.0 when rates are equal (no adjustment needed)
         - Factor < 1.0 when marginal > effective (tax goes up, FCF goes down)
         - Factor > 1.0 when marginal < effective (tax goes down, FCF goes up)
-    
+
     Notes
     -----
     FCF = NOPAT + DA - CapEx - ΔNWC where NOPAT = EBIT × (1 - τ).
-    
+
     When tax rate changes, only NOPAT is affected, not non-cash items.
     The operating margin represents what portion of FCF is tax-sensitive.
-    
+
     Operating Margin Calculation Priority:
     1. Real margin from financials: EBIT_TTM / Revenue_TTM
     2. Fallback: 15% (conservative estimate for mature companies)
-    
+
     A diagnostic warning is generated when fallback is used, indicating that
     real company data was unavailable from the data provider.
-    
+
     Example:
     - Effective rate: 15% (with temporary credits)
     - Marginal rate: 25% (legal rate)
     - Operating margin: 18% (calculated from financials)
     - Factor ≈ 1 + 0.18 × (0.15 - 0.25) = 1 - 0.018 = 0.982 (1.8% reduction)
-    
+
     The real margin provides more accurate adjustments than the previous
     fixed 20% assumption. Users should still consider inputting normalized
     FCF that already reflects the marginal tax rate for maximum precision.
@@ -238,21 +238,21 @@ def calculate_fcf_tax_adjustment_factor(
         if return_diagnostics:
             return 1.0, []
         return 1.0
-    
+
     # Calculate real operating margin from financials if available
     operating_margin = 0.15  # Default fallback: conservative 15%
     diagnostics_list = []
     used_fallback = False
     ebit_available = False
     revenue_available = False
-    
+
     if financials is not None:
         ebit_ttm = getattr(financials, "ebit_ttm", None)
         revenue_ttm = getattr(financials, "revenue_ttm", None)
-        
+
         ebit_available = ebit_ttm is not None and ebit_ttm != 0
         revenue_available = revenue_ttm is not None and revenue_ttm != 0
-        
+
         if ebit_available and revenue_available and revenue_ttm > 0:
             # Use real operating margin
             operating_margin = ebit_ttm / revenue_ttm
@@ -264,7 +264,7 @@ def calculate_fcf_tax_adjustment_factor(
     else:
         # No financials provided - use fallback
         used_fallback = True
-    
+
     # Create diagnostic if fallback was used
     if used_fallback:
         diagnostics_list.append(
@@ -274,14 +274,14 @@ def calculate_fcf_tax_adjustment_factor(
                 revenue_available=revenue_available,
             )
         )
-    
+
     # Calculate adjustment factor
     tax_delta = effective_tax_rate - marginal_tax_rate
     adjustment = 1.0 + (operating_margin * tax_delta)
-    
+
     # Clamp to reasonable bounds (±50% adjustment maximum)
     final_factor = max(0.5, min(1.5, adjustment))
-    
+
     if return_diagnostics:
         return final_factor, diagnostics_list
     return final_factor
@@ -502,33 +502,33 @@ def apply_dilution_adjustment(price: float, dilution_factor: float) -> float:
 def convert_de_to_dcap(debt_equity_ratio: float) -> tuple[float, float]:
     r"""
     Converts Debt-to-Equity ratio (D/E) to capital structure weights.
-    
+
     $$w_e = \frac{1}{1 + D/E}, \quad w_d = \frac{D/E}{1 + D/E}$$
-    
+
     Parameters
     ----------
     debt_equity_ratio : float
         Debt-to-Equity ratio (D/E). Must be non-negative.
-        
+
     Returns
     -------
     tuple[float, float]
         (weight_equity, weight_debt) where weights sum to 1.0
-        
+
     Examples
     --------
     >>> convert_de_to_dcap(0.5)  # 50% debt / 100% equity
     (0.6667, 0.3333)  # 66.7% equity, 33.3% debt in capital
-    
+
     >>> convert_de_to_dcap(1.0)  # 100% debt / 100% equity
     (0.5, 0.5)  # 50% equity, 50% debt in capital
-    
+
     >>> convert_de_to_dcap(0.25)  # 25% debt / 100% equity
     (0.8, 0.2)  # 80% equity, 20% debt in capital
     """
     if debt_equity_ratio < 0:
         raise ValueError(f"D/E ratio must be non-negative, got {debt_equity_ratio}")
-    
+
     we = 1.0 / (1.0 + debt_equity_ratio)
     wd = debt_equity_ratio / (1.0 + debt_equity_ratio)
     return we, wd
@@ -537,33 +537,33 @@ def convert_de_to_dcap(debt_equity_ratio: float) -> tuple[float, float]:
 def convert_dcap_to_de(weight_debt: float) -> float:
     r"""
     Converts capital structure weight (D/Cap) to Debt-to-Equity ratio (D/E).
-    
+
     $$D/E = \frac{w_d}{1 - w_d}$$
-    
+
     Parameters
     ----------
     weight_debt : float
         Proportion of debt in capital structure. Must be in [0, 1).
-        
+
     Returns
     -------
     float
         Debt-to-Equity ratio (D/E)
-        
+
     Examples
     --------
     >>> convert_dcap_to_de(0.3333)  # 33.3% debt in capital
     0.5  # D/E = 0.5 (50% debt / 100% equity)
-    
+
     >>> convert_dcap_to_de(0.5)  # 50% debt in capital
     1.0  # D/E = 1.0 (100% debt / 100% equity)
-    
+
     >>> convert_dcap_to_de(0.2)  # 20% debt in capital
     0.25  # D/E = 0.25 (25% debt / 100% equity)
     """
     if weight_debt < 0 or weight_debt >= 1.0:
         raise ValueError(f"Debt weight must be in [0, 1), got {weight_debt}")
-    
+
     return weight_debt / (1.0 - weight_debt)
 
 
@@ -783,19 +783,19 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
     -------
     WACCBreakdown
         Full technical decomposition for audit and rendering.
-        
+
     Notes
     -----
     This function integrates two advanced features:
-    
+
     1. **Hamada Beta Adjustment**: When `target_debt_equity_ratio` is specified,
        the function unlevers the observed beta to asset beta, then relevers it
        to the target capital structure using the Hamada formula.
-       
+
     2. **Marginal Tax Convergence**: When `use_marginal_tax=True`, applies the
        long-term marginal tax rate instead of effective tax rate, ensuring
        terminal value assumptions reflect normalized perpetuity conditions.
-       
+
     The combination ensures that terminal value calculations use both the target
     capital structure (financial risk) and marginal tax rate (fiscal convergence).
     """
@@ -824,7 +824,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
             tax = r.marginal_tax_rate
         else:
             tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
-        
+
         rf = r.risk_free_rate if r.risk_free_rate is not None else MacroDefaults.DEFAULT_RISK_FREE_RATE
 
         if r.cost_of_debt is not None:
@@ -861,24 +861,24 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
         tax = r.marginal_tax_rate
     else:
         tax = r.tax_rate if r.tax_rate is not None else MacroDefaults.DEFAULT_TAX_RATE
-    
+
     # 2. Hamada Beta Adjustment (if target structure specified)
     beta_input = r.beta if r.beta is not None else ModelDefaults.DEFAULT_BETA
     beta_adjusted_flag = False
     beta_used = beta_input
     diagnostics_list = []
-    
+
     target_de_ratio = c.target_debt_equity_ratio if c.target_debt_equity_ratio is not None else None
-    
+
     if target_de_ratio is not None and target_de_ratio > 0:
         # Apply Hamada adjustment: unlever observed beta, then relever to target
         debt = c.total_debt if c.total_debt is not None else 0.0
         shares = c.shares_outstanding if c.shares_outstanding is not None else 1.0
         market_equity = financials.current_price * shares
-        
+
         # Current D/E ratio
         current_de_ratio = (debt / market_equity) if market_equity > 0 else 0.0
-        
+
         # Only adjust if target differs meaningfully from current
         # Threshold prevents noise from minor differences (e.g., 0.249 vs 0.251)
         threshold = ModelDefaults.BETA_ADJUSTMENT_THRESHOLD  # 5% difference

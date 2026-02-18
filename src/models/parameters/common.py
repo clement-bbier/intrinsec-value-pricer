@@ -132,19 +132,19 @@ class CapitalStructureParameters(BaseNormalizedModel):
     annual_dilution_rate : float | None
         Expected annual increase in share count due to SBC (Stock-Based Compensation).
     target_debt_equity_ratio : float | None
-        Target Debt-to-Equity ratio (D/E) for Hamada beta adjustment and optimal 
+        Target Debt-to-Equity ratio (D/E) for Hamada beta adjustment and optimal
         capital structure. This is expressed as D/E, NOT D/(D+E).
-        
+
         Examples
         --------
         - D/E = 0.50 → 50% debt / 100% equity → 33.3% debt in capital structure
         - D/E = 1.00 → 100% debt / 100% equity → 50% debt in capital structure
         - D/E = 0.25 → 25% debt / 100% equity → 20% debt in capital structure
-        
+
         The system automatically converts D/E to capital structure weights:
         - Weight of Equity: we = 1 / (1 + D/E)
         - Weight of Debt: wd = (D/E) / (1 + D/E)
-        
+
         When provided, the WACC calculation will adjust beta to reflect the target
         leverage using the Hamada formula. Beta adjustment only occurs if the
         target structure differs from current structure by more than 5% to avoid
