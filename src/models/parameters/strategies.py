@@ -57,9 +57,7 @@ class BaseProjectedParameters(BaseNormalizedModel):
     """
 
     projection_years: Annotated[int | None, UIKey(UIKeys.YEARS, scale="raw")] = Field(None, ge=1, le=50)
-    high_growth_period: Annotated[int | None, UIKey(UIKeys.HIGH_GROWTH_YEARS, scale="raw")] = Field(
-        None, ge=0, le=50
-    )
+    high_growth_period: Annotated[int | None, UIKey(UIKeys.HIGH_GROWTH_YEARS, scale="raw")] = Field(None, ge=0, le=50)
     manual_growth_vector: Annotated[list[float] | None, UIKey(UIKeys.GROWTH_VECTOR, scale="pct")] = None
     terminal_value: TerminalValueParameters = Field(default_factory=TerminalValueParameters)
 

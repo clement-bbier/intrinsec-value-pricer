@@ -105,7 +105,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                 wcr_source = StrategySources.YAHOO_HISTORICAL
                 logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
             else:
-                logger.info("No WCR ratio provided and no historical data available - no WCR adjustment will be applied")
+                logger.info(
+                    "No WCR ratio provided and no historical data available - no WCR adjustment will be applied"
+                )
         else:
             wcr_source = StrategySources.MANUAL_OVERRIDE
 
@@ -129,7 +131,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             # Add Glass Box step for WCR ratio if used
             if wcr_ratio is not None and wcr_source is not None:
                 wcr_percentage = wcr_ratio * 100
-                wcr_label = "Historical WCR Ratio (Yahoo Finance)" if wcr_source == StrategySources.YAHOO_HISTORICAL else "WCR Ratio (User Input)"
+                wcr_label = (
+                    "Historical WCR Ratio (Yahoo Finance)"
+                    if wcr_source == StrategySources.YAHOO_HISTORICAL
+                    else "WCR Ratio (User Input)"
+                )
                 steps.append(
                     CalculationStep(
                         step_key="WCR_RATIO",
@@ -144,8 +150,10 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                                 symbol="WCR/Rev",
                                 value=wcr_ratio,
                                 formatted_value=f"{wcr_percentage:.2f}%",
-                                source=VariableSource.MANUAL_OVERRIDE if wcr_source == StrategySources.MANUAL_OVERRIDE else VariableSource.YAHOO_HISTORICAL,
-                                description="Working Capital to Revenue Ratio"
+                                source=VariableSource.MANUAL_OVERRIDE
+                                if wcr_source == StrategySources.MANUAL_OVERRIDE
+                                else VariableSource.YAHOO_HISTORICAL,
+                                description="Working Capital to Revenue Ratio",
                             ),
                         },
                     )
@@ -153,7 +161,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
-            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params, wcr_ratio=wcr_ratio
+            base_revenue=rev_anchor,
+            current_margin=current_margin,
+            target_margin=target_margin,
+            params=params,
+            wcr_ratio=wcr_ratio,
         )
 
         if self._glass_box:

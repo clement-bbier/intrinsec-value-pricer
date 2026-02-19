@@ -171,7 +171,9 @@ class CommonTerminals:
     # ==========================================================================
     # Section 6 : Monte Carlo
     SEC_6_MC = "#### Option : Simulation Probabiliste (Incertitude)"
-    SEC_6_DESC_MC = "Analyse de sensibilité par simulation stochastique de Monte Carlo pour quantifier la dispersion de la valeur."
+    SEC_6_DESC_MC = (
+        "Analyse de sensibilité par simulation stochastique de Monte Carlo pour quantifier la dispersion de la valeur."
+    )
 
     MC_CALIBRATION = "Activer la simulation stochastique"
     MC_ITERATIONS = "Nombre d'itérations"
@@ -204,12 +206,16 @@ class CommonTerminals:
     INP_MANUAL_PEERS = "Tickers des comparables"
     PLACEHOLDER_PEERS = "ex: AAPL, MSFT, GOOGL"
     HELP_MANUAL_PEERS = "Séparez les tickers par une virgule. Les données seront extraites automatiquement."
-    HELP_PEER_TRIANGULATION = "Compare la valeur intrinsèque calculée aux multiples de valorisation de sociétés comparables."
+    HELP_PEER_TRIANGULATION = (
+        "Compare la valeur intrinsèque calculée aux multiples de valorisation de sociétés comparables."
+    )
     PEERS_SELECTED = "*Pairs identifiés pour triangulation : {peers}*"
 
     # Section 8 : Scénarios
     SEC_8_SCENARIOS = "#### Option : Analyse de Scénarios (Convictions)"
-    SEC_8_DESC_SCENARIOS = "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
+    SEC_8_DESC_SCENARIOS = (
+        "Modélisation de variantes stratégiques (Bull/Bear) pour tester la robustesse de vos hypothèses."
+    )
 
     INP_SCENARIO_ENABLE = "Activer l'analyse de scénarios"
     INP_SCENARIO_PROBA = f"Probabilité de réalisation {UNIT_PERCENT}"
@@ -264,7 +270,9 @@ class CommonTerminals:
     LBL_SENS_RANGE = "Profondeur d'analyse (Nombre de pas)"
 
     HELP_SENS_STEP = "Amplitude de chaque saut (ex: 0.005 = 0.5%). Un pas plus petit donne une granularité plus fine."
-    HELP_SENS_RANGE = "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
+    HELP_SENS_RANGE = (
+        "Nombre de colonnes/lignes de part et d'autre de la valeur centrale (ex: 2 signifie -2, -1, 0, +1, +2)."
+    )
 
     # ==========================================================================
     # 7. MÉTHODES DE CALCUL TERMINAL VALUE
@@ -388,7 +396,9 @@ class FCFFNormalizedTexts(CommonTerminals):
 
     LBL_GROWTH_G = f"Taux de croissance (g) {CommonTerminals.UNIT_PERCENT}"
     HELP_GROWTH = "Taux de croissance annuel moyen visé pour le flux normalisé."
-    HELP_GROWTH_OVERRIDE = "Optionnel : Surchargez g pour tester un scénario alternatif. Une vérification de cohérence sera effectuée."
+    HELP_GROWTH_OVERRIDE = (
+        "Optionnel : Surchargez g pour tester un scénario alternatif. Une vérification de cohérence sera effectuée."
+    )
 
     # Formule TV
     FORMULA_TV = r"TV_n = \frac{FCF_{norm}(1+g_n)}{WACC - g_n}"
@@ -465,7 +475,9 @@ class RIMTexts(CommonTerminals):
 
     INP_BASE = f"Valeur Comptable d'Ancrage (Book Value) {CommonTerminals.UNIT_MILLIONS}"
     INP_BV_BASE = f"Valeur Comptable (Book Value) {CommonTerminals.UNIT_MILLIONS}"
-    HELP_BV_BASE = "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
+    HELP_BV_BASE = (
+        "Capitaux propres part du groupe (Equity) au dernier bilan publié. Point de départ de la valorisation."
+    )
 
     INP_NI_TTM = f"Résultat Net Normatif {CommonTerminals.UNIT_MILLIONS}"
     HELP_NI_TTM = "Bénéfice net récurrent (Net Income) servant à déterminer le profit résiduel initial."
@@ -522,7 +534,9 @@ class GrahamTexts(CommonTerminals):
 
     INP_GROWTH = f"Croissance Attendue (g) {CommonTerminals.UNIT_PERCENT}"
     INP_GROWTH_G = f"Croissance attendue g {CommonTerminals.UNIT_PERCENT}"
-    HELP_GROWTH_LT = "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
+    HELP_GROWTH_LT = (
+        "Taux de croissance annuel moyen estimé pour les 7 à 10 prochaines années (doit rester conservateur)."
+    )
 
     # Étape 2 : Conditions de Marché
     STEP_2_TITLE = "#### Étape 2 : Conditions de Marché"
@@ -555,7 +569,9 @@ class FCFETexts(CommonTerminals):
     STEP_1_FORMULA = r"FCFE = \text{Résultat Net} + DA - \Delta BFR - CapEx + \Delta \text{Endettement Net}"
 
     INP_BASE = f"Flux FCFE d'ancrage {CommonTerminals.UNIT_MILLIONS}"
-    HELP_FCFE_BASE = "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
+    HELP_FCFE_BASE = (
+        "Flux de trésorerie disponible pour les actionnaires après réinvestissement et service de la dette."
+    )
 
     INP_NET_BORROWING = f"Variation Nette de la Dette {CommonTerminals.UNIT_MILLIONS}"
     HELP_NET_BORROWING = "Montant net des nouvelles émissions de dette moins les remboursements de principal."

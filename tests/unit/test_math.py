@@ -591,7 +591,7 @@ class TestCalculateWACC:
         capital = CapitalStructureParameters(
             total_debt=5000.0,
             shares_outstanding=1000.0,
-            target_debt_equity_ratio=0.4286  # D/E ratio (not percentage)
+            target_debt_equity_ratio=0.4286,  # D/E ratio (not percentage)
         )
         common = CommonParameters(rates=rates, capital=capital)
 
@@ -632,6 +632,7 @@ class TestCalculateWACC:
 
         # Verify method uses i18n constant
         from src.i18n import StrategySources
+
         assert breakdown.method == StrategySources.WACC_TARGET
 
     def test_target_debt_to_capital_with_wacc_override(self):

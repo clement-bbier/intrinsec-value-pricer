@@ -136,7 +136,9 @@ class BaseStrategyView(ABC):
 
     def _render_equity_bridge(self) -> None:
         """Renders the Equity Bridge section with context-aware formulas."""
-        formula = CommonTerminals.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else CommonTerminals.FORMULA_BRIDGE
+        formula = (
+            CommonTerminals.FORMULA_BRIDGE_SIMPLE if self.MODE.is_direct_equity else CommonTerminals.FORMULA_BRIDGE
+        )
         widget_equity_bridge(formula, self.MODE)
         st.divider()
 

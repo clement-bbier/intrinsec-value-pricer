@@ -301,10 +301,7 @@ class YahooSnapshotMapper:
         # Return average if we have at least one valid ratio
         if wcr_ratios:
             avg_ratio = sum(wcr_ratios) / len(wcr_ratios)
-            logger.info(
-                f"Calculated historical WCR ratio: {avg_ratio:.4f} "
-                f"({len(wcr_ratios)} years available)"
-            )
+            logger.info(f"Calculated historical WCR ratio: {avg_ratio:.4f} ({len(wcr_ratios)} years available)")
             return avg_ratio
 
         logger.warning("Insufficient data to calculate historical WCR ratio")

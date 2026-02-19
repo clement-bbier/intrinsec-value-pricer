@@ -189,7 +189,7 @@ def test_dcf_library_revenue_model_manual_vector_precedence():
     manual_vector = [0.20, 0.18, 0.16, 0.14, 0.12]
     current_rev = base_revenue
     for i, g in enumerate(manual_vector):
-        current_rev *= (1 + g)
+        current_rev *= 1 + g
         assert revenues[i] == pytest.approx(current_rev, rel=1e-9)
 
 
@@ -198,7 +198,7 @@ def test_dcf_library_simple_with_ddm_parameters():
     Test that fade works with DDM parameters (growth_rate instead of growth_rate_p1).
     """
     params = Mock()
-    strategy = Mock(spec=['growth_rate', 'projection_years', 'high_growth_period', 'terminal_value'])
+    strategy = Mock(spec=["growth_rate", "projection_years", "high_growth_period", "terminal_value"])
     # DDM uses 'growth_rate' instead of 'growth_rate_p1'
     # By using spec, growth_rate_p1 won't exist at all
     strategy.growth_rate = 0.08

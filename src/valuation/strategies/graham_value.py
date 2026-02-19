@@ -97,7 +97,11 @@ class GrahamNumberStrategy(IValuationRunner):
 
         # Yield: Critical part of the 1974 formula
         # Priority: Strategy Input (yield_aaa) > Common Rates > Default
-        aaa_yield = s.yield_aaa if s.yield_aaa is not None else (r.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD)
+        aaa_yield = (
+            s.yield_aaa
+            if s.yield_aaa is not None
+            else (r.corporate_aaa_yield or MacroDefaults.DEFAULT_CORPORATE_AAA_YIELD)
+        )
 
         # 2. Multiplier Calculation (M = 8.5 + 2*g)
         # Computed here for the "Graham Multiplier" audit KPI

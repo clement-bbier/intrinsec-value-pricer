@@ -158,13 +158,39 @@ class FundamentalFCFFStrategy(IValuationRunner):
                                 theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
                                 actual_calculation=f"g_derived={g_derived:.2%} vs g_override={user_growth:.2%} (Δ={diff:.2%})",
                                 result=user_growth,
-                                interpretation=StrategyInterpretations.GROWTH_WARNING.format(g_derived=g_derived, g_user=user_growth),
+                                interpretation=StrategyInterpretations.GROWTH_WARNING.format(
+                                    g_derived=g_derived, g_user=user_growth
+                                ),
                                 source=StrategySources.MANUAL_OVERRIDE,
                                 variables_map={
-                                    "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
-                                    "RR": VariableInfo(symbol="RR", value=reinvestment_rate, formatted_value=f"{reinvestment_rate:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Reinvestment Rate"),
-                                    "g_derived": VariableInfo(symbol="g_calc", value=g_derived, formatted_value=f"{g_derived:.2%}", source=VariableSource.CALCULATED, description="Calculated Growth Rate"),
-                                    "g_override": VariableInfo(symbol="g_override", value=user_growth, formatted_value=f"{user_growth:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Manual Growth Override"),
+                                    "ROIC": VariableInfo(
+                                        symbol="ROIC",
+                                        value=roic,
+                                        formatted_value=f"{roic:.2%}",
+                                        source=VariableSource.MANUAL_OVERRIDE,
+                                        description="Return on Invested Capital",
+                                    ),
+                                    "RR": VariableInfo(
+                                        symbol="RR",
+                                        value=reinvestment_rate,
+                                        formatted_value=f"{reinvestment_rate:.2%}",
+                                        source=VariableSource.MANUAL_OVERRIDE,
+                                        description="Reinvestment Rate",
+                                    ),
+                                    "g_derived": VariableInfo(
+                                        symbol="g_calc",
+                                        value=g_derived,
+                                        formatted_value=f"{g_derived:.2%}",
+                                        source=VariableSource.CALCULATED,
+                                        description="Calculated Growth Rate",
+                                    ),
+                                    "g_override": VariableInfo(
+                                        symbol="g_override",
+                                        value=user_growth,
+                                        formatted_value=f"{user_growth:.2%}",
+                                        source=VariableSource.MANUAL_OVERRIDE,
+                                        description="Manual Growth Override",
+                                    ),
                                 },
                             )
                         )
@@ -183,12 +209,32 @@ class FundamentalFCFFStrategy(IValuationRunner):
                         theoretical_formula=r"g = ROIC \times \text{Taux de Réinvestissement}",
                         actual_calculation=f"g = {roic:.2%} × {reinvestment_rate:.2%} = {g_derived:.2%}",
                         result=g_derived,
-                        interpretation=StrategyInterpretations.GROWTH_INTERPRETATION.format(roic=roic, reinvestment_rate=reinvestment_rate),
+                        interpretation=StrategyInterpretations.GROWTH_INTERPRETATION.format(
+                            roic=roic, reinvestment_rate=reinvestment_rate
+                        ),
                         source=StrategySources.COMPUTED_VALUE_DRIVERS,
                         variables_map={
-                            "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Return on Invested Capital"),
-                            "RR": VariableInfo(symbol="RR", value=reinvestment_rate, formatted_value=f"{reinvestment_rate:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Reinvestment Rate"),
-                            "g": VariableInfo(symbol="g", value=g_derived, formatted_value=f"{g_derived:.2%}", source=VariableSource.CALCULATED, description="Derived Growth Rate"),
+                            "ROIC": VariableInfo(
+                                symbol="ROIC",
+                                value=roic,
+                                formatted_value=f"{roic:.2%}",
+                                source=VariableSource.MANUAL_OVERRIDE,
+                                description="Return on Invested Capital",
+                            ),
+                            "RR": VariableInfo(
+                                symbol="RR",
+                                value=reinvestment_rate,
+                                formatted_value=f"{reinvestment_rate:.2%}",
+                                source=VariableSource.MANUAL_OVERRIDE,
+                                description="Reinvestment Rate",
+                            ),
+                            "g": VariableInfo(
+                                symbol="g",
+                                value=g_derived,
+                                formatted_value=f"{g_derived:.2%}",
+                                source=VariableSource.CALCULATED,
+                                description="Derived Growth Rate",
+                            ),
                         },
                     )
                 )

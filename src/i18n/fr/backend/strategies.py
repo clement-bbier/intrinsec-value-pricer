@@ -121,7 +121,9 @@ class StrategyInterpretations:
     FUND_NORM = "Le modèle utilise un flux lisse sur un cycle complet."
     FUND_VIABILITY = "Validation de la capacité à générer des flux positifs sur un cycle."
     GROWTH_CONSISTENCY_CHECK = "Vérification de Cohérence (g)"
-    GROWTH_WARNING = "Écart détecté entre g calculé ({g_derived:.2%}) et g manuel ({g_user:.2%}). Utilisation de g manuel."
+    GROWTH_WARNING = (
+        "Écart détecté entre g calculé ({g_derived:.2%}) et g manuel ({g_user:.2%}). Utilisation de g manuel."
+    )
     GROWTH_CALCULATION = "Calcul de la Croissance (Drivers de Valeur)"
     GROWTH_INTERPRETATION = "Croissance dérivée des fondamentaux: ROIC de {roic:.1%} multiplié par taux de réinvestissement de {reinvestment_rate:.1%}"
     GRAHAM_EPS = "Bénéfice par action utilisé comme socle de rentabilité."
@@ -147,7 +149,9 @@ class StrategyInterpretations:
         r"La dilution annuelle (SBC) réduit la part des actionnaires existants"
         r" de {pct} sur l'horizon de projection."
     )
-    SBC_EXPENSE_NO_DILUTION = "Valeur intrinsèque finale par action (SBC traité en dépense, pas d'ajustement de dilution)."
+    SBC_EXPENSE_NO_DILUTION = (
+        "Valeur intrinsèque finale par action (SBC traité en dépense, pas d'ajustement de dilution)."
+    )
     IV_PER_SHARE_FINAL = "Valeur intrinsèque finale par action."
     SBC_EXPENSE_DESC = "Dépense annuelle SBC (déduite des flux)"
 
