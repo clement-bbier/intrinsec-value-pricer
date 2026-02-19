@@ -312,6 +312,7 @@ class TestExtractionConstants:
         assert len(DEBT_KEYS) > 0
         assert "Total Debt" in DEBT_KEYS
 
+
 class TestYahooSnapshotMapperWCR:
     """Test suite for YahooSnapshotMapper WCR calculation."""
 
@@ -326,22 +327,20 @@ class TestYahooSnapshotMapperWCR:
         # Index = metric names, Columns = years (0 = most recent)
         bs_data = {
             0: [1000, 500, 300],  # Most recent: Inventory, Receivables, Payables
-            1: [900, 450, 280],   # Previous year
-            2: [800, 400, 250],   # 2 years ago
+            1: [900, 450, 280],  # Previous year
+            2: [800, 400, 250],  # 2 years ago
         }
         bs = pd.DataFrame(bs_data, index=["Inventory", "Accounts Receivable", "Accounts Payable"])
 
         # Create mock income statement with 3 years of revenue
         income_data = {
             0: [10000],  # Most recent
-            1: [9000],   # Previous year
-            2: [8000],   # 2 years ago
+            1: [9000],  # Previous year
+            2: [8000],  # 2 years ago
         }
         income_stmt = pd.DataFrame(income_data, index=["Total Revenue"])
 
-        raw = RawFinancialData(
-            ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True
-        )
+        raw = RawFinancialData(ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True)
 
         # Calculate
         result = mapper._calculate_historical_wcr_ratio(raw)
@@ -395,9 +394,7 @@ class TestYahooSnapshotMapperWCR:
         }
         income_stmt = pd.DataFrame(income_data, index=["Total Revenue"])
 
-        raw = RawFinancialData(
-            ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True
-        )
+        raw = RawFinancialData(ticker="TEST", balance_sheet=bs, income_stmt=income_stmt, is_valid=True)
 
         result = mapper._calculate_historical_wcr_ratio(raw)
 

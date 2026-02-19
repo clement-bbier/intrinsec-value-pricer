@@ -100,7 +100,7 @@ def test_fade_transition_immediate_fade_from_year_one():
 
     current_flow = base_flow
     for i, expected_g in enumerate(expected_growth_rates):
-        current_flow *= (1 + expected_g)
+        current_flow *= 1 + expected_g
         assert flows[i] == pytest.approx(current_flow, abs=1e-6)
 
 
@@ -142,7 +142,7 @@ def test_fade_maintains_cash_flow_continuity():
 
     # All flows should be increasing (positive growth)
     for i in range(1, len(flows)):
-        assert flows[i] > flows[i - 1], f"Flow {i} should be > flow {i-1}"
+        assert flows[i] > flows[i - 1], f"Flow {i} should be > flow {i - 1}"
 
     # No sudden jumps at transition point
     growth_before_transition = (flows[4] / flows[3]) - 1
@@ -203,12 +203,12 @@ def test_fade_mathematical_correctness():
             alpha = step_in_fade / years_remaining
             g = g_start * (1 - alpha) + g_term * alpha
 
-        current *= (1 + g)
+        current *= 1 + g
         expected_flows.append(current)
 
     # Compare with actual flows
     for i, (actual, expected) in enumerate(zip(flows, expected_flows)):
-        assert actual == pytest.approx(expected, rel=1e-9), f"Year {i+1} mismatch"
+        assert actual == pytest.approx(expected, rel=1e-9), f"Year {i + 1} mismatch"
 
 
 # ============================================================================

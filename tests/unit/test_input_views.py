@@ -208,4 +208,3 @@ class TestSidebarRendering:
 # =============================================================================
 
 # Note: render_footer tests removed as the function no longer exists in app.main
-

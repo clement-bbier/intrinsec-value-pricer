@@ -276,7 +276,11 @@ class DCFLibrary:
 
     @staticmethod
     def project_flows_revenue_model(
-        base_revenue: float, current_margin: float, target_margin: float, params: Parameters, wcr_ratio: float | None = None
+        base_revenue: float,
+        current_margin: float,
+        target_margin: float,
+        params: Parameters,
+        wcr_ratio: float | None = None,
     ) -> tuple[list[float], list[float], list[float], CalculationStep]:
         """
         Projects FCF based on Revenue Growth and Margin Convergence.
@@ -490,7 +494,7 @@ class DCFLibrary:
             tv_discount_rate = discount_rate
             tax_adjustment_factor = 1.0
             tv_diagnostics = []  # Collect diagnostics from TV calculation
-            marginal_tax_rate = getattr(params.common.rates, 'marginal_tax_rate', None)
+            marginal_tax_rate = getattr(params.common.rates, "marginal_tax_rate", None)
 
             if marginal_tax_rate is not None and financials is not None:
                 # Recalculate WACC using marginal tax rate for terminal value
@@ -498,7 +502,7 @@ class DCFLibrary:
                 tv_discount_rate = wacc_tv_breakdown.wacc
 
                 # Collect WACC diagnostics (e.g., beta adjustment skipped)
-                if hasattr(wacc_tv_breakdown, 'diagnostics') and wacc_tv_breakdown.diagnostics:
+                if hasattr(wacc_tv_breakdown, "diagnostics") and wacc_tv_breakdown.diagnostics:
                     tv_diagnostics.extend(wacc_tv_breakdown.diagnostics)
 
                 # Calculate tax adjustment factor for FCF
@@ -511,7 +515,7 @@ class DCFLibrary:
                         effective_tax_rate=effective_tax_rate,
                         marginal_tax_rate=marginal_tax_rate,
                         financials=financials,  # Pass financials for real margin calculation
-                        return_diagnostics=True
+                        return_diagnostics=True,
                     )
                     # Collect FCF adjustment diagnostics (e.g., margin fallback used)
                     if fcf_diagnostics:
@@ -777,6 +781,7 @@ class DCFLibrary:
 
         # Skip dilution adjustment if SBC treatment is EXPENSE (avoid double counting)
         from src.models.enums import SBCTreatment
+
         if sbc_treatment == SBCTreatment.EXPENSE.value:
             step = CalculationStep(
                 step_key="VALUE_PER_SHARE",

@@ -533,9 +533,7 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_results_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_results
-    ):
+    def test_main_results_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_results):
         """main() with last_result should render valuation results."""
         from app.main import main
 
@@ -554,9 +552,7 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_auto_mode_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_auto
-    ):
+    def test_main_auto_mode_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_auto):
         """main() in auto mode should render auto form."""
         from app.main import main
 
@@ -576,9 +572,7 @@ class TestMainFullFlow:
     @patch("app.main.get_state")
     @patch("app.main.SessionManager")
     @patch("app.main.st")
-    def test_main_expert_mode_path(
-        self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_expert
-    ):
+    def test_main_expert_mode_path(self, mock_st, mock_sm, mock_get_state, mock_inject, mock_sidebar, mock_expert):
         """main() in expert mode should render expert form."""
         from app.main import main
 

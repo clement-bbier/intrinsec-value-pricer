@@ -105,10 +105,9 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                 wcr_source = StrategySources.YAHOO_HISTORICAL
                 logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
             else:
-                # Ultimate fallback to system default
-                wcr_ratio = float(ModelDefaults.DEFAULT_WCR_RATIO)
-                wcr_source = StrategySources.SYSTEM
-                logger.info(f"Using default WCR ratio: {wcr_ratio:.4f} (no historical data available)")
+                logger.info(
+                    "No WCR ratio provided and no historical data available - no WCR adjustment will be applied"
+                )
         else:
             wcr_ratio = float(wcr_ratio)
             wcr_source = StrategySources.MANUAL_OVERRIDE
@@ -168,7 +167,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
 
         # --- STEP 3: Projection ---
         flows, revenues, margins, step_proj = DCFLibrary.project_flows_revenue_model(
-            base_revenue=rev_anchor, current_margin=current_margin, target_margin=target_margin, params=params, wcr_ratio=wcr_ratio
+            base_revenue=rev_anchor,
+            current_margin=current_margin,
+            target_margin=target_margin,
+            params=params,
+            wcr_ratio=wcr_ratio,
         )
 
         if self._glass_box:

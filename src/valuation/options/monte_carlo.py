@@ -90,7 +90,11 @@ class MonteCarloRunner:
         # -----------------------------------------------------------
 
         # Determine if the strategy is a Direct Equity model (DDM, FCFE, RIM)
-        is_direct_equity = hasattr(params.strategy, "mode") and hasattr(params.strategy.mode, "is_direct_equity") and params.strategy.mode.is_direct_equity
+        is_direct_equity = (
+            hasattr(params.strategy, "mode")
+            and hasattr(params.strategy.mode, "is_direct_equity")
+            and params.strategy.mode.is_direct_equity
+        )
 
         # 2. Generate Stochastic Vectors (NumPy)
         # --------------------------------------
@@ -192,11 +196,7 @@ class MonteCarloRunner:
                 anchor_val = dps * shares
         # RIM / Graham: anchor is EPS
         if anchor_val is None:
-            anchor_val = (
-                getattr(st, "eps_anchor", None)
-                or getattr(st, "eps_normalized", None)
-                or 100.0
-            )
+            anchor_val = getattr(st, "eps_anchor", None) or getattr(st, "eps_normalized", None) or 100.0
         base_flows = anchor_val * base_flow_mults
 
         return {"beta": betas, "growth": growths, "terminal_growth": term_growths, "base_flow": base_flows}

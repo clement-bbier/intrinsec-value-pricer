@@ -277,8 +277,7 @@ def test_value_per_share_sbc_expense_no_dilution(mock_params_with_sbc_expense):
 
     # Check step interpretation mentions SBC treated as expense (French or English)
     interpretation_lower = step.interpretation.lower()
-    assert ("sbc" in interpretation_lower and ("dépense" in interpretation_lower or "expense" in interpretation_lower))
-
+    assert "sbc" in interpretation_lower and ("dépense" in interpretation_lower or "expense" in interpretation_lower)
 
 
 def test_value_per_share_sbc_dilution_applies_adjustment(mock_params_with_sbc_dilution):

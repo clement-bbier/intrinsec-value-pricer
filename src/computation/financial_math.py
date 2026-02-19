@@ -80,7 +80,7 @@ class WACCBreakdown:
     def __post_init__(self):
         """Initialize diagnostics list if None (for backward compatibility)."""
         if self.diagnostics is None:
-            object.__setattr__(self, 'diagnostics', [])
+            object.__setattr__(self, "diagnostics", [])
 
 
 # ==============================================================================
@@ -138,7 +138,9 @@ def calculate_npv(flows: list[float], rate: float) -> float:
     return sum(f * d for f, d in zip(flows, factors))
 
 
-def calculate_terminal_value_gordon(final_flow: float, rate: float, g_perp: float, tax_adjustment_factor: float = 1.0) -> float:
+def calculate_terminal_value_gordon(
+    final_flow: float, rate: float, g_perp: float, tax_adjustment_factor: float = 1.0
+) -> float:
     r"""
     Estimates Terminal Value using the Gordon Growth Model (Perpetuity).
 
@@ -184,26 +186,21 @@ def calculate_fcf_tax_adjustment_factor(
     effective_tax_rate: float,
     marginal_tax_rate: float,
     financials: Company | None = None,
-    return_diagnostics: Literal[False] = False
-) -> float:
-    ...
+    return_diagnostics: Literal[False] = False,
+) -> float: ...
 
 
 @overload
 def calculate_fcf_tax_adjustment_factor(
-    effective_tax_rate: float,
-    marginal_tax_rate: float,
-    financials: Company | None,
-    return_diagnostics: Literal[True]
-) -> tuple[float, list]:
-    ...
+    effective_tax_rate: float, marginal_tax_rate: float, financials: Company | None, return_diagnostics: Literal[True]
+) -> tuple[float, list]: ...
 
 
 def calculate_fcf_tax_adjustment_factor(
     effective_tax_rate: float,
     marginal_tax_rate: float,
     financials: Company | None = None,
-    return_diagnostics: bool = False
+    return_diagnostics: bool = False,
 ) -> float | tuple[float, list]:
     r"""
     Calculates the adjustment factor to convert FCF from effective to marginal tax rate.
@@ -1104,9 +1101,7 @@ def _calculate_wacc_internal(financials: Company, params: Parameters, use_margin
             # Threshold not met - create diagnostic to inform user
             diagnostics_list.append(
                 DiagnosticRegistry.beta_adjustment_skipped_threshold(
-                    current_de=current_de_ratio,
-                    target_de=target_de_ratio,
-                    threshold=threshold
+                    current_de=current_de_ratio, target_de=target_de_ratio, threshold=threshold
                 )
             )
 

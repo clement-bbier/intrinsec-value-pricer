@@ -46,9 +46,7 @@ class TestFundamentalFCFFStrategy:
     @pytest.fixture
     def basic_params(self):
         """Create basic Fundamental FCFF parameters."""
-        strategy = FCFFNormalizedParameters(
-            fcf_norm=95000.0, projection_years=5, roic=15.0, reinvestment_rate=30.0
-        )
+        strategy = FCFFNormalizedParameters(fcf_norm=95000.0, projection_years=5, roic=15.0, reinvestment_rate=30.0)
         common = CommonParameters(
             rates=FinancialRatesParameters(risk_free_rate=0.04, market_risk_premium=0.05, beta=1.2, tax_rate=0.21),
             capital=CapitalStructureParameters(
@@ -494,7 +492,9 @@ class TestFundamentalFCFFStrategy:
                 shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
             ),
         )
-        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+        params = Parameters(
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
+        )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
@@ -551,7 +551,9 @@ class TestFundamentalFCFFStrategy:
                 shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
             ),
         )
-        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+        params = Parameters(
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
+        )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)
@@ -602,7 +604,9 @@ class TestFundamentalFCFFStrategy:
                 shares_outstanding=16000.0, total_debt=120000.0, cash_and_equivalents=50000.0
             ),
         )
-        params = Parameters(structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common)
+        params = Parameters(
+            structure=Company(ticker="AAPL", name="Apple Inc."), strategy=strategy_params, common=common
+        )
 
         # Setup mocks
         mock_rate.return_value = (0.08, mock_wacc_step)

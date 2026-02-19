@@ -224,6 +224,7 @@ def widget_terminal_value_dcf(mode: ValuationMethodology, key_prefix: str) -> No
         )
     st.divider()
 
+
 def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
     """Renders RIM specific terminal value (Persistence)."""
     st.markdown(CommonTerminals.STEP_4_TITLE)
@@ -238,6 +239,7 @@ def widget_terminal_value_rim(formula_latex: str, key_prefix: str) -> None:
         key=f"{key_prefix}_{UIKeys.OMEGA}",
     )
     st.divider()
+
 
 # ==============================================================================
 # 4. EQUITY BRIDGE (Section 5)
@@ -301,7 +303,9 @@ def widget_equity_bridge(formula_latex: str, mode: ValuationMethodology) -> None
     sbc_treatment = st.radio(
         CommonTerminals.LBL_SBC_TREATMENT,
         options=["DILUTION", "EXPENSE"],
-        format_func=lambda x: CommonTerminals.RADIO_SBC_DILUTION if x == "DILUTION" else CommonTerminals.RADIO_SBC_EXPENSE,
+        format_func=lambda x: (
+            CommonTerminals.RADIO_SBC_DILUTION if x == "DILUTION" else CommonTerminals.RADIO_SBC_EXPENSE
+        ),
         horizontal=True,
         help=CommonTerminals.HELP_SBC_TREATMENT,
         key=f"{prefix}_{UIKeys.SBC_TREATMENT}",

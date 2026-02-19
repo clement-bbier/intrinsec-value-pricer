@@ -28,8 +28,6 @@ class TestMainStructure:
         assert len(__version__) > 0
 
 
-
-
 class TestPageConfig:
     """Tests the page configuration constants."""
 
