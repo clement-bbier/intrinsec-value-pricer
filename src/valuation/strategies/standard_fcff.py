@@ -16,7 +16,7 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config
 from src.config.constants import ModelDefaults
@@ -224,11 +224,16 @@ class StandardFCFFStrategy(IValuationRunner):
         # TV = FCF_n * (1 + g_n) / (wacc - g_n)
         final_flow = projected_flows[:, -1]
 
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        # Get roic_stable from terminal_value parameters
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+
         # Safety guardrail: Ensure wacc > g_n to avoid infinity/negatives
         # We clip the denominator to a small epsilon
         denominator = np.maximum(wacc - g_n, 0.001)
 
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
 
         # Discount TV back to T0: TV / (1 + wacc)^N
         pv_tv = tv_nominal / ((1 + wacc) ** years)

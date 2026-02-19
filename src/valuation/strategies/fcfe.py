@@ -17,10 +17,10 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
-from src.i18n import KPITexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n import KPITexts, ModelTexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
@@ -137,7 +137,7 @@ class FCFEStrategy(IValuationRunner):
                     theoretical_formula="Equity = PV(FCFE) + Cash",
                     actual_calculation=f"{pv_equity:,.0f} + {cash:,.0f}",
                     result=total_equity_value,
-                    interpretation="Adding non-operating cash to operating equity value.",
+                    interpretation=ModelTexts.INTERP_CASH_ADDITION,
                     source=StrategySources.CALCULATED,
                     variables_map={
                         "PV_FCFE": VariableInfo(symbol="PV", value=pv_equity, source=VariableSource.CALCULATED),
@@ -227,10 +227,15 @@ class FCFEStrategy(IValuationRunner):
         discount_factors = 1.0 / ((1 + ke_vec)[:, np.newaxis] ** time_exponents)
         pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
 
-        # 4. Terminal Value
+        # 4. Terminal Value with Golden Rule
         final_flow = projected_flows[:, -1]
+
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+
         denominator = np.maximum(ke_vec - g_n, 0.001)
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + ke_vec) ** years)
 
         # 5. Total Equity Value

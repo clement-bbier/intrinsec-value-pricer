@@ -22,7 +22,7 @@ from src.computation.financial_math import calculate_discount_factors
 
 # Config & i18n
 from src.config.constants import ModelDefaults
-from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n import ModelTexts, RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
@@ -101,7 +101,7 @@ class DividendDiscountStrategy(IValuationRunner):
                             symbol="D_0",
                             value=d0_per_share,
                             source=VariableSource.MANUAL_OVERRIDE if user_div else VariableSource.YAHOO_FINANCE,
-                            description="Dividend Per Share (Base)",
+                            description=ModelTexts.VAR_DESC_DIVIDEND_BASE,
                         ),
                         "Shares": VariableInfo(
                             symbol="Shares",
@@ -267,6 +267,11 @@ class DividendDiscountStrategy(IValuationRunner):
 
         # 4. Vectorized Terminal Value
         # TV = Div_n * (1 + g_n) / (Ke - g_n)
+        #
+        # IMPORTANT: DDM does NOT use the Golden Rule adjustment.
+        # Dividends are already net of reinvestment (companies pay dividends
+        # from free cash after reinvestment). Applying the Golden Rule here
+        # would double-count the reinvestment deduction.
         final_div = projected_divs[:, -1]
 
         # Safety guardrail: Ensure Ke > g_n

@@ -17,10 +17,10 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
-from src.i18n import RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n import ModelTexts, RegistryTexts, StrategyFormulas, StrategyInterpretations, StrategySources
 from src.models.company import Company
 from src.models.enums import ValuationMethodology, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
@@ -163,6 +163,10 @@ class FundamentalFCFFStrategy(IValuationRunner):
                                 ),
                                 source=StrategySources.MANUAL_OVERRIDE,
                                 variables_map={
+                                    "ROIC": VariableInfo(symbol="ROIC", value=roic, formatted_value=f"{roic:.2%}", source=VariableSource.MANUAL_OVERRIDE, description=ModelTexts.VAR_DESC_ROIC),
+                                    "RR": VariableInfo(symbol="RR", value=reinvestment_rate, formatted_value=f"{reinvestment_rate:.2%}", source=VariableSource.MANUAL_OVERRIDE, description="Reinvestment Rate"),
+                                    "g_derived": VariableInfo(symbol="g_calc", value=g_derived, formatted_value=f"{g_derived:.2%}", source=VariableSource.CALCULATED, description="Calculated Growth Rate"),
+                                    "g_override": VariableInfo(symbol="g_override", value=user_growth, formatted_value=f"{user_growth:.2%}", source=VariableSource.MANUAL_OVERRIDE, description=ModelTexts.VAR_DESC_GROWTH_OVERRIDE),
                                     "ROIC": VariableInfo(
                                         symbol="ROIC",
                                         value=roic,
@@ -376,10 +380,15 @@ class FundamentalFCFFStrategy(IValuationRunner):
         discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
         pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
 
-        # 4. Terminal Value
+        # 4. Terminal Value with Golden Rule
         final_flow = projected_flows[:, -1]
+
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+
         denominator = np.maximum(wacc - g_n, 0.001)
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + wacc) ** years)
 
         # 5. Equity Bridge

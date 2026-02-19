@@ -89,6 +89,7 @@ class CommonTerminals:
     INP_GROWTH_G = f"Taux de croissance moyen (g) {UNIT_PERCENT}"
     INP_PERP_G = f"Croissance à l'Infini (g_n) {UNIT_PERCENT}"
     INP_EXIT_MULT = f"Multiple de Sortie (Terminal) {UNIT_MULTIPLE}"
+    INP_ROIC_STABLE = f"ROIC en État Stable {UNIT_PERCENT}"
 
     # Structure du Capital
     INP_DEBT = f"Dette Financière Totale {UNIT_MILLIONS}"
@@ -130,6 +131,7 @@ class CommonTerminals:
     # Sortie (Concepts techniques)
     HELP_PERP_G = "Taux de croissance à l'infini (gn). Doit être ≤ croissance du PIB nominal."
     HELP_EXIT_MULT = "Multiple de référence (EV/EBITDA ou P/E) appliqué au flux terminal."
+    HELP_ROIC_STABLE = "Retour sur Capital Investi en état stable. Applique la 'Règle d'Or' de cohérence entre croissance perpétuelle et réinvestissement requis. Laisser vide pour un calcul conservateur sans ajustement."
 
     # Structure du Capital
     HELP_SHARES = "Nombre total d'actions ordinaires diluées (incluant stock-options exercibles)."
@@ -284,6 +286,8 @@ class CommonTerminals:
     # ==========================================================================
     # 8. DILUTION & SBC
     # ==========================================================================
+    # 8. DILUTION & SBC
+    # ==========================================================================
     LABEL_DILUTION_SBC = "Impact Dilutif (SBC)"
     WARN_SBC_TECH = "Pour les sociétés Tech, prévoyez un taux de 1% à 3% pour refléter la dilution future."
 
@@ -305,6 +309,15 @@ class CommonTerminals:
     WARN_SBC_DOUBLE_COUNT = (
         "⚠️ Mode DÉPENSE actif : L'ajustement de dilution final est désactivé pour éviter le double comptage."
     )
+
+    # ==========================================================================
+    # 8bis. RÈGLE D'OR DE LA VALEUR TERMINALE (GOLDEN RULE)
+    # ==========================================================================
+    GOLDEN_RULE_TITLE = "Règle d'Or - Réinvestissement Normatif"
+    GOLDEN_RULE_EXPLANATION = "Ajustement du flux terminal pour refléter le réinvestissement requis en état stable. La croissance perpétuelle nécessite un réinvestissement proportionnel."
+    GOLDEN_RULE_FORMULA_SHORT = "Taux de réinvestissement = gn / ROIC"
+    GOLDEN_RULE_DETAIL = "Flux ajusté = Flux terminal × (1 - Taux de réinvestissement)"
+    GOLDEN_RULE_NOT_APPLIED = "Règle d'Or non appliquée (ROIC non fourni ou croissance nulle)."
 
     # ==========================================================================
     # 9. MESSAGES D'ERREUR & VALIDATION

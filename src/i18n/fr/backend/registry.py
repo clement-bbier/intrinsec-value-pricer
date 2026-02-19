@@ -162,3 +162,11 @@ class RegistryTexts:
     EBITDA_LABEL = "Multiples EV/EBITDA"
     TRIANG_LABEL = "Synthèse Triangulée"
     PEERS_HYP_LABEL = "Panel de Comparables"
+
+    # WCR (Working Capital Requirement) Labels
+    WCR_LABEL_MANUAL = "Ratio BFR (Saisie Utilisateur)"
+    WCR_LABEL_HISTORICAL = "Ratio BFR Historique (Yahoo Finance)"
+    WCR_LABEL_SYSTEM = "Ratio BFR (Défaut Système)"
+    WCR_CALC_TEMPLATE = "Intensité BFR : {percentage:.2f}%"
+    WCR_INTERP_TEMPLATE = "Le BFR consommera {percentage:.2f}% de chaque augmentation de CA"
+    WCR_DESC = "Ratio Besoin en Fonds de Roulement / Chiffre d'Affaires"

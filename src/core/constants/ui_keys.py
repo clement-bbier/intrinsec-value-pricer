@@ -125,3 +125,4 @@ class UIKeys:
 
     # ── Terminal Value (prefix: strategy mode) ───────────────────────
     TV_METHOD: str = "method"
+    ROIC_STABLE: str = "roic_stable"

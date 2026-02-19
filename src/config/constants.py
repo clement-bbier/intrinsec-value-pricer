@@ -202,6 +202,9 @@ class ModelDefaults:
     DEFAULT_TERMINAL_GROWTH: float = 0.02
     DEFAULT_EXIT_MULTIPLE: float = 15.0
 
+    # Working Capital Requirement
+    DEFAULT_WCR_RATIO: float = 0.15  # 15% of revenue increase consumed by working capital
+
 
 # ==============================================================================
 # 9. VALUATION ENGINES CONSTANTS (STATIC)

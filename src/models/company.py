@@ -127,6 +127,9 @@ class CompanySnapshot(BaseModel):
     revenue_prev: float | None = None
     shares_outstanding_prev: float | None = None
 
+    # --- 6. Performance Ratios (Golden Rule Support) ---
+    roic_ttm: float | None = None  # Return on Invested Capital (Net Income / Invested Capital)
+
     # --- 3. Knowledge Base Fallbacks ---
     sector_pe_fallback: float | None = None
     sector_ev_ebitda_fallback: float | None = None

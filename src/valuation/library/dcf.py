@@ -28,6 +28,7 @@ from src.computation.financial_math import (
     calculate_terminal_value_exit_multiple,
     calculate_terminal_value_gordon,
     calculate_wacc_for_terminal_value,
+    normalize_terminal_flow_for_stable_state,
 )
 from src.computation.flow_projector import project_flows
 
@@ -35,10 +36,101 @@ from src.computation.flow_projector import project_flows
 from src.config.constants import MacroDefaults, ModelDefaults
 from src.core.formatting import format_smart_number
 from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.config.sector_multiples import SECTORS
+from src.core.formatting import format_smart_number
+from src.i18n import RegistryTexts, SharedTexts, StrategyFormulas, StrategyInterpretations, StrategySources
+from src.i18n.fr.backend.models import ModelTexts
 from src.models.company import Company
 from src.models.enums import TerminalValueMethod, VariableSource
 from src.models.glass_box import CalculationStep, VariableInfo
 from src.models.parameters.base_parameter import Parameters
+
+
+def _normalize_sector_name(name: str | None) -> str | None:
+    """
+    Normalize sector/industry name for SECTORS dictionary lookup.
+
+    Converts to lowercase and replaces spaces/hyphens with underscores.
+
+    Parameters
+    ----------
+    name : str | None
+        Raw sector or industry name from data provider.
+
+    Returns
+    -------
+    str | None
+        Normalized name ready for dictionary lookup, or None if input was None/empty.
+
+    Examples
+    --------
+    >>> _normalize_sector_name("Luxury Goods")
+    'luxury_goods'
+    >>> _normalize_sector_name("Software-Application")
+    'software_application'
+    """
+    if not name:
+        return None
+    return name.lower().strip().replace(" ", "_").replace("-", "_")
+
+
+def _get_sector_multiple(
+    financials: Company,
+    strategy_type: str,
+) -> tuple[float | None, str, str]:
+    """
+    Perform hierarchical sector lookup for exit multiple fallback.
+
+    Lookup order: Industry → Sector → default
+
+    Parameters
+    ----------
+    financials : Company
+        Company financial data containing industry and sector classification.
+    strategy_type : str
+        Either "fcff" (uses ev_ebitda) or "equity" (uses pe_ratio).
+
+    Returns
+    -------
+    tuple[float | None, str, str]
+        (multiple_value, lookup_key_used, source_description)
+
+    Notes
+    -----
+    - For FCFF strategies: Returns ev_ebitda from benchmark
+    - For Equity strategies (DDM, FCFE): Returns pe_ratio from benchmark
+    - Fallback chain: Industry → Sector → "default" key
+    """
+    # Normalize names for lookup
+    industry_norm = _normalize_sector_name(financials.industry)
+
+    # Handle sector which might be an enum
+    sector_value = financials.sector
+    sector_str: str | None
+    if hasattr(sector_value, 'value'):
+        sector_str = str(sector_value.value)
+    else:
+        sector_str = str(sector_value) if sector_value else None
+    sector_norm = _normalize_sector_name(sector_str)
+
+    # Hierarchical lookup: Industry → Sector → default
+    lookup_key = None
+    if industry_norm and industry_norm in SECTORS:
+        lookup_key = industry_norm
+    elif sector_norm and sector_norm in SECTORS:
+        lookup_key = sector_norm
+    else:
+        lookup_key = "default"
+
+    benchmark = SECTORS[lookup_key]
+
+    # Select appropriate multiple based on strategy type
+    if strategy_type == "fcff":
+        multiple = benchmark.ev_ebitda
+    else:  # equity strategies (DDM, FCFE)
+        multiple = benchmark.pe_ratio
+
+    return multiple, lookup_key, benchmark.source
 
 
 class DCFLibrary:
@@ -350,6 +442,10 @@ class DCFLibrary:
         """
         Calculates Terminal Value based on Strategy selection.
 
+        Combines:
+        1. Tax Convergence (Agent #34): Adjusts WACC and FCF for marginal tax rate
+        2. Golden Rule: Adjusts FCF for sustainable reinvestment based on ROIC
+
         Parameters
         ----------
         final_flow : float
@@ -381,11 +477,18 @@ class DCFLibrary:
         - Beta adjustment skipped due to 5% threshold
         - Operating margin fallback when EBIT/Revenue data unavailable
         """
+        # Check if strategy has terminal_value attribute (not all strategies do, e.g., GrahamParameters)
+        if not hasattr(params.strategy, 'terminal_value'):
+            raise ValueError(f"Strategy {type(params.strategy).__name__} does not support terminal value calculation")
+
         tv_params = params.strategy.terminal_value
         method = tv_params.method or TerminalValueMethod.GORDON_GROWTH
 
         if method == TerminalValueMethod.GORDON_GROWTH:
             g_perp = tv_params.perpetual_growth_rate or ModelDefaults.DEFAULT_TERMINAL_GROWTH
+            roic_stable = tv_params.roic_stable  # Can be None for Golden Rule
+
+            # Step 1: Tax Convergence - Use marginal tax rate for terminal value WACC if available
 
             # Use marginal tax rate for terminal value WACC if available
             tv_discount_rate = discount_rate
@@ -418,6 +521,74 @@ class DCFLibrary:
                     if fcf_diagnostics:
                         tv_diagnostics.extend(fcf_diagnostics)
 
+            # Step 2: Golden Rule - Normalize terminal flow for sustainable reinvestment
+            adjusted_flow, reinvestment_rate = normalize_terminal_flow_for_stable_state(
+                final_flow, g_perp, roic_stable
+            )
+
+            # Step 3: Calculate terminal value using adjusted flow with tax factor
+            tv = calculate_terminal_value_gordon(adjusted_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
+
+            # Build variables map
+            variables_map = {
+                "g_perp": VariableInfo(
+                    symbol="g",
+                    value=g_perp,
+                    formatted_value=f"{g_perp:.2%}",
+                    source=VariableSource.MANUAL_OVERRIDE,
+                    description=SharedTexts.INP_PERP_G,
+                ),
+                "r": VariableInfo(
+                    symbol="r",
+                    value=tv_discount_rate,
+                    formatted_value=f"{tv_discount_rate:.2%}",
+                    source=VariableSource.CALCULATED,
+                    description="Discount Rate",
+                ),
+            }
+
+            # Add Golden Rule details if adjustment was applied
+            if reinvestment_rate > 0:
+                variables_map["FCF_unadjusted"] = VariableInfo(
+                    symbol="FCF_n",
+                    value=final_flow,
+                    formatted_value=format_smart_number(final_flow),
+                    source=VariableSource.CALCULATED,
+                    description=SharedTexts.LABEL_FCF_BEFORE_ADJUSTMENT,
+                )
+                variables_map["reinvestment_rate"] = VariableInfo(
+                    symbol="reinv",
+                    value=reinvestment_rate,
+                    formatted_value=f"{reinvestment_rate:.2%}",
+                    source=VariableSource.CALCULATED,
+                    description=SharedTexts.LABEL_REINVESTMENT_RATE,
+                )
+                variables_map["ROIC_stable"] = VariableInfo(
+                    symbol="ROIC",
+                    value=roic_stable,
+                    formatted_value=f"{roic_stable:.2%}" if roic_stable else "N/A",
+                    source=VariableSource.MANUAL_OVERRIDE,
+                    description=SharedTexts.LABEL_ROIC_STABLE,
+                )
+                variables_map["FCF_adjusted"] = VariableInfo(
+                    symbol="FCF_adj",
+                    value=adjusted_flow,
+                    formatted_value=format_smart_number(adjusted_flow),
+                    source=VariableSource.CALCULATED,
+                    description=SharedTexts.LABEL_FCF_AFTER_ADJUSTMENT,
+                )
+
+            # Build calculation string to show all adjustments
+            calculation_note = f"({format_smart_number(final_flow)}"
+
+            if reinvestment_rate > 0:
+                calculation_note += f" × (1 - {reinvestment_rate:.2%})"
+
+            calculation_note += f" × (1 + {g_perp:.1%}))"
+
+            if tax_adjustment_factor != 1.0:
+                calculation_note += f" × {tax_adjustment_factor:.4f}"
+
             tv = calculate_terminal_value_gordon(final_flow, tv_discount_rate, g_perp, tax_adjustment_factor)
 
             # Build calculation step with appropriate discount rate
@@ -433,6 +604,7 @@ class DCFLibrary:
                 actual_calculation=calculation_note,
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
+                variables_map=variables_map,
                 variables_map={
                     "g_perp": VariableInfo(
                         symbol="g",
@@ -453,8 +625,63 @@ class DCFLibrary:
             return tv, step, tv_diagnostics
 
         else:  # EXIT_MULTIPLE
-            multiple = tv_params.exit_multiple or ModelDefaults.DEFAULT_EXIT_MULTIPLE
+            tv_diagnostics = []
+            multiple = tv_params.exit_multiple  # User manual override
+
+            if multiple is None:
+                # Fallback to sector benchmark lookup
+                # Determine strategy type to select correct multiple (EV/EBITDA vs P/E)
+                strategy_type = "fcff"  # Default to FCFF
+
+                # Check if this is an equity-based strategy
+                if hasattr(params.strategy, '__class__'):
+                    strategy_class_name = params.strategy.__class__.__name__.lower()
+                    if 'ddm' in strategy_class_name or 'fcfe' in strategy_class_name:
+                        strategy_type = "equity"
+
+                # Perform hierarchical lookup
+                sector_multiple, sector_key, sector_source = _get_sector_multiple(financials, strategy_type)
+
+                if sector_multiple is not None:
+                    multiple = sector_multiple
+
+                    # Add French diagnostic for traceability (Glass Box) - USING i18n
+                    diagnostic_msg = StrategyInterpretations.SECTOR_BENCHMARK_TV.format(
+                        multiple=multiple,
+                        sector=sector_key,
+                        source=sector_source
+                    )
+                    tv_diagnostics.append({
+                        "type": "sector_fallback",
+                        "message": diagnostic_msg,
+                        "multiple": float(multiple),
+                        "sector": sector_key,
+                        "source": sector_source
+                    })
+
+            # Ultimate fallback if sector lookup failed
+            if multiple is None:
+                multiple = ModelDefaults.DEFAULT_EXIT_MULTIPLE
+                # Use i18n for default fallback message
+                diagnostic_msg = StrategyInterpretations.DEFAULT_MULTIPLE_TV.format(
+                    multiple=multiple
+                )
+                tv_diagnostics.append({
+                    "type": "default_fallback",
+                    "message": diagnostic_msg,
+                    "multiple": float(multiple)
+                })
+
+            # Calculate terminal value
             tv = calculate_terminal_value_exit_multiple(final_flow, multiple)
+
+            # Determine variable source and description for traceability
+            if tv_params.exit_multiple is not None:
+                var_source = VariableSource.MANUAL_OVERRIDE
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_MANUAL
+            else:
+                var_source = VariableSource.SYSTEM
+                var_description = ModelTexts.VAR_DESC_EXIT_MULT_SECTOR
 
             step = CalculationStep(
                 step_key="TV_MULTIPLE",
@@ -464,17 +691,17 @@ class DCFLibrary:
                 result=tv,
                 interpretation=StrategyInterpretations.TV,
                 variables_map={
-                    "M": VariableInfo(
+                    "multiple": VariableInfo(
                         symbol="M",
                         value=multiple,
                         formatted_value=f"{multiple:.1f}x",
-                        source=VariableSource.MANUAL_OVERRIDE,
-                        description="Exit Multiple",
+                        source=var_source,
+                        description=var_description,
                     )
                 },
             )
-            # Exit multiple doesn't use marginal tax or beta adjustments, so no diagnostics
-            return tv, step, []
+            return tv, step, []  # No diagnostics for exit multiple method
+            return tv, step, tv_diagnostics
 
     @staticmethod
     def compute_discounting(

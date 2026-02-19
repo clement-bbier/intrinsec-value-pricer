@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added - Golden Rule of Terminal Value
+- **Golden Rule Implementation**: Normalization of terminal flow to ensure consistency between perpetual growth and required reinvestment based on stable-state ROIC
+  - `normalize_terminal_flow_for_stable_state()` function in `src/computation/financial_math.py`
+  - Calculates normative reinvestment rate: `Reinvestment = gn / ROICstable`
+  - Adjusts terminal flow: `FCF_adjusted = FCF_n × (1 - reinvestment_rate)`
+  - Includes comprehensive NumPy-style docstrings
+  - Prevents division by zero with conservative fallback when ROIC is None, zero, or negative
+
+- **DCF Library Integration**: Enhanced `compute_terminal_value()` in `src/valuation/library/dcf.py`
+  - Applies Golden Rule normalization before Gordon-Shapiro formula
+  - Adds detailed calculation steps showing reinvestment adjustment
+  - Maintains full backward compatibility (roic_stable=None preserves existing behavior)
+  - Enriched calculation proof with Golden Rule variables and explanations
+
+- **Parameter Model Updates**:
+  - Added `roic_stable` field to `TerminalValueParameters` (optional, default=None)
+  - Added `ROIC_STABLE` UI key to constants
+  - No breaking changes to existing Pydantic types
+
+- **Internationalization (i18n)**:
+  - French translation strings in `src/i18n/fr/ui/terminals.py`
+  - Input label: `INP_ROIC_STABLE` - "ROIC en État Stable (%)"
+  - Help text: `HELP_ROIC_STABLE` explaining the Golden Rule concept
+  - Golden Rule section with explanatory texts for calculation proofs:
+    - `GOLDEN_RULE_TITLE`, `GOLDEN_RULE_EXPLANATION`
+    - `GOLDEN_RULE_FORMULA_SHORT`, `GOLDEN_RULE_DETAIL`
+    - `GOLDEN_RULE_NOT_APPLIED`
+
+- **Comprehensive Testing**:
+  - 12 unit tests for `normalize_terminal_flow_for_stable_state()` covering:
+    - Normal cases with various growth/ROIC combinations
+    - Edge cases: zero growth, negative growth, None/zero/negative ROIC
+    - Boundary conditions: growth equals ROIC, growth exceeds ROIC
+  - 5 integration tests for DCF library:
+    - Terminal value calculation with/without Golden Rule
+    - Zero ROIC handling, high ROIC scenarios
+    - Full workflow integration test
+  - All 113 existing tests pass without regressions
+
+### Technical Details
+The Golden Rule addresses a fundamental valuation principle: **perpetual growth requires proportional reinvestment**. Without this adjustment, DCF models implicitly assume companies can grow indefinitely without reinvesting capital, which violates economic principles. This implementation:
+
+1. **Mathematically rigorous**: Calculates exact reinvestment requirements based on ROIC
+2. **Conservative by default**: No adjustment when ROIC data is unavailable
+3. **Division-by-zero safe**: Explicit guards against invalid ROIC values
+4. **Audit-friendly**: Full traceability in calculation proofs with detailed variables
+5. **Backward compatible**: Existing models continue to work unchanged
+
+This enhancement aligns the codebase with institutional best practices from Damodaran and McKinsey frameworks for terminal value estimation.
+
+---
+
 ## [1.0.0] - 2026-02-11
 
 ### Sprint Overview: Production-Ready Release

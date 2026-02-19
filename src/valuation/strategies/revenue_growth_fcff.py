@@ -25,7 +25,7 @@ from typing import cast
 
 import numpy as np
 
-from src.computation.financial_math import calculate_discount_factors
+from src.computation.financial_math import calculate_discount_factors, normalize_terminal_flow_vectorized
 
 # Config & i18n
 from src.config.constants import ModelDefaults
@@ -97,11 +97,11 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         wcr_ratio = strategy_params.wcr_to_revenue_ratio
         wcr_source = None
 
-        # Fallback to historical WCR/Revenue ratio if user didn't provide one
+        # Fallback chain for WCR ratio: User → Historical → Default constant
         if wcr_ratio is None:
             historical_ratio = getattr(financials, "historical_wcr_ratio", None)
             if historical_ratio is not None:
-                wcr_ratio = historical_ratio
+                wcr_ratio = float(historical_ratio)
                 wcr_source = StrategySources.YAHOO_HISTORICAL
                 logger.info(f"Using historical WCR ratio: {wcr_ratio:.4f} (from Yahoo Finance)")
             else:
@@ -109,6 +109,7 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
                     "No WCR ratio provided and no historical data available - no WCR adjustment will be applied"
                 )
         else:
+            wcr_ratio = float(wcr_ratio)
             wcr_source = StrategySources.MANUAL_OVERRIDE
 
         if self._glass_box:
@@ -131,29 +132,34 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
             # Add Glass Box step for WCR ratio if used
             if wcr_ratio is not None and wcr_source is not None:
                 wcr_percentage = wcr_ratio * 100
-                wcr_label = (
-                    "Historical WCR Ratio (Yahoo Finance)"
-                    if wcr_source == StrategySources.YAHOO_HISTORICAL
-                    else "WCR Ratio (User Input)"
-                )
+
+                # Determine label and variable source based on origin
+                if wcr_source == StrategySources.MANUAL_OVERRIDE:
+                    wcr_label = RegistryTexts.WCR_LABEL_MANUAL
+                    var_source = VariableSource.MANUAL_OVERRIDE
+                elif wcr_source == StrategySources.YAHOO_HISTORICAL:
+                    wcr_label = RegistryTexts.WCR_LABEL_HISTORICAL
+                    var_source = VariableSource.YAHOO_HISTORICAL
+                else:  # SYSTEM
+                    wcr_label = RegistryTexts.WCR_LABEL_SYSTEM
+                    var_source = VariableSource.SYSTEM
+
                 steps.append(
                     CalculationStep(
                         step_key="WCR_RATIO",
                         label=wcr_label,
                         theoretical_formula=r"\text{WCR Ratio} = \frac{(\text{Inventory} + \text{Receivables}) - \text{Payables}}{\text{Revenue}}",
-                        actual_calculation=f"WCR Intensity: {wcr_percentage:.2f}%",
+                        actual_calculation=RegistryTexts.WCR_CALC_TEMPLATE.format(percentage=wcr_percentage),
                         result=wcr_ratio,
-                        interpretation=f"Working capital will consume {wcr_percentage:.2f}% of each revenue increase",
+                        interpretation=RegistryTexts.WCR_INTERP_TEMPLATE.format(percentage=wcr_percentage),
                         source=wcr_source,
                         variables_map={
                             "WCR_Ratio": VariableInfo(
                                 symbol="WCR/Rev",
                                 value=wcr_ratio,
                                 formatted_value=f"{wcr_percentage:.2f}%",
-                                source=VariableSource.MANUAL_OVERRIDE
-                                if wcr_source == StrategySources.MANUAL_OVERRIDE
-                                else VariableSource.YAHOO_HISTORICAL,
-                                description="Working Capital to Revenue Ratio",
+                                source=var_source,
+                                description=RegistryTexts.WCR_DESC
                             ),
                         },
                     )
@@ -316,11 +322,16 @@ class RevenueGrowthFCFFStrategy(IValuationRunner):
         discount_factors = 1.0 / ((1 + wacc)[:, np.newaxis] ** time_exponents)
         pv_explicit = np.sum(projected_flows * discount_factors, axis=1)
 
-        # 6. Terminal Value
-        # Uses last year FCF and Revenue Growth? No, Gordon Growth on FCF.
+        # 6. Terminal Value with Golden Rule
+        # Uses last year FCF with Gordon Growth
         final_flow = projected_flows[:, -1]
+
+        # GOLDEN RULE: Apply normalization for reinvestment before Gordon formula
+        roic_stable = getattr(params.strategy.terminal_value, "roic_stable", None)
+        final_flow_adjusted = normalize_terminal_flow_vectorized(final_flow, g_n, roic_stable)
+
         denominator = np.maximum(wacc - g_n, 0.001)
-        tv_nominal = final_flow * (1 + g_n) / denominator
+        tv_nominal = final_flow_adjusted * (1 + g_n) / denominator
         pv_tv = tv_nominal / ((1 + wacc) ** years)
 
         # 7. Equity Bridge
